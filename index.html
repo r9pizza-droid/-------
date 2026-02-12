@@ -398,7 +398,11 @@
             useEffect(() => {
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
-                return () => window.removeEventListener('keydown', handleEsc);
+                document.body.style.overflow = 'hidden';
+                return () => {
+                    window.removeEventListener('keydown', handleEsc);
+                    document.body.style.overflow = '';
+                };
             }, [onClose]);
 
             
@@ -825,7 +829,7 @@
 
             return (
                 <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                    <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col" onClick={e => e.stopPropagation()}>
+                    <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col overscroll-contain" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800">🌱 학생 인사이트</h3>
                             <div className="flex gap-3" id="export-hide-area">
