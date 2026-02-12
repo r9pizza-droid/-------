@@ -4245,7 +4245,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [isSettingOpen, setIsSettingOpen] = useState(false); const [isSetupOpen, setIsSetupOpen] = useState(false); const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null }); const [toastMessage, setToastMessage] = useState(null);
-            const [appConfig, setAppConfig] = useState({ recordTitle: "Classroom Checklist", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans' });
+            const [appConfig, setAppConfig] = useState({ recordTitle: "이거했어?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans' });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const lastBackupTime = useRef("");
