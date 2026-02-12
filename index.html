@@ -3814,6 +3814,13 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
             const [selectedStudentId, setSelectedStudentId] = useState(null);
             const seatChartRef = useRef(null);
+            const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+            useEffect(() => {
+                const handleResize = () => setIsMobile(window.innerWidth < 768);
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, []);
 
             // [핵심 수정 1] 드래그 시작: 데이터를 window 객체에 직접 저장 (가장 확실한 방법)
             const handleDragStart = (e, studentId, fromSeat) => {
@@ -4128,14 +4135,14 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                 </div>
                             )}
                         </div>
-                    </div><div className="flex flex-col lg:flex-row gap-6" ref={seatChartRef}><div className="flex-1 overflow-auto custom-scroll bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col items-center"><div className="w-48 h-6 bg-slate-200 rounded-b-lg mb-6 flex items-center justify-center text-[10px] font-bold text-slate-500 shadow-inner">교탁</div><div className="grid gap-3 w-full max-w-6xl" style={{ gridTemplateColumns: `repeat(${seatConfig.cols}, minmax(90px, 1fr))` }}>{Array.from({ length: seatConfig.rows }).map((_, r) => Array.from({ length: seatConfig.cols }).map((_, c) => { const seatKey = `${r}-${c}`; const studentId = seatAssignments[seatKey]; 
+                    </div><div className="flex flex-col lg:flex-row gap-6" ref={seatChartRef}><div className="flex-1 overflow-auto custom-scroll bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col items-center"><div className="w-48 h-6 bg-slate-200 rounded-b-lg mb-6 flex items-center justify-center text-[10px] font-bold text-slate-500 shadow-inner">교탁</div><div className="grid gap-2 md:gap-3 w-full max-w-6xl" style={{ gridTemplateColumns: `repeat(${seatConfig.cols}, minmax(${isMobile ? '60px' : '90px'}, 1fr))` }}>{Array.from({ length: seatConfig.rows }).map((_, r) => Array.from({ length: seatConfig.cols }).map((_, c) => { const seatKey = `${r}-${c}`; const studentId = seatAssignments[seatKey]; 
                     const student = students.find(s => s.id === studentId); 
                     const isDisabled = (seatConfig.disabledSeats || []).includes(seatKey); 
                     const isSelected = selectedSeat === seatKey; 
                     const role = student ? roleMap[student.id] : null; 
                     // [중요] onDrop 이벤트가 seat-cell DIV에 걸려있음
-                    return (<div key={seatKey} onClick={() => handleSeatClick(r, c)} onDragOver={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragEnter={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragLeave={!isLayoutMode && !isDisabled ? handleDragLeave : undefined} onDrop={!isLayoutMode && !isDisabled ? (e) => handleDrop(e, r, c) : undefined} className={`seat-cell h-28 rounded-xl border-2 flex flex-col items-center justify-center p-1 transition-all duration-200 ease-in-out relative group ${isLayoutMode ? (isDisabled ? 'bg-slate-100 border-slate-200 cursor-pointer hover:bg-slate-200' : 'bg-white border-indigo-200 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50') : (isDisabled ? 'opacity-0 pointer-events-none' : (student ? (student.gender === 'M' ? 'bg-blue-50/30 border-blue-200' : 'bg-pink-50/30 border-pink-200') : 'bg-white border-slate-200 border-dashed hover:border-indigo-300'))} ${isSelected ? 'ring-4 ring-indigo-400 ring-offset-2 z-10 border-indigo-500' : ''}`}>{!isLayoutMode && student && (<div draggable="true" onDragStart={(e) => handleDragStart(e, student.id, seatKey)} onDragEnd={handleDragEnd} onClick={(e) => { e.stopPropagation(); handleStudentClick(student.id); }} onDoubleClick={(e) => { e.stopPropagation(); onOpenStudentInfo(student.id); }} onContextMenu={(e) => handleRightClick(e, seatKey)} className="w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing seat-node animate-bounce-in touch-none"><div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm mb-1 overflow-hidden pointer-events-none">{student.photo ? <img src={student.photo} className="w-full h-full object-cover" /> : (student.gender === 'M' ? '👦' : '👧')}</div><span className="text-sm font-bold text-slate-700 w-full text-center leading-tight break-keep px-0.5 pointer-events-none">{student.name}</span>{role && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full mt-1 font-bold truncate max-w-full pointer-events-none">{role}</span>}</div>)}{isLayoutMode && !isDisabled && <span className="text-indigo-200 text-xs">{r+1}-{c+1}</span>}</div>); }))}</div></div>
-                <div id="seat-waiting-list" className="lg:w-72 bg-slate-50 rounded-2xl border border-slate-200 p-4 flex flex-col h-auto min-h-[400px] flex-shrink-0">
+                    return (<div key={seatKey} onClick={() => handleSeatClick(r, c)} onDragOver={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragEnter={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragLeave={!isLayoutMode && !isDisabled ? handleDragLeave : undefined} onDrop={!isLayoutMode && !isDisabled ? (e) => handleDrop(e, r, c) : undefined} className={`seat-cell h-20 md:h-28 rounded-xl border-2 flex flex-col items-center justify-center p-1 transition-all duration-200 ease-in-out relative group ${isLayoutMode ? (isDisabled ? 'bg-slate-100 border-slate-200 cursor-pointer hover:bg-slate-200' : 'bg-white border-indigo-200 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50') : (isDisabled ? 'opacity-0 pointer-events-none' : (student ? (student.gender === 'M' ? 'bg-blue-50/30 border-blue-200' : 'bg-pink-50/30 border-pink-200') : 'bg-white border-slate-200 border-dashed hover:border-indigo-300'))} ${isSelected ? 'ring-4 ring-indigo-400 ring-offset-2 z-10 border-indigo-500' : ''}`}>{!isLayoutMode && student && (<div draggable="true" onDragStart={(e) => handleDragStart(e, student.id, seatKey)} onDragEnd={handleDragEnd} onClick={(e) => { e.stopPropagation(); handleStudentClick(student.id); }} onDoubleClick={(e) => { e.stopPropagation(); onOpenStudentInfo(student.id); }} onContextMenu={(e) => handleRightClick(e, seatKey)} className="w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing seat-node animate-bounce-in touch-none"><div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm mb-1 overflow-hidden pointer-events-none">{student.photo ? <img src={student.photo} className="w-full h-full object-cover" /> : (student.gender === 'M' ? '👦' : '👧')}</div><span className="text-sm font-bold text-slate-700 w-full text-center leading-tight break-keep px-0.5 pointer-events-none">{student.name}</span>{role && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full mt-1 font-bold truncate max-w-full pointer-events-none">{role}</span>}</div>)}{isLayoutMode && !isDisabled && <span className="text-indigo-200 text-xs">{r+1}-{c+1}</span>}</div>); }))}</div></div>
+                <div id="seat-waiting-list" className="lg:w-72 bg-slate-50 rounded-2xl border border-slate-200 p-4 flex flex-col h-auto min-h-[200px] md:min-h-[400px] flex-shrink-0">
                     <h4 className="font-bold text-slate-600 mb-2 text-xs flex justify-between items-center">
                         <span>대기 명단</span>
                         <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-full">{unassignedStudents.length}</span>
@@ -4227,7 +4234,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [mustPairs, setMustPairs] = useState([]); 
             const [pairTab, setPairTab] = useState('avoid'); 
             const [showRoleHelp, setShowRoleHelp] = useState(false);
-            const [isGroupToolsOpen, setIsGroupToolsOpen] = useState(true);
+            const [isGroupToolsOpen, setIsGroupToolsOpen] = useState(window.innerWidth >= 1024);
             const [useAI, setUseAI] = useState(false);
             const [aiPrompt, setAiPrompt] = useState("");
             const [aiReason, setAiReason] = useState(null);
@@ -4249,7 +4256,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [grassTitleClickCount, setGrassTitleClickCount] = useState(0);
             const [isBulkPhotoOpen, setIsBulkPhotoOpen] = useState(false);
             const [isRoleEditOpen, setIsRoleEditOpen] = useState(false);
-            const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(true);
+            const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(window.innerWidth >= 1024);
             const [formationClickCount, setFormationClickCount] = useState(0);
             const [showQuickApiKey, setShowQuickApiKey] = useState(false);
             const [showAiHelp, setShowAiHelp] = useState(false);
@@ -5298,8 +5305,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         )}
                         {mode === 'simple' && <SimpleView students={students} simpleChecks={simpleChecks} toggleCheck={toggleCheck} />}
                         {mode === 'group' && (
-                            <div className="w-full h-full flex flex-col lg:flex-row gap-6 pb-4 overflow-hidden">
-                                <div className={`lg:w-1/4 space-y-4 h-full overflow-y-auto custom-scroll transition-all duration-300 ${isGroupPanelOpen ? 'block' : 'hidden'}`}>
+                            <div className="w-full lg:h-full h-auto flex flex-col lg:flex-row gap-6 pb-4 lg:overflow-hidden">
+                                <div className={`lg:w-1/4 space-y-4 lg:h-full h-auto lg:overflow-y-auto custom-scroll transition-all duration-300 ${isGroupPanelOpen ? 'block' : 'hidden'}`}>
                                     <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                                         <div className="flex justify-between items-center mb-4"><h3 onClick={handleFormationTitleClick} className="font-bold text-slate-800 flex items-center gap-2 cursor-default select-none"><span className="text-xl">🧩</span> 편성</h3><Btn onClick={()=>setIsAvoidanceVisible(!isAvoidanceVisible)} className="text-slate-400"><Icon d={isAvoidanceVisible ? PATHS.unlock : PATHS.lock}/></Btn></div>
                                         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -5422,7 +5429,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                     </div>
                                 </div>
 
-                                <div className={`flex flex-col h-full gap-4 overflow-y-auto custom-scroll pb-10 transition-all duration-300 ${isGroupPanelOpen ? 'lg:w-3/4' : 'lg:w-full'}`}>
+                                <div className={`flex flex-col lg:h-full h-auto gap-4 lg:overflow-y-auto custom-scroll pb-10 transition-all duration-300 ${isGroupPanelOpen ? 'lg:w-3/4' : 'lg:w-full'}`}>
                                     <div id="groups-container" className={`bg-white rounded-2xl border border-slate-200 flex flex-col relative transition-all duration-300 h-auto`}>
                                         <div className="flex justify-between items-center px-4 py-3 border-b border-slate-200 flex-shrink-0 bg-white rounded-t-2xl sticky top-0 z-10">
                                             <div className="flex items-center gap-2 w-full">
