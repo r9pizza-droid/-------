@@ -57,11 +57,13 @@
                         'bounce-in': 'bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                         'fade-in': 'fadeIn 0.3s ease-out',
                         'pop-up': 'popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        'modal-enter': 'modalEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                     },
                     keyframes: {
                         bounceIn: { '0%': { transform: 'scale(0.9)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         fadeIn: { 'from': { opacity: 0 }, 'to': { opacity: 1 } },
                         popUp: { 'from': { transform: 'translate(-50%, -40%) scale(0.9)', opacity: 0 }, 'to': { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 } },
+                        modalEnter: { '0%': { opacity: 0, transform: 'scale(0.95) translateY(10px)' }, '100%': { opacity: 1, transform: 'scale(1) translateY(0)' } },
                     }
                 }
             }
@@ -215,22 +217,53 @@
             <button onClick={onClick} className={`transition-colors duration-100 active:opacity-70 flex items-center justify-center rounded hover:bg-notion-bg-hover ${className}`} {...props}>{children}</button>
         );
         const BaseModal = ({ isOpen, onClose, title, icon, children, footer, maxWidth = "max-w-2xl", zIndex = "z-50" }) => {
-            if (!isOpen) return null;
-            
+            const [translateY, setTranslateY] = useState(0);
+            const [isDragging, setIsDragging] = useState(false);
+            const startY = useRef(0);
+            const contentRef = useRef(null);
+
             useEffect(() => {
+                if (!isOpen) return;
+                setTranslateY(0); setIsDragging(false);
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
-                return () => window.removeEventListener('keydown', handleEsc);
-            }, [onClose]);
+                document.body.style.overflow = 'hidden';
+                return () => {
+                    window.removeEventListener('keydown', handleEsc);
+                    document.body.style.overflow = '';
+                };
+            }, [isOpen, onClose]);
 
+            const handleTouchStart = (e) => {
+                if (contentRef.current && contentRef.current.contains(e.target) && contentRef.current.scrollTop > 0) return;
+                setIsDragging(true); startY.current = e.touches[0].clientY;
+            };
+            const handleTouchMove = (e) => {
+                if (!isDragging) return;
+                const delta = e.touches[0].clientY - startY.current;
+                if (delta > 0) setTranslateY(delta);
+            };
+            const handleTouchEnd = () => {
+                if (!isDragging) return;
+                setIsDragging(false);
+                if (translateY > 120) onClose(); else setTranslateY(0);
+            };
+
+            if (!isOpen) return null;
             return (
                 <div className={`fixed inset-0 bg-black/40 ${zIndex} flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in`} onClick={onClose}>
-                    <div className={`bg-white w-full ${maxWidth} rounded-xl shadow-xl border border-notion-border p-6 h-auto max-h-[85vh] flex flex-col`} onClick={e => e.stopPropagation()}>
+                    <div 
+                        className={`bg-white w-full ${maxWidth} rounded-xl shadow-xl border border-notion-border p-6 h-auto max-h-[85vh] flex flex-col animate-modal-enter`} 
+                        onClick={e => e.stopPropagation()}
+                        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+                        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}
+                    >
+                        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 md:hidden flex-shrink-0" />
                         <div className="flex justify-between items-center mb-6 flex-shrink-0">
                             <h3 className="text-lg font-bold flex items-center gap-2 text-notion-text">{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light"><Icon d={PATHS.x} /></button>
                         </div>
-                        <div className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6">{children}</div>
+                        <div ref={contentRef} className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6 overscroll-contain">{children}</div>
                         {footer && <div className="pt-4 border-t mt-4 flex-shrink-0">{footer}</div>}
                     </div>
                 </div>
@@ -244,9 +277,29 @@
             return <div className="fixed top-10 left-1/2 transform -translate-x-1/2 z-[3000] animate-pop-up pointer-events-none"><div className="bg-[#37352F] text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 backdrop-blur-md min-w-[200px] justify-center"><Icon d={PATHS.check} size={16} className="text-white" /><span className="font-medium text-sm text-center">{message}</span></div></div>;
         };
         const ConfirmModal = ({ isOpen, message, onConfirm, onCancel }) => {
+            const [translateY, setTranslateY] = useState(0);
+            const [isDragging, setIsDragging] = useState(false);
+            const startY = useRef(0);
+
+            useEffect(() => {
+                if (isOpen) { document.body.style.overflow = 'hidden'; setTranslateY(0); setIsDragging(false); }
+                return () => { document.body.style.overflow = ''; };
+            }, [isOpen]);
+
+            const handleTouchStart = (e) => { setIsDragging(true); startY.current = e.touches[0].clientY; };
+            const handleTouchMove = (e) => { if (!isDragging) return; const delta = e.touches[0].clientY - startY.current; if (delta > 0) setTranslateY(delta); };
+            const handleTouchEnd = () => { if (!isDragging) return; setIsDragging(false); if (translateY > 100) onCancel(); else setTranslateY(0); };
+
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 bg-black/40 z-[2500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm"><div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-notion-bg-hover text-notion-text rounded border border-notion-border font-medium hover:bg-gray-200">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:opacity-90 shadow-sm">확인</Btn></div></div></div>
+                <div className="fixed inset-0 bg-black/40 z-[2500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                    <div 
+                        className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm animate-modal-enter"
+                        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+                        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}
+                    >
+                        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4 md:hidden" />
+                        <div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-notion-bg-hover text-notion-text rounded border border-notion-border font-medium hover:bg-gray-200">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:opacity-90 shadow-sm">확인</Btn></div></div></div>
             );
         };
         const HelpModal = ({ isOpen, onClose }) => {
@@ -395,6 +448,10 @@
         const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, onSaveStudentPhoto, appConfig, apiKey, onSaveRecordDraft }) => {
             if (!isOpen || !student || !student.history) return null;
 
+            const [translateY, setTranslateY] = useState(0);
+            const [isDragging, setIsDragging] = useState(false);
+            const startY = useRef(0);
+
             useEffect(() => {
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
@@ -404,6 +461,17 @@
                     document.body.style.overflow = '';
                 };
             }, [onClose]);
+
+            useEffect(() => {
+                if(isOpen) { setTranslateY(0); setIsDragging(false); }
+            }, [isOpen]);
+
+            const handleTouchStart = (e) => {
+                if (modalRef.current && modalRef.current.scrollTop > 0) return;
+                setIsDragging(true); startY.current = e.touches[0].clientY;
+            };
+            const handleTouchMove = (e) => { if (!isDragging) return; const delta = e.touches[0].clientY - startY.current; if (delta > 0) setTranslateY(delta); };
+            const handleTouchEnd = () => { if (!isDragging) return; setIsDragging(false); if (translateY > 150) onClose(); else setTranslateY(0); };
 
             
             const [notes, setNotes] = useState([]);
@@ -829,7 +897,13 @@
 
             return (
                 <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                    <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col overscroll-contain" onClick={e => e.stopPropagation()}>
+                    <div ref={modalRef} 
+                        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col overscroll-contain" 
+                        onClick={e => e.stopPropagation()}
+                        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+                        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}
+                    >
+                        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 md:hidden flex-shrink-0" />
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800">🌱 학생 인사이트</h3>
                             <div className="flex gap-3" id="export-hide-area">
@@ -1694,7 +1768,6 @@
         };
 
         const CalendarModal = ({ isOpen, onClose, currentDate, onSelectDate, records, appConfig, groupsByDate, mode, selectionMode = 'single', onSelectRange }) => {
-            if (!isOpen) return null;
             const [viewDate, setViewDate] = useState(dayjs(currentDate));
             const [range, setRange] = useState({ start: null, end: null });
 
@@ -1702,9 +1775,12 @@
                 if (isOpen) {
                     setViewDate(dayjs(currentDate)); 
                     if (selectionMode === 'range') setRange({ start: null, end: null });
+                    document.body.style.overflow = 'hidden';
                 } 
+                return () => { document.body.style.overflow = ''; };
             }, [isOpen, currentDate, selectionMode]);
 
+            if (!isOpen) return null;
             const startDay = viewDate.startOf('month').day();
             const calendarDays = [...Array(startDay).fill(null), ...Array(viewDate.daysInMonth()).fill(0).map((_, i) => viewDate.date(i + 1))];
             
@@ -3062,6 +3138,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.7", 
+                date: "2026-02-12", 
+                list: ["모바일에서 팝업창을 아래로 쓸어내려 닫는 기능(Swipe down to close) 추가"] 
+            },
+            { 
                 version: "v3.4.6", 
                 date: "2026-02-12", 
                 list: ["데스크탑 하단 버전 정보 마우스 오버 시 배경색 변경 효과 추가"] 
@@ -4228,6 +4309,37 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
+
+            // [Service Worker Update Logic]
+            const [newVersionAvailable, setNewVersionAvailable] = useState(false);
+            const [waitingWorker, setWaitingWorker] = useState(null);
+
+            useEffect(() => {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('./sw.js').then(registration => {
+                        if (registration.waiting) { setWaitingWorker(registration.waiting); setNewVersionAvailable(true); }
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    setWaitingWorker(newWorker);
+                                    setNewVersionAvailable(true);
+                                }
+                            });
+                        });
+                    });
+                    let refreshing = false;
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        if (!refreshing) { window.location.reload(); refreshing = true; }
+                    });
+                }
+            }, []);
+
+            const handleUpdateApp = () => {
+                if (waitingWorker) waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+                else window.location.reload();
+                setNewVersionAvailable(false);
+            };
 
             const [mode, setMode] = useState("record");
             const [date, setDate] = useState(getToday());
@@ -5632,6 +5744,12 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                             if(action) action();
                         }} 
                         onCancel={()=>setConfirmModal({isOpen:false, message:"", onConfirm:null})} 
+                    />
+                    <ConfirmModal
+                        isOpen={newVersionAvailable}
+                        message="🚀 새로운 버전이 출시되었습니다!&#10;지금 업데이트(새로고침) 하시겠습니까?"
+                        onConfirm={handleUpdateApp}
+                        onCancel={() => setNewVersionAvailable(false)}
                     />
                     <Toast message={toastMessage} onClose={()=>setToastMessage(null)} />
                     <StatsGrassModal 
