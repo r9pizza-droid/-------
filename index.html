@@ -4,6 +4,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>이거했어? v3.2.0</title>
     
+    <meta property="og:title" content="이거했어?">
+    <meta property="og:description" content="우리 반 숙제 확인 및 학급 경영 도구">
+    
     <script src="https://cdn.tailwindcss.com" data-app-script="true"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js" data-app-script="true" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/locale/ko.min.js" data-app-script="true" crossorigin="anonymous"></script>
@@ -1201,7 +1204,7 @@
                                     ))}
                                 </div>
                             </div>
-                            <div className="text-center text-slate-400 text-sm mt-12 pt-6 border-t border-slate-100">Classroom Checklist 학습 관리 시스템</div>
+                            <div className="text-center text-slate-400 text-sm mt-12 pt-6 border-t border-slate-100">이거했어? 학습 관리 시스템</div>
                         </div>
                     </div>
                 </div>
@@ -2451,11 +2454,11 @@
 
             const getManualContent = () => `
 ================================================================
-  📘 Classroom Checklist 사용 설명서 (v${appConfig.version})
+  📘 이거했어? 사용 설명서 (v${appConfig.version})
 ================================================================
 
 안녕하세요, 선생님! 
-Classroom Checklist는 학급 운영을 더 쉽고 스마트하게 도와드리는 도구입니다.
+이거했어?는 학급 운영을 더 쉽고 스마트하게 도와드리는 도구입니다.
 주요 기능과 사용 팁을 아래에 정리해 드립니다.
 
 ----------------------------------------------------------------
@@ -5284,7 +5287,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
             return (
                 <div className={`flex flex-col h-full bg-slate-50 text-slate-900 ${appConfig.font === 'serif' ? 'font-serif' : appConfig.font === 'hand' ? 'font-hand' : appConfig.font === 'jua' ? 'font-jua' : appConfig.font === 'nanum' ? 'font-nanum' : appConfig.font === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'}`}>
-                    <header className="bg-white border-b border-notion-border z-10 sticky top-0"><div className="px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3"><div className="flex items-center gap-6"><div className="flex items-center gap-2"><div className="p-1.5 bg-notion-bg-alt text-notion-text rounded border border-notion-border"><Icon d={PATHS.list} size={18}/></div><h1 className="text-base font-bold text-notion-text">{appConfig.recordTitle}</h1>{!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}</div><div className="hidden md:flex gap-1">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (<button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>))}</div></div><div className="flex md:hidden bg-notion-bg-alt p-1 rounded w-full overflow-x-auto">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m=><button key={m.id} onClick={()=>setMode(m.id)} className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-all whitespace-nowrap ${mode===m.id?'bg-white shadow-sm text-notion-text':'text-notion-text-light'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>)}</div>
+                    <header className="bg-white border-b border-notion-border z-10 sticky top-0"><div className="px-4 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3"><div className="flex items-center gap-6"><div className="flex items-center gap-2"><div className="p-1.5 bg-notion-bg-alt text-notion-text rounded border border-notion-border"><Icon d={PATHS.list} size={18}/></div><h1 className="text-base font-bold text-notion-text">{appConfig.recordTitle}</h1>{!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}</div><div className="hidden md:flex gap-1">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (<button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>))}</div></div><div className="flex md:hidden bg-notion-bg-alt p-1 rounded w-full overflow-x-auto">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m=><button key={m.id} onClick={()=>setMode(m.id)} className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-all whitespace-nowrap ${mode===m.id?'bg-white shadow-sm text-notion-text':'text-notion-text-light'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>)}</div>
                     <div className="flex items-center gap-2 absolute right-4 top-3 md:relative md:top-auto md:right-auto">
                         <button onClick={()=>setIsToolsOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>🧰</span><span className="text-sm font-medium">도구</span></button>
                         <button onClick={()=>setIsSettingOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>⚙️</span><span className="text-sm font-medium">설정</span></button>
