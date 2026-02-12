@@ -3062,6 +3062,21 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.6", 
+                date: "2026-02-12", 
+                list: ["데스크탑 하단 버전 정보 마우스 오버 시 배경색 변경 효과 추가"] 
+            },
+            { 
+                version: "v3.4.5", 
+                date: "2026-02-12", 
+                list: ["데스크탑 하단 버전 정보 글자 크기 확대 (10px → 12px)"] 
+            },
+            { 
+                version: "v3.4.4", 
+                date: "2026-02-12", 
+                list: ["데스크탑 화면에서 하단 버전 정보 디자인 개선 (고정 위치 및 배경색 적용)"] 
+            },
+            { 
                 version: "v3.4.3", 
                 date: "2026-02-12", 
                 list: ["모바일 하단 네비게이션 바 터치 영역 개선 (하단 여백 추가)"] 
@@ -4209,7 +4224,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 3    // Patch: 기존 기능의 버그 수정
+            patch: 6    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5595,8 +5610,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                 <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden mt-6"><div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">🌱</div><h3 onClick={handleGrassTitleClick} className="font-bold text-slate-800 mb-6 flex items-center gap-2 relative z-10 cursor-pointer select-none"><span className="text-xl">🌱</span> 활동 잔디 (30일)</h3><div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 relative z-10">{stats.students.map(s => (<div key={s.id} onClick={() => setGrassStudentId(s.id)} className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all group"><div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center font-bold text-xs text-slate-500 overflow-hidden">{s.photo ? <img src={s.photo} className="w-full h-full object-cover" alt={s.name} /> : s.order}</div><div className="flex flex-col min-w-0"><span className="text-sm font-bold text-slate-700 truncate">{s.name}</span><div className="flex gap-0.5 mt-1">{s.history.slice(0,5).map((h,i) => (<div key={i} className="w-2 h-2 rounded-full" style={h.ratio > 0 ? { background: `conic-gradient(#4ade80 0% ${h.ratio*100}%, #e2e8f0 ${h.ratio*100}% 100%)` } : { backgroundColor: '#e2e8f0' }}></div>))}</div></div></div>))}</div></div>
                             </div>
                         )}
-                        <footer onClick={() => setShowUpdateNotes(true)} className="text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visial Studio Code With Gemini</footer>
+                        <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visial Studio Code With Gemini</footer>
                     </main>
+                    <footer onClick={() => setShowUpdateNotes(true)} className="hidden md:block text-center py-2 text-xs text-slate-400 bg-slate-50 hover:bg-slate-100 border-t border-slate-200 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visial Studio Code With Gemini</footer>
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe">
                         <div className="flex justify-around items-center h-14">
                             {[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (
