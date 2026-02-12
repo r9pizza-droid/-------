@@ -5877,7 +5877,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     </BaseModal>
                     <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => setShowUpdateNotes(false)} showToast={setToastMessage} />
                     
-                    <footer onClick={() => setShowUpdateNotes(true)} className="text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visial Studio Code With Gemini</footer>
+                    <footer onClick={() => setShowUpdateNotes(true)} className="text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors md:mb-0 mb-20">{CURRENT_VERSION} | Visial Studio Code With Gemini</footer>
                 </div>
             );
         };
