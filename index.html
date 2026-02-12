@@ -5434,7 +5434,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
                                 <div className={`flex flex-col lg:h-full h-auto gap-4 lg:overflow-y-auto custom-scroll pb-10 transition-all duration-300 ${isGroupPanelOpen ? 'lg:w-3/4' : 'lg:w-full'}`}>
                                     <div id="groups-container" className={`bg-white rounded-2xl border border-slate-200 flex flex-col relative transition-all duration-300 h-auto`}>
-                                        <div className="flex justify-between items-center px-4 py-3 border-b border-slate-200 flex-shrink-0 bg-white rounded-t-2xl sticky top-0 z-10">
+                                        <div className="flex justify-between items-center px-4 py-3 border-b border-slate-200 flex-shrink-0 bg-white rounded-t-2xl lg:sticky lg:top-0 z-10">
                                             <div className="flex items-center gap-2 w-full">
                                                 <Btn onClick={() => setIsGroupPanelOpen(!isGroupPanelOpen)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
                                                     <Icon d={isGroupPanelOpen ? PATHS.left : PATHS.right} />
