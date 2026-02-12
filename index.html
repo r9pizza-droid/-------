@@ -825,7 +825,7 @@
 
             return (
                 <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                    <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto custom-scroll" onClick={e => e.stopPropagation()}>
+                    <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800">🌱 학생 인사이트</h3>
                             <div className="flex gap-3" id="export-hide-area">
@@ -844,7 +844,7 @@
                                 <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><Icon d={PATHS.x} /></button>
                             </div>
                         </div>
-                        <div className="flex items-center justify-between mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div className="flex items-center justify-between mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100 flex-wrap">
                             <div className="flex items-center gap-4">
                                 <div className="relative group cursor-pointer flex-shrink-0" onClick={() => fileInputRef.current.click()}>
                                     <div className="w-14 h-14 rounded-full bg-white border-2 border-slate-200 overflow-hidden flex items-center justify-center shadow-sm">
@@ -967,11 +967,13 @@
                                         </div>
                                     </div>
                                 )}
-                                <div className="flex gap-2 mb-3 items-center">
-                                    <input type="date" value={noteDate} onChange={(e) => setNoteDate(e.target.value)} className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 font-bold text-slate-600" />
-                                    <input ref={noteInputRef} value={noteInput} onChange={(e) => setNoteInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAddNoteOnly()} className="flex-1 min-w-0 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500" placeholder="관찰 내용 또는 칭찬 사유..." />
-                                    <Btn onClick={handleAddNoteOnly} className="flex-shrink-0 bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 whitespace-nowrap">기록</Btn>
-                                    <Btn onClick={handleGiveStickerWithNote} className="flex-shrink-0 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">칭찬 (+1)</Btn>
+                                <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                                    <input type="date" value={noteDate} onChange={(e) => setNoteDate(e.target.value)} className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 w-full sm:w-auto" />
+                                    <div className="flex gap-2 w-full items-center">
+                                        <input ref={noteInputRef} value={noteInput} onChange={(e) => setNoteInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAddNoteOnly()} className="flex-1 min-w-0 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500" placeholder="관찰 내용 또는 칭찬 사유..." />
+                                        <Btn onClick={handleAddNoteOnly} className="flex-shrink-0 bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 whitespace-nowrap">기록</Btn>
+                                        <Btn onClick={handleGiveStickerWithNote} className="flex-shrink-0 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">칭찬 (+1)</Btn>
+                                    </div>
                                 </div>
                                 <div className="flex-1 overflow-y-auto custom-scroll space-y-2 pr-1">
                                     {filteredNotes.length > 0 ? filteredNotes.map(n => (
