@@ -4237,7 +4237,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [mustPairs, setMustPairs] = useState([]); 
             const [pairTab, setPairTab] = useState('avoid'); 
             const [showRoleHelp, setShowRoleHelp] = useState(false);
-            const [isGroupToolsOpen, setIsGroupToolsOpen] = useState(window.innerWidth >= 1024);
+            const [isGroupToolsOpen, setIsGroupToolsOpen] = useState(window.innerWidth >= 768);
             const [useAI, setUseAI] = useState(false);
             const [aiPrompt, setAiPrompt] = useState("");
             const [aiReason, setAiReason] = useState(null);
@@ -4259,7 +4259,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [grassTitleClickCount, setGrassTitleClickCount] = useState(0);
             const [isBulkPhotoOpen, setIsBulkPhotoOpen] = useState(false);
             const [isRoleEditOpen, setIsRoleEditOpen] = useState(false);
-            const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(window.innerWidth >= 1024);
+            const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(window.innerWidth >= 768);
             const [formationClickCount, setFormationClickCount] = useState(0);
             const [showQuickApiKey, setShowQuickApiKey] = useState(false);
             const [showAiHelp, setShowAiHelp] = useState(false);
@@ -4281,6 +4281,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [showAvoidanceLines, setShowAvoidanceLines] = useState(false);
             const [focusedGroupIdx, setFocusedGroupIdx] = useState(null);
             const [showPartnerAnalysis, setShowPartnerAnalysis] = useState(false);
+            const [expandedGroupCards, setExpandedGroupCards] = useState({});
 
             const handleRangeSelect = (start, end) => {
                 setDate(start);
@@ -5308,8 +5309,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         )}
                         {mode === 'simple' && <SimpleView students={students} simpleChecks={simpleChecks} toggleCheck={toggleCheck} />}
                         {mode === 'group' && (
-                            <div className="w-full lg:h-full h-auto flex flex-col lg:flex-row gap-6 pb-4 lg:overflow-hidden">
-                                <div className={`lg:w-1/4 space-y-4 lg:h-full h-auto lg:overflow-y-auto custom-scroll transition-all duration-300 ${isGroupPanelOpen ? 'block' : 'hidden'}`}>
+                            <div className="w-full md:h-full h-auto flex flex-col md:flex-row gap-6 pb-4 md:overflow-hidden">
+                                <div className={`md:w-1/3 lg:w-1/4 space-y-4 md:h-full h-auto md:overflow-y-auto custom-scroll transition-all duration-300 ${isGroupPanelOpen ? 'block' : 'hidden'}`}>
                                     <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                                         <div className="flex justify-between items-center mb-4"><h3 onClick={handleFormationTitleClick} className="font-bold text-slate-800 flex items-center gap-2 cursor-default select-none"><span className="text-xl">🧩</span> 편성</h3><Btn onClick={()=>setIsAvoidanceVisible(!isAvoidanceVisible)} className="text-slate-400"><Icon d={isAvoidanceVisible ? PATHS.unlock : PATHS.lock}/></Btn></div>
                                         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -5432,9 +5433,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                     </div>
                                 </div>
 
-                                <div className={`flex flex-col lg:h-full h-auto gap-4 lg:overflow-y-auto custom-scroll pb-10 transition-all duration-300 ${isGroupPanelOpen ? 'lg:w-3/4' : 'lg:w-full'}`}>
+                                <div className={`flex flex-col md:h-full h-auto gap-4 md:overflow-y-auto custom-scroll pb-10 transition-all duration-300 ${isGroupPanelOpen ? 'md:w-2/3 lg:w-3/4' : 'md:w-full'}`}>
                                     <div id="groups-container" className={`bg-white rounded-2xl border border-slate-200 flex flex-col relative transition-all duration-300 h-auto`}>
-                                        <div className="flex justify-between items-center px-4 py-3 border-b border-slate-200 flex-shrink-0 bg-white rounded-t-2xl lg:sticky lg:top-0 z-10">
+                                        <div className="flex justify-between items-center px-4 py-3 border-b border-slate-200 flex-shrink-0 bg-white rounded-t-2xl md:sticky md:top-0 z-10">
                                             <div className="flex items-center gap-2 w-full">
                                                 <Btn onClick={() => setIsGroupPanelOpen(!isGroupPanelOpen)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
                                                     <Icon d={isGroupPanelOpen ? PATHS.left : PATHS.right} />
@@ -5450,6 +5451,10 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                                     {groups.map((g, i) => {
                                                         const groupAvgSkill = g.length > 0 ? g.reduce((a, s) => a + s.skill, 0) / g.length : 0;
                                                         const isSkillImbalanced = g.length > 0 && Math.abs(groupAvgSkill - classAvgSkill) > 0.5;
+                                                        const isExpanded = expandedGroupCards[i];
+                                                        const MAX_VISIBLE = 6;
+                                                        const visibleStudents = (g.length > MAX_VISIBLE && !isExpanded) ? g.slice(0, MAX_VISIBLE) : g;
+                                                        const hiddenCount = g.length - MAX_VISIBLE;
                                                         return (
                                                         <div key={i} className={`group-card bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-4 transition-all hover:shadow-md flex flex-col w-full sm:w-auto flex-grow ${focusedGroupIdx === i ? 'ring-2 ring-rose-400 shadow-md' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, i)} onClick={() => setFocusedGroupIdx(prev => prev === i ? null : i)}>
                                                             <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-50">
@@ -5498,7 +5503,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                                                 </div>
                                                             </div>
                                                             <div className="flex flex-col gap-2 flex-1">
-                                                                {g.map((s, sIdx) => {
+                                                                {visibleStudents.map((s, sIdx) => {
                                                                     const isLocked = lockedIds.includes(s.id);
                                                                     // 자리(Index) 기준 역할 조회 (없으면 학생 ID 기준 레거시 데이터 조회 시도)
                                                                     const role = groupRoles[date]?.[i]?.[sIdx] || groupRoles[date]?.[i]?.[s.id];
@@ -5516,6 +5521,14 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                                                         </div>
                                                                     );
                                                                 })}
+                                                                {g.length > MAX_VISIBLE && (
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); setExpandedGroupCards(prev => ({...prev, [i]: !prev[i]})); }}
+                                                                        className="w-full py-2 text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors flex items-center justify-center gap-1 mt-1"
+                                                                    >
+                                                                        {isExpanded ? <>접기 <Icon d={PATHS.down} size={12} className="rotate-180"/></> : <>+{hiddenCount}명 더 보기 <Icon d={PATHS.down} size={12}/></>}
+                                                                    </button>
+                                                                )}
                                                                 {g.length === 0 && (
                                                                     <div className="flex-1 flex items-center justify-center text-slate-300 text-xs border-2 border-dashed border-slate-100 rounded-xl min-h-[60px]">빈 모둠</div>
                                                                 )}
