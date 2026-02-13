@@ -3095,6 +3095,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.27", 
+                date: "2026-02-12", 
+                list: ["Firebase 모둠 데이터 저장 안정성 강화 (데이터 최적화 로직 롤백)", "모둠 편성 후 데이터가 사라지는 현상 최종 수정"] 
+            },
+            { 
                 version: "v3.4.26", 
                 date: "2026-02-12", 
                 list: ["Firebase 동기화 시 모둠 편성 결과 깜빡임 및 데이터 유실 문제 해결 (Batch Update 적용)"] 
@@ -4361,7 +4366,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 26    // Patch: 기존 기능의 버그 수정
+            patch: 27    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
