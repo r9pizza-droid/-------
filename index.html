@@ -3095,6 +3095,31 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.38", 
+                date: "2026-02-12", 
+                list: ["Firebase 저장 오류 해결: 모둠 데이터 저장 시 'Nested arrays' 에러 수정 (데이터 구조 개선)", "데이터 로딩 시 앱 멈춤 현상 방지 코드 추가"] 
+            },
+            { 
+                version: "v3.4.37", 
+                date: "2026-02-12", 
+                list: ["Firebase 동기화 시 모둠 편성 결과가 사라지는 현상 완벽 해결 (로컬 데이터 우선 병합 로직 적용)"] 
+            },
+            { 
+                version: "v3.4.34", 
+                date: "2026-02-12", 
+                list: ["자리 배치도 기본 설정 변경 (5행 5열, 십자 형태 비활성화)", "모둠 편성 로직 안정화 (동기식 처리로 Firebase 데이터 충돌 방지)"] 
+            },
+            { 
+                version: "v3.4.33", 
+                date: "2026-02-12", 
+                list: ["자리 배치도 기본 설정 변경 (5행 5열, 특정 좌석 비활성화)", "모둠 편성 시 최신 데이터 참조 로직 강화 (Firebase 동기화 충돌 방지)"] 
+            },
+            { 
+                version: "v3.4.32", 
+                date: "2026-02-12", 
+                list: ["자리 배치도 기본 설정 변경 (특정 좌석 비활성화 적용: 1-3, 2-3, 3행 전체, 4-4, 5-4)"] 
+            },
+            { 
                 version: "v3.4.31", 
                 date: "2026-02-12", 
                 list: ["모둠 데이터 자동 삭제 로직(sanitizeGroupsData) 제거로 데이터 유실 문제 원천 차단", "모둠 편성 직후 데이터가 사라지는 현상 최종 해결"] 
@@ -4386,7 +4411,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 31    // Patch: 기존 기능의 버그 수정
+            patch: 38    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4444,7 +4469,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [rolesList, setRolesList] = useState(['나눔이', '맺음이', '챙김이', '깔끔이']);
             const [roleDescriptions, setRoleDescriptions] = useState(DEFAULT_ROLE_DESCRIPTIONS);
             const [seatAssignments, setSeatAssignments] = useState({});
-            const [seatConfig, setSeatConfig] = useState({ rows: 5, cols: 6, disabledSeats: [] });
+            const [seatConfig, setSeatConfig] = useState({ rows: 5, cols: 5, disabledSeats: ['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4'] });
             const [groupDuration, setGroupDuration] = useState(1);
             
             const [p1, setP1] = useState(""); const [p2, setP2] = useState("");
@@ -4504,14 +4529,28 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const studentsRef = useRef(students);
             useEffect(() => { studentsRef.current = students; }, [students]);
 
+            // [Fix] 비동기 로직(setTimeout) 내에서 최신 상태를 참조하기 위한 Refs 추가
+            const groupsByDateRef = useRef(groupsByDate);
+            const groupRolesRef = useRef(groupRoles);
+            useEffect(() => { groupsByDateRef.current = groupsByDate; }, [groupsByDate]);
+            useEffect(() => { groupRolesRef.current = groupRoles; }, [groupRoles]);
+
             // [New] 데이터 복구(Hydration) 함수: ID만 있는 모둠 데이터에 학생 상세 정보를 채워넣음
             const hydrateGroups = (groupsData, studentsList) => {
                 if (!groupsData) return {};
                 const newGroups = { ...groupsData }; // 원본 데이터 보존을 위해 복사
                 Object.keys(groupsData).forEach(date => {
                     if (Array.isArray(groupsData[date])) {
-                        newGroups[date] = groupsData[date].map(group => 
-                            group.map(s => {
+                        newGroups[date] = groupsData[date].map(groupItem => {
+                            // [Fix] Firestore Nested Array 지원: { list: [...] } 형태라면 배열로 변환
+                            let group = groupItem;
+                            if (!Array.isArray(groupItem) && groupItem && groupItem.list && Array.isArray(groupItem.list)) {
+                                group = groupItem.list;
+                            }
+                            
+                            if (!Array.isArray(group)) return []; // [Safety] 배열이 아니면 빈 배열 반환하여 앱 멈춤(Crash) 방지
+
+                            return group.map(s => {
                                 const id = (typeof s === 'object' && s !== null) ? s.id : s;
                                 // [Fix] ID 타입 불일치 방지 및 이름 매칭 Fallback 추가 (문자열/숫자 비교)
                                 let fullStudent = studentsList.find(st => String(st.id) === String(id));
@@ -4520,8 +4559,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                 }
                                 // [Fix] 학생 정보가 없으면 기존 객체(s)를 그대로 사용, ID만 있다면 기본 객체 생성
                                 return fullStudent ? { ...fullStudent } : (typeof s === 'object' ? s : { id: id, name: '미등록', gender: 'M', skill: 1 });
-                            })
-                        );
+                            });
+                        });
                     }
                 });
                 return newGroups;
@@ -4719,7 +4758,23 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                                     mergedStudents.push(s);
                                                 }
                                             });
-                                            const hydrated = hydrateGroups(d.groupsByDate, mergedStudents);
+
+                                            // [Fix] 모둠 데이터 동기화 시 로컬 데이터 유실 방지 (방금 생성한 데이터 보호)
+                                            const serverGroups = d.groupsByDate || {};
+                                            const localGroups = groupsByDateRef.current || {};
+                                            const mergedGroups = { ...serverGroups };
+
+                                            // 로컬에만 있고 서버에 없는(비어있는) 날짜의 데이터는 로컬 데이터 유지 (방금 편성한 경우)
+                                            Object.keys(localGroups).forEach(date => {
+                                                if (localGroups[date] && localGroups[date].length > 0) {
+                                                    // 서버 데이터가 아예 없거나 빈 배열인 경우 로컬 데이터 사용
+                                                    if (!serverGroups[date] || serverGroups[date].length === 0) {
+                                                        mergedGroups[date] = localGroups[date];
+                                                    }
+                                                }
+                                            });
+
+                                            const hydrated = hydrateGroups(mergedGroups, mergedStudents);
                                             setGroupsByDate(hydrated);
                                         }
                                         if (d.avoidance) setAvoidancePairs(d.avoidance);
@@ -4807,9 +4862,21 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                             const field = k.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
                             const cleanData = JSON.parse(JSON.stringify(v));
                             
-                            // [Rollback] 데이터 안정성을 위해 모둠 데이터 최적화(ID 변환) 로직 제거
-                            // 원본 데이터를 그대로 저장하여 데이터 유실 및 동기화 오류 방지
-                            payload[field] = cleanData;
+                            // [Fix] Firestore Nested Array 오류 해결: 모둠 데이터 저장 시 내부 배열을 객체로 래핑
+                            if (k === 'cls_groups_date') {
+                                const wrappedData = {};
+                                Object.keys(cleanData).forEach(d => {
+                                    if (Array.isArray(cleanData[d])) {
+                                        // [[s1, s2], [s3]] -> [{list: [s1, s2]}, {list: [s3]}]
+                                        wrappedData[d] = cleanData[d].map(g => (Array.isArray(g) ? { list: g } : g));
+                                    } else {
+                                        wrappedData[d] = cleanData[d];
+                                    }
+                                });
+                                payload[field] = wrappedData;
+                            } else {
+                                payload[field] = cleanData;
+                            }
                         }
                         // 모든 변경사항을 한 번에 저장 (Atomic Update)
                         await db.collection('artifacts').doc(appId).collection('public').doc('data').set(payload, { merge: true });
@@ -5036,10 +5103,14 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     return;
                 }
 
-                setIsGenerating(true);
-                setTimeout(() => {
+                // [Fix] setTimeout 제거: 자리 배치도 버튼처럼 동기식으로 처리하여 데이터 안정성 확보
                   try {
-                    const currentGroups = groupsByDate[date] || [];
+                    // 최신 상태 참조 (Ref 사용 불필요, 동기 실행이므로 현재 state 사용 가능하지만 안전을 위해 유지)
+                    const currentGroupsByDate = groupsByDate;
+                    const currentGroupRoles = groupRoles;
+                    const currentStudents = students;
+
+                    const currentGroups = currentGroupsByDate[date] || [];
                     const lockedMap = new Map();
                     const lockedStudentIds = new Set(lockedIds);
                     
@@ -5049,9 +5120,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         });
                     } else {
                         // 현재 날짜에 모둠이 없으면 과거 기록에서 고정 학생의 위치를 찾아 유지 (고정 학생 기능 강화)
-                        const sortedDates = Object.keys(groupsByDate).sort().reverse();
+                        const sortedDates = Object.keys(currentGroupsByDate).sort().reverse();
                         for (const d of sortedDates) {
-                            const grps = groupsByDate[d];
+                            const grps = currentGroupsByDate[d];
                             if (grps) {
                                 grps.forEach((group, gIdx) => {
                                     group.forEach(s => { if (lockedStudentIds.has(s.id) && !lockedMap.has(s.id)) lockedMap.set(s.id, gIdx); });
@@ -5060,17 +5131,17 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         }
                     }
 
-                    const unlockedStudents = students.filter(s => !lockedStudentIds.has(s.id));
-                    const lockedStudents = students.filter(s => lockedStudentIds.has(s.id));
-                    const targetGroupCount = groupMethod === 'count' ? groupNumber : Math.ceil(students.length / groupNumber);
+                    const unlockedStudents = currentStudents.filter(s => !lockedStudentIds.has(s.id));
+                    const lockedStudents = currentStudents.filter(s => lockedStudentIds.has(s.id));
+                    const targetGroupCount = groupMethod === 'count' ? groupNumber : Math.ceil(currentStudents.length / groupNumber);
                     
                     const historyPairs = new Map();
                     if (useHistory) {
                         // 최근 기록일수록 가중치를 높게 부여 (연속 배정 방지 강화)
-                        const sortedDates = Object.keys(groupsByDate).sort().reverse().slice(0, 10);
+                        const sortedDates = Object.keys(currentGroupsByDate).sort().reverse().slice(0, 10);
                         sortedDates.forEach((d, idx) => {
                             const weight = Math.max(1, 5 - Math.floor(idx / 2)); // 5, 5, 4, 4, 3, 3...
-                            (groupsByDate[d] || []).forEach(g => {
+                            (currentGroupsByDate[d] || []).forEach(g => {
                                 for(let i=0; i<g.length; i++) {
                                     for(let j=i+1; j<g.length; j++) {
                                         const k = [g[i].id, g[j].id].sort().join('-');
@@ -5085,8 +5156,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     const visited = new Set();
                     const adj = {};
                     mustPairs.forEach(p => {
-                        const n1 = students.find(s=>s.name === p.p1)?.id;
-                        const n2 = students.find(s=>s.name === p.p2)?.id;
+                        const n1 = currentStudents.find(s=>s.name === p.p1)?.id;
+                        const n2 = currentStudents.find(s=>s.name === p.p2)?.id;
                         if(n1 && n2) {
                             if(!adj[n1]) adj[n1] = []; if(!adj[n2]) adj[n2] = [];
                             adj[n1].push(n2); adj[n2].push(n1);
@@ -5100,7 +5171,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         visited.add(s.id);
                         while(q.length > 0) {
                             const curr = q.pop();
-                            const studentObj = students.find(st => st.id === curr);
+                            const studentObj = currentStudents.find(st => st.id === curr);
                             if(studentObj) cluster.push(studentObj);
                             (adj[curr] || []).forEach(neighbor => {
                                 if(!visited.has(neighbor) && !lockedStudentIds.has(neighbor)) {
@@ -5215,9 +5286,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
                     if(finalGroups.flat().length === 0) {
                          const plainGroups = Array.from({ length: targetGroupCount }, () => []);
-                         students.forEach((s, i) => plainGroups[i % targetGroupCount].push(sanitizeStudent(s)));
+                         currentStudents.forEach((s, i) => plainGroups[i % targetGroupCount].push(sanitizeStudent(s)));
                          
-                         const newGroupsData = { ...groupsByDate }; // [Fix] 데이터 삭제 로직 제거
+                         const newGroupsData = { ...currentGroupsByDate }; // [Fix] 최신 데이터 사용
                          for(let i=0; i<groupDuration; i++) {
                              const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
                              // [Fix] 참조 문제 방지를 위해 깊은 복사하여 할당
@@ -5226,9 +5297,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          setGroupsByDate(newGroupsData);
                          
                          const updates = { 'cls_groups_date': newGroupsData };
-                         if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
+                         if (currentGroupRoles[date] && Object.keys(currentGroupRoles[date]).length > 0) {
                              const newRolesForDate = calculateRoles(plainGroups);
-                             const newGroupRoles = { ...groupRoles, [date]: newRolesForDate };
+                             const newGroupRoles = { ...currentGroupRoles, [date]: newRolesForDate };
                              setGroupRoles(newGroupRoles);
                              updates['cls_group_roles'] = newGroupRoles;
                          }
@@ -5236,9 +5307,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          
                          syncSeatsWithGroups(plainGroups);
                     } else {
-                         const newGroupsData = { ...groupsByDate }; // [Fix] 데이터 삭제 로직 제거
-                         const newGroupRoles = { ...groupRoles };
-                         const hasActiveRoles = groupRoles[date] && Object.keys(groupRoles[date]).length > 0;
+                         const newGroupsData = { ...currentGroupsByDate }; // [Fix] 최신 데이터 사용
+                         const newGroupRoles = { ...currentGroupRoles };
+                         const hasActiveRoles = currentGroupRoles[date] && Object.keys(currentGroupRoles[date]).length > 0;
 
                          for(let i=0; i<groupDuration; i++) {
                              const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
@@ -5262,10 +5333,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     logSystemEvent(`모둠 편성 오류: ${e.message}`, 'error');
                     setToastMessage("편성 중 오류가 발생했습니다: " + e.message);
                   } finally {
-                    setIsGenerating(false);
                     if (window.innerWidth < 768) setIsGroupPanelOpen(false);
                   }
-                }, 100);
             };
 
             const rotateCurrentGroups = () => { 
@@ -5455,7 +5524,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             
             const handleResetAllData = () => { setStudents([]); setRecords({}); setGroupsByDate({}); setAvoidancePairs([]); setDailyTasks({});
             setWeeklyTasks({0:[],1:[],2:[],3:[],4:[],5:[],6:[]}); setTags(['국어', '수학', '사회', '과학', '영어', '기타']); if(!isLocalMode) { saveData('cls_students', []); saveData('cls_records', {}); saveData('cls_groups', []); saveData('cls_avoidance', []); saveData('cls_daily_tasks', {});
-            saveData('cls_weekly_tasks', {0:[],1:[],2:[],3:[],4:[],5:[],6:[]}); saveData('cls_tags', ['국어', '수학', '사회', '과학', '영어', '기타']); saveData('cls_role_descriptions', DEFAULT_ROLE_DESCRIPTIONS); saveData('cls_seat_assignments', {}); saveData('cls_seat_config', {rows:5, cols:6, disabledSeats:[]}); } setRoleDescriptions(DEFAULT_ROLE_DESCRIPTIONS); setSeatAssignments({}); setSeatConfig({rows:5, cols:6, disabledSeats:[]}); setToastMessage("모든 데이터가 초기화되었습니다."); };
+            saveData('cls_weekly_tasks', {0:[],1:[],2:[],3:[],4:[],5:[],6:[]}); saveData('cls_tags', ['국어', '수학', '사회', '과학', '영어', '기타']); saveData('cls_role_descriptions', DEFAULT_ROLE_DESCRIPTIONS); saveData('cls_seat_assignments', {}); saveData('cls_seat_config', {rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']}); } setRoleDescriptions(DEFAULT_ROLE_DESCRIPTIONS); setSeatAssignments({}); setSeatConfig({rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']}); setToastMessage("모든 데이터가 초기화되었습니다."); };
 
             const handleFormationTitleClick = () => {
                 if (formationClickTimer.current) clearTimeout(formationClickTimer.current);
