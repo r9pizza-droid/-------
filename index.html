@@ -2,7 +2,7 @@
 <html lang="ko"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>이거했어? v3.2.0</title>
+    <title>이거했어?</title>
     
     <meta property="og:title" content="이거했어?">
     <meta property="og:description" content="우리 반 숙제 확인 및 학급 경영 도구">
@@ -57,11 +57,13 @@
                         'bounce-in': 'bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                         'fade-in': 'fadeIn 0.3s ease-out',
                         'pop-up': 'popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        'modal-enter': 'modalEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                     },
                     keyframes: {
                         bounceIn: { '0%': { transform: 'scale(0.9)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         fadeIn: { 'from': { opacity: 0 }, 'to': { opacity: 1 } },
                         popUp: { 'from': { transform: 'translate(-50%, -40%) scale(0.9)', opacity: 0 }, 'to': { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 } },
+                        modalEnter: { '0%': { opacity: 0, transform: 'scale(0.95) translateY(10px)' }, '100%': { opacity: 1, transform: 'scale(1) translateY(0)' } },
                     }
                 }
             }
@@ -215,22 +217,53 @@
             <button onClick={onClick} className={`transition-colors duration-100 active:opacity-70 flex items-center justify-center rounded hover:bg-notion-bg-hover ${className}`} {...props}>{children}</button>
         );
         const BaseModal = ({ isOpen, onClose, title, icon, children, footer, maxWidth = "max-w-2xl", zIndex = "z-50" }) => {
-            if (!isOpen) return null;
-            
+            const [translateY, setTranslateY] = useState(0);
+            const [isDragging, setIsDragging] = useState(false);
+            const startY = useRef(0);
+            const contentRef = useRef(null);
+
             useEffect(() => {
+                if (!isOpen) return;
+                setTranslateY(0); setIsDragging(false);
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
-                return () => window.removeEventListener('keydown', handleEsc);
-            }, [onClose]);
+                document.body.style.overflow = 'hidden';
+                return () => {
+                    window.removeEventListener('keydown', handleEsc);
+                    document.body.style.overflow = '';
+                };
+            }, [isOpen, onClose]);
 
+            const handleTouchStart = (e) => {
+                if (contentRef.current && contentRef.current.contains(e.target) && contentRef.current.scrollTop > 0) return;
+                setIsDragging(true); startY.current = e.touches[0].clientY;
+            };
+            const handleTouchMove = (e) => {
+                if (!isDragging) return;
+                const delta = e.touches[0].clientY - startY.current;
+                if (delta > 0) setTranslateY(delta);
+            };
+            const handleTouchEnd = () => {
+                if (!isDragging) return;
+                setIsDragging(false);
+                if (translateY > 120) onClose(); else setTranslateY(0);
+            };
+
+            if (!isOpen) return null;
             return (
                 <div className={`fixed inset-0 bg-black/40 ${zIndex} flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in`} onClick={onClose}>
-                    <div className={`bg-white w-full ${maxWidth} rounded-xl shadow-xl border border-notion-border p-6 h-auto max-h-[85vh] flex flex-col`} onClick={e => e.stopPropagation()}>
+                    <div 
+                        className={`bg-white w-full ${maxWidth} rounded-xl shadow-xl border border-notion-border p-6 h-auto max-h-[85vh] flex flex-col animate-modal-enter`} 
+                        onClick={e => e.stopPropagation()}
+                        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+                        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}
+                    >
+                        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 md:hidden flex-shrink-0" />
                         <div className="flex justify-between items-center mb-6 flex-shrink-0">
                             <h3 className="text-lg font-bold flex items-center gap-2 text-notion-text">{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light"><Icon d={PATHS.x} /></button>
                         </div>
-                        <div className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6">{children}</div>
+                        <div ref={contentRef} className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6 overscroll-contain">{children}</div>
                         {footer && <div className="pt-4 border-t mt-4 flex-shrink-0">{footer}</div>}
                     </div>
                 </div>
@@ -244,9 +277,55 @@
             return <div className="fixed top-10 left-1/2 transform -translate-x-1/2 z-[3000] animate-pop-up pointer-events-none"><div className="bg-[#37352F] text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 backdrop-blur-md min-w-[200px] justify-center"><Icon d={PATHS.check} size={16} className="text-white" /><span className="font-medium text-sm text-center">{message}</span></div></div>;
         };
         const ConfirmModal = ({ isOpen, message, onConfirm, onCancel }) => {
+            const [translateY, setTranslateY] = useState(0);
+            const [isDragging, setIsDragging] = useState(false);
+            const startY = useRef(0);
+
+            useEffect(() => {
+                if (isOpen) { document.body.style.overflow = 'hidden'; setTranslateY(0); setIsDragging(false); }
+                return () => { document.body.style.overflow = ''; };
+            }, [isOpen]);
+
+            const handleTouchStart = (e) => { setIsDragging(true); startY.current = e.touches[0].clientY; };
+            const handleTouchMove = (e) => { if (!isDragging) return; const delta = e.touches[0].clientY - startY.current; if (delta > 0) setTranslateY(delta); };
+            const handleTouchEnd = () => { if (!isDragging) return; setIsDragging(false); if (translateY > 100) onCancel(); else setTranslateY(0); };
+
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 bg-black/40 z-[2500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm"><div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-notion-bg-hover text-notion-text rounded border border-notion-border font-medium hover:bg-gray-200">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:opacity-90 shadow-sm">확인</Btn></div></div></div>
+                <div className="fixed inset-0 bg-black/40 z-[2500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                    <div 
+                        className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm animate-modal-enter"
+                        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+                        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}
+                    >
+                        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4 md:hidden" />
+                        <div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-notion-bg-hover text-notion-text rounded border border-notion-border font-medium hover:bg-gray-200">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:opacity-90 shadow-sm">확인</Btn></div></div></div>
+            );
+        };
+        const UpdateNotificationModal = ({ isOpen, onUpdate, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center animate-bounce-in relative overflow-hidden border border-white/50">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                        <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner ring-4 ring-indigo-50/50">
+                            <span className="text-5xl animate-pulse drop-shadow-sm select-none">🚀</span>
+                        </div>
+                        <h3 className="text-xl font-extrabold text-slate-800 mb-2">새로운 버전 출시!</h3>
+                        <p className="text-sm text-slate-500 mb-8 leading-relaxed">
+                            더 편리하고 강력해진 기능을 만나보세요.<br/>
+                            지금 바로 업데이트하시겠습니까?
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <button onClick={onUpdate} className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-violet-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                <span>✨ 지금 업데이트 (새로고침)</span>
+                            </button>
+                            <button onClick={onClose} className="w-full py-3 text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors bg-slate-50 rounded-xl hover:bg-slate-100">
+                                나중에 할게요
+                            </button>
+                        </div>
+                    </div>
+                </div>
             );
         };
         const HelpModal = ({ isOpen, onClose }) => {
@@ -395,6 +474,10 @@
         const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, onSaveStudentPhoto, appConfig, apiKey, onSaveRecordDraft }) => {
             if (!isOpen || !student || !student.history) return null;
 
+            const [translateY, setTranslateY] = useState(0);
+            const [isDragging, setIsDragging] = useState(false);
+            const startY = useRef(0);
+
             useEffect(() => {
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
@@ -404,6 +487,17 @@
                     document.body.style.overflow = '';
                 };
             }, [onClose]);
+
+            useEffect(() => {
+                if(isOpen) { setTranslateY(0); setIsDragging(false); }
+            }, [isOpen]);
+
+            const handleTouchStart = (e) => {
+                if (modalRef.current && modalRef.current.scrollTop > 0) return;
+                setIsDragging(true); startY.current = e.touches[0].clientY;
+            };
+            const handleTouchMove = (e) => { if (!isDragging) return; const delta = e.touches[0].clientY - startY.current; if (delta > 0) setTranslateY(delta); };
+            const handleTouchEnd = () => { if (!isDragging) return; setIsDragging(false); if (translateY > 150) onClose(); else setTranslateY(0); };
 
             
             const [notes, setNotes] = useState([]);
@@ -829,7 +923,13 @@
 
             return (
                 <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                    <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col overscroll-contain" onClick={e => e.stopPropagation()}>
+                    <div ref={modalRef} 
+                        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col overscroll-contain" 
+                        onClick={e => e.stopPropagation()}
+                        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+                        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}
+                    >
+                        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 md:hidden flex-shrink-0" />
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800">🌱 학생 인사이트</h3>
                             <div className="flex gap-3" id="export-hide-area">
@@ -1694,7 +1794,6 @@
         };
 
         const CalendarModal = ({ isOpen, onClose, currentDate, onSelectDate, records, appConfig, groupsByDate, mode, selectionMode = 'single', onSelectRange }) => {
-            if (!isOpen) return null;
             const [viewDate, setViewDate] = useState(dayjs(currentDate));
             const [range, setRange] = useState({ start: null, end: null });
 
@@ -1702,9 +1801,12 @@
                 if (isOpen) {
                     setViewDate(dayjs(currentDate)); 
                     if (selectionMode === 'range') setRange({ start: null, end: null });
+                    document.body.style.overflow = 'hidden';
                 } 
+                return () => { document.body.style.overflow = ''; };
             }, [isOpen, currentDate, selectionMode]);
 
+            if (!isOpen) return null;
             const startDay = viewDate.startOf('month').day();
             const calendarDays = [...Array(startDay).fill(null), ...Array(viewDate.daysInMonth()).fill(0).map((_, i) => viewDate.date(i + 1))];
             
@@ -1820,11 +1922,11 @@
             const handleAdd = () => { if (newTagInput.trim()) { onAdd(newTagInput.trim()); setNewTagInput(""); } };
             const handleFinishEdit = () => { if (editingTag && editTagValue.trim() && editTagValue.trim() !== editingTag) onEdit(editingTag, editTagValue.trim()); setEditingTag(null); setEditTagValue(""); };
             return (
-                <div className="mt-2"><div className="flex flex-wrap gap-1 items-center">{tags.map(t => <Btn key={t} onClick={() => setTag(t)} className={`px-2 py-1 text-xs rounded-lg border ${current === t ? 'bg-indigo-500 text-white border-indigo-500 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{t}</Btn>)}<Btn onClick={() => setShowManager(!showManager)} className={`p-1 rounded-full ${showManager ? 'bg-slate-200 text-slate-600' : 'text-slate-300 hover:text-slate-500'}`}><span className="text-sm">⚙️</span></Btn></div>{showManager && (<div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 animate-fade-in relative z-10"><div className="text-[10px] font-bold text-slate-400 mb-2">태그 관리</div><div className="flex flex-wrap gap-2 mb-2">{tags.map(tag => editingTag === tag ? (<div key={tag} className="flex items-center bg-white border border-indigo-300 rounded-lg overflow-hidden shadow-sm"><input value={editTagValue} onChange={e => setEditTagValue(e.target.value)} className="w-16 px-1 py-0.5 text-xs outline-none" autoFocus onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleFinishEdit() }} /><Btn onClick={handleFinishEdit} className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 hover:bg-indigo-200"><Icon d={PATHS.check} size={10} /></Btn><Btn onClick={() => setEditingTag(null)} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 hover:bg-slate-200"><Icon d={PATHS.x} size={10} /></Btn></div>) : (<div key={tag} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center gap-1 group"><span>{tag}</span><div className="flex gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity"><Btn onClick={() => { setEditingTag(tag); setEditTagValue(tag); }} className="hover:text-indigo-500 p-0.5"><Icon d={PATHS.edit} size={10} /></Btn>{tag !== '기타' && <Btn onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(tag); }} className="text-rose-500 hover:text-rose-700 p-0.5"><Icon d={PATHS.trash} size={10} /></Btn>}</div></div>))}</div><div className="flex gap-1"><input value={newTagInput} onChange={e => setNewTagInput(e.target.value)} className="flex-1 p-1.5 border rounded-lg text-xs outline-none focus:border-indigo-500" placeholder="새 태그 이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd() }} /><Btn onClick={handleAdd} className="bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold hover:bg-indigo-600">추가</Btn></div></div>)}</div>
+                <div className="mt-2"><div className="flex flex-wrap gap-1 items-center">{tags.map(t => <Btn key={t} onClick={() => setTag(t)} className={`px-2 py-1 text-xs rounded-lg border ${current === t ? 'bg-indigo-500 text-white border-indigo-500 shadow-sm hover:bg-indigo-500' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{t}</Btn>)}<Btn onClick={() => setShowManager(!showManager)} className={`p-1 rounded-full ${showManager ? 'bg-slate-200 text-slate-600' : 'text-slate-300 hover:text-slate-500'}`}><span className="text-sm">⚙️</span></Btn></div>{showManager && (<div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 animate-fade-in relative z-10"><div className="text-[10px] font-bold text-slate-400 mb-2">태그 관리</div><div className="flex flex-wrap gap-2 mb-2">{tags.map(tag => editingTag === tag ? (<div key={tag} className="flex items-center bg-white border border-indigo-300 rounded-lg overflow-hidden shadow-sm"><input value={editTagValue} onChange={e => setEditTagValue(e.target.value)} className="w-16 px-1 py-0.5 text-xs outline-none" autoFocus onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleFinishEdit() }} /><Btn onClick={handleFinishEdit} className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 hover:bg-indigo-200"><Icon d={PATHS.check} size={10} /></Btn><Btn onClick={() => setEditingTag(null)} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 hover:bg-slate-200"><Icon d={PATHS.x} size={10} /></Btn></div>) : (<div key={tag} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center gap-1 group"><span>{tag}</span><div className="flex gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity"><Btn onClick={() => { setEditingTag(tag); setEditTagValue(tag); }} className="hover:text-indigo-500 p-0.5"><Icon d={PATHS.edit} size={10} /></Btn>{tag !== '기타' && <Btn onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(tag); }} className="text-rose-500 hover:text-rose-700 p-0.5"><Icon d={PATHS.trash} size={10} /></Btn>}</div></div>))}</div><div className="flex gap-1"><input value={newTagInput} onChange={e => setNewTagInput(e.target.value)} className="flex-1 p-1.5 border rounded-lg text-xs outline-none focus:border-indigo-500" placeholder="새 태그 이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd() }} /><Btn onClick={handleAdd} className="bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold hover:bg-indigo-600">추가</Btn></div></div>)}</div>
             );
         };
         const TaskModal = ({ isOpen, onClose, date, dailyTasks, setDailyTasks, weeklyTasks, setWeeklyTasks, saveData, isLocalMode, showToast, tags, setTags, openConfirm }) => {
-            const [tasks, setTempTasks] = useState([]); const [newTask, setNewTask] = useState(""); const [selectedTag, setSelectedTag] = useState("기타"); const [wTasks, setWTasks] = useState({}); const [wSelectedDays, setWSelectedDays] = useState([]); const [wNewTask, setWNewTask] = useState(""); const [wSelectedTag, setWSelectedTag] = useState("기타");
+            const [tasks, setTempTasks] = useState([]); const [newTask, setNewTask] = useState(""); const [selectedTag, setSelectedTag] = useState("국어"); const [wTasks, setWTasks] = useState({}); const [wSelectedDays, setWSelectedDays] = useState([]); const [wNewTask, setWNewTask] = useState(""); const [wSelectedTag, setWSelectedTag] = useState("국어");
             useEffect(() => { if (isOpen) { setTempTasks((dailyTasks[date] || []).map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t)); const loadedWeekly = {}; Object.keys(weeklyTasks).forEach(k => loadedWeekly[k] = weeklyTasks[k].map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t)); setWTasks(loadedWeekly); } }, [isOpen, dailyTasks, weeklyTasks, date]);
             const updateTags = (newTag) => { if (newTag && !tags.includes(newTag)) { const newTags = [...tags, newTag]; setTags(newTags); if (!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); } };
             const addTask = () => { if (newTask && tasks.length < 5) { setTempTasks([...tasks, { title: newTask, tag: selectedTag }]); updateTags(selectedTag); setNewTask(""); } };
@@ -3062,6 +3164,41 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.9", 
+                date: "2026-02-12", 
+                list: ["앱 업데이트 알림 팝업 디자인 개선 (로켓 아이콘 강조 및 UI 고도화)"] 
+            },
+            { 
+                version: "v3.4.8", 
+                date: "2026-02-12", 
+                list: ["모바일 통계 탭에서 기간 선택(주간/월간/전체)을 드롭다운 메뉴로 변경하여 공간 효율 개선"] 
+            },
+            { 
+                version: "v3.4.7", 
+                date: "2026-02-12", 
+                list: ["모바일에서 팝업창을 아래로 쓸어내려 닫는 기능(Swipe down to close) 추가"] 
+            },
+            { 
+                version: "v3.4.6", 
+                date: "2026-02-12", 
+                list: ["데스크탑 하단 버전 정보 마우스 오버 시 배경색 변경 효과 추가"] 
+            },
+            { 
+                version: "v3.4.5", 
+                date: "2026-02-12", 
+                list: ["데스크탑 하단 버전 정보 글자 크기 확대 (10px → 12px)"] 
+            },
+            { 
+                version: "v3.4.4", 
+                date: "2026-02-12", 
+                list: ["데스크탑 화면에서 하단 버전 정보 디자인 개선 (고정 위치 및 배경색 적용)"] 
+            },
+            { 
+                version: "v3.4.3", 
+                date: "2026-02-12", 
+                list: ["모바일 하단 네비게이션 바 터치 영역 개선 (하단 여백 추가)"] 
+            },
+            { 
                 version: "v3.4.2", 
                 date: "2026-02-12", 
                 list: ["노션(Notion) 및 CSV 파일에서 학생 관찰 기록 일괄 가져오기 기능 추가 (설정 > 데이터 관리)", "관찰 기록 가져오기 시 이름/내용/날짜 열 자동 인식"] 
@@ -4204,10 +4341,41 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 2    // Patch: 기존 기능의 버그 수정
+            patch: 9    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
+
+            // [Service Worker Update Logic]
+            const [newVersionAvailable, setNewVersionAvailable] = useState(false);
+            const [waitingWorker, setWaitingWorker] = useState(null);
+
+            useEffect(() => {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('./sw.js').then(registration => {
+                        if (registration.waiting) { setWaitingWorker(registration.waiting); setNewVersionAvailable(true); }
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    setWaitingWorker(newWorker);
+                                    setNewVersionAvailable(true);
+                                }
+                            });
+                        });
+                    });
+                    let refreshing = false;
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        if (!refreshing) { window.location.reload(); refreshing = true; }
+                    });
+                }
+            }, []);
+
+            const handleUpdateApp = () => {
+                if (waitingWorker) waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+                else window.location.reload();
+                setNewVersionAvailable(false);
+            };
 
             const [mode, setMode] = useState("record");
             const [date, setDate] = useState(getToday());
@@ -5590,7 +5758,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                 <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden mt-6"><div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">🌱</div><h3 onClick={handleGrassTitleClick} className="font-bold text-slate-800 mb-6 flex items-center gap-2 relative z-10 cursor-pointer select-none"><span className="text-xl">🌱</span> 활동 잔디 (30일)</h3><div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 relative z-10">{stats.students.map(s => (<div key={s.id} onClick={() => setGrassStudentId(s.id)} className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all group"><div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center font-bold text-xs text-slate-500 overflow-hidden">{s.photo ? <img src={s.photo} className="w-full h-full object-cover" alt={s.name} /> : s.order}</div><div className="flex flex-col min-w-0"><span className="text-sm font-bold text-slate-700 truncate">{s.name}</span><div className="flex gap-0.5 mt-1">{s.history.slice(0,5).map((h,i) => (<div key={i} className="w-2 h-2 rounded-full" style={h.ratio > 0 ? { background: `conic-gradient(#4ade80 0% ${h.ratio*100}%, #e2e8f0 ${h.ratio*100}% 100%)` } : { backgroundColor: '#e2e8f0' }}></div>))}</div></div></div>))}</div></div>
                             </div>
                         )}
+                        <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visial Studio Code With Gemini</footer>
                     </main>
+                    <footer onClick={() => setShowUpdateNotes(true)} className="hidden md:block text-center py-2 text-xs text-slate-400 bg-slate-50 hover:bg-slate-100 border-t border-slate-200 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visial Studio Code With Gemini</footer>
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe">
                         <div className="flex justify-around items-center h-14">
                             {[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (
@@ -5610,6 +5780,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                             if(action) action();
                         }} 
                         onCancel={()=>setConfirmModal({isOpen:false, message:"", onConfirm:null})} 
+                    />
+                    <UpdateNotificationModal
+                        isOpen={newVersionAvailable}
+                        onUpdate={handleUpdateApp}
+                        onClose={() => setNewVersionAvailable(false)}
                     />
                     <Toast message={toastMessage} onClose={()=>setToastMessage(null)} />
                     <StatsGrassModal 
@@ -5877,17 +6052,26 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     </BaseModal>
                     <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => setShowUpdateNotes(false)} showToast={setToastMessage} />
                     
-                    <footer onClick={() => setShowUpdateNotes(true)} className="text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visial Studio Code With Gemini</footer>
                 </div>
             );
         };
 
         const SwitchToggle = ({ value, onChange }) => (
-            <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
-                <button onClick={() => onChange('weekly')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${value === 'weekly' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>주간</button>
-                <button onClick={() => onChange('monthly')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${value === 'monthly' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>월간</button>
-                <button onClick={() => onChange('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${value === 'all' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>전체</button>
-            </div>
+                <>
+                    <div className="md:hidden relative">
+                        <select value={value} onChange={(e) => onChange(e.target.value)} className="appearance-none bg-slate-100 text-slate-600 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 border-none cursor-pointer hover:bg-slate-200 transition-colors">
+                            <option value="weekly">주간</option>
+                            <option value="monthly">월간</option>
+                            <option value="all">전체</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d={PATHS.down} size={12} /></div>
+                    </div>
+                    <div className="hidden md:flex bg-slate-100 p-1 rounded-xl shadow-inner">
+                        <button onClick={() => onChange('weekly')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${value === 'weekly' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>주간</button>
+                        <button onClick={() => onChange('monthly')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${value === 'monthly' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>월간</button>
+                        <button onClick={() => onChange('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${value === 'all' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>전체</button>
+                    </div>
+                </>
         );
 
         const RoleEditModal = ({ isOpen, onClose, roles, onSave, roleDescriptions, onSaveDescriptions }) => {
