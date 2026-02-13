@@ -3164,6 +3164,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.14", 
+                date: "2026-02-12", 
+                list: ["자리 배치도에서 모둠 설정 저장 시 학생 사진 데이터 제외 (클라우드 저장 용량 최적화)", "모둠 데이터 저장 로직 안정성 강화"] 
+            },
+            { 
                 version: "v3.4.13", 
                 date: "2026-02-12", 
                 list: ["클라우드 동기화 시 모둠 편성 데이터 저장 오류 해결 (데이터 크기 최적화)", "모둠 편성 시 학생 사진 등 불필요한 정보 제외하여 저장"] 
@@ -4233,7 +4238,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                             if (seatAssignments[key]) sortedAssignments.push(seatAssignments[key]);
                         }
                     }
-                    const currentStudents = sortedAssignments.map(id => students.find(s => s.id === id)).filter(s => s);
+                    const currentStudents = sortedAssignments.map(id => students.find(s => s.id === id)).filter(s => s).map(s => ({
+                        id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order
+                    }));
                     const newGroups = [];
                     let chunkSize = groupMethod === 'size' ? groupNumber : Math.ceil(currentStudents.length / groupNumber);
                     for (let i = 0; i < currentStudents.length; i += chunkSize) {
@@ -4363,7 +4370,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 13    // Patch: 기존 기능의 버그 수정
+            patch: 14    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5271,10 +5278,14 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             };
 
             const handleGroupsChange = (newGroups) => {
-                const newGroupsData = { ...groupsByDate, [date]: newGroups };
+                // 데이터 크기 최적화를 위해 사진 등 불필요한 정보 제거
+                const cleanGroups = newGroups.map(group => group.map(s => ({
+                    id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order
+                })));
+                const newGroupsData = { ...groupsByDate, [date]: cleanGroups };
                 setGroupsByDate(newGroupsData);
                 if (!isLocalMode) saveData('cls_groups_date', newGroupsData);
-                updateRolesIfActive(newGroups);
+                updateRolesIfActive(cleanGroups);
             };
 
             const roleMap = useMemo(() => {
