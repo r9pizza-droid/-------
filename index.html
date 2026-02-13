@@ -3095,6 +3095,16 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.31", 
+                date: "2026-02-12", 
+                list: ["모둠 데이터 자동 삭제 로직(sanitizeGroupsData) 제거로 데이터 유실 문제 원천 차단", "모둠 편성 직후 데이터가 사라지는 현상 최종 해결"] 
+            },
+            { 
+                version: "v3.4.30", 
+                date: "2026-02-12", 
+                list: ["모둠 편성 데이터 동기화 및 다음 날짜 저장 오류 최종 수정", "데이터 복구(Hydration) 로직 강화로 깜빡임 현상 해결"] 
+            },
+            { 
                 version: "v3.4.29", 
                 date: "2026-02-12", 
                 list: ["Firebase 모둠 데이터 저장 방식 변경 (ID 변환 로직 완전 제거)", "모둠 편성 결과가 사라지거나 깜빡이는 현상 긴급 수정"] 
@@ -4376,7 +4386,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 29    // Patch: 기존 기능의 버그 수정
+            patch: 31    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4496,19 +4506,19 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
             // [New] 데이터 복구(Hydration) 함수: ID만 있는 모둠 데이터에 학생 상세 정보를 채워넣음
             const hydrateGroups = (groupsData, studentsList) => {
-                if (!groupsData || !studentsList) return groupsData;
-                const newGroups = {};
+                if (!groupsData) return {};
+                const newGroups = { ...groupsData }; // 원본 데이터 보존을 위해 복사
                 Object.keys(groupsData).forEach(date => {
                     if (Array.isArray(groupsData[date])) {
                         newGroups[date] = groupsData[date].map(group => 
                             group.map(s => {
                                 const id = (typeof s === 'object' && s !== null) ? s.id : s;
-                                // [Fix] ID 타입 불일치 방지 및 이름 매칭 Fallback 추가
+                                // [Fix] ID 타입 불일치 방지 및 이름 매칭 Fallback 추가 (문자열/숫자 비교)
                                 let fullStudent = studentsList.find(st => String(st.id) === String(id));
                                 if (!fullStudent && typeof s === 'object' && s.name) {
                                     fullStudent = studentsList.find(st => st.name === s.name);
                                 }
-                                // [Fix] 학생 정보가 없으면 기존 객체(s)를 그대로 사용 (데이터 유실 방지)
+                                // [Fix] 학생 정보가 없으면 기존 객체(s)를 그대로 사용, ID만 있다면 기본 객체 생성
                                 return fullStudent ? { ...fullStudent } : (typeof s === 'object' ? s : { id: id, name: '미등록', gender: 'M', skill: 1 });
                             })
                         );
@@ -4661,7 +4671,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         if (!s) return null;
                         // 학생 목록에서 최신 정보 찾기 (ID 기반 매핑)
                         const id = (typeof s === 'object') ? s.id : s;
-                        // [Fix] ID 타입 불일치(문자열 vs 숫자) 방지를 위해 String 변환 후 비교
+                        // [Fix] 화면 표시 시에도 ID 타입 불일치 방지
                         let fullStudent = students.find(st => String(st.id) === String(id));
                         if (!fullStudent && typeof s === 'object' && s.name) {
                             fullStudent = students.find(st => st.name === s.name);
@@ -4918,22 +4928,6 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 return { id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order };
             };
             
-            const sanitizeGroupsData = (data) => {
-                const cleaned = {};
-                const threeMonthsAgo = dayjs().subtract(3, 'month'); // 보관 기간 1년 -> 3개월로 단축
-
-                Object.keys(data).forEach(d => {
-                    // 3개월 지난 데이터는 제외 (자동 삭제)
-                    if (dayjs(d).isValid() && dayjs(d).isBefore(threeMonthsAgo)) return;
-                    if (!Array.isArray(data[d])) return;
-                    cleaned[d] = data[d].map(group => {
-                        if (!Array.isArray(group)) return [];
-                        return group.map(s => sanitizeStudent(s)).filter(s => s !== null);
-                    });
-                });
-                return cleaned;
-            };
-
             const generateGroups = async () => {
                 if (students.length === 0) return setToastMessage("학생을 먼저 등록해주세요.");
 
@@ -5012,7 +5006,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
                         logSystemEvent('AI 모둠 편성 성공');
                         
-                        const newGroupsData = sanitizeGroupsData({ ...groupsByDate });
+                        const newGroupsData = { ...groupsByDate }; // [Fix] 데이터 삭제 로직 제거
                         const newGroupRoles = { ...groupRoles };
                         const hasActiveRoles = groupRoles[date] && Object.keys(groupRoles[date]).length > 0;
                         
@@ -5223,11 +5217,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          const plainGroups = Array.from({ length: targetGroupCount }, () => []);
                          students.forEach((s, i) => plainGroups[i % targetGroupCount].push(sanitizeStudent(s)));
                          
-                         const newGroupsData = sanitizeGroupsData({ ...groupsByDate });
+                         const newGroupsData = { ...groupsByDate }; // [Fix] 데이터 삭제 로직 제거
                          for(let i=0; i<groupDuration; i++) {
                              const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
                              // [Fix] 참조 문제 방지를 위해 깊은 복사하여 할당
-                             newGroupsData[d] = JSON.parse(JSON.stringify(plainGroups));
+                             newGroupsData[d] = plainGroups.map(g => g.map(s => ({...s}))); 
                          }
                          setGroupsByDate(newGroupsData);
                          
@@ -5242,13 +5236,13 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          
                          syncSeatsWithGroups(plainGroups);
                     } else {
-                         const newGroupsData = sanitizeGroupsData({ ...groupsByDate });
+                         const newGroupsData = { ...groupsByDate }; // [Fix] 데이터 삭제 로직 제거
                          const newGroupRoles = { ...groupRoles };
                          const hasActiveRoles = groupRoles[date] && Object.keys(groupRoles[date]).length > 0;
 
                          for(let i=0; i<groupDuration; i++) {
                              const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
-                             newGroupsData[d] = JSON.parse(JSON.stringify(finalGroups));
+                             newGroupsData[d] = finalGroups.map(g => g.map(s => ({...s})));
                              if (hasActiveRoles) newGroupRoles[d] = calculateRoles(finalGroups);
                          }
 
@@ -5285,7 +5279,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 };
 
                 const newGroups = groups.map((_, i) => { const srcIdx = (i - 1 + groups.length) % groups.length; return rotateArray(groups[srcIdx]).map(s => sanitizeStudent(s)); });
-                const newGroupsData = sanitizeGroupsData({ ...groupsByDate, [date]: newGroups }); setGroupsByDate(newGroupsData);
+                const newGroupsData = { ...groupsByDate, [date]: newGroups }; setGroupsByDate(newGroupsData);
                 
                 const updates = { 'cls_groups_date': newGroupsData };
                 if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
@@ -5347,7 +5341,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 if (!student) return;
                 currentGroups[fromGroupIdx] = currentGroups[fromGroupIdx].filter(s => s.id !== studentId); 
                 currentGroups[toGroupIdx] = [...currentGroups[toGroupIdx], sanitizeStudent(student)]; 
-                const newGroupsData = sanitizeGroupsData({ ...groupsByDate, [date]: currentGroups }); 
+                const newGroupsData = { ...groupsByDate, [date]: currentGroups }; 
                 setGroupsByDate(newGroupsData);
                 
                 const updates = { 'cls_groups_date': newGroupsData };
@@ -5416,7 +5410,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
             const handleGroupsChange = (newGroups) => {
                 // 데이터 크기 최적화를 위해 사진 등 불필요한 정보 제거
-                const newGroupsData = sanitizeGroupsData({ ...groupsByDate, [date]: newGroups });
+                const newGroupsData = { ...groupsByDate, [date]: newGroups };
                 setGroupsByDate(newGroupsData);
                 
                 const updates = { 'cls_groups_date': newGroupsData };
