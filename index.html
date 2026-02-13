@@ -4465,6 +4465,10 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [showPartnerAnalysis, setShowPartnerAnalysis] = useState(false);
             const [expandedGroupCards, setExpandedGroupCards] = useState({});
 
+            // [Fix] onSnapshot 내부에서 최신 students 상태를 참조하기 위한 Ref
+            const studentsRef = useRef(students);
+            useEffect(() => { studentsRef.current = students; }, [students]);
+
             // [New] 데이터 복구(Hydration) 함수: ID만 있는 모둠 데이터에 학생 상세 정보를 채워넣음
             const hydrateGroups = (groupsData, studentsList) => {
                 if (!groupsData || !studentsList) return groupsData;
@@ -4474,8 +4478,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         newGroups[date] = groupsData[date].map(group => 
                             group.map(s => {
                                 const id = (typeof s === 'object' && s !== null) ? s.id : s;
-                                // [Fix] ID 타입 불일치(문자열 vs 숫자) 방지를 위해 String 변환 후 비교
-                                const fullStudent = studentsList.find(st => String(st.id) === String(id));
+                                // [Fix] ID 타입 불일치 방지 및 이름 매칭 Fallback 추가
+                                let fullStudent = studentsList.find(st => String(st.id) === String(id));
+                                if (!fullStudent && typeof s === 'object' && s.name) {
+                                    fullStudent = studentsList.find(st => st.name === s.name);
+                                }
                                 return fullStudent ? { ...fullStudent } : { id: id, name: '미등록', gender: 'M', skill: 1 };
                             })
                         );
@@ -4662,7 +4669,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                         if (d.students) setStudents(d.students);
                                         if (d.records) setRecords(d.records);
                                         if (d.groupsByDate) {
-                                            const hydrated = hydrateGroups(d.groupsByDate, d.students || []);
+                                            // [Fix] d.students가 없거나 비어있을 경우 로컬 최신 상태(studentsRef)를 사용하여 복구 시도
+                                            const sourceStudents = (d.students && d.students.length > 0) ? d.students : studentsRef.current;
+                                            const hydrated = hydrateGroups(d.groupsByDate, sourceStudents);
                                             setGroupsByDate(hydrated);
                                         }
                                         if (d.avoidance) setAvoidancePairs(d.avoidance);
