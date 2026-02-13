@@ -3095,6 +3095,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.18", 
+                date: "2026-02-12", 
+                list: ["클라우드 저장 안정성 긴급 패치: 모둠 데이터 용량 초과 시 오래된 기록 자동 삭제 로직 강화 (보관 기간 1년 → 3개월 단축)"] 
+            },
+            { 
                 version: "v3.4.17", 
                 date: "2026-02-12", 
                 list: ["클라우드 저장 용량 최적화를 위해 1년이 지난 오래된 모둠 기록 자동 삭제 기능 추가"] 
@@ -4316,7 +4321,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 17    // Patch: 기존 기능의 버그 수정
+            patch: 18    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4663,8 +4668,31 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const saveData = async (key, data) => { if (isLocalMode) localStorage.setItem(key, JSON.stringify(data));
             else if (db && appId) { try { const field = key.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
             const cleanData = JSON.parse(JSON.stringify(data)); // undefined 제거 및 데이터 정제
+            
+            // [긴급 패치] 모둠 데이터 용량 최적화 로직 강화
+            if (key === 'cls_groups_date') {
+                let jsonString = JSON.stringify(cleanData);
+                const MAX_SIZE = 900000; // 약 900KB (Firestore 제한 1MB 대비 여유분 확보)
+                
+                if (jsonString.length > MAX_SIZE) {
+                    const dates = Object.keys(cleanData).sort(); // 날짜 오름차순 정렬 (오래된 날짜부터)
+                    let deletedCount = 0;
+                    
+                    while (jsonString.length > MAX_SIZE && dates.length > 0) {
+                        const oldDate = dates.shift(); // 가장 오래된 날짜 제거
+                        delete cleanData[oldDate];
+                        deletedCount++;
+                        jsonString = JSON.stringify(cleanData);
+                    }
+                    
+                    if (deletedCount > 0) {
+                        setToastMessage(`클라우드 용량 확보를 위해 오래된 모둠 기록 ${deletedCount}건을 정리했습니다.`);
+                    }
+                }
+            }
+
             await db.collection('artifacts').doc(appId).collection('public').doc('data').set({ [field]: cleanData }, { merge: true }); } catch (e) { logSystemEvent(`Firebase 저장 실패 (${key}): ${e.message}`, 'error'); console.error(e); 
-            if(key === 'cls_groups_date') setToastMessage("저장 실패: 데이터 용량이 너무 큽니다."); } } };
+            if(key === 'cls_groups_date') setToastMessage("저장 실패: 데이터 용량이 여전히 큽니다. 모둠 기록을 초기화해주세요."); } } };
             
             const useDeepEffect = (fn, deps) => { const isFirst = useRef(true);
             useEffect(() => { if (isFirst.current) { isFirst.current = false; return; } fn(); }, deps); };
@@ -4766,11 +4794,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             
             const sanitizeGroupsData = (data) => {
                 const cleaned = {};
-                const oneYearAgo = dayjs().subtract(1, 'year');
+                const threeMonthsAgo = dayjs().subtract(3, 'month'); // 보관 기간 1년 -> 3개월로 단축
 
                 Object.keys(data).forEach(d => {
-                    // 1년 지난 데이터는 제외 (자동 삭제)
-                    if (dayjs(d).isValid() && dayjs(d).isBefore(oneYearAgo)) return;
+                    // 3개월 지난 데이터는 제외 (자동 삭제)
+                    if (dayjs(d).isValid() && dayjs(d).isBefore(threeMonthsAgo)) return;
                     if (!Array.isArray(data[d])) return;
                     cleaned[d] = data[d].map(group => group.map(s => sanitizeStudent(s)));
                 });
