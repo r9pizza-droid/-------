@@ -3164,6 +3164,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.13", 
+                date: "2026-02-12", 
+                list: ["클라우드 동기화 시 모둠 편성 데이터 저장 오류 해결 (데이터 크기 최적화)", "모둠 편성 시 학생 사진 등 불필요한 정보 제외하여 저장"] 
+            },
+            { 
                 version: "v3.4.12", 
                 date: "2026-02-12", 
                 list: ["모바일에서 모둠 편성 시 결과 화면으로 자동 전환되도록 개선", "자리 배치도 설정 버튼 아이콘 변경 (<, >)"] 
@@ -4358,7 +4363,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 12    // Patch: 기존 기능의 버그 수정
+            patch: 13    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4714,7 +4719,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             
             const saveData = async (key, data) => { if (isLocalMode) localStorage.setItem(key, JSON.stringify(data));
             else if (db && appId) { try { const field = key.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').set({ [field]: data }, { merge: true }); } catch (e) { logSystemEvent(`Firebase 저장 실패 (${key}): ${e.message}`, 'error'); console.error(e); } } };
+            const cleanData = JSON.parse(JSON.stringify(data)); // undefined 제거 및 데이터 정제
+            await db.collection('artifacts').doc(appId).collection('public').doc('data').set({ [field]: cleanData }, { merge: true }); } catch (e) { logSystemEvent(`Firebase 저장 실패 (${key}): ${e.message}`, 'error'); console.error(e); } } };
             
             const useDeepEffect = (fn, deps) => { const isFirst = useRef(true);
             useEffect(() => { if (isFirst.current) { isFirst.current = false; return; } fn(); }, deps); };
@@ -4812,6 +4818,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 if (!isLocalMode) saveData('cls_seat_assignments', newAssignments);
             };
 
+            const sanitizeStudent = (s) => ({ id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order });
+
             const generateGroups = async () => {
                 if (students.length === 0) return setToastMessage("학생을 먼저 등록해주세요.");
 
@@ -4881,10 +4889,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         
                         const aiGroups = result.groups;
                         setAiReason(result.reason);
-                        
+
                         const mappedGroups = aiGroups.map(g => g.map(n => { 
                             const clean = n.split('(')[0].trim();
-                            return students.find(s => s.name === clean) || { id: Math.random(), name: clean, gender: 'M', skill: 1 };
+                            const s = students.find(st => st.name === clean);
+                            return s ? sanitizeStudent(s) : { id: Math.random(), name: clean, gender: 'M', skill: 1, order: 0 };
                         }));
 
                         logSystemEvent('AI 모둠 편성 성공');
@@ -5092,10 +5101,12 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         }
                     }
 
-                    const finalGroups = bestGroups || Array.from({ length: targetGroupCount }, () => []);
+                    const rawGroups = bestGroups || Array.from({ length: targetGroupCount }, () => []);
+                    const finalGroups = rawGroups.map(g => g.map(s => sanitizeStudent(s)));
+
                     if(finalGroups.flat().length === 0) {
                          const plainGroups = Array.from({ length: targetGroupCount }, () => []);
-                         students.forEach((s, i) => plainGroups[i % targetGroupCount].push(s));
+                         students.forEach((s, i) => plainGroups[i % targetGroupCount].push(sanitizeStudent(s)));
                          
                          const newGroupsData = { ...groupsByDate };
                          for(let i=0; i<groupDuration; i++) {
@@ -5144,7 +5155,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     return [last, ...rest];
                 };
 
-                const newGroups = groups.map((_, i) => { const srcIdx = (i - 1 + groups.length) % groups.length; return rotateArray(groups[srcIdx]); });
+                const newGroups = groups.map((_, i) => { const srcIdx = (i - 1 + groups.length) % groups.length; return rotateArray(groups[srcIdx]).map(s => sanitizeStudent(s)); });
                 const newGroupsData = { ...groupsByDate, [date]: newGroups }; setGroupsByDate(newGroupsData);
                 if (!isLocalMode) saveData('cls_groups_date', newGroupsData); 
                 updateRolesIfActive(newGroups);
@@ -5198,7 +5209,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 const student = currentGroups[fromGroupIdx].find(s => s.id === studentId); 
                 if (!student) return;
                 currentGroups[fromGroupIdx] = currentGroups[fromGroupIdx].filter(s => s.id !== studentId); 
-                currentGroups[toGroupIdx] = [...currentGroups[toGroupIdx], student]; 
+                currentGroups[toGroupIdx] = [...currentGroups[toGroupIdx], sanitizeStudent(student)]; 
                 const newGroupsData = { ...groupsByDate, [date]: currentGroups }; 
                 setGroupsByDate(newGroupsData);
                 if (!isLocalMode) saveData('cls_groups_date', newGroupsData); 
