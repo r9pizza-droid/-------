@@ -2,7 +2,7 @@
 <html lang="ko"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>이거했어?</title>
+    <title>다했나요?</title>
     
     <meta property="og:title" content="이거했어?">
     <meta property="og:description" content="우리 반 숙제 확인 및 학급 경영 도구">
@@ -4474,7 +4474,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         newGroups[date] = groupsData[date].map(group => 
                             group.map(s => {
                                 const id = (typeof s === 'object' && s !== null) ? s.id : s;
-                                const fullStudent = studentsList.find(st => st.id === id);
+                                // [Fix] ID 타입 불일치(문자열 vs 숫자) 방지를 위해 String 변환 후 비교
+                                const fullStudent = studentsList.find(st => String(st.id) === String(id));
                                 return fullStudent ? { ...fullStudent } : { id: id, name: '미등록', gender: 'M', skill: 1 };
                             })
                         );
@@ -5195,7 +5196,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          const newGroupsData = sanitizeGroupsData({ ...groupsByDate });
                          for(let i=0; i<groupDuration; i++) {
                              const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
-                             newGroupsData[d] = plainGroups;
+                             // [Fix] 참조 문제 방지를 위해 깊은 복사하여 할당
+                             newGroupsData[d] = JSON.parse(JSON.stringify(plainGroups));
                          }
                          setGroupsByDate(newGroupsData);
                          if (!isLocalMode) saveData('cls_groups_date', newGroupsData);
