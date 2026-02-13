@@ -471,7 +471,7 @@
             );
         };
 
-        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, onSaveStudentPhoto, appConfig, apiKey, onSaveRecordDraft }) => {
+        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft }) => {
             if (!isOpen || !student || !student.history) return null;
 
             const [translateY, setTranslateY] = useState(0);
@@ -523,7 +523,6 @@
             const [reportStats, setReportStats] = useState({ studentRate: 0, classRate: 0, tagStats: {} });
             const [showDetailStats, setShowDetailStats] = useState(false);
             const [showStudentRecordAI, setShowStudentRecordAI] = useState(false);
-            const fileInputRef = useRef(null);
             const modalRef = useRef(null);
             const reportRef = useRef(null);
             const [phrases, setPhrases] = useState(() => { try { return JSON.parse(localStorage.getItem('cls_report_phrases') || '[]'); } catch { return []; } });
@@ -594,19 +593,6 @@
                     setNotes(newNotes);
                     onSaveCounseling(student.id, newNotes, "기록이 삭제되었습니다.");
                 });
-            };
-            
-            const handlePhotoUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                if (file.size > 2 * 1024 * 1024) {
-                    if(showToast) showToast("사진 용량이 너무 큽니다. (2MB 이하 권장)");
-                    else alert("사진 용량이 너무 큽니다.");
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = (ev) => { onSaveStudentPhoto(student.id, ev.target.result); };
-                reader.readAsDataURL(file);
             };
             
             const calculateStatsForPeriod = (startStr, endStr) => {
@@ -950,12 +936,10 @@
                         </div>
                         <div className="flex items-center justify-between mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100 flex-wrap">
                             <div className="flex items-center gap-4">
-                                <div className="relative group cursor-pointer flex-shrink-0" onClick={() => fileInputRef.current.click()}>
+                                <div className="flex-shrink-0">
                                     <div className="w-14 h-14 rounded-full bg-white border-2 border-slate-200 overflow-hidden flex items-center justify-center shadow-sm">
-                                        {student.photo ? <img src={student.photo} className="w-full h-full object-cover" alt="student"/> : <span className="text-2xl">{student.gender === 'M' ? '👦' : '👧'}</span>}
+                                        <span className="text-2xl">{student.gender === 'M' ? '👦' : '👧'}</span>
                                     </div>
-                                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Icon d={PATHS.upload} size={16} className="text-white" /></div>
-                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
                                 </div>
                                 <div>
                                     <div className="text-lg font-bold text-slate-700 flex items-center gap-2">{student.name}<span className="text-xs font-normal text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">{student.order}번</span></div>
@@ -1226,7 +1210,7 @@
                             </div>
                             <div className="flex gap-8 mb-8">
                                 <div className="w-32 h-32 rounded-full bg-slate-100 border-4 border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
-                                     {student.photo ? <img src={student.photo} className="w-full h-full object-cover" alt="student"/> : <span className="text-6xl">{student.gender === 'M' ? '👦' : '👧'}</span>}
+                                     <span className="text-6xl">{student.gender === 'M' ? '👦' : '👧'}</span>
                                 </div>
                                 <div className="flex-1 flex flex-col justify-center">
                                     <div className="flex items-baseline gap-3 mb-2"><h2 className="text-3xl font-bold text-slate-800">{student.name}</h2><span className="text-xl text-slate-500">{student.order}번</span></div>
@@ -2220,10 +2204,10 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, onOpenBulkPhoto, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig }) => {
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
-            const fileRef = useRef(null); const jsonFileRef = useRef(null); const counselingFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const editPhotoRef = useRef(null);
+            const fileRef = useRef(null); const jsonFileRef = useRef(null); const counselingFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null);
             const [cfg, setCfg] = useState(appConfig);
             const [deleteTargetId, setDeleteTargetId] = useState(null); const [isDeletingAll, setIsDeletingAll] = useState(false); const [editingId, setEditingId] = useState(null); const [editData, setEditData] = useState({});
             const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => localStorage.getItem('cls_auto_backup') === 'true'); const [showBackupHelp, setShowBackupHelp] = useState(false); const [isAdminMode, setIsAdminMode] = useState(false);
@@ -2343,17 +2327,6 @@
             const cancelEdit = () => { setEditingId(null); setEditData({}); };
             const saveEdit = () => { const updatedStudents = students.map(s => s.id === editingId ? editData : s); setStudents(updatedStudents);
             if(!isLocalMode) saveData('cls_students', updatedStudents); setEditingId(null); setEditData({}); showToast("학생 정보가 수정되었습니다."); };
-            const handleEditPhotoUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                if (file.size > 2 * 1024 * 1024) {
-                    showToast("사진 용량이 너무 큽니다. (2MB 이하 권장)");
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = (ev) => { setEditData(prev => ({ ...prev, photo: ev.target.result })); };
-                reader.readAsDataURL(file);
-            };
             const handleFileUpload = (e) => { const f = e.target.files[0];
             if (!f) return; const r = new FileReader(); r.onload = (ev) => { const lines = ev.target.result.split(/[\r\n]+/).filter(l => l.trim());
             const newStds = []; lines.forEach((l, i) => { const p = l.split(','); if (p[0]) newStds.push({ id: Date.now() + i, name: p[0].trim(), gender: (p[1] || 'M').trim(), skill: parseInt(p[2] || 2), note: (p[3] || "").trim(), order: students.length + i + 1, leader: false }); });
@@ -2678,7 +2651,7 @@
                                 </div>
                             </div>
                             
-                            <h4 className="font-bold text-slate-700 mb-2 flex justify-between text-sm items-center flex-shrink-0"> <span>전체 명단 ({students.length}명)</span> <div className="flex gap-2"> <Btn onClick={addTestData} className="text-xs bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1">테스트 명단(15명)</Btn> <Btn onClick={onOpenBulkPhoto} className="text-xs bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1"><Icon d={PATHS.users} size={12} /> 사진 일괄 관리</Btn> {isDeletingAll ?
+                            <h4 className="font-bold text-slate-700 mb-2 flex justify-between text-sm items-center flex-shrink-0"> <span>전체 명단 ({students.length}명)</span> <div className="flex gap-2"> <Btn onClick={addTestData} className="text-xs bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1">테스트 명단(15명)</Btn> {isDeletingAll ?
                                 <div className="flex gap-2"><Btn onClick={handleDeleteAll} className="text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg animate-pulse">확인</Btn><Btn onClick={() => setIsDeletingAll(false)} className="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg">취소</Btn></div> : <Btn onClick={() => setIsDeletingAll(true)} className="text-xs bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1"><Icon d={PATHS.trash} size={12} /> 명단 전체 삭제</Btn>} </div> </h4>
                             
                             <div id="student-list" className="flex-1 overflow-y-auto bg-slate-50 p-2 rounded-xl space-y-1 custom-scroll border border-slate-100 h-full">
@@ -2686,18 +2659,16 @@
                                     <div key={s.id} className="flex justify-between items-center p-2.5 bg-white rounded-lg border border-slate-100 text-sm group min-h-[46px]">
                                         {editingId === s.id ? (
                                             <div className="flex gap-1 flex-1 items-center animate-fade-in w-full">
-                                                <div className="relative w-8 h-8 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 mr-1 group cursor-pointer" onClick={() => editPhotoRef.current.click()}>
-                                                    {editData.photo ? <img src={editData.photo} className="w-full h-full object-cover" alt="student" /> : <span className="text-sm flex items-center justify-center h-full w-full">{editData.gender === 'M' ? '👦' : '👧'}</span>}
-                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Icon d={PATHS.upload} size={12} className="text-white" /></div>
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 mr-1 flex items-center justify-center">
+                                                    <span className="text-sm">{editData.gender === 'M' ? '👦' : '👧'}</span>
                                                 </div>
-                                                <input type="file" ref={editPhotoRef} onChange={handleEditPhotoUpload} className="hidden" accept="image/*" />
                                                 <span className="text-indigo-500 font-bold w-6 text-center">{s.order}.</span> <input value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} className="p-1 border rounded w-20 text-xs" /> <select value={editData.gender} onChange={e=>setEditData({...editData, gender: e.target.value})} className="p-1 border rounded w-12 text-xs"><option value="M">남</option><option value="F">여</option></select> <select value={editData.skill} onChange={e=>setEditData({...editData, skill: parseInt(e.target.value)})} className="p-1 border rounded w-12 text-xs"><option value="3">상</option><option value="2">중</option><option value="1">하</option></select> <input value={editData.note} onChange={e=>setEditData({...editData, note: e.target.value})} className="flex-1 p-1 border rounded text-xs min-w-[50px]" placeholder="비고" /> <button onClick={() => setEditData({...editData, leader: !editData.leader})} className={`p-1 border rounded text-xs ${editData.leader ? 'bg-yellow-100 border-yellow-300' : 'bg-slate-50'}`}>👑</button> <Btn onClick={saveEdit} className="bg-indigo-500 text-white px-2 py-1 rounded text-xs font-bold">저장</Btn> <Btn onClick={cancelEdit} className="bg-slate-200 text-slate-600 px-2 py-1 rounded text-xs">취소</Btn> </div>
                                         ) : (
                                             <> 
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-slate-700 flex items-center">
                                                         <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 mr-2 flex items-center justify-center">
-                                                            {s.photo ? <img src={s.photo} className="w-full h-full object-cover" alt="student" /> : <span className="text-sm">{s.gender === 'M' ? '👦' : '👧'}</span>}
+                                                            <span className="text-sm">{s.gender === 'M' ? '👦' : '👧'}</span>
                                                         </div>
                                                         <span className="text-indigo-500 font-bold w-6 inline-block">{s.order}.</span> 
                                                         {s.name} 
@@ -2755,12 +2726,6 @@
                                             <option value="jua">주아체 (동글동글)</option>
                                             <option value="hand">개구체 (손글씨)</option>
                                         </select>
-                                    </div>
-                                    <div className="flex items-center justify-between py-2">
-                                        <label className="text-xs font-bold text-slate-500">학생 사진 크게 보기 (갤러리 뷰)</label>
-                                        <div onClick={() => setCfg({ ...cfg, showProfilePhoto: !cfg.showProfilePhoto })} className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${cfg.showProfilePhoto ? 'bg-indigo-500' : 'bg-slate-300'}`}>
-                                            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${cfg.showProfilePhoto ? 'translate-x-4' : ''}`}></div>
-                                        </div>
                                     </div>
                                     <div className="pt-2 border-t mt-2"><label className="text-xs font-bold text-slate-500 flex items-center gap-2 mb-1"><span className="text-base">🏖️</span> 방학 기간 설정</label><div className="flex gap-2 items-center"><input type="date" value={vacStart} onChange={e => setVacStart(e.target.value)} className="flex-1 p-2 border rounded-xl text-sm bg-white" /><span className="text-slate-400">~</span><input type="date" value={vacEnd} onChange={e => setVacEnd(e.target.value)} className="flex-1 p-2 border rounded-xl text-sm bg-white" /></div></div>
                                     <Btn onClick={handleConfigSave} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 active:scale-95 transition-all text-sm mt-2">설정 저장</Btn>
@@ -2962,7 +2927,7 @@
                         const rec = records[date]?.[s.id] || { done: false, tasks: {} };
                         const currentTasks = dailyTasks[date] || [];
                         const isDone = rec.done;
-                        const showPhoto = appConfig.showProfilePhoto && s.photo;
+                        const showPhoto = false;
 
                         return (
                             <div key={s.id} onClick={() => toggleCheck(s.id)} className={`group relative flex flex-col bg-white rounded-md border transition-all duration-200 cursor-pointer overflow-hidden hover:bg-notion-bg-hover ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm hover:shadow-md"}`}>
@@ -3126,43 +3091,14 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             );
         };
         
-        const BulkPhotoModal = ({ isOpen, onClose, students, onUpdatePhoto, showToast }) => {
-            if (!isOpen) return null;
-            return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="📸 학생 사진 일괄 관리" icon={PATHS.users} maxWidth="max-w-5xl">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-2">
-                        {students.map(s => (
-                            <div key={s.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col items-center gap-3 relative group hover:border-indigo-300 transition-colors">
-                                <div className="relative w-20 h-20 rounded-full bg-white border-4 border-white shadow-sm overflow-hidden group-hover:shadow-md transition-all">
-                                    {s.photo ? <img src={s.photo} className="w-full h-full object-cover" alt={s.name} /> : <div className="w-full h-full flex items-center justify-center text-3xl bg-slate-100 text-slate-300 select-none">{s.gender === 'M' ? '👦' : '👧'}</div>}
-                                    <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white gap-1">
-                                        <Icon d={PATHS.upload} size={20} />
-                                        <span className="text-[10px] font-bold">변경</span>
-                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if(file) {
-                                                if (file.size > 2 * 1024 * 1024) { showToast("사진 용량이 너무 큽니다. (2MB 이하 권장)"); return; }
-                                                const reader = new FileReader();
-                                                reader.onload = (ev) => onUpdatePhoto(s.id, ev.target.result);
-                                                reader.readAsDataURL(file);
-                                            }
-                                        }} />
-                                    </label>
-                                </div>
-                                <div className="text-center">
-                                    <div className="font-bold text-slate-700 flex items-center justify-center gap-1 text-sm">{s.name} <span className="text-[10px] font-normal text-slate-400">({s.order}번)</span></div>
-                                </div>
-                                {s.photo && <button onClick={() => onUpdatePhoto(s.id, null)} className="absolute top-2 right-2 p-1.5 bg-white text-rose-500 rounded-full shadow-sm border border-rose-100 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-50" title="사진 삭제"><Icon d={PATHS.trash} size={12}/></button>}
-                            </div>
-                        ))}
-                    </div>
-                </BaseModal>
-            );
-        };
-
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.4.15", 
+                date: "2026-02-12", 
+                list: ["사진 업로드 및 표시 기능 제거 (데이터 용량 최적화 및 클라우드 동기화 안정성 향상)"] 
+            },
             { 
                 version: "v3.4.14", 
                 date: "2026-02-12", 
@@ -4316,7 +4252,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     const isSelected = selectedSeat === seatKey; 
                     const role = student ? roleMap[student.id] : null; 
                     // [중요] onDrop 이벤트가 seat-cell DIV에 걸려있음
-                    return (<div key={seatKey} onClick={() => handleSeatClick(r, c)} onDragOver={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragEnter={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragLeave={!isLayoutMode && !isDisabled ? handleDragLeave : undefined} onDrop={!isLayoutMode && !isDisabled ? (e) => handleDrop(e, r, c) : undefined} className={`seat-cell h-20 md:h-28 rounded-xl border-2 flex flex-col items-center justify-center p-1 transition-all duration-200 ease-in-out relative group ${isLayoutMode ? (isDisabled ? 'bg-slate-100 border-slate-200 cursor-pointer hover:bg-slate-200' : 'bg-white border-indigo-200 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50') : (isDisabled ? 'opacity-0 pointer-events-none' : (student ? (student.gender === 'M' ? 'bg-blue-50/30 border-blue-200' : 'bg-pink-50/30 border-pink-200') : 'bg-white border-slate-200 border-dashed hover:border-indigo-300'))} ${isSelected ? 'ring-4 ring-indigo-400 ring-offset-2 z-10 border-indigo-500' : ''}`}>{!isLayoutMode && student && (<div draggable="true" onDragStart={(e) => handleDragStart(e, student.id, seatKey)} onDragEnd={handleDragEnd} onClick={(e) => { e.stopPropagation(); handleStudentClick(student.id); }} onDoubleClick={(e) => { e.stopPropagation(); onOpenStudentInfo(student.id); }} onContextMenu={(e) => handleRightClick(e, seatKey)} className="w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing seat-node animate-bounce-in touch-none"><div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm mb-1 overflow-hidden pointer-events-none">{student.photo ? <img src={student.photo} className="w-full h-full object-cover" /> : (student.gender === 'M' ? '👦' : '👧')}</div><span className="text-sm font-bold text-slate-700 w-full text-center leading-tight break-keep px-0.5 pointer-events-none">{student.name}</span>{role && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full mt-1 font-bold truncate max-w-full pointer-events-none">{role}</span>}</div>)}{isLayoutMode && !isDisabled && <span className="text-indigo-200 text-xs">{r+1}-{c+1}</span>}</div>); }))}</div></div>
+                    return (<div key={seatKey} onClick={() => handleSeatClick(r, c)} onDragOver={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragEnter={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragLeave={!isLayoutMode && !isDisabled ? handleDragLeave : undefined} onDrop={!isLayoutMode && !isDisabled ? (e) => handleDrop(e, r, c) : undefined} className={`seat-cell h-20 md:h-28 rounded-xl border-2 flex flex-col items-center justify-center p-1 transition-all duration-200 ease-in-out relative group ${isLayoutMode ? (isDisabled ? 'bg-slate-100 border-slate-200 cursor-pointer hover:bg-slate-200' : 'bg-white border-indigo-200 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50') : (isDisabled ? 'opacity-0 pointer-events-none' : (student ? (student.gender === 'M' ? 'bg-blue-50/30 border-blue-200' : 'bg-pink-50/30 border-pink-200') : 'bg-white border-slate-200 border-dashed hover:border-indigo-300'))} ${isSelected ? 'ring-4 ring-indigo-400 ring-offset-2 z-10 border-indigo-500' : ''}`}>{!isLayoutMode && student && (<div draggable="true" onDragStart={(e) => handleDragStart(e, student.id, seatKey)} onDragEnd={handleDragEnd} onClick={(e) => { e.stopPropagation(); handleStudentClick(student.id); }} onDoubleClick={(e) => { e.stopPropagation(); onOpenStudentInfo(student.id); }} onContextMenu={(e) => handleRightClick(e, seatKey)} className="w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing seat-node animate-bounce-in touch-none"><div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm mb-1 overflow-hidden pointer-events-none">{(student.gender === 'M' ? '👦' : '👧')}</div><span className="text-sm font-bold text-slate-700 w-full text-center leading-tight break-keep px-0.5 pointer-events-none">{student.name}</span>{role && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full mt-1 font-bold truncate max-w-full pointer-events-none">{role}</span>}</div>)}{isLayoutMode && !isDisabled && <span className="text-indigo-200 text-xs">{r+1}-{c+1}</span>}</div>); }))}</div></div>
                 <div id="seat-waiting-list" className="lg:w-72 bg-slate-50 rounded-2xl border border-slate-200 p-4 flex flex-col h-auto min-h-[200px] md:min-h-[400px] flex-shrink-0">
                     <h4 className="font-bold text-slate-600 mb-2 text-xs flex justify-between items-center">
                         <span>대기 명단</span>
@@ -4325,7 +4261,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     <div className="flex-1 overflow-y-auto custom-scroll grid grid-cols-2 gap-3 content-start p-1">
                         {unassignedStudents.map(s => (
                             <div key={s.id} draggable="true" onDragStart={(e) => handleDragStart(e, s.id, null)} onDragEnd={handleDragEnd} onClick={() => handleStudentClick(s.id)} onDoubleClick={() => onOpenStudentInfo(s.id)} className={`student-card bg-white p-1 rounded-lg border-2 shadow-sm flex flex-col items-center justify-center gap-1 aspect-square cursor-grab active:cursor-grabbing transition-all duration-200 touch-none ${selectedStudentId === s.id ? 'border-blue-600 ring-4 ring-blue-100 bg-blue-50 z-10' : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'}`}>
-                                <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-lg shadow-sm overflow-hidden pointer-events-none">{s.photo ? <img src={s.photo} className="w-full h-full object-cover" /> : (s.gender === 'M' ? '👦' : '👧')}</div>
+                                <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-lg shadow-sm overflow-hidden pointer-events-none">{(s.gender === 'M' ? '👦' : '👧')}</div>
                                 <span className="text-sm font-bold text-slate-700 truncate w-full text-center pointer-events-none">{s.name}</span>
                             </div>
                         ))}
@@ -4370,7 +4306,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 14    // Patch: 기존 기능의 버그 수정
+            patch: 15    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4459,8 +4395,6 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [showOfflineModal, setShowOfflineModal] = useState(false);
             const [autoCloseTimer, setAutoCloseTimer] = useState(3);
             const [showUpdateNotes, setShowUpdateNotes] = useState(false);
-            const [grassTitleClickCount, setGrassTitleClickCount] = useState(0);
-            const [isBulkPhotoOpen, setIsBulkPhotoOpen] = useState(false);
             const [isRoleEditOpen, setIsRoleEditOpen] = useState(false);
             const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(window.innerWidth >= 768);
             const [formationClickCount, setFormationClickCount] = useState(0);
@@ -4512,13 +4446,6 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 const updatedStudents = students.map(s => s.id === studentId ? { ...s, stickers: count } : s);
                 setStudents(updatedStudents);
                 if (!isLocalMode) saveData('cls_students', updatedStudents);
-            };
-
-            const handleSaveStudentPhoto = (studentId, photo) => {
-                const updatedStudents = students.map(s => s.id === studentId ? { ...s, photo: photo } : s);
-                setStudents(updatedStudents);
-                if (!isLocalMode) saveData('cls_students', updatedStudents);
-                setToastMessage(photo ? "학생 사진이 저장되었습니다." : "학생 사진이 삭제되었습니다.");
             };
 
             const validateApiKey = async () => {
@@ -4623,8 +4550,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             useEffect(() => { const checkTime = () => { const isEnabled = localStorage.getItem('cls_auto_backup') === 'true'; if (!isEnabled) return; const now = dayjs(); const nowStr = now.format('HH:mm'); if (backupTimes.includes(nowStr) && lastBackupTime.current !== nowStr) { lastBackupTime.current = nowStr; exportData(); } }; const interval = setInterval(checkTime, 10000); return () => clearInterval(interval); }, [exportData, backupTimes]);
             
             const handleGrassTitleClick = () => {
-                setIsBulkPhotoOpen(true);
-                setToastMessage("📸 학생 사진 일괄 관리 모드가 열렸습니다.");
+                setToastMessage("활동 잔디입니다.");
             };
 
             const groups = groupsByDate[date] || [];
@@ -5841,7 +5767,6 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         onSaveStickerWithNote={handleSaveStickerWithNote} 
                         showToast={setToastMessage} 
                         openConfirm={openConfirm} 
-                        onSaveStudentPhoto={handleSaveStudentPhoto} 
                         appConfig={appConfig} 
                         apiKey={apiKey} 
                         onSaveRecordDraft={handleSaveRecordDraft} />
@@ -5872,7 +5797,6 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         setTags={setTags} 
                         backupTimes={backupTimes} 
                         setBackupTimes={setBackupTimes} 
-                        onOpenBulkPhoto={() => setIsBulkPhotoOpen(true)}
                         apiKey={apiKey}
                         setApiKey={setApiKey}
                         mustPairs={mustPairs} setMustPairs={setMustPairs}
@@ -5887,7 +5811,6 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     <CalendarModal isOpen={isCalendarOpen} onClose={()=>setIsCalendarOpen(false)} currentDate={date} onSelectDate={setDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
                     <CalendarModal isOpen={isRangeCalendarOpen} onClose={()=>setIsRangeCalendarOpen(false)} currentDate={date} selectionMode="range" onSelectRange={handleRangeSelect} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
                     <RoleHelpModal isOpen={showRoleHelp} onClose={()=>setShowRoleHelp(false)} roleDescriptions={roleDescriptions} />
-                    <BulkPhotoModal isOpen={isBulkPhotoOpen} onClose={() => setIsBulkPhotoOpen(false)} students={students} onUpdatePhoto={handleSaveStudentPhoto} showToast={setToastMessage} />
                     <RoleEditModal isOpen={isRoleEditOpen} onClose={() => setIsRoleEditOpen(false)} roles={rolesList} onSave={handleSaveRoles} roleDescriptions={roleDescriptions} onSaveDescriptions={handleSaveRoleDescriptions} />
                     <PartnerAnalysisModal isOpen={showPartnerAnalysis} onClose={()=>setShowPartnerAnalysis(false)} groupsByDate={groupsByDate} />
                     <ClassToolsModal isOpen={isToolsOpen} onClose={() => setIsToolsOpen(false)} students={students} />
