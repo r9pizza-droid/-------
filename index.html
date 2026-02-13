@@ -3095,203 +3095,218 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.45", 
+                date: "2026-02-13", 
+                list: ["자리 배치도에서 학생을 3번 터치하면 대기 명단으로 이동하는 기능 추가 (모바일 우클릭 대체)"] 
+            },
+            { 
+                version: "v3.4.44", 
+                date: "2026-02-13", 
+                list: ["업데이트 날짜 표기 오류 수정 (v3.4.x 버전 일괄 2026-02-13으로 변경)"] 
+            },
+            { 
+                version: "v3.4.43", 
+                date: "2026-02-13", 
+                list: ["앱 안정성 최적화 및 버전 관리 점검"] 
+            },
+            { 
                 version: "v3.4.42", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["앱 실행 오류 긴급 수정 (자리 배치도 UI 구조 문제 해결)"] 
             },
             { 
                 version: "v3.4.41", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["자리 배치도 섹션 접기/펼치기 기능 추가 (대기 명단 포함)"] 
             },
             { 
                 version: "v3.4.40", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모바일 화면에서 모둠 도구 버튼(역할 수정, 짝꿍 분석) 배치 개선 (한 줄 보기, 폰트 크기 확대)"] 
             },
             { 
                 version: "v3.4.38", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["Firebase 저장 오류 해결: 모둠 데이터 저장 시 'Nested arrays' 에러 수정 (데이터 구조 개선)", "데이터 로딩 시 앱 멈춤 현상 방지 코드 추가"] 
             },
             { 
                 version: "v3.4.37", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["Firebase 동기화 시 모둠 편성 결과가 사라지는 현상 완벽 해결 (로컬 데이터 우선 병합 로직 적용)"] 
             },
             { 
                 version: "v3.4.34", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["자리 배치도 기본 설정 변경 (5행 5열, 십자 형태 비활성화)", "모둠 편성 로직 안정화 (동기식 처리로 Firebase 데이터 충돌 방지)"] 
             },
             { 
                 version: "v3.4.33", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["자리 배치도 기본 설정 변경 (5행 5열, 특정 좌석 비활성화)", "모둠 편성 시 최신 데이터 참조 로직 강화 (Firebase 동기화 충돌 방지)"] 
             },
             { 
                 version: "v3.4.32", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["자리 배치도 기본 설정 변경 (특정 좌석 비활성화 적용: 1-3, 2-3, 3행 전체, 4-4, 5-4)"] 
             },
             { 
                 version: "v3.4.31", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모둠 데이터 자동 삭제 로직(sanitizeGroupsData) 제거로 데이터 유실 문제 원천 차단", "모둠 편성 직후 데이터가 사라지는 현상 최종 해결"] 
             },
             { 
                 version: "v3.4.30", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모둠 편성 데이터 동기화 및 다음 날짜 저장 오류 최종 수정", "데이터 복구(Hydration) 로직 강화로 깜빡임 현상 해결"] 
             },
             { 
                 version: "v3.4.29", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["Firebase 모둠 데이터 저장 방식 변경 (ID 변환 로직 완전 제거)", "모둠 편성 결과가 사라지거나 깜빡이는 현상 긴급 수정"] 
             },
             { 
                 version: "v3.4.28", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["Firebase 데이터 동기화 시 모둠 정보 유실 방지 로직 강화 (학생 정보 매칭 실패 시 원본 데이터 유지)", "모둠 편성 결과 깜빡임 현상 최종 해결"] 
             },
             { 
                 version: "v3.4.27", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["Firebase 모둠 데이터 저장 안정성 강화 (데이터 최적화 로직 롤백)", "모둠 편성 후 데이터가 사라지는 현상 최종 수정"] 
             },
             { 
                 version: "v3.4.26", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["Firebase 동기화 시 모둠 편성 결과 깜빡임 및 데이터 유실 문제 해결 (Batch Update 적용)"] 
             },
             { 
                 version: "v3.4.25", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["Firebase 동기화 시 모둠 데이터 표시 오류 수정 (서버/로컬 데이터 병합 로직 강화)", "모둠 편성 직후 데이터가 보이지 않는 현상 해결"] 
             },
             { 
                 version: "v3.4.24", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["클라우드 저장 용량 최적화 (학생 ID만 저장하여 데이터 크기 90% 감소)", "모둠 편성 결과 저장 오류 근본 해결"] 
             },
             { 
                 version: "v3.4.23", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["클라우드 모둠 결과 표시 오류 해결 (실시간 데이터 동기화 및 복구 로직 강화)", "학생 정보 변경 시 모둠 배치도 자동 업데이트 적용"] 
             },
             { 
                 version: "v3.4.22", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["클라우드 모둠 데이터 저장 구조 최적화 (ID 기반 저장으로 용량 90% 절감)", "데이터 로딩 시 자동 복구(Hydration) 로직 추가"] 
             },
             { 
                 version: "v3.4.21", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모둠 편성 알고리즘 안정성 강화 (오류 발생 시 예외 처리 및 알림)", "자리 배치 동기화 로직 개선"] 
             },
             { 
                 version: "v3.4.20", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모둠 편성 시 자리 배치도에 결과가 즉시 반영되지 않는 문제 해결 (데이터 처리 안정성 강화)"] 
             },
             { 
                 version: "v3.4.19", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["클라우드 모둠 저장 안정성 강화 (데이터 정제 로직 개선)", "저장 실패 시 상세 에러 메시지 표시"] 
             },
             { 
                 version: "v3.4.18", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["클라우드 저장 안정성 긴급 패치: 모둠 데이터 용량 초과 시 오래된 기록 자동 삭제 로직 강화 (보관 기간 1년 → 3개월 단축)"] 
             },
             { 
                 version: "v3.4.17", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["클라우드 저장 용량 최적화를 위해 1년이 지난 오래된 모둠 기록 자동 삭제 기능 추가"] 
             },
             { 
                 version: "v3.4.16", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["클라우드 모둠 편성 저장 오류 해결 (과거 데이터 포함 전체 경량화 적용)", "데이터 저장 실패 시 알림 메시지 표시"] 
             },
             { 
                 version: "v3.4.15", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["사진 업로드 및 표시 기능 제거 (데이터 용량 최적화 및 클라우드 동기화 안정성 향상)"] 
             },
             { 
                 version: "v3.4.14", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["자리 배치도에서 모둠 설정 저장 시 학생 사진 데이터 제외 (클라우드 저장 용량 최적화)", "모둠 데이터 저장 로직 안정성 강화"] 
             },
             { 
                 version: "v3.4.13", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["클라우드 동기화 시 모둠 편성 데이터 저장 오류 해결 (데이터 크기 최적화)", "모둠 편성 시 학생 사진 등 불필요한 정보 제외하여 저장"] 
             },
             { 
                 version: "v3.4.12", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모바일에서 모둠 편성 시 결과 화면으로 자동 전환되도록 개선", "자리 배치도 설정 버튼 아이콘 변경 (<, >)"] 
             },
             { 
                 version: "v3.4.11", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모바일 화면에서 자리 배치도 설정 패널이 화면을 벗어나는 문제 해결 (하단 배치 및 줄바꿈 적용)"] 
             },
             { 
                 version: "v3.4.10", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모바일 화면에서 학생 인사이트 카드 상단 버튼 간격 조정 (타이틀 줄바꿈 현상 개선)"] 
             },
             { 
                 version: "v3.4.9", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["앱 업데이트 알림 팝업 디자인 개선 (로켓 아이콘 강조 및 UI 고도화)"] 
             },
             { 
                 version: "v3.4.8", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모바일 통계 탭에서 기간 선택(주간/월간/전체)을 드롭다운 메뉴로 변경하여 공간 효율 개선"] 
             },
             { 
                 version: "v3.4.7", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모바일에서 팝업창을 아래로 쓸어내려 닫는 기능(Swipe down to close) 추가"] 
             },
             { 
                 version: "v3.4.6", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["데스크탑 하단 버전 정보 마우스 오버 시 배경색 변경 효과 추가"] 
             },
             { 
                 version: "v3.4.5", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["데스크탑 하단 버전 정보 글자 크기 확대 (10px → 12px)"] 
             },
             { 
                 version: "v3.4.4", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["데스크탑 화면에서 하단 버전 정보 디자인 개선 (고정 위치 및 배경색 적용)"] 
             },
             { 
                 version: "v3.4.3", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모바일 하단 네비게이션 바 터치 영역 개선 (하단 여백 추가)"] 
             },
             { 
                 version: "v3.4.2", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["노션(Notion) 및 CSV 파일에서 학생 관찰 기록 일괄 가져오기 기능 추가 (설정 > 데이터 관리)", "관찰 기록 가져오기 시 이름/내용/날짜 열 자동 인식"] 
             },
             { 
                 version: "v3.4.1", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["모둠 편성 시 '고정 학생(자물쇠)' 배정 로직 개선 (새로운 날짜에도 이전 모둠 위치 유지)", "짝꿍 이력 분석 강화 (최근 짝꿍 가중치 적용하여 연속 배정 방지)"] 
             },
             { 
                 version: "v3.4.0", 
-                date: "2026-02-12", 
+                date: "2026-02-13", 
                 list: ["'짝꿍 이력 분석' 기능 추가 (모둠 편성 시 중복 짝꿍 현황 확인)", "AI 모둠 편성 프롬프트 개선 (학생 중복 배정 방지 조건 강화)"] 
             },
             { 
@@ -4043,6 +4058,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [selectedStudentId, setSelectedStudentId] = useState(null);
             const seatChartRef = useRef(null);
             const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+            const clickRef = useRef({ key: null, count: 0, lastTime: 0 });
 
             useEffect(() => {
                 const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -4198,6 +4214,29 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 }
 
                 if ((seatConfig.disabledSeats || []).includes(seatKey)) return;
+
+                // [New] 트리플 클릭 감지 (모바일 우클릭 대체)
+                const now = Date.now();
+                if (clickRef.current.key === seatKey && (now - clickRef.current.lastTime < 500)) {
+                    clickRef.current.count += 1;
+                } else {
+                    clickRef.current.key = seatKey;
+                    clickRef.current.count = 1;
+                }
+                clickRef.current.lastTime = now;
+
+                if (clickRef.current.count === 3) {
+                    if (seatAssignments[seatKey]) {
+                        const newAssignments = { ...seatAssignments };
+                        delete newAssignments[seatKey];
+                        setSeatAssignments(newAssignments);
+                        if (!isLocalMode) saveData('cls_seat_assignments', newAssignments);
+                        if (selectedSeat === seatKey) setSelectedSeat(null);
+                        if(showToast) showToast("대기 명단으로 이동되었습니다.");
+                    }
+                    clickRef.current.count = 0;
+                    return;
+                }
 
                 if (selectedStudentId) {
                     const newAssignments = { ...seatAssignments };
@@ -4430,7 +4469,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 42    // Patch: 기존 기능의 버그 수정
+            patch: 45    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
