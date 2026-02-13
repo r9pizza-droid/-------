@@ -3095,6 +3095,16 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.17", 
+                date: "2026-02-12", 
+                list: ["클라우드 저장 용량 최적화를 위해 1년이 지난 오래된 모둠 기록 자동 삭제 기능 추가"] 
+            },
+            { 
+                version: "v3.4.16", 
+                date: "2026-02-12", 
+                list: ["클라우드 모둠 편성 저장 오류 해결 (과거 데이터 포함 전체 경량화 적용)", "데이터 저장 실패 시 알림 메시지 표시"] 
+            },
+            { 
                 version: "v3.4.15", 
                 date: "2026-02-12", 
                 list: ["사진 업로드 및 표시 기능 제거 (데이터 용량 최적화 및 클라우드 동기화 안정성 향상)"] 
@@ -4306,7 +4316,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 15    // Patch: 기존 기능의 버그 수정
+            patch: 17    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4653,7 +4663,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const saveData = async (key, data) => { if (isLocalMode) localStorage.setItem(key, JSON.stringify(data));
             else if (db && appId) { try { const field = key.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
             const cleanData = JSON.parse(JSON.stringify(data)); // undefined 제거 및 데이터 정제
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').set({ [field]: cleanData }, { merge: true }); } catch (e) { logSystemEvent(`Firebase 저장 실패 (${key}): ${e.message}`, 'error'); console.error(e); } } };
+            await db.collection('artifacts').doc(appId).collection('public').doc('data').set({ [field]: cleanData }, { merge: true }); } catch (e) { logSystemEvent(`Firebase 저장 실패 (${key}): ${e.message}`, 'error'); console.error(e); 
+            if(key === 'cls_groups_date') setToastMessage("저장 실패: 데이터 용량이 너무 큽니다."); } } };
             
             const useDeepEffect = (fn, deps) => { const isFirst = useRef(true);
             useEffect(() => { if (isFirst.current) { isFirst.current = false; return; } fn(); }, deps); };
@@ -4752,6 +4763,19 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             };
 
             const sanitizeStudent = (s) => ({ id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order });
+            
+            const sanitizeGroupsData = (data) => {
+                const cleaned = {};
+                const oneYearAgo = dayjs().subtract(1, 'year');
+
+                Object.keys(data).forEach(d => {
+                    // 1년 지난 데이터는 제외 (자동 삭제)
+                    if (dayjs(d).isValid() && dayjs(d).isBefore(oneYearAgo)) return;
+                    if (!Array.isArray(data[d])) return;
+                    cleaned[d] = data[d].map(group => group.map(s => sanitizeStudent(s)));
+                });
+                return cleaned;
+            };
 
             const generateGroups = async () => {
                 if (students.length === 0) return setToastMessage("학생을 먼저 등록해주세요.");
@@ -4831,7 +4855,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
                         logSystemEvent('AI 모둠 편성 성공');
                         
-                        const newGroupsData = { ...groupsByDate };
+                        const newGroupsData = sanitizeGroupsData({ ...groupsByDate });
                         const newGroupRoles = { ...groupRoles };
                         const hasActiveRoles = groupRoles[date] && Object.keys(groupRoles[date]).length > 0;
                         
@@ -5041,7 +5065,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          const plainGroups = Array.from({ length: targetGroupCount }, () => []);
                          students.forEach((s, i) => plainGroups[i % targetGroupCount].push(sanitizeStudent(s)));
                          
-                         const newGroupsData = { ...groupsByDate };
+                         const newGroupsData = sanitizeGroupsData({ ...groupsByDate });
                          for(let i=0; i<groupDuration; i++) {
                              const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
                              newGroupsData[d] = plainGroups;
@@ -5052,7 +5076,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          updateRolesIfActive(plainGroups);
                          syncSeatsWithGroups(plainGroups);
                     } else {
-                         const newGroupsData = { ...groupsByDate };
+                         const newGroupsData = sanitizeGroupsData({ ...groupsByDate });
                          const newGroupRoles = { ...groupRoles };
                          const hasActiveRoles = groupRoles[date] && Object.keys(groupRoles[date]).length > 0;
 
@@ -5089,7 +5113,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 };
 
                 const newGroups = groups.map((_, i) => { const srcIdx = (i - 1 + groups.length) % groups.length; return rotateArray(groups[srcIdx]).map(s => sanitizeStudent(s)); });
-                const newGroupsData = { ...groupsByDate, [date]: newGroups }; setGroupsByDate(newGroupsData);
+                const newGroupsData = sanitizeGroupsData({ ...groupsByDate, [date]: newGroups }); setGroupsByDate(newGroupsData);
                 if (!isLocalMode) saveData('cls_groups_date', newGroupsData); 
                 updateRolesIfActive(newGroups);
                 syncSeatsWithGroups(newGroups);
@@ -5143,7 +5167,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 if (!student) return;
                 currentGroups[fromGroupIdx] = currentGroups[fromGroupIdx].filter(s => s.id !== studentId); 
                 currentGroups[toGroupIdx] = [...currentGroups[toGroupIdx], sanitizeStudent(student)]; 
-                const newGroupsData = { ...groupsByDate, [date]: currentGroups }; 
+                const newGroupsData = sanitizeGroupsData({ ...groupsByDate, [date]: currentGroups }); 
                 setGroupsByDate(newGroupsData);
                 if (!isLocalMode) saveData('cls_groups_date', newGroupsData); 
                 updateRolesIfActive(currentGroups);
@@ -5205,13 +5229,10 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
             const handleGroupsChange = (newGroups) => {
                 // 데이터 크기 최적화를 위해 사진 등 불필요한 정보 제거
-                const cleanGroups = newGroups.map(group => group.map(s => ({
-                    id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order
-                })));
-                const newGroupsData = { ...groupsByDate, [date]: cleanGroups };
+                const newGroupsData = sanitizeGroupsData({ ...groupsByDate, [date]: newGroups });
                 setGroupsByDate(newGroupsData);
                 if (!isLocalMode) saveData('cls_groups_date', newGroupsData);
-                updateRolesIfActive(cleanGroups);
+                updateRolesIfActive(newGroups);
             };
 
             const roleMap = useMemo(() => {
