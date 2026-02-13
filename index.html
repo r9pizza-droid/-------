@@ -3095,6 +3095,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.19", 
+                date: "2026-02-12", 
+                list: ["클라우드 모둠 저장 안정성 강화 (데이터 정제 로직 개선)", "저장 실패 시 상세 에러 메시지 표시"] 
+            },
+            { 
                 version: "v3.4.18", 
                 date: "2026-02-12", 
                 list: ["클라우드 저장 안정성 긴급 패치: 모둠 데이터 용량 초과 시 오래된 기록 자동 삭제 로직 강화 (보관 기간 1년 → 3개월 단축)"] 
@@ -4321,7 +4326,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 18    // Patch: 기존 기능의 버그 수정
+            patch: 19    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4692,7 +4697,9 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             }
 
             await db.collection('artifacts').doc(appId).collection('public').doc('data').set({ [field]: cleanData }, { merge: true }); } catch (e) { logSystemEvent(`Firebase 저장 실패 (${key}): ${e.message}`, 'error'); console.error(e); 
-            if(key === 'cls_groups_date') setToastMessage("저장 실패: 데이터 용량이 여전히 큽니다. 모둠 기록을 초기화해주세요."); } } };
+            if(key === 'cls_groups_date') {
+                setToastMessage(`저장 실패: ${e.message}`);
+            } } } };
             
             const useDeepEffect = (fn, deps) => { const isFirst = useRef(true);
             useEffect(() => { if (isFirst.current) { isFirst.current = false; return; } fn(); }, deps); };
@@ -4790,7 +4797,10 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 if (!isLocalMode) saveData('cls_seat_assignments', newAssignments);
             };
 
-            const sanitizeStudent = (s) => ({ id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order });
+            const sanitizeStudent = (s) => {
+                if (!s) return null;
+                return { id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order };
+            };
             
             const sanitizeGroupsData = (data) => {
                 const cleaned = {};
@@ -4800,7 +4810,10 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     // 3개월 지난 데이터는 제외 (자동 삭제)
                     if (dayjs(d).isValid() && dayjs(d).isBefore(threeMonthsAgo)) return;
                     if (!Array.isArray(data[d])) return;
-                    cleaned[d] = data[d].map(group => group.map(s => sanitizeStudent(s)));
+                    cleaned[d] = data[d].map(group => {
+                        if (!Array.isArray(group)) return [];
+                        return group.map(s => sanitizeStudent(s)).filter(s => s !== null);
+                    });
                 });
                 return cleaned;
             };
