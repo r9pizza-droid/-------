@@ -3095,6 +3095,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.26", 
+                date: "2026-02-12", 
+                list: ["Firebase 동기화 시 모둠 편성 결과 깜빡임 및 데이터 유실 문제 해결 (Batch Update 적용)"] 
+            },
+            { 
                 version: "v3.4.25", 
                 date: "2026-02-12", 
                 list: ["Firebase 동기화 시 모둠 데이터 표시 오류 수정 (서버/로컬 데이터 병합 로직 강화)", "모둠 편성 직후 데이터가 보이지 않는 현상 해결"] 
@@ -4356,7 +4361,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 25    // Patch: 기존 기능의 버그 수정
+            patch: 26    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4760,52 +4765,64 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             
             useEffect(() => { if (mode === 'record') { const dayOfWeek = dayjs(date).day(); if ((!dailyTasks[date] || dailyTasks[date].length === 0) && weeklyTasks[dayOfWeek]?.length > 0) { const tasksToAdd = weeklyTasks[dayOfWeek].map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t); const newDailyTasks = { ...dailyTasks, [date]: tasksToAdd }; setDailyTasks(newDailyTasks); if (isLocalMode) saveData('cls_daily_tasks', newDailyTasks); } } }, [date, mode, weeklyTasks]);
             
-            const saveData = async (key, data) => { if (isLocalMode) localStorage.setItem(key, JSON.stringify(data));
-            else if (db && appId) { try { const field = key.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
-            const cleanData = JSON.parse(JSON.stringify(data)); // undefined 제거 및 데이터 정제
-            
-            // [긴급 패치] 모둠 데이터 용량 최적화 로직 강화 (ID만 저장)
-            if (key === 'cls_groups_date') {
-                // 1. 데이터 최소화 (ID만 저장하여 용량 최소화)
-                const minimizedData = {};
-                Object.keys(cleanData).forEach(d => {
-                    if(Array.isArray(cleanData[d])) {
-                        minimizedData[d] = cleanData[d].map(g => {
-                            if (!Array.isArray(g)) return [];
-                            return g.map(s => {
-                                if (!s) return null;
-                                return (typeof s === 'object') ? s.id : s;
-                            }).filter(v => v !== null);
-                        });
-                    }
-                });
-
-                let jsonString = JSON.stringify(minimizedData);
-                const MAX_SIZE = 900000; // 약 900KB (Firestore 제한 1MB 대비 여유분 확보)
+            // [Fix] saveData 함수 개선: 단일 키/값 저장뿐만 아니라 객체 형태의 일괄 저장(Batch) 지원
+            const saveData = async (keyOrData, value) => {
+                const updates = (typeof keyOrData === 'object') ? keyOrData : { [keyOrData]: value };
                 
-                if (jsonString.length > MAX_SIZE) {
-                    const dates = Object.keys(minimizedData).sort(); // 날짜 오름차순 정렬 (오래된 날짜부터)
-                    let deletedCount = 0;
-                    
-                    while (jsonString.length > MAX_SIZE && dates.length > 0) {
-                        const oldDate = dates.shift(); // 가장 오래된 날짜 제거
-                        delete minimizedData[oldDate];
-                        deletedCount++;
-                        jsonString = JSON.stringify(minimizedData);
-                    }
-                    
-                    if (deletedCount > 0) {
-                        setToastMessage(`클라우드 용량 확보를 위해 오래된 모둠 기록 ${deletedCount}건을 정리했습니다.`);
+                if (isLocalMode) {
+                    Object.entries(updates).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
+                    return;
+                }
+                
+                if (db && appId) {
+                    try {
+                        const payload = {};
+                        for (const [k, v] of Object.entries(updates)) {
+                            const field = k.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
+                            const cleanData = JSON.parse(JSON.stringify(v));
+                            
+                            // 모둠 데이터 용량 최적화 로직 (ID만 저장)
+                            if (k === 'cls_groups_date') {
+                                const minimizedData = {};
+                                Object.keys(cleanData).forEach(d => {
+                                    if(Array.isArray(cleanData[d])) {
+                                        minimizedData[d] = cleanData[d].map(g => {
+                                            if (!Array.isArray(g)) return [];
+                                            return g.map(s => {
+                                                if (!s) return null;
+                                                return (typeof s === 'object') ? s.id : s;
+                                            }).filter(v => v !== null);
+                                        });
+                                    }
+                                });
+                                
+                                let jsonString = JSON.stringify(minimizedData);
+                                const MAX_SIZE = 900000;
+                                if (jsonString.length > MAX_SIZE) {
+                                    const dates = Object.keys(minimizedData).sort();
+                                    let deletedCount = 0;
+                                    while (jsonString.length > MAX_SIZE && dates.length > 0) {
+                                        const oldDate = dates.shift();
+                                        delete minimizedData[oldDate];
+                                        deletedCount++;
+                                        jsonString = JSON.stringify(minimizedData);
+                                    }
+                                    if (deletedCount > 0) setToastMessage(`클라우드 용량 확보를 위해 오래된 모둠 기록 ${deletedCount}건을 정리했습니다.`);
+                                }
+                                payload[field] = minimizedData;
+                            } else {
+                                payload[field] = cleanData;
+                            }
+                        }
+                        // 모든 변경사항을 한 번에 저장 (Atomic Update)
+                        await db.collection('artifacts').doc(appId).collection('public').doc('data').set(payload, { merge: true });
+                    } catch (e) {
+                        logSystemEvent(`Firebase 저장 실패: ${e.message}`, 'error');
+                        console.error(e);
+                        setToastMessage(`저장 실패: ${e.message}`);
                     }
                 }
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').set({ [field]: minimizedData }, { merge: true });
-                return;
-            }
-
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').set({ [field]: cleanData }, { merge: true }); } catch (e) { logSystemEvent(`Firebase 저장 실패 (${key}): ${e.message}`, 'error'); console.error(e); 
-            if(key === 'cls_groups_date') {
-                setToastMessage(`저장 실패: ${e.message}`);
-            } } } };
+            };
             
             const useDeepEffect = (fn, deps) => { const isFirst = useRef(true);
             useEffect(() => { if (isFirst.current) { isFirst.current = false; return; } fn(); }, deps); };
@@ -5226,9 +5243,16 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                              newGroupsData[d] = JSON.parse(JSON.stringify(plainGroups));
                          }
                          setGroupsByDate(newGroupsData);
-                         if (!isLocalMode) saveData('cls_groups_date', newGroupsData);
                          
-                         updateRolesIfActive(plainGroups);
+                         const updates = { 'cls_groups_date': newGroupsData };
+                         if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
+                             const newRolesForDate = calculateRoles(plainGroups);
+                             const newGroupRoles = { ...groupRoles, [date]: newRolesForDate };
+                             setGroupRoles(newGroupRoles);
+                             updates['cls_group_roles'] = newGroupRoles;
+                         }
+                         if (!isLocalMode) saveData(updates);
+                         
                          syncSeatsWithGroups(plainGroups);
                     } else {
                          const newGroupsData = sanitizeGroupsData({ ...groupsByDate });
@@ -5242,12 +5266,13 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          }
 
                          setGroupsByDate(newGroupsData);
-                         if (!isLocalMode) saveData('cls_groups_date', newGroupsData);
-
+                         
+                         const updates = { 'cls_groups_date': newGroupsData };
                          if (hasActiveRoles) {
                              setGroupRoles(newGroupRoles);
-                             if (!isLocalMode) saveData('cls_group_roles', newGroupRoles);
+                             updates['cls_group_roles'] = newGroupRoles;
                          }
+                         if (!isLocalMode) saveData(updates);
 
                          syncSeatsWithGroups(finalGroups);
                     }
@@ -5274,8 +5299,16 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
                 const newGroups = groups.map((_, i) => { const srcIdx = (i - 1 + groups.length) % groups.length; return rotateArray(groups[srcIdx]).map(s => sanitizeStudent(s)); });
                 const newGroupsData = sanitizeGroupsData({ ...groupsByDate, [date]: newGroups }); setGroupsByDate(newGroupsData);
-                if (!isLocalMode) saveData('cls_groups_date', newGroupsData); 
-                updateRolesIfActive(newGroups);
+                
+                const updates = { 'cls_groups_date': newGroupsData };
+                if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
+                    const newRolesForDate = calculateRoles(newGroups);
+                    const newGroupRoles = { ...groupRoles, [date]: newRolesForDate };
+                    setGroupRoles(newGroupRoles);
+                    updates['cls_group_roles'] = newGroupRoles;
+                }
+                if (!isLocalMode) saveData(updates);
+                
                 syncSeatsWithGroups(newGroups);
                 setToastMessage("자전과 공전(회전)이 완료되었습니다."); 
             };
@@ -5329,8 +5362,15 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 currentGroups[toGroupIdx] = [...currentGroups[toGroupIdx], sanitizeStudent(student)]; 
                 const newGroupsData = sanitizeGroupsData({ ...groupsByDate, [date]: currentGroups }); 
                 setGroupsByDate(newGroupsData);
-                if (!isLocalMode) saveData('cls_groups_date', newGroupsData); 
-                updateRolesIfActive(currentGroups);
+                
+                const updates = { 'cls_groups_date': newGroupsData };
+                if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
+                    const newRolesForDate = calculateRoles(currentGroups);
+                    const newGroupRoles = { ...groupRoles, [date]: newRolesForDate };
+                    setGroupRoles(newGroupRoles);
+                    updates['cls_group_roles'] = newGroupRoles;
+                }
+                if (!isLocalMode) saveData(updates);
             };
 
             const handleAssignRoles = () => {
@@ -5391,8 +5431,15 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 // 데이터 크기 최적화를 위해 사진 등 불필요한 정보 제거
                 const newGroupsData = sanitizeGroupsData({ ...groupsByDate, [date]: newGroups });
                 setGroupsByDate(newGroupsData);
-                if (!isLocalMode) saveData('cls_groups_date', newGroupsData);
-                updateRolesIfActive(newGroups);
+                
+                const updates = { 'cls_groups_date': newGroupsData };
+                if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
+                    const newRolesForDate = calculateRoles(newGroups);
+                    const newGroupRoles = { ...groupRoles, [date]: newRolesForDate };
+                    setGroupRoles(newGroupRoles);
+                    updates['cls_group_roles'] = newGroupRoles;
+                }
+                if (!isLocalMode) saveData(updates);
             };
 
             const roleMap = useMemo(() => {
