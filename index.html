@@ -3164,6 +3164,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.12", 
+                date: "2026-02-12", 
+                list: ["모바일에서 모둠 편성 시 결과 화면으로 자동 전환되도록 개선", "자리 배치도 설정 버튼 아이콘 변경 (<, >)"] 
+            },
+            { 
                 version: "v3.4.11", 
                 date: "2026-02-12", 
                 list: ["모바일 화면에서 자리 배치도 설정 패널이 화면을 벗어나는 문제 해결 (하단 배치 및 줄바꿈 적용)"] 
@@ -4281,7 +4286,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                             <div className="flex items-center gap-2">
                                 <Btn onClick={handleDownloadImage} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg" title="이미지로 저장"><Icon d={PATHS.download} size={18} /></Btn>
                                 <Btn onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`p-1.5 rounded-lg transition-colors ${isSettingsOpen ? 'bg-slate-100 text-slate-600' : 'text-slate-400 hover:bg-slate-50'}`}>
-                                    <Icon d={PATHS.settings} size={16} />
+                                    <Icon d={isSettingsOpen ? PATHS.right : PATHS.left} size={16} />
                                 </Btn>
                             </div>
                         </div>
@@ -4353,7 +4358,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 11    // Patch: 기존 기능의 버그 수정
+            patch: 12    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4904,6 +4909,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
                         syncSeatsWithGroups(mappedGroups);
                         setToastMessage(`AI 모둠 편성이 완료되었습니다. (${groupDuration}일 적용)`);
+                        if (window.innerWidth < 768) setIsGroupPanelOpen(false);
                     } catch (e) {
                         logSystemEvent(`AI 모둠 편성 실패: ${e.message}`, 'error');
                         setToastMessage("AI 편성 실패: " + e.message);
@@ -5123,6 +5129,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          syncSeatsWithGroups(finalGroups);
                     }
                     setIsGenerating(false);
+                    if (window.innerWidth < 768) setIsGroupPanelOpen(false);
                     setToastMessage(`모둠 편성이 완료되었습니다. (${groupDuration}일 적용)` + (useHistory ? " (최근 기록 반영됨)" : ""));
                 }, 100);
             };
