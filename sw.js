@@ -1,5 +1,5 @@
 // 캐시 이름 (버전 업데이트 시 이 이름을 변경하면 브라우저가 새로운 버전으로 인식합니다)
-const CACHE_NAME = 'checklist-app-v3.4.
+const CACHE_NAME = 'checklist-app-v3.4.10';
 // 캐싱할 파일 목록 (오프라인에서도 실행되게 하려면 CDN 주소들도 여기에 포함해야 합니다)
 const URLS_TO_CACHE = [
   './',

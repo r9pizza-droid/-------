@@ -931,21 +931,21 @@
                     >
                         <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 md:hidden flex-shrink-0" />
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800">🌱 학생 인사이트</h3>
-                            <div className="flex gap-3" id="export-hide-area">
+                            <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 text-slate-800 whitespace-nowrap">🌱 학생 인사이트</h3>
+                            <div className="flex gap-1 md:gap-3" id="export-hide-area">
                                 <div className="relative group flex flex-col items-center">
-                                    <button onClick={handleOpenCounselingAI} className="p-2 hover:bg-rose-50 text-rose-500 rounded-full transition-colors"><Icon d={PATHS.heart} /></button>
+                                    <button onClick={handleOpenCounselingAI} className="p-1.5 md:p-2 hover:bg-rose-50 text-rose-500 rounded-full transition-colors"><Icon d={PATHS.heart} /></button>
                                     <span className="absolute top-full mt-1 text-[10px] font-bold text-slate-500 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-white px-2 py-1 rounded-md shadow-sm border border-slate-100 pointer-events-none z-50">AI 상담소</span>
                                 </div>
                                 <div className="relative group flex flex-col items-center">
-                                    <button onClick={handleOpenStudentRecordAI} className="p-2 hover:bg-blue-50 text-blue-500 rounded-full transition-colors"><Icon d={PATHS.document} /></button>
+                                    <button onClick={handleOpenStudentRecordAI} className="p-1.5 md:p-2 hover:bg-blue-50 text-blue-500 rounded-full transition-colors"><Icon d={PATHS.document} /></button>
                                     <span className="absolute top-full mt-1 text-[10px] font-bold text-slate-500 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-white px-2 py-1 rounded-md shadow-sm border border-slate-100 pointer-events-none z-50">총평 초안</span>
                                 </div>
                                 <div className="relative group flex flex-col items-center">
-                                    <button onClick={handlePrepareReport} disabled={isGenerating} className={`p-2 rounded-full transition-colors ${isGenerating ? 'bg-slate-100 text-slate-400 cursor-wait' : 'hover:bg-indigo-50 text-indigo-600'}`}><Icon d={PATHS.edit} /></button>
+                                    <button onClick={handlePrepareReport} disabled={isGenerating} className={`p-1.5 md:p-2 rounded-full transition-colors ${isGenerating ? 'bg-slate-100 text-slate-400 cursor-wait' : 'hover:bg-indigo-50 text-indigo-600'}`}><Icon d={PATHS.edit} /></button>
                                     <span className="absolute top-full mt-1 text-[10px] font-bold text-slate-500 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-white px-2 py-1 rounded-md shadow-sm border border-slate-100 pointer-events-none z-50">리포트 작성</span>
                                 </div>
-                                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><Icon d={PATHS.x} /></button>
+                                <button onClick={onClose} className="p-1.5 md:p-2 hover:bg-slate-100 rounded-full"><Icon d={PATHS.x} /></button>
                             </div>
                         </div>
                         <div className="flex items-center justify-between mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100 flex-wrap">
@@ -3164,6 +3164,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.10", 
+                date: "2026-02-12", 
+                list: ["모바일 화면에서 학생 인사이트 카드 상단 버튼 간격 조정 (타이틀 줄바꿈 현상 개선)"] 
+            },
+            { 
                 version: "v3.4.9", 
                 date: "2026-02-12", 
                 list: ["앱 업데이트 알림 팝업 디자인 개선 (로켓 아이콘 강조 및 UI 고도화)"] 
@@ -4341,7 +4346,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 9    // Patch: 기존 기능의 버그 수정
+            patch: 10    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
