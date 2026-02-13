@@ -3095,6 +3095,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.4.20", 
+                date: "2026-02-12", 
+                list: ["모둠 편성 시 자리 배치도에 결과가 즉시 반영되지 않는 문제 해결 (데이터 처리 안정성 강화)"] 
+            },
+            { 
                 version: "v3.4.19", 
                 date: "2026-02-12", 
                 list: ["클라우드 모둠 저장 안정성 강화 (데이터 정제 로직 개선)", "저장 실패 시 상세 에러 메시지 표시"] 
@@ -4326,7 +4331,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 19    // Patch: 기존 기능의 버그 수정
+            patch: 20    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4781,7 +4786,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             // [New] 모둠 결과를 자리 배치에 동기화하는 함수
             const syncSeatsWithGroups = (groupsToSync) => {
                 const newAssignments = {};
-                const flatStudents = groupsToSync.flat();
+                const flatStudents = groupsToSync.flat().filter(s => s && s.id);
                 let idx = 0;
                 for (let r = 0; r < seatConfig.rows; r++) {
                     for (let c = 0; c < seatConfig.cols; c++) {
@@ -5100,7 +5105,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     }
 
                     const rawGroups = bestGroups || Array.from({ length: targetGroupCount }, () => []);
-                    const finalGroups = rawGroups.map(g => g.map(s => sanitizeStudent(s)));
+                    const finalGroups = rawGroups.map(g => g.map(s => sanitizeStudent(s)).filter(s => s !== null));
 
                     if(finalGroups.flat().length === 0) {
                          const plainGroups = Array.from({ length: targetGroupCount }, () => []);
