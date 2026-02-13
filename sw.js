@@ -1,5 +1,6 @@
 // 캐시 이름 (버전 업데이트 시 이 이름을 변경하면 브라우저가 새로운 버전으로 인식합니다)
-const CACHE_NAME = 'checklist-app-v3.4.2
+const CACHE_NAME = 'checklist-app-v3.4.23';
+const URLS_TO_CACHE = [
   './',
   './index.html',
   // 필요한 경우 아이콘이나 다른 로컬 에셋 경로를 추가하세요.
