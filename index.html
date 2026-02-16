@@ -3635,6 +3635,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.5.15", 
+                date: "2026-02-13", 
+                list: ["Safari 등 모바일 환경에서 데이터 로딩이 멈추는 현상 수정 (예외 처리 강화)"] 
+            },
+            { 
                 version: "v3.5.14", 
                 date: "2026-02-13", 
                 list: ["앱 아이콘 설정 시 iOS 홈 화면 스타일 미리보기 추가", "아이콘 변경 후 재설치 안내 메시지 추가"] 
@@ -5214,7 +5219,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 5,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 14    // Patch: 기존 기능의 버그 수정
+                patch: 15    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5698,9 +5703,14 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                             setAutoCloseTimer(3);
                                             localStorage.setItem('cls_intro_shown', 'true');
                                         }
+                                    } else {
+                                        // [Fix] 문서가 없는 경우에도 로딩 해제 (무한 로딩 방지)
+                                        setIsLoading(false);
                                     }
                                 }, (error) => {
                                     logSystemEvent(`Firestore 스냅샷 에러: ${error.message}`, 'error');
+                                    setIsLoading(false); // [Fix] 에러 발생 시 로딩 해제
+                                    setToastMessage("데이터 로딩 오류: " + error.message);
                                 });
 
                                 // [New] 모둠 결과 하위 컬렉션 리스너 (1MB 제한 회피)
