@@ -3635,6 +3635,16 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.5.18", 
+                date: "2026-02-13", 
+                list: ["홈 화면 아이콘 적용 로직 개선 (태그 재생성 방식 적용)", "숙제 체크 및 칭찬 스티커 지급 시 햅틱(진동) 피드백 추가"] 
+            },
+            { 
+                version: "v3.5.17", 
+                date: "2026-02-13", 
+                list: ["iOS 홈 화면 아이콘 적용 문제 해결 (SVG/이미지를 PNG로 자동 변환 및 흰색 배경 적용)"] 
+            },
+            { 
                 version: "v3.5.16", 
                 date: "2026-02-13", 
                 list: ["데이터 로딩 실패 시 '강제 로컬 모드' 전환 버튼 추가 (Safari 무한 로딩 해결)", "로딩 지연 감지 시간 단축 (10초 → 7초)"] 
@@ -5224,7 +5234,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 5,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 16    // Patch: 기존 기능의 버그 수정
+                patch: 18    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5869,7 +5879,10 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_assignments', seatAssignments); }, [seatAssignments]);
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_config', seatConfig); }, [seatConfig]);
 
-            const toggleCheck = (id, taskIndex = null) => { if (mode === 'simple') { const newDone = !simpleChecks[id];
+            const toggleCheck = (id, taskIndex = null) => { 
+                if (navigator.vibrate) navigator.vibrate(15); // [New] 햅틱 피드백 추가
+
+                if (mode === 'simple') { const newDone = !simpleChecks[id];
             setSimpleChecks({ ...simpleChecks, [id]: newDone }); if (newDone) confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#6366f1', '#8b5cf6'] });
             return; } const currentRec = records[date]?.[id] || { done: false, tasks: {} }; const currentTasks = dailyTasks[date] || [];
             let newRec; if (taskIndex !== null) { const newTasksStatus = { ...currentRec.tasks, [taskIndex]: !currentRec.tasks?.[taskIndex] };
