@@ -8,6 +8,7 @@
     <meta property="og:description" content="우리 반 숙제 확인 및 학급 경영 도구">
     
     <link rel="icon" id="app-favicon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com" data-app-script="true"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js" data-app-script="true" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/locale/ko.min.js" data-app-script="true" crossorigin="anonymous"></script>
@@ -2342,6 +2343,46 @@
             );
         };
 
+        const InstallGuideModal = ({ isOpen, onClose, onInstall, isIOS }) => {
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="📲 앱 설치 안내" icon={PATHS.download} maxWidth="max-w-md">
+                    <div className="space-y-6 text-center">
+                        <div className="w-20 h-20 bg-indigo-100 rounded-3xl mx-auto flex items-center justify-center shadow-inner">
+                            <span className="text-4xl">📱</span>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-bold text-slate-800">홈 화면에 추가해보세요!</h3>
+                            <p className="text-sm text-slate-500 leading-relaxed">
+                                앱을 설치하면 더 편리하게 사용할 수 있습니다.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-left">
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100"><div className="font-bold text-slate-700 text-sm mb-1">⚡️ 빠른 실행</div><div className="text-xs text-slate-500">홈 화면에서 바로 접속하세요.</div></div>
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100"><div className="font-bold text-slate-700 text-sm mb-1">🖥️ 넓은 화면</div><div className="text-xs text-slate-500">주소창 없이 넓게 봅니다.</div></div>
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100"><div className="font-bold text-slate-700 text-sm mb-1">💾 오프라인</div><div className="text-xs text-slate-500">인터넷 없이도 조회 가능합니다.</div></div>
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100"><div className="font-bold text-slate-700 text-sm mb-1">🔄 자동 업데이트</div><div className="text-xs text-slate-500">항상 최신 기능을 유지합니다.</div></div>
+                        </div>
+                        
+                        {isIOS ? (
+                            <div className="bg-slate-100 p-4 rounded-xl text-left text-sm space-y-2 animate-fade-in">
+                                <p className="font-bold text-slate-700 flex items-center gap-2">🍎 아이폰/아이패드 설치 방법</p>
+                                <ol className="list-decimal pl-5 space-y-1 text-slate-600 text-xs">
+                                    <li>사파리(Safari) 하단의 <span className="font-bold text-blue-500">공유(Share)</span> 버튼 터치</li>
+                                    <li>메뉴에서 <span className="font-bold text-slate-800">홈 화면에 추가</span> 선택</li>
+                                    <li>우측 상단의 <span className="font-bold text-blue-500">추가</span> 버튼 터치</li>
+                                </ol>
+                            </div>
+                        ) : (
+                            <Btn onClick={onInstall} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                <Icon d={PATHS.download} /> 지금 설치하기
+                            </Btn>
+                        )}
+                    </div>
+                </BaseModal>
+            );
+        };
+
         const DataCleanupModal = ({ isOpen, onClose, groupsByDate, records, setGroupsByDate, setRecords, saveData, isLocalMode, showToast, onBackup }) => {
             const [targetDate, setTargetDate] = useState(dayjs().subtract(1, 'year').format('YYYY-MM-DD'));
             
@@ -2400,7 +2441,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId }) => {
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const counselingFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -2994,6 +3035,23 @@
                                 <h3 className="text-xl font-bold text-slate-800 border-b-2 border-slate-100 pb-3 mb-5 flex items-center gap-2 cursor-default select-none" onClick={handleDataManagementClick}>
                                     <span className="text-2xl">📱</span> 앱 설정 {isAdminMode && <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-1">관리자 모드</span>}
                                 </h3>
+                                {(!isStandalone && (deferredPrompt || isIOS)) && (
+                                    <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-5 rounded-2xl text-white shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in mb-6 relative overflow-hidden group cursor-pointer" onClick={onInstallApp}>
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/20 transition-all"></div>
+                                        <div className="flex items-center gap-4 relative z-10">
+                                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                                                <span className="text-2xl">📲</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-lg">앱으로 설치하고 더 편하게!</span>
+                                                <span className="text-xs text-indigo-100 font-medium">오프라인 사용 • 전체 화면 • 빠른 실행</span>
+                                            </div>
+                                        </div>
+                                        <Btn className="bg-white text-indigo-600 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-50 shadow-md whitespace-nowrap relative z-10 transition-transform active:scale-95">
+                                            {isIOS ? "설치 방법 보기" : "홈 화면에 추가"}
+                                        </Btn>
+                                    </div>
+                                )}
                                 <div className="space-y-4">
                                     {isAdminMode && (
                                         <>
@@ -3021,11 +3079,11 @@
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1">
                                                             <span className="text-[9px] text-slate-400 font-bold">iOS 홈</span>
-                                                            <div className="flex flex-col items-center gap-1">
-                                                                <div className="w-12 h-12 bg-white rounded-[10px] flex items-center justify-center overflow-hidden shadow-md border border-slate-100">
-                                                                    {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-2xl">📝</span>}
+                                                            <div className="relative w-14 h-16 bg-gradient-to-b from-sky-300 to-sky-500 rounded-lg flex flex-col items-center justify-center shadow-inner border border-slate-200 overflow-hidden pt-1">
+                                                                <div className="w-9 h-9 bg-white rounded-[8px] flex items-center justify-center overflow-hidden shadow-sm mb-0.5">
+                                                                    {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-lg">📝</span>}
                                                                 </div>
-                                                                <span className="text-[8px] text-slate-500 font-medium truncate max-w-[50px]">{cfg.recordTitle || "다했나요!?"}</span>
+                                                                <span className="text-[6px] text-white font-medium drop-shadow-md truncate max-w-[48px] px-0.5">{cfg.recordTitle || "다했나요!?"}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -3634,6 +3692,31 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.5.24", 
+                date: "2026-02-13", 
+                list: ["앱 아이콘 변경 시 브라우저 캐시 무시 및 즉시 반영 로직 강화 (태그 재생성 방식)"] 
+            },
+            { 
+                version: "v3.5.23", 
+                date: "2026-02-13", 
+                list: ["설정 > 앱 아이콘 미리보기에 'iOS 홈 화면 스타일(배경화면 효과)' 적용"] 
+            },
+            { 
+                version: "v3.5.22", 
+                date: "2026-02-13", 
+                list: ["앱 설치 안내 팝업 추가 (설치 혜택 및 iOS 가이드 제공)", "설정 메뉴의 앱 설치 섹션 디자인 개선"] 
+            },
+            { 
+                version: "v3.5.21", 
+                date: "2026-02-13", 
+                list: ["앱 설치(홈 화면에 추가) 버튼 추가 (설정 > 앱 설정)", "앱 아이콘 변경 시 즉시 반영되도록 캐시 갱신 로직 개선"] 
+            },
+            { 
+                version: "v3.5.20", 
+                date: "2026-02-13", 
+                list: ["iOS 홈 화면 아이콘(apple-touch-icon) 정적 링크 추가 및 Manifest 경로 통일"] 
+            },
             { 
                 version: "v3.5.19", 
                 date: "2026-02-13", 
@@ -5239,7 +5322,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 5,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 19    // Patch: 기존 기능의 버그 수정
+                patch: 24    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5354,6 +5437,10 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [focusedGroupIdx, setFocusedGroupIdx] = useState(null);
             const [showPartnerAnalysis, setShowPartnerAnalysis] = useState(false);
             const [expandedGroupCards, setExpandedGroupCards] = useState({});
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
+            const [isIOS, setIsIOS] = useState(false);
+            const [isStandalone, setIsStandalone] = useState(false);
+            const [showInstallGuide, setShowInstallGuide] = useState(false);
 
             // [Fix] onSnapshot 내부에서 최신 students 상태를 참조하기 위한 Ref
             const studentsRef = useRef(students);
@@ -5380,11 +5467,106 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             }, [isLoading]);
 
             useEffect(() => {
-                const link = document.getElementById('app-favicon');
-                if (link) {
-                    link.href = appConfig.favicon || "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>";
+                const handler = (e) => {
+                    e.preventDefault();
+                    setDeferredPrompt(e);
+                };
+                window.addEventListener('beforeinstallprompt', handler);
+                
+                const userAgent = window.navigator.userAgent.toLowerCase();
+                setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+                setIsStandalone(window.matchMedia('(display-mode: standalone)').matches);
+
+                return () => window.removeEventListener('beforeinstallprompt', handler);
+            }, []);
+
+            const handleInstallApp = () => {
+                setShowInstallGuide(true);
+            };
+
+            const confirmInstall = async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') { setDeferredPrompt(null); setShowInstallGuide(false); }
+                } else if (!isIOS) {
+                    setToastMessage("이미 설치되어 있거나 설치를 지원하지 않는 브라우저입니다.");
                 }
-            }, [appConfig.favicon]);
+            };
+
+            useEffect(() => {
+                const updateIcons = async () => {
+                    const defaultSvg = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>";
+                    const iconSrc = appConfig.favicon || defaultSvg;
+                    
+                    // [Fix] 브라우저 캐시 문제 해결을 위해 기존 태그 제거 후 재생성
+                    const existingFavicon = document.getElementById('app-favicon');
+                    if (existingFavicon) existingFavicon.remove();
+                    const newFavicon = document.createElement('link');
+                    newFavicon.id = 'app-favicon';
+                    newFavicon.rel = 'icon';
+                    newFavicon.href = iconSrc;
+                    document.head.appendChild(newFavicon);
+
+                    // [iOS 호환성] 이미지를 캔버스에 그려서 PNG로 변환 (흰색 배경 추가)
+                    const getPngDataUrl = (src) => {
+                        return new Promise((resolve) => {
+                            const img = new Image();
+                            img.crossOrigin = 'Anonymous';
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = 192; canvas.height = 192;
+                                const ctx = canvas.getContext('2d');
+                                ctx.fillStyle = "#ffffff"; // iOS는 투명 배경을 검게 처리하므로 흰색 배경 필수
+                                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                ctx.drawImage(img, 0, 0, 192, 192);
+                                resolve(canvas.toDataURL('image/png'));
+                            };
+                            img.onerror = () => resolve(src); // 실패 시 원본 반환
+                            img.src = src;
+                        });
+                    };
+
+                    let pngIcon = iconSrc;
+                    if (iconSrc.startsWith('data:image')) {
+                        try { pngIcon = await getPngDataUrl(iconSrc); } catch (e) { console.error(e); }
+                    }
+
+                    // [Fix] 기존 태그 제거 후 재생성 (브라우저 인식 강제)
+                    const existingAppleLinks = document.querySelectorAll('link[rel="apple-touch-icon"]');
+                    existingAppleLinks.forEach(el => el.remove());
+                    const appleIconLink = document.createElement('link');
+                    appleIconLink.rel = 'apple-touch-icon';
+                    document.head.appendChild(appleIconLink);
+                    appleIconLink.href = pngIcon;
+
+                    const manifest = {
+                        name: appConfig.recordTitle || "다했나요!?",
+                        short_name: appConfig.recordTitle || "다했나요!?",
+                        start_url: "./index.html",
+                        display: "standalone",
+                        background_color: "#ffffff",
+                        theme_color: "#ffffff",
+                        icons: [ { src: pngIcon, sizes: "192x192", type: "image/png" }, { src: pngIcon, sizes: "512x512", type: "image/png" } ]
+                    };
+                    
+                    const stringManifest = JSON.stringify(manifest);
+                    const blob = new Blob([stringManifest], {type: 'application/json'});
+                    const manifestURL = URL.createObjectURL(blob);
+                    
+                    const existingManifest = document.getElementById('app-manifest');
+                    if (existingManifest) {
+                        URL.revokeObjectURL(existingManifest.href);
+                        existingManifest.remove();
+                    }
+                    const manifestLink = document.createElement('link');
+                    manifestLink.id = 'app-manifest';
+                    manifestLink.rel = 'manifest';
+                    document.head.appendChild(manifestLink);
+                    manifestLink.href = manifestURL;
+                };
+                updateIcons();
+            }, [appConfig.favicon, appConfig.recordTitle]);
 
             // [Fix] 비동기 로직(setTimeout) 내에서 최신 상태를 참조하기 위한 Refs 추가
             const groupsByDateRef = useRef(groupsByDate);
@@ -7163,7 +7345,12 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         seatConfig={seatConfig} setSeatConfig={setSeatConfig}
                         db={db}
                         appId={appId}
+                        deferredPrompt={deferredPrompt}
+                        isIOS={isIOS}
+                        isStandalone={isStandalone}
+                        onInstallApp={handleInstallApp}
                     />
+                    <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} onInstall={confirmInstall} isIOS={isIOS} />
                     <TaskModal isOpen={isTaskModalOpen} onClose={()=>setIsTaskModalOpen(false)} date={date} dailyTasks={dailyTasks} setDailyTasks={setDailyTasks} weeklyTasks={weeklyTasks} setWeeklyTasks={setWeeklyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} tags={tags} setTags={setTags} openConfirm={openConfirm} />
                     <CalendarModal isOpen={isCalendarOpen} onClose={()=>setIsCalendarOpen(false)} currentDate={date} onSelectDate={setDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
                     <CalendarModal isOpen={isRangeCalendarOpen} onClose={()=>setIsRangeCalendarOpen(false)} currentDate={date} selectionMode="range" onSelectRange={handleRangeSelect} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
