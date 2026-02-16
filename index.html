@@ -471,7 +471,7 @@
             );
         };
 
-        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft }) => {
+        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId }) => {
             if (!isOpen || !student || !student.history) return null;
 
             const [translateY, setTranslateY] = useState(0);
@@ -528,15 +528,38 @@
             const [phrases, setPhrases] = useState(() => { try { return JSON.parse(localStorage.getItem('cls_report_phrases') || '[]'); } catch { return []; } });
             const [showPhraseList, setShowPhraseList] = useState(false);
             const [chartType, setChartType] = useState('bar');
+            const [grassStart, setGrassStart] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
+            const [grassEnd, setGrassEnd] = useState(dayjs().endOf('month').format('YYYY-MM-DD'));
+            const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             
             useEffect(() => { 
+                if (!student) return;
                 setStickerCount(student.stickers || 0);
-                const data = student.counseling;
-                if (Array.isArray(data)) setNotes(data);
-                else if (data) setNotes([{ id: Date.now(), date: dayjs().format('YYYY-MM-DD'), content: data }]);
-                else setNotes([]);
+                
+                // [New] 클라우드 모드일 때 개별 학생 데이터(상담기록, 초안) 불러오기
+                if (!isLocalMode && db && appId) {
+                    const unsubscribe = db.collection('classes').doc(appId).collection('studentData').doc(String(student.id))
+                        .onSnapshot(doc => {
+                            if (doc.exists) {
+                                const data = doc.data();
+                                if (data.counseling) setNotes(data.counseling);
+                                // 초안 데이터는 student 객체에 병합되어야 함 (상위 컴포넌트에서 처리하거나 여기서 별도 관리)
+                                // 여기서는 notes(상담기록)만 실시간 업데이트
+                            }
+                        }, err => console.error("개별 데이터 로드 실패:", err));
+                    return () => unsubscribe();
+                } else {
+                    // 로컬 모드거나 초기 데이터 사용
+                    const data = student.counseling;
+                    if (Array.isArray(data)) setNotes(data);
+                    else if (data) setNotes([{ id: Date.now(), date: dayjs().format('YYYY-MM-DD'), content: data }]);
+                    else setNotes([]);
+                }
                 setAiComment("");
-            }, [student]);
+            }, [student, isLocalMode, db, appId]);
+
+            // student prop이 변경될 때 notes 초기화 방지 (위 useEffect에서 처리)
+            // useEffect(() => { ... }, [student]); // 기존 로직 대체됨
 
             useEffect(() => {
                 setNoteDate(selectedDate || dayjs().format('YYYY-MM-DD'));
@@ -607,6 +630,7 @@
 
                 while(curr.isBefore(end) || curr.isSame(end, 'day')) {
                     const dStr = curr.format('YYYY-MM-DD');
+                    if (curr.day() === 0 || curr.day() === 6) { curr = curr.add(1, 'day'); continue; } // 주말 제외
                     const tasks = dailyTasks[dStr] || [];
                     const rec = records[dStr]?.[student.id];
                     
@@ -788,9 +812,45 @@
                 });
             };
 
-            const displayHistory = [...student.history].reverse();
-            const totalDays = displayHistory.length;
-            const avgRate = totalDays > 0 ? Math.round((displayHistory.reduce((acc, h) => acc + h.ratio, 0) / totalDays) * 100) : 0;
+            const grassHistory = useMemo(() => {
+                const start = dayjs(grassStart);
+                const end = dayjs(grassEnd);
+                const diff = end.diff(start, 'day') + 1;
+                const history = [];
+
+                for (let i = 0; i < diff; i++) {
+                    const d = start.add(i, 'day');
+                    const dStr = d.format('YYYY-MM-DD');
+                    const dayOfWeek = d.day();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) continue; // 주말 제외
+
+                    const tasks = dailyTasks[dStr] || [];
+                    const rec = records[dStr]?.[student.id];
+                    let done = 0;
+                    let total = 0;
+                    
+                    if (tasks.length > 0) {
+                        total = tasks.length;
+                        if (rec) {
+                            tasks.forEach((_, idx) => {
+                                if (rec.tasks && rec.tasks[idx]) done++;
+                                else if (!rec.tasks && rec.done) done++;
+                            });
+                        }
+                    } else {
+                        if (rec && rec.done) { total = 1; done = 1; }
+                    }
+                    
+                    const ratio = total > 0 ? done / total : 0;
+                    history.push({ date: dStr, ratio, count: done, total });
+                }
+                return history;
+            }, [grassStart, grassEnd, dailyTasks, records, student.id]);
+
+            const avgRate = useMemo(() => {
+                const history = student.history || [];
+                return history.length > 0 ? Math.round((history.reduce((acc, h) => acc + h.ratio, 0) / history.length) * 100) : 0;
+            }, [student.history]);
             
             const missedTags = useMemo(() => {
                 const counts = {};
@@ -817,6 +877,7 @@
                 const end = dayjs(reportEnd);
                 while(curr.isBefore(end) || curr.isSame(end, 'day')) {
                     const dStr = curr.format('YYYY-MM-DD');
+                    if (curr.day() === 0 || curr.day() === 6) { curr = curr.add(1, 'day'); continue; } // 주말 제외
                     const tasks = dailyTasks[dStr] || [];
                     const rec = records[dStr]?.[student.id];
                     let dailyTotal = 0;
@@ -943,7 +1004,7 @@
                                 </div>
                                 <div>
                                     <div className="text-lg font-bold text-slate-700 flex items-center gap-2">{student.name}<span className="text-xs font-normal text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">{student.order}번</span></div>
-                                    <div className="text-xs text-slate-400 mt-1">최근 {totalDays}일간 기록</div>
+                                    <div className="text-xs text-slate-400 mt-1">최근 30일 평균 수행률</div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
@@ -1097,8 +1158,16 @@
                                 </div>
                             </div>
                         </div>
-                        <h4 className="text-xs font-bold text-slate-500 mb-3">📅 활동 잔디 (클릭하여 상세 보기)</h4>
-                        <div className="grid grid-cols-7 gap-2">{displayHistory.map((h, i) => (<div key={i} onClick={() => setSelectedDate(selectedDate === h.date ? null : h.date)} className={`flex flex-col items-center gap-1 group relative cursor-pointer p-1 rounded-xl transition-all ${selectedDate === h.date ? 'bg-indigo-100 ring-2 ring-indigo-300 scale-105 shadow-sm' : 'hover:bg-slate-100'}`}><div className="w-8 h-8 rounded-full shadow-sm flex items-center justify-center relative overflow-hidden bg-slate-100" style={getPieStyle(h.ratio)}></div><span className={`text-[10px] ${selectedDate === h.date ? 'text-indigo-600 font-bold' : 'text-slate-400'}`}>{dayjs(h.date).format('MM/DD')}</span><div className="absolute bottom-full mb-1 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 transition-opacity">{h.date} {Math.round(h.ratio * 100)}% ({h.count}/{h.total})</div></div>))}</div>
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-xs font-bold text-slate-500 flex items-center gap-1">📅 활동 잔디 ({dayjs(grassStart).format('YYYY.MM.DD')} ~ {dayjs(grassEnd).format('MM.DD')})</h4>
+                            <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg">
+                                <button onClick={() => { const prev = dayjs(grassStart).subtract(1, 'month'); setGrassStart(prev.startOf('month').format('YYYY-MM-DD')); setGrassEnd(prev.endOf('month').format('YYYY-MM-DD')); }} className="p-1 hover:bg-white rounded text-slate-500 transition-colors"><Icon d={PATHS.left} size={12}/></button>
+                                <button onClick={() => { const now = dayjs(); setGrassStart(now.startOf('month').format('YYYY-MM-DD')); setGrassEnd(now.endOf('month').format('YYYY-MM-DD')); }} className="text-[10px] px-2 py-0.5 rounded font-bold text-slate-600 hover:bg-white transition-colors">이번 달</button>
+                                <button onClick={() => { const next = dayjs(grassStart).add(1, 'month'); setGrassStart(next.startOf('month').format('YYYY-MM-DD')); setGrassEnd(next.endOf('month').format('YYYY-MM-DD')); }} className="p-1 hover:bg-white rounded text-slate-500 transition-colors"><Icon d={PATHS.right} size={12}/></button>
+                                <button onClick={() => setIsCalendarOpen(true)} className="p-1 hover:bg-white rounded text-slate-500 transition-colors" title="기간 선택"><Icon d={PATHS.calendar} size={12}/></button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-5 gap-2">{grassHistory.map((h, i) => (<div key={i} onClick={() => setSelectedDate(selectedDate === h.date ? null : h.date)} className={`flex flex-col items-center gap-1 group relative cursor-pointer p-1 rounded-xl transition-all ${selectedDate === h.date ? 'bg-indigo-100 ring-2 ring-indigo-300 scale-105 shadow-sm' : 'hover:bg-slate-100'}`}><div className="w-8 h-8 rounded-full shadow-sm flex items-center justify-center relative overflow-hidden bg-slate-100" style={getPieStyle(h.ratio)}></div><span className={`text-[10px] ${selectedDate === h.date ? 'text-indigo-600 font-bold' : 'text-slate-400'}`}>{dayjs(h.date).format('MM/DD(dd)')}</span><div className="absolute bottom-full mb-1 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 transition-opacity">{h.date} {Math.round(h.ratio * 100)}% ({h.count}/{h.total})</div></div>))}</div>
                     </div>
                     
                     {showCounselingAI && (
@@ -1221,7 +1290,7 @@
                                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
                                     <h3 className="font-bold text-lg text-slate-700 mb-4 border-b border-slate-200 pb-2">📊 활동 분석</h3>
                                     <div className="space-y-3">
-                                        <div className="flex justify-between items-center"><span className="text-slate-600">최근 30일 활동</span><span className="font-bold text-indigo-600">{totalDays}일 중 {displayHistory.filter(h=>h.ratio===1).length}일 완료</span></div>
+                                        <div className="flex justify-between items-center"><span className="text-slate-600">최근 30일 활동</span><span className="font-bold text-indigo-600">{student.history.length}일 중 {student.history.filter(h=>h.ratio===1).length}일 완료</span></div>
                                         <div><span className="text-slate-600 block mb-1">자주 놓치는 과목</span>{missedTags.length > 0 ? (<div className="flex gap-2 flex-wrap">{missedTags.map(([t, c]) => <span key={t} className="text-xs bg-white border border-slate-200 px-2 py-1 rounded-md text-rose-500 font-bold">{t} ({c}회)</span>)}</div>) : <span className="text-sm text-green-600 font-bold">없음 (훌륭해요!)</span>}</div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-slate-100">
@@ -1297,6 +1366,10 @@
                             <div className="text-center text-slate-400 text-sm mt-12 pt-6 border-t border-slate-100">이거했어? 학습 관리 시스템</div>
                         </div>
                     </div>
+
+                    {isCalendarOpen && (
+                        <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} currentDate={grassStart} selectionMode="range" onSelectRange={(s, e) => { setGrassStart(s); setGrassEnd(e); }} records={records} appConfig={appConfig} groupsByDate={{}} mode="record" />
+                    )}
                 </div>
             );
         };
@@ -1845,7 +1918,7 @@
                                 const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; 
                                 const holidayName = HOLIDAYS[dateStr]; 
                                 const isHoliday = !!holidayName; 
-                                const isVacation = appConfig.vacationStart && appConfig.vacationEnd && dateStr >= appConfig.vacationStart && dateStr <= appConfig.vacationEnd; 
+                                const isVacation = (appConfig.vacations || []).some(v => dateStr >= v.start && dateStr <= v.end) || (appConfig.vacationStart && appConfig.vacationEnd && dateStr >= appConfig.vacationStart && dateStr <= appConfig.vacationEnd);
                                 const hasRecord = records[dateStr] && Object.values(records[dateStr]).some(r => r.done || (r.tasks && Object.values(r.tasks).some(t => t))); 
                                 const hasGroup = groupsByDate && groupsByDate[dateStr] && groupsByDate[dateStr].length > 0; 
                                 const showDot = mode === 'group' ? hasGroup : hasRecord; 
@@ -1890,7 +1963,7 @@
             );
         };
         const DateHeader = ({ date, setDate, onAdd, onReset, onCalendar, appConfig }) => {
-            const isVacation = appConfig.vacationStart && appConfig.vacationEnd && date >= appConfig.vacationStart && date <= appConfig.vacationEnd;
+            const isVacation = (appConfig.vacations || []).some(v => date >= v.start && date <= v.end) || (appConfig.vacationStart && appConfig.vacationEnd && date >= appConfig.vacationStart && date <= appConfig.vacationEnd);
             const isHoliday = !!HOLIDAYS[date];
             const holidayName = HOLIDAYS[date];
             const moveDate = (direction) => { let nextDate = dayjs(date).add(direction, 'day'); let count = 0; while (count < 365) { const dStr = nextDate.format('YYYY-MM-DD'); const day = nextDate.day(); const isWknd = day === 0 || day === 6; const isHol = !!HOLIDAYS[dStr]; if (!isWknd && !isHol) break; nextDate = nextDate.add(direction, 'day'); count++; } setDate(nextDate.format('YYYY-MM-DD')); };
@@ -2204,7 +2277,65 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig }) => {
+        const DataCleanupModal = ({ isOpen, onClose, groupsByDate, records, setGroupsByDate, setRecords, saveData, isLocalMode, showToast, onBackup }) => {
+            const [targetDate, setTargetDate] = useState(dayjs().subtract(1, 'year').format('YYYY-MM-DD'));
+            
+            const cleanupStats = useMemo(() => {
+                let groupCount = 0;
+                let recordCount = 0;
+                
+                Object.keys(groupsByDate).forEach(date => { if (date < targetDate) groupCount++; });
+                Object.keys(records).forEach(date => { if (date < targetDate) recordCount++; });
+                
+                return { groupCount, recordCount };
+            }, [groupsByDate, records, targetDate]);
+
+            const handleCleanup = () => {
+                if (cleanupStats.groupCount === 0 && cleanupStats.recordCount === 0) { showToast("정리할 데이터가 없습니다."); return; }
+                if (!confirm(`${targetDate} 이전의 데이터를 정리하시겠습니까?\n\n- 모둠 기록: ${cleanupStats.groupCount}건\n- 활동 기록: ${cleanupStats.recordCount}건\n\n(안전을 위해 현재 데이터가 자동으로 다운로드됩니다)`)) return;
+
+                // 자동 백업 실행
+                if (onBackup) onBackup();
+
+                const newGroups = { ...groupsByDate };
+                const newRecords = { ...records };
+                const deletedGroupDates = [];
+                const deletedRecordDates = [];
+                Object.keys(newGroups).forEach(date => { if (date < targetDate) { delete newGroups[date]; deletedGroupDates.push(date); } });
+                Object.keys(newRecords).forEach(date => { if (date < targetDate) { delete newRecords[date]; deletedRecordDates.push(date); } });
+
+                setGroupsByDate(newGroups);
+                setRecords(newRecords);
+                
+                if (!isLocalMode) {
+                    // saveData({ cls_records: newRecords }); // [Fix] records는 별도 함수로 처리됨 (삭제는 deleteRecordsFromFirestore 사용)
+                    // [New] Firestore 하위 컬렉션 문서 삭제
+                    if (deletedGroupDates.length > 0) deleteGroupsFromFirestore(deletedGroupDates);
+                    if (deletedRecordDates.length > 0) deleteRecordsFromFirestore(deletedRecordDates);
+                }
+                else { localStorage.setItem('cls_groups_date', JSON.stringify(newGroups)); localStorage.setItem('cls_records', JSON.stringify(newRecords)); }
+                
+                showToast("데이터 정리가 완료되었습니다.");
+                onClose();
+            };
+
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="🧹 데이터 정리 도구" icon={PATHS.trash}>
+                    <div className="space-y-4">
+                        <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 text-sm text-orange-800"><p className="font-bold mb-1">⚠️ 오래된 데이터 정리</p><p className="text-xs opacity-80">저장 용량 확보를 위해 오래된 기록을 삭제합니다.<br/>삭제 기준일 이전의 데이터가 모두 지워집니다.</p></div>
+                        <div className="flex flex-col gap-2"><label className="text-xs font-bold text-slate-500">삭제 기준일 (이 날짜 이전 데이터 삭제)</label><input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-orange-500" /><div className="flex justify-end gap-2 mt-1"><button onClick={() => setTargetDate(dayjs().subtract(6, 'month').format('YYYY-MM-DD'))} className="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-600 hover:bg-slate-200">6개월 전</button><button onClick={() => setTargetDate(dayjs().subtract(1, 'year').format('YYYY-MM-DD'))} className="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-600 hover:bg-slate-200">1년 전</button></div></div>
+                        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+                            <div className="flex justify-between text-sm"><span className="text-slate-600">삭제될 모둠 기록</span><span className="font-bold text-rose-500">{cleanupStats.groupCount}건</span></div>
+                            <div className="flex justify-between text-sm"><span className="text-slate-600">삭제될 활동 기록</span><span className="font-bold text-rose-500">{cleanupStats.recordCount}건</span></div>
+                        </div>
+                        <Btn onClick={handleCleanup} className="w-full py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md flex items-center justify-center gap-2"><Icon d={PATHS.trash} /> 정리 시작하기</Btn>
+                    </div>
+                </BaseModal>
+            );
+        };
+
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const counselingFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null);
@@ -2213,6 +2344,7 @@
             const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => localStorage.getItem('cls_auto_backup') === 'true'); const [showBackupHelp, setShowBackupHelp] = useState(false); const [isAdminMode, setIsAdminMode] = useState(false);
             const [adminClickCount, setAdminClickCount] = useState(0); const [ampm, setAmpm] = useState("PM"); const [hour, setHour] = useState("12"); const [minute, setMinute] = useState("00");
             const [vacStart, setVacStart] = useState(appConfig.vacationStart || ""); const [vacEnd, setVacEnd] = useState(appConfig.vacationEnd || "");
+            const [vacations, setVacations] = useState([]); const [newVacStart, setNewVacStart] = useState(""); const [newVacEnd, setNewVacEnd] = useState("");
             
             // 코드 업데이트 관련 상태
             const [showCodeUpdater, setShowCodeUpdater] = useState(false);
@@ -2228,7 +2360,44 @@
             const [showSystemLogs, setShowSystemLogs] = useState(false);
             const [aiUsage, setAiUsage] = useState(0);
             const [showManualModal, setShowManualModal] = useState(false);
+            const [showStorageHelp, setShowStorageHelp] = useState(false);
+            const [showCleanupModal, setShowCleanupModal] = useState(false);
             
+            const dataUsage = useMemo(() => {
+                const data = {
+                    students, records, groupsByDate, avoidancePairs, mustPairs, 
+                    dailyTasks, weeklyTasks, tags, appConfig, groupNames, 
+                    groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig
+                };
+                const json = JSON.stringify(data);
+                const bytes = new Blob([json]).size;
+                const MAX_SIZE = 1048576; // 1MB
+                const kb = (bytes / 1024).toFixed(1);
+                const percent = ((bytes / MAX_SIZE) * 100).toFixed(1);
+                
+                // 상세 분석 추가
+                const details = [
+                    { label: '학생 명단', val: students },
+                    { label: '활동 기록', val: records },
+                    { label: '모둠 기록', val: groupsByDate },
+                    { label: '과제 목록', val: dailyTasks },
+                    { label: '모둠 이름', val: groupNames },
+                    { label: '모둠 역할', val: groupRoles },
+                    { label: '자리 배치', val: seatAssignments },
+                    { label: '기타 설정', val: { avoidancePairs, mustPairs, weeklyTasks, tags, appConfig, rolesList, roleDescriptions, seatConfig } }
+                ].map(item => {
+                    const itemBytes = new Blob([JSON.stringify(item.val)]).size;
+                    return {
+                        label: item.label,
+                        bytes: itemBytes,
+                        kb: (itemBytes / 1024).toFixed(1),
+                        percent: bytes > 0 ? ((itemBytes / bytes) * 100).toFixed(1) : 0
+                    };
+                }).sort((a, b) => b.bytes - a.bytes);
+
+                return { kb, percent, bytes, isWarning: percent > 80, isCritical: percent > 95, details };
+            }, [students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig]);
+
             const handleKeyChange = (e) => {
                 const val = e.target.value;
                 setApiKey(val);
@@ -2275,9 +2444,28 @@
                     setAiUsage(parseInt(localStorage.getItem('cls_ai_usage') || '0'));
                     setVacStart(appConfig.vacationStart || ""); 
                     setVacEnd(appConfig.vacationEnd || ""); 
+                    
+                    // 방학 데이터 초기화 (기존 데이터 마이그레이션 포함)
+                    let initVacations = appConfig.vacations || [];
+                    if (initVacations.length === 0 && appConfig.vacationStart && appConfig.vacationEnd) {
+                        initVacations = [{ start: appConfig.vacationStart, end: appConfig.vacationEnd }];
+                    }
+                    setVacations(initVacations);
+                    setNewVacStart("");
+                    setNewVacEnd("");
                 } 
             }, [isOpen, appConfig]);
-            const handleConfigSave = () => { const newConfig = { ...cfg, vacationStart: vacStart, vacationEnd: vacEnd }; setAppConfig(newConfig); if(!isLocalMode) saveData('cls_app_config', newConfig);
+
+            const addVacation = () => {
+                if (newVacStart && newVacEnd) {
+                    if (newVacStart > newVacEnd) return showToast("종료일이 시작일보다 빠를 수 없습니다.");
+                    setVacations([...vacations, { start: newVacStart, end: newVacEnd }].sort((a, b) => a.start.localeCompare(b.start)));
+                    setNewVacStart(""); setNewVacEnd("");
+                } else { showToast("시작일과 종료일을 모두 선택해주세요."); }
+            };
+            const removeVacation = (index) => { setVacations(vacations.filter((_, i) => i !== index)); };
+
+            const handleConfigSave = () => { const newConfig = { ...cfg, vacations }; delete newConfig.vacationStart; delete newConfig.vacationEnd; setAppConfig(newConfig); if(!isLocalMode) saveData('cls_app_config', newConfig);
             showToast("설정이 저장되었습니다."); };
             const toggleAutoBackup = () => { const newValue = !autoBackupEnabled; setAutoBackupEnabled(newValue); localStorage.setItem('cls_auto_backup', newValue);
             showToast(newValue ? "자동 백업이 켜졌습니다." : "자동 백업이 꺼졌습니다."); };
@@ -2391,13 +2579,61 @@
             const scripts = docClone.querySelectorAll('script'); scripts.forEach(s => { if (!s.hasAttribute('data-app-script')) s.remove(); }); const styles = docClone.querySelectorAll('style');
             styles.forEach(s => { if (!s.hasAttribute('data-app-style')) s.remove(); }); return "<!DOCTYPE html>\n" + docClone.outerHTML; };
             const handleDownloadHtml = () => { const html = getCleanHtmlCode(); const blob = new Blob([html], {type: "text/html"});
-            const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Checklist_${appConfig.version}_${dayjs().format('YYYYMMDD')}.html`; link.click(); };
+            const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Checklist_${appConfig.className ? appConfig.className + '_' : ''}${appConfig.version}_${dayjs().format('YYYYMMDD')}.html`; link.click(); };
             const handleCopyCode = () => { const htmlContent = getCleanHtmlCode(); const textarea = document.createElement("textarea"); textarea.value = htmlContent; document.body.appendChild(textarea); textarea.select();
             try { const successful = document.execCommand('copy'); if (successful) showToast("전체 코드가 클립보드에 복사되었습니다!"); else showToast("복사에 실패했습니다.");
             } catch (err) { showToast("오류가 발생했습니다."); } finally { document.body.removeChild(textarea); } };
-            const handleExportJson = () => { const data = { version: appConfig.version, date: dayjs().format('YYYY-MM-DD HH:mm:ss'), students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig };
-            const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"}); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url;
-            link.download = `Checklist_Data_${appConfig.version}_${dayjs().format('YYYYMMDD')}.json`; link.click(); showToast("데이터가 JSON으로 내보내졌습니다."); };
+            
+            const handleExportJson = async () => { 
+                let exportStudents = [...students];
+                let exportRecords = { ...records };
+                let exportGroups = { ...groupsByDate };
+                
+                // [New] 클라우드 모드일 경우 분산 저장된 모든 데이터(학생상세, 기록, 모둠)를 가져와서 병합
+                if (!isLocalMode && db && appId) {
+                    showToast("클라우드에서 전체 데이터를 불러오는 중...");
+                    try {
+                        // 1. 학생 개별 데이터 (상담, 초안)
+                        const studentSnapshot = await db.collection('classes').doc(appId).collection('studentData').get();
+                        const studentDataMap = {};
+                        studentSnapshot.forEach(doc => { studentDataMap[doc.id] = doc.data(); });
+                        
+                        exportStudents = exportStudents.map(s => {
+                            const extra = studentDataMap[String(s.id)];
+                            return extra ? { ...s, ...extra } : s;
+                        });
+
+                        // 2. 활동 기록 (Records)
+                        const recordSnapshot = await db.collection('classes').doc(appId).collection('records').get();
+                        recordSnapshot.forEach(doc => { 
+                            exportRecords[doc.id] = doc.data(); 
+                        });
+
+                        // 3. 모둠 기록 (GroupResults)
+                        const groupSnapshot = await db.collection('classes').doc(appId).collection('groupResults').get();
+                        groupSnapshot.forEach(doc => { 
+                            const data = doc.data();
+                            exportGroups[doc.id] = data.list || data; 
+                        });
+
+                    } catch (e) {
+                        console.error("Export fetch error:", e);
+                        showToast("데이터 로딩 중 오류가 발생했습니다. 일부 데이터가 누락될 수 있습니다.");
+                    }
+                }
+
+                const data = { 
+                    version: appConfig.version, 
+                    date: dayjs().format('YYYY-MM-DD HH:mm:ss'), 
+                    students: exportStudents, 
+                    records: exportRecords, 
+                    groupsByDate: exportGroups, 
+                    avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig 
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"}); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url;
+                link.download = `Checklist_Data_${appConfig.className ? appConfig.className + '_' : ''}${appConfig.version}_${dayjs().format('YYYYMMDD')}.json`; link.click(); showToast("데이터가 JSON으로 내보내졌습니다."); 
+            };
+            
             const handleImportJson = (e) => { const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader(); reader.onload = (ev) => { try { const data = JSON.parse(ev.target.result); if(data.students) { setStudents(data.students);
             if(!isLocalMode) saveData('cls_students', data.students); } if(data.records) { setRecords(data.records); if(!isLocalMode) saveData('cls_records', data.records); } if(data.groupsByDate) { setGroupsByDate(data.groupsByDate); if(!isLocalMode) saveData('cls_groups_date', data.groupsByDate);
@@ -2630,9 +2866,9 @@
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 h-full min-h-0">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:h-full h-auto min-h-0">
                         
-                        <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
+                        <div className="flex flex-col lg:h-full h-96 overflow-hidden">
                             <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3 mb-5 flex-shrink-0">
                                 <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><span className="text-2xl">🧑‍🎓</span> 학생 관리</h3>
                                 <div className="flex items-center">
@@ -2686,7 +2922,7 @@
                             </div>
                         </div>
 
-                        <div className="space-y-8 lg:col-span-2">
+                        <div className="space-y-8">
                             <section>
                                 <h3 className="text-xl font-bold text-slate-800 border-b-2 border-slate-100 pb-3 mb-5 flex items-center gap-2 cursor-default select-none" onClick={handleDataManagementClick}>
                                     <span className="text-2xl">📱</span> 앱 설정 {isAdminMode && <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-1">관리자 모드</span>}
@@ -2717,6 +2953,7 @@
                                     )}
                                     <div className="space-y-1"><label className="text-xs font-bold text-slate-500">기록 모드 제목</label><input value={cfg.recordTitle} onChange={e => setCfg({ ...cfg, recordTitle: e.target.value })} className="w-full p-2.5 border rounded-xl text-sm" /></div>
                                     <div className="space-y-1"><label className="text-xs font-bold text-slate-500">완료 메시지</label><input value={cfg.recordMsg} onChange={e => setCfg({ ...cfg, recordMsg: e.target.value })} className="w-full p-2.5 border rounded-xl text-sm" /></div>
+                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500">학급명 (파일 저장용)</label><input value={cfg.className || ""} onChange={e => setCfg({ ...cfg, className: e.target.value })} className="w-full p-2.5 border rounded-xl text-sm" placeholder="예: 3학년 2반, 홍길동 선생님" /></div>
                                     <div className="space-y-1"><label className="text-xs font-bold text-slate-500">앱 전체 폰트</label>
                                         <select value={cfg.font || 'sans'} onChange={e => setCfg({ ...cfg, font: e.target.value })} className="w-full p-2.5 border rounded-xl text-sm bg-white outline-none focus:border-indigo-500">
                                             <option value="sans">기본 고딕 (System)</option>
@@ -2727,7 +2964,23 @@
                                             <option value="hand">개구체 (손글씨)</option>
                                         </select>
                                     </div>
-                                    <div className="pt-2 border-t mt-2"><label className="text-xs font-bold text-slate-500 flex items-center gap-2 mb-1"><span className="text-base">🏖️</span> 방학 기간 설정</label><div className="flex gap-2 items-center"><input type="date" value={vacStart} onChange={e => setVacStart(e.target.value)} className="flex-1 p-2 border rounded-xl text-sm bg-white" /><span className="text-slate-400">~</span><input type="date" value={vacEnd} onChange={e => setVacEnd(e.target.value)} className="flex-1 p-2 border rounded-xl text-sm bg-white" /></div></div>
+                                    <div className="pt-4 border-t mt-4">
+                                        <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span className="text-xl">🏖️</span> 방학 기간 설정</label>
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                                            {vacations.length > 0 ? (<div className="space-y-2">{vacations.map((v, i) => (<div key={i} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 shadow-sm"><span className="font-bold text-slate-600 text-sm">{v.start} ~ {v.end}</span><button onClick={() => removeVacation(i)} className="text-rose-400 hover:text-rose-600 p-1.5 hover:bg-rose-50 rounded-lg transition-colors"><Icon d={PATHS.trash} size={16}/></button></div>))}</div>) : (<div className="text-center text-slate-400 text-xs py-2">등록된 방학 기간이 없습니다.</div>)}
+                                            <div className="flex gap-2 items-center pt-2 border-t border-slate-200">
+                                                <div className="flex-1 flex gap-2 items-center bg-white p-1 rounded-lg border border-slate-200">
+                                                    <input type="date" value={newVacStart} onChange={e => setNewVacStart(e.target.value)} className="flex-1 p-1.5 text-xs outline-none bg-transparent" />
+                                                    <span className="text-slate-400">~</span>
+                                                    <input type="date" value={newVacEnd} onChange={e => setNewVacEnd(e.target.value)} className="flex-1 p-1.5 text-xs outline-none bg-transparent" />
+                                                </div>
+                                                <Btn onClick={addVacation} className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 text-xs shadow-sm whitespace-nowrap">추가</Btn>
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
+                                            <Icon d={PATHS.help} size={10} /> 방학 기간에는 달력에서 날짜 선택이 제한됩니다.
+                                        </div>
+                                    </div>
                                     <Btn onClick={handleConfigSave} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 active:scale-95 transition-all text-sm mt-2">설정 저장</Btn>
                                 </div>
                             </section>
@@ -2751,6 +3004,7 @@
                                         <div className="grid grid-cols-2 gap-3 mb-3">
                                             <Btn onClick={handleExportJson} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.upload} size={20} className="text-blue-500" /> 데이터 내보내기</Btn>
                                             <Btn onClick={()=>jsonFileRef.current.click()} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.download} size={20} className="text-green-500" /> 데이터 불러오기</Btn>
+                                            <Btn onClick={() => setShowCleanupModal(true)} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.trash} size={20} className="text-rose-500" /> 데이터 정리 도구</Btn>
                                             <Btn onClick={()=>counselingFileRef.current.click()} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm" title="필수 열: 이름, 내용 / 선택 열: 날짜"><Icon d={PATHS.document} size={20} className="text-purple-500" /> 노션/CSV 관찰기록 가져오기</Btn>
                                             <Btn onClick={handleExportDrafts} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.upload} size={20} className="text-indigo-500" /> 총평 초안 내보내기</Btn>
                                             <Btn onClick={() => setShowManualModal(true)} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.book} size={20} className="text-orange-500" /> 사용 설명서</Btn>
@@ -2806,7 +3060,80 @@
                                     <div className={`p-4 rounded-xl border flex justify-between items-center transition-colors shadow-sm ${isLocalMode ? 'bg-slate-50 border-slate-200' : 'bg-green-50 border-green-200'}`}>
                                         <div className="flex items-center gap-3">
                                             <div className={`w-3 h-3 rounded-full shadow-sm ${isLocalMode ? 'bg-slate-400' : 'bg-green-500 animate-pulse'}`}></div>
-                                            <div className="flex flex-col"><span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span></div>
+                                            <div className="flex flex-col">
+                                                <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
+                                                {!isLocalMode && (
+                                                    <>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <div className="w-20 h-1.5 bg-green-200/50 rounded-full overflow-hidden">
+                                                                <div className={`h-full rounded-full transition-all duration-500 ${dataUsage.isCritical ? 'bg-rose-500' : dataUsage.isWarning ? 'bg-orange-500' : 'bg-green-500'}`} style={{ width: `${Math.min(dataUsage.percent, 100)}%` }}></div>
+                                                            </div>
+                                                            <span className={`text-[9px] font-mono ${dataUsage.isCritical ? 'text-rose-600 font-bold' : 'text-green-600 opacity-80'}`}>{dataUsage.percent}% ({dataUsage.kb}KB)</span>
+                                                            <button onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }} className="text-slate-400 hover:text-indigo-500 ml-1"><Icon d={PATHS.help} size={10} /></button>
+                                                        </div>
+                                                        {showStorageHelp && (
+                                                            <div className="mt-2 p-3 bg-slate-100 rounded-lg border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
+                                                                <div className="flex flex-col md:flex-row gap-4">
+                                                                    <div className="flex-1">
+                                                                        <p className="font-bold mb-2 text-indigo-600 flex justify-between items-center">
+                                                                            <span>📊 데이터 용량 상세 분석</span>
+                                                                            <span className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-indigo-100">총 {dataUsage.kb}KB</span>
+                                                                        </p>
+                                                                        <div className="space-y-1.5 mb-3">
+                                                                            {dataUsage.details.map((d, i) => (
+                                                                                <div key={i} className="flex items-center justify-between gap-2">
+                                                                                    <span className="text-slate-500 w-14 shrink-0 truncate">{d.label}</span>
+                                                                                    <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                                                                        <div className="h-full bg-indigo-400" style={{ width: `${d.percent}%` }}></div>
+                                                                                    </div>
+                                                                                    <span className="font-mono w-12 text-right text-slate-700">{d.kb}KB</span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex-1 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-3">
+                                                                        <p className="font-bold mb-2 text-slate-700 text-[10px] flex items-center justify-center gap-1">
+                                                                            <span>🏗️</span> 데이터 관리 구조도
+                                                                        </p>
+                                                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                                                                            <div className="bg-white border-2 border-orange-200 rounded-lg p-2 mb-2 relative shadow-sm">
+                                                                                <div className="absolute -top-2 left-2 bg-orange-100 text-orange-700 text-[9px] px-1.5 rounded font-bold">메인 데이터</div>
+                                                                                <div className="flex justify-between items-center mt-1">
+                                                                                <span className="text-slate-600 font-bold">설정, 명단, 과제</span>
+                                                                                    <span className="text-[9px] text-rose-500 font-bold bg-rose-50 px-1 rounded">1MB 제한 ⚠️</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex justify-center -my-2 relative z-10"><Icon d={PATHS.down} size={16} className="text-slate-300 bg-slate-50 rounded-full p-0.5" /></div>
+                                                                           <div className="grid grid-cols-3 gap-1.5 mt-2">
+                                                                                <div className="bg-white border-2 border-blue-200 rounded-lg p-1.5 pt-2.5 relative shadow-sm">
+                                                                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-100 text-blue-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">모둠</div>
+                                                                                    <div className="text-center text-slate-500 leading-tight text-[9px]">날짜별<br/>편성</div>
+                                                                                    <div className="text-[7px] text-blue-400 text-center mt-0.5 font-bold">무제한</div>
+                                                                                </div>
+                                                                                <div className="bg-white border-2 border-purple-200 rounded-lg p-1.5 pt-2.5 relative shadow-sm">
+                                                                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-purple-100 text-purple-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">활동</div>
+                                                                                    <div className="text-center text-slate-500 leading-tight text-[9px]">날짜별<br/>체크표</div>
+                                                                                    <div className="text-[7px] text-purple-400 text-center mt-0.5 font-bold">무제한</div>
+                                                                                </div>
+                                                                                <div className="bg-white border-2 border-green-200 rounded-lg p-1.5 pt-2.5 relative shadow-sm">
+                                                                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-100 text-green-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">개별</div>
+                                                                                    <div className="text-center text-slate-500 leading-tight text-[9px]">상담일지<br/>생기부</div>
+                                                                                    <div className="text-[7px] text-green-400 text-center mt-0.5 font-bold">무제한</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <p className="text-slate-400 mt-2 text-center leading-relaxed">
+                                                                            * 용량이 큰 데이터(모둠, 상담)는 자동으로<br/>
+                                                                            <strong>분리 저장</strong>되어 용량 걱정 없이 쓸 수 있습니다.
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                         {isLocalMode ?
                                         <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("연결 해제?", () => { localStorage.removeItem('checklist_config'); window.location.reload(); }) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">해제</Btn>}
@@ -2814,6 +3141,7 @@
                                     <Btn onClick={() => { openConfirm("모든 데이터를 초기화하시겠습니까?", handleResetAllData) }} className="w-full py-4 border-2 border-rose-100 text-rose-500 rounded-xl font-bold hover:bg-rose-50 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><Icon d={PATHS.trash} size={18} /> 초기화</Btn>
                                 </div>
                             </section>
+                            <DataCleanupModal isOpen={showCleanupModal} onClose={() => setShowCleanupModal(false)} groupsByDate={groupsByDate} records={records} setGroupsByDate={setGroupsByDate} setRecords={setRecords} saveData={saveData} isLocalMode={isLocalMode} showToast={showToast} onBackup={handleExportJson} />
                         </div>
                     </div>
                 </BaseModal>
@@ -3094,6 +3422,101 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.4.68", 
+                date: "2026-02-13", 
+                list: ["활동 잔디 팝업 기능 제거 (인사이트 카드 내 통합)"] 
+            },
+            { 
+                version: "v3.4.66", 
+                date: "2026-02-13", 
+                list: ["방학 기간 설정 기능 개선: 여러 개의 방학 기간을 추가하고 목록으로 관리 가능"] 
+            },
+            { 
+                version: "v3.4.65", 
+                date: "2026-02-13", 
+                list: ["활동 잔디 데이터 생성 로직 수정: 주말(토, 일) 데이터 원천 제외 (메인 화면 및 상세 보기 모두 적용)"] 
+            },
+            { 
+                version: "v3.4.63", 
+                date: "2026-02-13", 
+                list: ["활동 잔디 및 리포트 분석에서 주말(토, 일) 제외 (평일 기준 통계 적용)", "활동 잔디 5열 보기로 변경"] 
+            },
+            { 
+                version: "v3.4.60", 
+                date: "2026-02-13", 
+                list: ["데이터 내보내기 시 파일명에 학급 이름 포함 기능 추가 (설정 > 앱 설정)", "활동 잔디 날짜 표시에 요일 추가"] 
+            },
+            { 
+                version: "v3.4.59", 
+                date: "2026-02-13", 
+                list: ["데이터 내보내기 시 클라우드에 분산된 모든 데이터(활동 기록, 모둠 결과 포함)를 완벽하게 백업하도록 개선"] 
+            },
+            { 
+                version: "v3.4.58", 
+                date: "2026-02-13", 
+                list: ["데이터 내보내기(백업) 기능 강화: 클라우드에 분산 저장된 학생 상세 기록(상담, 생기부)까지 모두 포함하여 저장하도록 개선"] 
+            },
+            { 
+                version: "v3.4.57", 
+                date: "2026-02-13", 
+                list: ["클라우드 동기화 도움말의 '데이터 관리 구조도' 최신화 (활동 기록 분리 반영)"] 
+            },
+            { 
+                version: "v3.4.56", 
+                date: "2026-02-13", 
+                list: ["활동 기록(체크리스트) 데이터를 날짜별 독립 문서로 분리 저장 (용량 제한 해결 및 속도 개선)"] 
+            },
+            { 
+                version: "v3.4.55", 
+                date: "2026-02-13", 
+                list: ["클라우드 동기화 도움말 UI 개선: 용량 분석과 구조도를 가로로 배치", "데이터 관리 구조도 아이콘을 이모지(🏗️)로 변경"] 
+            },
+            { 
+                version: "v3.4.54", 
+                date: "2026-02-13", 
+                list: ["클라우드 동기화 도움말에 '데이터 관리 구조도(도식화)' 추가 (초보자 가이드 강화)"] 
+            },
+            { 
+                version: "v3.4.53", 
+                date: "2026-02-13", 
+                list: ["학생별 관찰 기록 및 생활기록부 초안 데이터를 독립된 저장소로 분리 (용량 제한 해결 및 데이터 안전성 강화)"] 
+            },
+            { 
+                version: "v3.4.52", 
+                date: "2026-02-13", 
+                list: ["데이터 용량 분석 기능 개선: '기타 설정'을 '과제 목록', '모둠 이름' 등으로 세분화하여 표시"] 
+            },
+            { 
+                version: "v3.4.51", 
+                date: "2026-02-13", 
+                list: ["설정 > 데이터 관리 > 클라우드 동기화 도움말에 '데이터 용량 상세 분석' 기능 추가"] 
+            },
+            { 
+                version: "v3.4.50", 
+                date: "2026-02-13", 
+                list: ["설정 > 초기화 시 모든 탭(단순, 모둠, 역할 등)의 데이터가 완벽하게 삭제되도록 개선"] 
+            },
+            { 
+                version: "v3.4.49", 
+                date: "2026-02-13", 
+                list: ["데이터 정리 도구 실행 시 삭제 전 자동 백업(JSON 다운로드) 기능 추가"] 
+            },
+            { 
+                version: "v3.4.48", 
+                date: "2026-02-13", 
+                list: ["설정 > 데이터 관리에 '데이터 정리 도구' 추가 (오래된 기록 삭제 기능)", "클라우드 용량 안내 문구 수정 (1년치 데이터 보관 가능 안내)"] 
+            },
+            { 
+                version: "v3.4.47", 
+                date: "2026-02-13", 
+                list: ["클라우드 동기화 용량 제한(1MB)에 대한 도움말 설명 추가"] 
+            },
+            { 
+                version: "v3.4.46", 
+                date: "2026-02-13", 
+                list: ["설정 > 데이터 관리 > 클라우드 동기화 섹션에 데이터 사용량(용량/비율) 표시 기능 추가"] 
+            },
             { 
                 version: "v3.4.45", 
                 date: "2026-02-13", 
@@ -4469,7 +4892,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-            patch: 45    // Patch: 기존 기능의 버그 수정
+                patch: 68    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -4624,6 +5047,75 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 return newGroups;
             };
 
+            // [New] 학생 개별 데이터(상담기록, 초안) 저장 함수
+            const saveStudentDataToFirestore = async (studentId, data) => {
+                if (isLocalMode || !db || !appId) return;
+                try {
+                    await db.collection('classes').doc(appId).collection('studentData').doc(String(studentId)).set(data, { merge: true });
+                } catch (e) {
+                    console.error("학생 개별 데이터 저장 실패:", e);
+                    logSystemEvent(`학생 데이터 저장 실패(${studentId}): ${e.message}`, 'error');
+                    setToastMessage("데이터 저장 중 오류가 발생했습니다.");
+                }
+            };
+
+            // [New] Firestore 하위 컬렉션 저장 함수 (1MB 제한 회피용)
+            const saveGroupsToFirestore = async (groupsMap) => {
+                if (isLocalMode || !db || !appId) return;
+                const batch = db.batch();
+                Object.entries(groupsMap).forEach(([date, groups]) => {
+                    const ref = db.collection('classes').doc(appId).collection('groupResults').doc(date);
+                    // 데이터 정제 (불필요한 정보 제거)
+                    const cleanGroups = groups.map(g => g.map(s => ({
+                        id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order
+                    })));
+                    batch.set(ref, { list: cleanGroups });
+                });
+                try { await batch.commit(); } 
+                catch (e) { console.error(e); setToastMessage("모둠 저장 실패: " + e.message); }
+            };
+
+            // [New] 활동 기록(Records) 하위 컬렉션 저장 함수
+            const saveRecordsToFirestore = async (recordsMap) => {
+                if (isLocalMode || !db || !appId) return;
+                const entries = Object.entries(recordsMap);
+                const chunkSize = 450; // Firestore 배치 제한(500) 고려
+                try {
+                    for (let i = 0; i < entries.length; i += chunkSize) {
+                        const batch = db.batch();
+                        const chunk = entries.slice(i, i + chunkSize);
+                        chunk.forEach(([date, data]) => {
+                            const ref = db.collection('classes').doc(appId).collection('records').doc(date);
+                            batch.set(ref, data);
+                        });
+                        await batch.commit();
+                    }
+                } catch (e) { console.error(e); setToastMessage("기록 저장 실패: " + e.message); }
+            };
+
+            // [New] 활동 기록(Records) 하위 컬렉션 삭제 함수
+            const deleteRecordsFromFirestore = async (dates) => {
+                if (isLocalMode || !db || !appId) return;
+                const batch = db.batch();
+                dates.forEach(date => {
+                    const ref = db.collection('classes').doc(appId).collection('records').doc(date);
+                    batch.delete(ref);
+                });
+                try { await batch.commit(); } catch (e) { console.error(e); }
+            };
+
+            // [New] Firestore 하위 컬렉션 삭제 함수
+            const deleteGroupsFromFirestore = async (dates) => {
+                if (isLocalMode || !db || !appId) return;
+                const batch = db.batch();
+                dates.forEach(date => {
+                    const ref = db.collection('classes').doc(appId).collection('groupResults').doc(date);
+                    batch.delete(ref);
+                });
+                try { await batch.commit(); }
+                catch (e) { console.error(e); }
+            };
+
             const handleRangeSelect = (start, end) => {
                 setDate(start);
                 const diff = dayjs(end).diff(dayjs(start), 'day') + 1;
@@ -4643,6 +5135,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 const updatedStudents = students.map(s => s.id === studentId ? { ...s, counseling: note } : s);
                 setStudents(updatedStudents);
                 if (!isLocalMode) saveData('cls_students', updatedStudents);
+                if (!isLocalMode) saveStudentDataToFirestore(studentId, { counseling: note });
                 setToastMessage(msg || "칭찬 스티커 일지가 저장되었습니다.");
             };
 
@@ -4734,6 +5227,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 const updatedStudents = students.map(s => s.id === studentId ? { ...s, stickers: count, counseling: note } : s);
                 setStudents(updatedStudents);
                 if (!isLocalMode) saveData('cls_students', updatedStudents);
+                if (!isLocalMode) saveStudentDataToFirestore(studentId, { counseling: note });
                 setToastMessage("칭찬 스티커 일지가 저장되었습니다.");
             };
 
@@ -4746,6 +5240,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     return s;
                 });
                 setStudents(updatedStudents);
+                if (!isLocalMode) saveStudentDataToFirestore(studentId, { recordDrafts: updatedStudents.find(s=>s.id===studentId).recordDrafts });
                 setToastMessage("초안이 저장되었습니다.");
             };
 
@@ -4804,7 +5299,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                     if (doc.exists) {
                                         const d = doc.data();
                                         if (d.students) setStudents(d.students);
-                                        if (d.records) setRecords(d.records);
+                                        if (d.records) setRecords(prev => ({ ...d.records, ...prev })); // [Fix] 메인 문서 기록은 하위 호환용으로 로드하되, 로컬/하위컬렉션 데이터 우선
                                         if (d.groupsByDate) {
                                             // [Fix] d.students가 없거나 비어있을 경우 로컬 최신 상태(studentsRef)를 사용하여 복구 시도
                                             // 로컬 상태와 서버 상태를 병합하여 최대한 많은 학생 정보를 확보
@@ -4855,6 +5350,28 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                     }
                                 }, (error) => {
                                     logSystemEvent(`Firestore 스냅샷 에러: ${error.message}`, 'error');
+                                });
+
+                                // [New] 모둠 결과 하위 컬렉션 리스너 (1MB 제한 회피)
+                                firestore.collection('classes').doc(config.projectId).collection('groupResults').onSnapshot(snapshot => {
+                                    const newGroups = {};
+                                    snapshot.docs.forEach(doc => {
+                                        newGroups[doc.id] = doc.data().list;
+                                    });
+                                    // 기존 데이터와 병합 (서버 데이터 우선)
+                                    setGroupsByDate(prev => hydrateGroups({ ...prev, ...newGroups }, studentsRef.current));
+                                });
+
+                                // [New] 활동 기록 하위 컬렉션 리스너 (1MB 제한 회피)
+                                firestore.collection('classes').doc(config.projectId).collection('records').onSnapshot(snapshot => {
+                                    setRecords(prev => {
+                                        const next = { ...prev };
+                                        snapshot.docChanges().forEach(change => {
+                                            if (change.type === 'added' || change.type === 'modified') next[change.doc.id] = change.doc.data();
+                                            if (change.type === 'removed') delete next[change.doc.id];
+                                        });
+                                        return next;
+                                    });
                                 });
                             } else {
                                 logSystemEvent('Firebase 로그인 상태 아님', 'warning');
@@ -4916,7 +5433,11 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 if (db && appId) {
                     try {
                         const payload = {};
+                        const batch = db.batch(); // 배치 쓰기 사용
+                        
                         for (const [k, v] of Object.entries(updates)) {
+                            if (k === 'cls_groups_date') continue; // [New] 모둠 데이터는 메인 문서에서 제외 (1MB 제한 회피)
+                            if (k === 'cls_records') { saveRecordsToFirestore(v); continue; } // [New] 기록 데이터는 하위 컬렉션으로 분리
                             const field = k.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
                             const cleanData = JSON.parse(JSON.stringify(v));
                             
@@ -4932,12 +5453,30 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                     }
                                 });
                                 payload[field] = wrappedData;
+                            } else if (k === 'cls_students') {
+                                // [New] 학생 데이터 저장 시 상담기록/초안 분리 저장 (용량 최적화)
+                                const lightStudents = cleanData.map(s => {
+                                    // 상담 기록과 초안이 있다면 개별 문서로 저장
+                                    if ((s.counseling && s.counseling.length > 0) || (s.recordDrafts && Object.keys(s.recordDrafts).length > 0)) {
+                                        const studentRef = db.collection('classes').doc(appId).collection('studentData').doc(String(s.id));
+                                        const studentData = {};
+                                        if (s.counseling) studentData.counseling = s.counseling;
+                                        if (s.recordDrafts) studentData.recordDrafts = s.recordDrafts;
+                                        batch.set(studentRef, studentData, { merge: true });
+                                    }
+                                    // 메인 문서에는 무거운 데이터 제외
+                                    const { counseling, recordDrafts, ...rest } = s;
+                                    return rest;
+                                });
+                                payload[field] = lightStudents;
                             } else {
                                 payload[field] = cleanData;
                             }
                         }
                         // 모든 변경사항을 한 번에 저장 (Atomic Update)
-                        await db.collection('artifacts').doc(appId).collection('public').doc('data').set(payload, { merge: true });
+                        const mainRef = db.collection('artifacts').doc(appId).collection('public').doc('data');
+                        batch.set(mainRef, payload, { merge: true });
+                        await batch.commit();
                     } catch (e) {
                         logSystemEvent(`Firebase 저장 실패: ${e.message}`, 'error');
                         console.error(e);
@@ -4971,10 +5510,10 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const allDone = currentTasks.length > 0 && currentTasks.every((_, idx) => newTasksStatus[idx]); newRec = { ...currentRec, tasks: newTasksStatus, done: allDone };
             } else { const newDone = !currentRec.done; const newTasksStatus = {};
             if (currentTasks.length > 0) currentTasks.forEach((_, idx) => newTasksStatus[idx] = newDone); newRec = { ...currentRec, done: newDone, tasks: newTasksStatus };
-            } const newRecords = { ...records, [date]: { ...records[date], [id]: newRec } }; setRecords(newRecords); if (!isLocalMode) saveData('cls_records', newRecords);
+            } const newRecords = { ...records, [date]: { ...records[date], [id]: newRec } }; setRecords(newRecords); if (!isLocalMode) saveRecordsToFirestore({ [date]: newRecords[date] });
             if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } }); };
             
-            const resetDateRecord = () => { openConfirm(`${date} 기록을 초기화하시겠습니까?`, () => { const newRecords = { ...records }; delete newRecords[date]; setRecords(newRecords); if (!isLocalMode) saveData('cls_records', newRecords); setToastMessage("기록이 초기화되었습니다."); });
+            const resetDateRecord = () => { openConfirm(`${date} 기록을 초기화하시겠습니까?`, () => { const newRecords = { ...records }; delete newRecords[date]; setRecords(newRecords); if (!isLocalMode) deleteRecordsFromFirestore([date]); setToastMessage("기록이 초기화되었습니다."); });
             };
             
             const toggleLock = (studentId) => { setLockedIds(prev => prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]); };
@@ -5134,15 +5673,17 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         const newGroupsData = { ...groupsByDate }; // [Fix] 데이터 삭제 로직 제거
                         const newGroupRoles = { ...groupRoles };
                         const hasActiveRoles = groupRoles[date] && Object.keys(groupRoles[date]).length > 0;
+                        const groupsToSave = {};
                         
                         for(let i=0; i<groupDuration; i++) {
                             const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
                             newGroupsData[d] = mappedGroups;
+                            groupsToSave[d] = mappedGroups;
                             if (hasActiveRoles) newGroupRoles[d] = calculateRoles(mappedGroups);
                         }
                         
                         setGroupsByDate(newGroupsData);
-                        if (!isLocalMode) saveData('cls_groups_date', newGroupsData);
+                        if (!isLocalMode) saveGroupsToFirestore(groupsToSave);
                         
                         if (hasActiveRoles) {
                             setGroupRoles(newGroupRoles);
@@ -5347,42 +5888,52 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                          currentStudents.forEach((s, i) => plainGroups[i % targetGroupCount].push(sanitizeStudent(s)));
                          
                          const newGroupsData = { ...currentGroupsByDate }; // [Fix] 최신 데이터 사용
+                         const groupsToSave = {};
                          for(let i=0; i<groupDuration; i++) {
                              const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
                              // [Fix] 참조 문제 방지를 위해 깊은 복사하여 할당
                              newGroupsData[d] = plainGroups.map(g => g.map(s => ({...s}))); 
+                             groupsToSave[d] = newGroupsData[d];
                          }
                          setGroupsByDate(newGroupsData);
                          
-                         const updates = { 'cls_groups_date': newGroupsData };
+                         const updates = {};
                          if (currentGroupRoles[date] && Object.keys(currentGroupRoles[date]).length > 0) {
                              const newRolesForDate = calculateRoles(plainGroups);
                              const newGroupRoles = { ...currentGroupRoles, [date]: newRolesForDate };
                              setGroupRoles(newGroupRoles);
                              updates['cls_group_roles'] = newGroupRoles;
                          }
-                         if (!isLocalMode) saveData(updates);
+                         if (!isLocalMode) {
+                             saveData(updates);
+                             saveGroupsToFirestore(groupsToSave);
+                         }
                          
                          syncSeatsWithGroups(plainGroups);
                     } else {
                          const newGroupsData = { ...currentGroupsByDate }; // [Fix] 최신 데이터 사용
                          const newGroupRoles = { ...currentGroupRoles };
                          const hasActiveRoles = currentGroupRoles[date] && Object.keys(currentGroupRoles[date]).length > 0;
+                         const groupsToSave = {};
 
                          for(let i=0; i<groupDuration; i++) {
                              const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
                              newGroupsData[d] = finalGroups.map(g => g.map(s => ({...s})));
+                             groupsToSave[d] = newGroupsData[d];
                              if (hasActiveRoles) newGroupRoles[d] = calculateRoles(finalGroups);
                          }
 
                          setGroupsByDate(newGroupsData);
                          
-                         const updates = { 'cls_groups_date': newGroupsData };
+                         const updates = {};
                          if (hasActiveRoles) {
                              setGroupRoles(newGroupRoles);
                              updates['cls_group_roles'] = newGroupRoles;
                          }
-                         if (!isLocalMode) saveData(updates);
+                         if (!isLocalMode) {
+                             saveData(updates);
+                             saveGroupsToFirestore(groupsToSave);
+                         }
 
                          syncSeatsWithGroups(finalGroups);
                     }
@@ -5408,14 +5959,17 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 const newGroups = groups.map((_, i) => { const srcIdx = (i - 1 + groups.length) % groups.length; return rotateArray(groups[srcIdx]).map(s => sanitizeStudent(s)); });
                 const newGroupsData = { ...groupsByDate, [date]: newGroups }; setGroupsByDate(newGroupsData);
                 
-                const updates = { 'cls_groups_date': newGroupsData };
+                const updates = {};
                 if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
                     const newRolesForDate = calculateRoles(newGroups);
                     const newGroupRoles = { ...groupRoles, [date]: newRolesForDate };
                     setGroupRoles(newGroupRoles);
                     updates['cls_group_roles'] = newGroupRoles;
                 }
-                if (!isLocalMode) saveData(updates);
+                if (!isLocalMode) {
+                    saveData(updates);
+                    saveGroupsToFirestore({ [date]: newGroups });
+                }
                 
                 syncSeatsWithGroups(newGroups);
                 setToastMessage("자전과 공전(회전)이 완료되었습니다."); 
@@ -5471,14 +6025,17 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 const newGroupsData = { ...groupsByDate, [date]: currentGroups }; 
                 setGroupsByDate(newGroupsData);
                 
-                const updates = { 'cls_groups_date': newGroupsData };
+                const updates = {};
                 if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
                     const newRolesForDate = calculateRoles(currentGroups);
                     const newGroupRoles = { ...groupRoles, [date]: newRolesForDate };
                     setGroupRoles(newGroupRoles);
                     updates['cls_group_roles'] = newGroupRoles;
                 }
-                if (!isLocalMode) saveData(updates);
+                if (!isLocalMode) {
+                    saveData(updates);
+                    saveGroupsToFirestore({ [date]: currentGroups });
+                }
             };
 
             const handleAssignRoles = () => {
@@ -5540,14 +6097,17 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                 const newGroupsData = { ...groupsByDate, [date]: newGroups };
                 setGroupsByDate(newGroupsData);
                 
-                const updates = { 'cls_groups_date': newGroupsData };
+                const updates = {};
                 if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
                     const newRolesForDate = calculateRoles(newGroups);
                     const newGroupRoles = { ...groupRoles, [date]: newRolesForDate };
                     setGroupRoles(newGroupRoles);
                     updates['cls_group_roles'] = newGroupRoles;
                 }
-                if (!isLocalMode) saveData(updates);
+                if (!isLocalMode) {
+                    saveData(updates);
+                    saveGroupsToFirestore({ [date]: newGroups });
+                }
             };
 
             const roleMap = useMemo(() => {
@@ -5568,7 +6128,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             if (dayRecord[s.id]?.done) doneCount++; } } } else { const tagTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
             if (tagTasks.length > 0) { totalCount += tagTasks.length; tagTasks.forEach((t, idx) => { const originalIdx = dayTasks.indexOf(t); const isTaskDone = dayRecord?.[s.id]?.done || dayRecord?.[s.id]?.tasks?.[originalIdx]; if(isTaskDone) doneCount++; });
             } } } return { count: doneCount, total: totalCount, rate: totalCount > 0 ?
-            (doneCount / totalCount) * 100 : 0 }; }; const computedStudents = students.map(s => { let count = 0, currentStreak = 0; const history = []; const datesSorted = Object.keys(records).sort(); for(let i=29; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); let dailyDoneCount = 0; let dailyTotalCount = 0; const dayTasks = dailyTasks[d] || []; const dayRecord = records[d]; if(dayTasks.length > 0) { dailyTotalCount = dayTasks.length; if(dayRecord && dayRecord[s.id]) { dayTasks.forEach((_, idx) => { if(dayRecord[s.id].tasks && dayRecord[s.id].tasks[idx]) dailyDoneCount++; else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++; }); } } else { if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; } } const 
+            (doneCount / totalCount) * 100 : 0 }; }; const computedStudents = students.map(s => { let count = 0, currentStreak = 0; const history = []; const datesSorted = Object.keys(records).sort(); for(let i=29; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; let dailyDoneCount = 0; let dailyTotalCount = 0; const dayTasks = dailyTasks[d] || []; const dayRecord = records[d]; if(dayTasks.length > 0) { dailyTotalCount = dayTasks.length; if(dayRecord && dayRecord[s.id]) { dayTasks.forEach((_, idx) => { if(dayRecord[s.id].tasks && dayRecord[s.id].tasks[idx]) dailyDoneCount++; else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++; }); } } else { if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; } } const 
             ratio = dailyTotalCount > 0 ? dailyDoneCount / dailyTotalCount : 0; history.push({ date: d, ratio: ratio, count: dailyDoneCount, total: dailyTotalCount, done: dailyDoneCount === dailyTotalCount && dailyTotalCount > 0 }); if(ratio === 1) count++; } for(let i=0; i<365;
             i++) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const rec = records[d]?.[s.id]; let isDoneDay = false;
             if(rec) { if(rec.tasks) { if(rec.done) isDoneDay = true; } else if(rec.done) { isDoneDay = true; } } if(isDoneDay) currentStreak++;
@@ -5580,9 +6140,45 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const handleFirebaseConnect = (config) => { localStorage.setItem('checklist_config', JSON.stringify(config)); setIsSetupOpen(false);
             setToastMessage("연결 정보가 저장되었습니다. 새로고침합니다."); setTimeout(() => window.location.reload(), 1500); };
             
-            const handleResetAllData = () => { setStudents([]); setRecords({}); setGroupsByDate({}); setAvoidancePairs([]); setDailyTasks({});
-            setWeeklyTasks({0:[],1:[],2:[],3:[],4:[],5:[],6:[]}); setTags(['국어', '수학', '사회', '과학', '영어', '기타']); if(!isLocalMode) { saveData('cls_students', []); saveData('cls_records', {}); saveData('cls_groups', []); saveData('cls_avoidance', []); saveData('cls_daily_tasks', {});
-            saveData('cls_weekly_tasks', {0:[],1:[],2:[],3:[],4:[],5:[],6:[]}); saveData('cls_tags', ['국어', '수학', '사회', '과학', '영어', '기타']); saveData('cls_role_descriptions', DEFAULT_ROLE_DESCRIPTIONS); saveData('cls_seat_assignments', {}); saveData('cls_seat_config', {rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']}); } setRoleDescriptions(DEFAULT_ROLE_DESCRIPTIONS); setSeatAssignments({}); setSeatConfig({rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']}); setToastMessage("모든 데이터가 초기화되었습니다."); };
+            const handleResetAllData = () => { 
+                setStudents([]); setRecords({}); setSimpleChecks({}); setGroupsByDate({}); setAvoidancePairs([]); setMustPairs([]); setDailyTasks({});
+                setWeeklyTasks({0:[],1:[],2:[],3:[],4:[],5:[],6:[]}); setTags(['국어', '수학', '사회', '과학', '영어', '기타']); 
+                setGroupNames({}); setGroupRoles({}); setRolesList(['나눔이', '맺음이', '챙김이', '깔끔이']); setRoleDescriptions(DEFAULT_ROLE_DESCRIPTIONS); 
+                setSeatAssignments({}); setSeatConfig({rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']}); 
+                
+                if(!isLocalMode) { 
+                    saveData({
+                        cls_students: [], cls_avoidance: [], cls_mustPairs: [],
+                        cls_daily_tasks: {}, cls_weekly_tasks: {0:[],1:[],2:[],3:[],4:[],5:[],6:[]},
+                        cls_tags: ['국어', '수학', '사회', '과학', '영어', '기타'],
+                        cls_group_names: {}, cls_group_roles: {}, cls_roles_list: ['나눔이', '맺음이', '챙김이', '깔끔이'],
+                        cls_role_descriptions: DEFAULT_ROLE_DESCRIPTIONS,
+                        cls_seat_assignments: {},
+                        cls_seat_config: {rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']}
+                    });
+                    // [New] 모둠 데이터 하위 컬렉션 전체 삭제
+                    if (db && appId) {
+                        db.collection('classes').doc(appId).collection('groupResults').get().then(snapshot => {
+                            const batch = db.batch();
+                            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                            batch.commit();
+                        });
+                        // [New] 활동 기록 하위 컬렉션 전체 삭제
+                        db.collection('classes').doc(appId).collection('records').get().then(snapshot => {
+                            const batch = db.batch();
+                            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                            batch.commit();
+                        });
+                        // [New] 학생 개별 데이터 하위 컬렉션 전체 삭제
+                        db.collection('classes').doc(appId).collection('studentData').get().then(snapshot => {
+                            const batch = db.batch();
+                            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                            batch.commit();
+                        });
+                    }
+                } 
+                setToastMessage("모든 데이터가 초기화되었습니다."); 
+            };
 
             const handleFormationTitleClick = () => {
                 if (formationClickTimer.current) clearTimeout(formationClickTimer.current);
@@ -6107,7 +6703,10 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         openConfirm={openConfirm} 
                         appConfig={appConfig} 
                         apiKey={apiKey} 
-                        onSaveRecordDraft={handleSaveRecordDraft} />
+                        onSaveRecordDraft={handleSaveRecordDraft}
+                        isLocalMode={isLocalMode}
+                        db={db}
+                        appId={appId} />
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)} 
@@ -6144,6 +6743,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                         roleDescriptions={roleDescriptions} setRoleDescriptions={setRoleDescriptions}
                         seatAssignments={seatAssignments} setSeatAssignments={setSeatAssignments}
                         seatConfig={seatConfig} setSeatConfig={setSeatConfig}
+                        db={db}
+                        appId={appId}
                     />
                     <TaskModal isOpen={isTaskModalOpen} onClose={()=>setIsTaskModalOpen(false)} date={date} dailyTasks={dailyTasks} setDailyTasks={setDailyTasks} weeklyTasks={weeklyTasks} setWeeklyTasks={setWeeklyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} tags={tags} setTags={setTags} openConfirm={openConfirm} />
                     <CalendarModal isOpen={isCalendarOpen} onClose={()=>setIsCalendarOpen(false)} currentDate={date} onSelectDate={setDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
