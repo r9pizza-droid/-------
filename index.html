@@ -4,9 +4,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>다했나요?</title>
     
-    <meta property="og:title" content="이거했어?">
+    <meta property="og:title" content="다했나요!?">
     <meta property="og:description" content="우리 반 숙제 확인 및 학급 경영 도구">
     
+    <link rel="icon" id="app-favicon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
     <script src="https://cdn.tailwindcss.com" data-app-script="true"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js" data-app-script="true" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/locale/ko.min.js" data-app-script="true" crossorigin="anonymous"></script>
@@ -587,6 +588,7 @@
                         osc.start(now + i * 0.1);
                         osc.stop(now + i * 0.1 + 0.2);
                     });
+                    setTimeout(() => ctx.close(), 1000);
                 } catch (e) {}
             };
 
@@ -606,6 +608,7 @@
                     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
                     osc.start(ctx.currentTime);
                     osc.stop(ctx.currentTime + 0.1);
+                    setTimeout(() => ctx.close(), 200);
                 } catch (e) {}
             };
 
@@ -2400,7 +2403,7 @@
         const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
-            const fileRef = useRef(null); const jsonFileRef = useRef(null); const counselingFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null);
+            const fileRef = useRef(null); const jsonFileRef = useRef(null); const counselingFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
             const [cfg, setCfg] = useState(appConfig);
             const [deleteTargetId, setDeleteTargetId] = useState(null); const [isDeletingAll, setIsDeletingAll] = useState(false); const [editingId, setEditingId] = useState(null); const [editData, setEditData] = useState({});
             const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => localStorage.getItem('cls_auto_backup') === 'true'); const [showBackupHelp, setShowBackupHelp] = useState(false); const [isAdminMode, setIsAdminMode] = useState(false);
@@ -2939,7 +2942,7 @@
                                     <input type="file" ref={fileRef} onChange={handleFileUpload} className="hidden" accept=".csv,.txt" />
                                 </div>
                             </div>
-                            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm space-y-3 mb-4 flex-shrink-0">
+                            <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3 mb-4 flex-shrink-0">
                                 <div className="flex flex-wrap gap-2 items-center">
                                     <input value={name} onChange={e => setName(e.target.value)} className="h-11 p-2.5 border rounded-xl text-sm w-24 sm:w-32" placeholder="이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addStudent() }} />
                                     <select value={gender} onChange={e => setGender(e.target.value)} className="h-11 w-16 p-2.5 border rounded-xl text-sm"><option value="M">남</option><option value="F">여</option></select>
@@ -2950,10 +2953,10 @@
                                 </div>
                             </div>
                             
-                            <h4 className="font-bold text-slate-700 mb-2 flex justify-between text-sm items-center flex-shrink-0"> <span>전체 명단 ({students.length}명)</span> <div className="flex gap-2"> <Btn onClick={addTestData} className="text-xs bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1">테스트 명단(15명)</Btn> {isDeletingAll ?
+                            <h4 className="font-bold text-slate-700 mb-2 flex justify-between text-sm items-center flex-shrink-0 px-1"> <span>전체 명단 ({students.length}명)</span> <div className="flex gap-2"> <Btn onClick={addTestData} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 hover:bg-indigo-100 transition-colors">테스트 명단</Btn> {isDeletingAll ?
                                 <div className="flex gap-2"><Btn onClick={handleDeleteAll} className="text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg animate-pulse">확인</Btn><Btn onClick={() => setIsDeletingAll(false)} className="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg">취소</Btn></div> : <Btn onClick={() => setIsDeletingAll(true)} className="text-xs bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1"><Icon d={PATHS.trash} size={12} /> 명단 전체 삭제</Btn>} </div> </h4>
                             
-                            <div id="student-list" className="flex-1 overflow-y-auto bg-slate-50 p-2 rounded-xl space-y-1 custom-scroll border border-slate-100 h-full">
+                            <div id="student-list" className="flex-1 overflow-y-auto bg-slate-50 p-2 rounded-xl space-y-1 custom-scroll border border-slate-200 h-full shadow-inner">
                                 {students.map(s => (
                                     <div key={s.id} className="flex justify-between items-center p-2.5 bg-white rounded-lg border border-slate-100 text-sm group min-h-[46px]">
                                         {editingId === s.id ? (
@@ -2990,65 +2993,137 @@
                                 <h3 className="text-xl font-bold text-slate-800 border-b-2 border-slate-100 pb-3 mb-5 flex items-center gap-2 cursor-default select-none" onClick={handleDataManagementClick}>
                                     <span className="text-2xl">📱</span> 앱 설정 {isAdminMode && <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-1">관리자 모드</span>}
                                 </h3>
-                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
+                                <div className="space-y-4">
                                     {isAdminMode && (
-                                        <>
-                                            <div className="flex items-center gap-4"><div className="w-16 h-16 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">{cfg.runner.startsWith('data:image') ? <img src={cfg.runner} className="w-full h-full object-cover" /> : <span className="text-3xl">{cfg.runner}</span>}</div><div className="flex-1 flex gap-2"><input type="file" ref={runnerImgRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, runner: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" /><Btn onClick={() => runnerImgRef.current.click()} className="flex-1 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2">이미지 변경</Btn><Btn onClick={() => setCfg({ ...cfg, runner: "🏃" })} className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-200" title="기본값으로 복원"><Icon d={PATHS.trash} size={16}/></Btn></div></div>
-                                            <div className="flex items-center gap-4"><div className="w-16 h-16 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">{cfg.cloudIcon ? <img src={cfg.cloudIcon} className="w-full h-full object-contain" /> : <span className="text-3xl">☁️</span>}</div><div className="flex-1 flex gap-2"><input type="file" ref={cloudIconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, cloudIcon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" /><Btn onClick={() => cloudIconRef.current.click()} className="flex-1 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2">클라우드 아이콘 변경</Btn><Btn onClick={() => setCfg({ ...cfg, cloudIcon: null })} className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-200" title="기본값으로 복원"><Icon d={PATHS.trash} size={16}/></Btn></div></div>
-                                            <div className="pt-4 border-t mt-4">
-                                                <div className="flex justify-between items-center mb-1">
+                                        <div className="grid grid-cols-3 gap-3 animate-fade-in">
+                                            <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
+                                                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
+                                                    {cfg.runner.startsWith('data:image') ? <img src={cfg.runner} className="w-full h-full object-cover" /> : <span className="text-2xl">{cfg.runner}</span>}
+                                                </div>
+                                                <div className="flex gap-1 w-full">
+                                                    <input type="file" ref={runnerImgRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, runner: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                    <Btn onClick={() => runnerImgRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">러너 변경</Btn>
+                                                    <Btn onClick={() => setCfg({ ...cfg, runner: "🏃" })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
+                                                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
+                                                    {cfg.cloudIcon ? <img src={cfg.cloudIcon} className="w-full h-full object-contain" /> : <span className="text-2xl">☁️</span>}
+                                                </div>
+                                                <div className="flex gap-1 w-full">
+                                                    <input type="file" ref={cloudIconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, cloudIcon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                    <Btn onClick={() => cloudIconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">아이콘 변경</Btn>
+                                                    <Btn onClick={() => setCfg({ ...cfg, cloudIcon: null })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
+                                                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
+                                                    {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-2xl">📝</span>}
+                                                </div>
+                                                <div className="flex gap-1 w-full">
+                                                    <input type="file" ref={faviconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, favicon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                    <Btn onClick={() => faviconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">앱 아이콘</Btn>
+                                                    <Btn onClick={() => setCfg({ ...cfg, favicon: null })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                </div>
+                                            </div>
+                                            <div className="col-span-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                                <div className="flex justify-between items-center mb-2">
                                                     <label className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                                                        <Icon d={PATHS.bot} size={14}/> Gemini API Key 입력                                       
+                                                        <Icon d={PATHS.bot} size={14}/> Gemini API Key
                                                         {isKeyValid && <span className="text-green-500 text-xs flex items-center gap-0.5 animate-fade-in"><Icon d={PATHS.check} size={12}/> 유효함</span>}
-                                                        <span className="text-slate-400 text-[10px] ml-auto">사용량: {aiUsage}회</span>
                                                     </label>
                                                     <button onClick={() => setShowApiKeyHelp(true)} className="text-[10px] text-indigo-500 hover:underline flex items-center gap-0.5">키 발급 방법 <Icon d={PATHS.help} size={10} /></button>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <input type="password" value={apiKey} onChange={handleKeyChange} className="flex-1 p-2.5 border rounded-xl text-sm font-mono" placeholder="Google AI Studio Key 입력" />
-                                                    <Btn onClick={checkApiKey} className="bg-white border border-slate-300 px-3 rounded-xl text-xs font-bold hover:bg-slate-50 whitespace-nowrap text-slate-600">
-                                                        {isCheckingKey ? '...' : '확인'}
-                                                    </Btn>
-                                                    <label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isKeySaved} onChange={toggleKeySave} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span className="text-xs text-slate-600 font-bold">저장</span></label>
+                                                    <input type="password" value={apiKey} onChange={handleKeyChange} className="flex-1 p-2 border rounded-lg text-xs font-mono bg-white outline-none focus:border-indigo-500" placeholder="API Key 입력" />
+                                                    <Btn onClick={checkApiKey} className="bg-white border border-slate-300 px-3 rounded-lg text-xs font-bold hover:bg-slate-50 whitespace-nowrap text-slate-600">{isCheckingKey ? '...' : '확인'}</Btn>
+                                                    <label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isKeySaved} onChange={toggleKeySave} className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span className="text-xs text-slate-600 font-bold">저장</span></label>
                                                 </div>
+                                                <div className="text-[10px] text-slate-400 mt-1 text-right">사용량: {aiUsage}회</div>
                                             </div>
-                                        </>
+                                        </div>
                                     )}
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500">기록 모드 제목</label><input value={cfg.recordTitle} onChange={e => setCfg({ ...cfg, recordTitle: e.target.value })} className="w-full p-2.5 border rounded-xl text-sm" /></div>
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500">완료 메시지</label><input value={cfg.recordMsg} onChange={e => setCfg({ ...cfg, recordMsg: e.target.value })} className="w-full p-2.5 border rounded-xl text-sm" /></div>
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500">학급명 (파일 저장용)</label><input value={cfg.className || ""} onChange={e => setCfg({ ...cfg, className: e.target.value })} className="w-full p-2.5 border rounded-xl text-sm" placeholder="예: 3학년 2반, 홍길동 선생님" /></div>
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500">앱 전체 폰트</label>
-                                        <select value={cfg.font || 'sans'} onChange={e => setCfg({ ...cfg, font: e.target.value })} className="w-full p-2.5 border rounded-xl text-sm bg-white outline-none focus:border-indigo-500">
-                                            <option value="sans">기본 고딕 (System)</option>
-                                            <option value="nanum">나눔고딕 (깔끔함)</option>
-                                            <option value="nanum-bold">나눔고딕 (Bold)</option>
-                                            <option value="serif">나눔명조 (진지함)</option>
-                                            <option value="jua">주아체 (동글동글)</option>
-                                            <option value="hand">개구체 (손글씨)</option>
-                                        </select>
+
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
+                                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0"><Icon d={PATHS.edit} size={20}/></div>
+                                            <div className="flex-1 min-w-0">
+                                                <label className="text-[10px] font-bold text-slate-400 block mb-0.5">기록 모드 제목</label>
+                                                <input value={cfg.recordTitle} onChange={e => setCfg({ ...cfg, recordTitle: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="다했나요!?" />
+                                            </div>
+                                        </div>
+                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
+                                            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500 flex-shrink-0"><Icon d={PATHS.check} size={20}/></div>
+                                            <div className="flex-1 min-w-0">
+                                                <label className="text-[10px] font-bold text-slate-400 block mb-0.5">완료 메시지</label>
+                                                <input value={cfg.recordMsg} onChange={e => setCfg({ ...cfg, recordMsg: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="모두 제출 완료! 🎉" />
+                                            </div>
+                                        </div>
+                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
+                                            <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 flex-shrink-0"><Icon d={PATHS.users} size={20}/></div>
+                                            <div className="flex-1 min-w-0">
+                                                <label className="text-[10px] font-bold text-slate-400 block mb-0.5">학급명 (파일 저장용)</label>
+                                                <input value={cfg.className || ""} onChange={e => setCfg({ ...cfg, className: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="예: 3학년 2반" />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center justify-between p-2.5 border rounded-xl bg-white">
-                                        <span className="text-xs font-bold text-slate-500">효과음 사용</span>
-                                        <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={cfg.soundEnabled !== false} onChange={e => setCfg({ ...cfg, soundEnabled: e.target.checked })} className="sr-only peer" /><div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div></label>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-indigo-300 transition-colors">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Icon d={PATHS.document} size={16} className="text-slate-400"/>
+                                                <span className="text-xs font-bold text-slate-500">앱 폰트</span>
+                                            </div>
+                                            <select value={cfg.font || 'sans'} onChange={e => setCfg({ ...cfg, font: e.target.value })} className="w-full p-2 border rounded-lg text-xs bg-slate-50 outline-none focus:border-indigo-500 font-bold text-slate-700 cursor-pointer">
+                                                <option value="sans">기본 고딕</option>
+                                                <option value="nanum">나눔고딕</option>
+                                                <option value="nanum-bold">나눔고딕 (Bold)</option>
+                                                <option value="serif">나눔명조</option>
+                                                <option value="jua">주아체</option>
+                                                <option value="hand">개구체</option>
+                                            </select>
+                                        </div>
+                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col justify-between hover:border-indigo-300 transition-colors">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Icon d={PATHS.mic} size={16} className="text-slate-400"/>
+                                                <span className="text-xs font-bold text-slate-500">효과음</span>
+                                            </div>
+                                            <div className="flex justify-end">
+                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                    <input type="checkbox" checked={cfg.soundEnabled !== false} onChange={e => setCfg({ ...cfg, soundEnabled: e.target.checked })} className="sr-only peer" />
+                                                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="pt-4 border-t mt-4">
+
+                                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
                                         <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span className="text-xl">🏖️</span> 방학 기간 설정</label>
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                                            {vacations.length > 0 ? (<div className="space-y-2">{vacations.map((v, i) => (<div key={i} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 shadow-sm"><span className="font-bold text-slate-600 text-sm">{v.start} ~ {v.end}</span><button onClick={() => removeVacation(i)} className="text-rose-400 hover:text-rose-600 p-1.5 hover:bg-rose-50 rounded-lg transition-colors"><Icon d={PATHS.trash} size={16}/></button></div>))}</div>) : (<div className="text-center text-slate-400 text-xs py-2">등록된 방학 기간이 없습니다.</div>)}
+                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                                            {vacations.length > 0 ? (
+                                                <div className="space-y-2">
+                                                    {vacations.map((v, i) => (
+                                                        <div key={i} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm">
+                                                            <span className="font-bold text-slate-600 text-xs">{v.start} ~ {v.end}</span>
+                                                            <button onClick={() => removeVacation(i)} className="text-rose-400 hover:text-rose-600 p-1 hover:bg-rose-50 rounded transition-colors"><Icon d={PATHS.trash} size={14}/></button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (<div className="text-center text-slate-400 text-xs py-2">등록된 방학 기간이 없습니다.</div>)}
                                             <div className="flex gap-2 items-center pt-2 border-t border-slate-200">
                                                 <div className="flex-1 flex gap-2 items-center bg-white p-1 rounded-lg border border-slate-200">
-                                                    <input type="date" value={newVacStart} onChange={e => setNewVacStart(e.target.value)} className="flex-1 p-1.5 text-xs outline-none bg-transparent" />
+                                                    <input type="date" value={newVacStart} onChange={e => setNewVacStart(e.target.value)} className="flex-1 p-1 text-xs outline-none bg-transparent" />
                                                     <span className="text-slate-400">~</span>
-                                                    <input type="date" value={newVacEnd} onChange={e => setNewVacEnd(e.target.value)} className="flex-1 p-1.5 text-xs outline-none bg-transparent" />
+                                                    <input type="date" value={newVacEnd} onChange={e => setNewVacEnd(e.target.value)} className="flex-1 p-1 text-xs outline-none bg-transparent" />
                                                 </div>
-                                                <Btn onClick={addVacation} className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 text-xs shadow-sm whitespace-nowrap">추가</Btn>
+                                                <Btn onClick={addVacation} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 text-xs shadow-sm whitespace-nowrap">추가</Btn>
                                             </div>
                                         </div>
                                         <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
                                             <Icon d={PATHS.help} size={10} /> 방학 기간에는 달력에서 날짜 선택이 제한됩니다.
                                         </div>
                                     </div>
-                                    <Btn onClick={handleConfigSave} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 active:scale-95 transition-all text-sm mt-2">설정 저장</Btn>
+                                    <Btn onClick={handleConfigSave} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 active:scale-95 transition-all text-sm">설정 저장</Btn>
                                 </div>
                             </section>
                             
@@ -3069,25 +3144,52 @@
                                 </div>
                                 {isDataManagementOpen && (
                                 <div className="space-y-4 animate-fade-in">
-                                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                    <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
                                         {isAdminMode && (
-                                            <div className="grid grid-cols-2 gap-3 mb-3 animate-fade-in">
-                                                <Btn onClick={() => setShowSystemLogs(true)} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.list} size={20} className="text-slate-500" /> 시스템 로그</Btn>
-                                                <Btn onClick={handleDownloadHtml} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.download} size={20} className="text-indigo-500" /> 파일로 저장</Btn>
-                                                <Btn onClick={handleCopyCode} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.code} size={20} className="text-slate-500" /> 코드 복사</Btn>
+                                            <div className="grid grid-cols-3 gap-3 mb-3 animate-fade-in">
+                                                <Btn onClick={() => setShowSystemLogs(true)} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.list} size={20} className="text-slate-500" /></div>
+                                                    <span className="text-xs font-bold text-slate-600">시스템 로그</span>
+                                                </Btn>
+                                                <Btn onClick={handleDownloadHtml} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center"><Icon d={PATHS.download} size={20} className="text-indigo-500" /></div>
+                                                    <span className="text-xs font-bold text-slate-600">파일로 저장</span>
+                                                </Btn>
+                                                <Btn onClick={handleCopyCode} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.code} size={20} className="text-slate-500" /></div>
+                                                    <span className="text-xs font-bold text-slate-600">코드 복사</span>
+                                                </Btn>
                                             </div>
                                         )}
-                                        <div className="grid grid-cols-2 gap-3 mb-3">
-                                            <Btn onClick={handleExportJson} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.upload} size={20} className="text-blue-500" /> 데이터 내보내기</Btn>
-                                            <Btn onClick={()=>jsonFileRef.current.click()} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.download} size={20} className="text-green-500" /> 데이터 불러오기</Btn>
-                                            <Btn onClick={() => setShowCleanupModal(true)} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.trash} size={20} className="text-rose-500" /> 데이터 정리 도구</Btn>
-                                            <Btn onClick={()=>counselingFileRef.current.click()} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm" title="필수 열: 이름, 내용 / 선택 열: 날짜"><Icon d={PATHS.document} size={20} className="text-purple-500" /> 노션/CSV 관찰기록 가져오기</Btn>
-                                            <Btn onClick={handleExportDrafts} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.upload} size={20} className="text-indigo-500" /> 총평 초안 내보내기</Btn>
-                                            <Btn onClick={() => setShowManualModal(true)} className="p-3 bg-white border-2 border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 flex flex-col items-center gap-1 text-xs shadow-sm"><Icon d={PATHS.book} size={20} className="text-orange-500" /> 사용 설명서</Btn>
+                                        <div className="grid grid-cols-3 gap-3 mb-3">
+                                            <Btn onClick={handleExportJson} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center"><Icon d={PATHS.upload} size={20} className="text-blue-500" /></div>
+                                                <span className="text-xs font-bold text-slate-600">데이터 백업</span>
+                                            </Btn>
+                                            <Btn onClick={()=>jsonFileRef.current.click()} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center"><Icon d={PATHS.download} size={20} className="text-green-500" /></div>
+                                                <span className="text-xs font-bold text-slate-600">데이터 복원</span>
+                                            </Btn>
+                                            <Btn onClick={() => setShowCleanupModal(true)} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center"><Icon d={PATHS.trash} size={20} className="text-rose-500" /></div>
+                                                <span className="text-xs font-bold text-slate-600">데이터 정리</span>
+                                            </Btn>
+                                            <Btn onClick={()=>counselingFileRef.current.click()} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all" title="필수 열: 이름, 내용 / 선택 열: 날짜">
+                                                <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center"><Icon d={PATHS.document} size={20} className="text-purple-500" /></div>
+                                                <span className="text-xs font-bold text-slate-600">기록 가져오기</span>
+                                            </Btn>
+                                            <Btn onClick={handleExportDrafts} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center"><Icon d={PATHS.upload} size={20} className="text-indigo-500" /></div>
+                                                <span className="text-xs font-bold text-slate-600">초안 내보내기</span>
+                                            </Btn>
+                                            <Btn onClick={() => setShowManualModal(true)} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center"><Icon d={PATHS.book} size={20} className="text-orange-500" /></div>
+                                                <span className="text-xs font-bold text-slate-600">사용 설명서</span>
+                                            </Btn>
                                             <input type="file" ref={jsonFileRef} onChange={handleImportJson} className="hidden" accept=".json" />
                                             <input type="file" ref={counselingFileRef} onChange={handleCounselingImport} className="hidden" accept=".csv" />
                                         </div>
-                                        <div className="flex flex-col gap-2 p-3 bg-white border-2 border-indigo-100 rounded-xl">
+                                        <div className="flex flex-col gap-2 p-3 bg-indigo-50/50 border-2 border-indigo-100 rounded-xl">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2"><span className="text-xs font-bold text-indigo-800">자동 백업 설정</span><Btn onClick={() => setShowBackupHelp(true)} className="text-indigo-400 hover:text-indigo-600"><Icon d={PATHS.help} size={16}/></Btn></div>
                                                 <div onClick={toggleAutoBackup} className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${autoBackupEnabled ? 'bg-indigo-500' : 'bg-slate-300'}`}><div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoBackupEnabled ? 'translate-x-4' : ''}`}></div></div>
@@ -3500,6 +3602,41 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.5.5", 
+                date: "2026-02-13", 
+                list: ["앱 아이콘(Favicon) 설정 기능 추가 (설정 > 앱 설정 > 관리자 모드)"] 
+            },
+            { 
+                version: "v3.5.4", 
+                date: "2026-02-13", 
+                list: ["앱 메타 태그(og:title) 변경 ('이거했어?' → '다했나요!?')"] 
+            },
+            { 
+                version: "v3.5.3", 
+                date: "2026-02-13", 
+                list: ["기록 모드 기본 제목 변경 ('이거했어?' → '다했나요!?')"] 
+            },
+            { 
+                version: "v3.5.2", 
+                date: "2026-02-13", 
+                list: ["설정 > 앱 설정 섹션 UI 개선: 아이콘 위주의 카드형 레이아웃 적용 (가독성 및 사용성 향상)"] 
+            },
+            { 
+                version: "v3.5.1", 
+                date: "2026-02-13", 
+                list: ["설정 > 데이터 관리 섹션 UI 개선: 버튼을 아이콘 위주로 직관적으로 재배치 (3열 그리드 적용)"] 
+            },
+            { 
+                version: "v3.5.0", 
+                date: "2026-02-13", 
+                list: ["기능 추가에 따른 마이너 버전 업데이트", "칭찬 스티커 효과음, 애니메이션, 햅틱 피드백 등 사용자 경험 개선", "설정 메뉴 UI 디자인 개선 (가독성 향상 및 깔끔한 스타일 적용)"] 
+            },
+            { 
+                version: "v3.4.77", 
+                date: "2026-02-13", 
+                list: ["앱 안정성 최적화: 효과음 재생 리소스 관리 개선 (메모리 누수 방지)"] 
+            },
             { 
                 version: "v3.4.76", 
                 date: "2026-02-13", 
@@ -5009,8 +5146,8 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
         const App = () => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
-                minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 76    // Patch: 기존 기능의 버그 수정
+                minor: 5,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
+                patch: 5    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5091,7 +5228,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [isSettingOpen, setIsSettingOpen] = useState(false); const [isSetupOpen, setIsSetupOpen] = useState(false); const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null }); const [toastMessage, setToastMessage] = useState(null);
-            const [appConfig, setAppConfig] = useState({ recordTitle: "이거했어?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans' });
+            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const lastBackupTime = useRef("");
@@ -5127,6 +5264,13 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             // [Fix] onSnapshot 내부에서 최신 students 상태를 참조하기 위한 Ref
             const studentsRef = useRef(students);
             useEffect(() => { studentsRef.current = students; }, [students]);
+
+            useEffect(() => {
+                const link = document.getElementById('app-favicon');
+                if (link) {
+                    link.href = appConfig.favicon || "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>";
+                }
+            }, [appConfig.favicon]);
 
             // [Fix] 비동기 로직(setTimeout) 내에서 최신 상태를 참조하기 위한 Refs 추가
             const groupsByDateRef = useRef(groupsByDate);
