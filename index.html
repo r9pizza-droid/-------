@@ -3012,11 +3012,25 @@
                                                             </ul>
                                                         </div>
                                                     )}
-                                                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100 mt-1">
-                                                        {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-2xl">📝</span>}
+                                                    <div className="flex gap-4 items-end mb-2 mt-1">
+                                                        <div className="flex flex-col items-center gap-1">
+                                                            <span className="text-[9px] text-slate-400 font-bold">브라우저</span>
+                                                            <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
+                                                                {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-xl">📝</span>}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col items-center gap-1">
+                                                            <span className="text-[9px] text-slate-400 font-bold">iOS 홈</span>
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <div className="w-12 h-12 bg-white rounded-[10px] flex items-center justify-center overflow-hidden shadow-md border border-slate-100">
+                                                                    {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-2xl">📝</span>}
+                                                                </div>
+                                                                <span className="text-[8px] text-slate-500 font-medium truncate max-w-[50px]">{cfg.recordTitle || "다했나요!?"}</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     <div className="flex gap-1 w-full">
-                                                        <input type="file" ref={faviconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, favicon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                        <input type="file" ref={faviconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => { setCfg({ ...cfg, favicon: ev.target.result }); openConfirm("앱 아이콘이 변경되었습니다.\n\n변경된 아이콘을 홈 화면에 적용하려면,\n기존 앱을 삭제하고 '홈 화면에 추가'를 다시 진행해주세요.", () => {}); }; r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
                                                         <Btn onClick={() => faviconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">앱 아이콘</Btn>
                                                         <Btn onClick={() => openConfirm("앱 아이콘을 기본값(📝)으로 복원하시겠습니까?", () => setCfg({ ...cfg, favicon: null }))} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
                                                     </div>
@@ -3620,6 +3634,16 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.5.14", 
+                date: "2026-02-13", 
+                list: ["앱 아이콘 설정 시 iOS 홈 화면 스타일 미리보기 추가", "아이콘 변경 후 재설치 안내 메시지 추가"] 
+            },
+            { 
+                version: "v3.5.12", 
+                date: "2026-02-13", 
+                list: ["로딩 지연(10초 이상) 시 새로고침 버튼 표시 기능 추가 (모바일 무한 로딩 문제 대응)"] 
+            },
             { 
                 version: "v3.5.11", 
                 date: "2026-02-13", 
@@ -5190,7 +5214,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 5,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 11    // Patch: 기존 기능의 버그 수정
+                patch: 14    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5277,6 +5301,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const lastBackupTime = useRef("");
             const [isLoading, setIsLoading] = useState(true); 
             const [loadingProgress, setLoadingProgress] = useState(0);
+            const [showLongLoading, setShowLongLoading] = useState(false);
             const [showOfflineModal, setShowOfflineModal] = useState(false);
             const [autoCloseTimer, setAutoCloseTimer] = useState(3);
             const [showUpdateNotes, setShowUpdateNotes] = useState(false);
@@ -5319,6 +5344,14 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     }, 100);
                     return () => clearInterval(timer);
                 }
+            }, [isLoading]);
+
+            useEffect(() => {
+                let timer;
+                if (isLoading) {
+                    timer = setTimeout(() => setShowLongLoading(true), 10000); // 10초 후 새로고침 버튼 표시
+                }
+                return () => clearTimeout(timer);
             }, [isLoading]);
 
             useEffect(() => {
@@ -6685,6 +6718,17 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                 <span>{Math.round(loadingProgress)}%</span>
                             </div>
                         </div>
+
+                        {showLongLoading && (
+                            <div className="animate-fade-in flex flex-col items-center gap-3 mt-4 pt-4 border-t border-slate-200 w-full max-w-xs">
+                                <p className="text-xs text-rose-500 font-bold text-center">
+                                    로딩이 지연되고 있습니다.<br/>(네트워크 문제 또는 일시적 오류)
+                                </p>
+                                <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-bold hover:bg-slate-50 shadow-sm text-sm transition-transform active:scale-95">
+                                    새로고침
+                                </button>
+                            </div>
+                        )}
                     </div>
                 );
             }
