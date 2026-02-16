@@ -531,6 +531,7 @@
             const [grassStart, setGrassStart] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
             const [grassEnd, setGrassEnd] = useState(dayjs().endOf('month').format('YYYY-MM-DD'));
             const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+            const [stickerEffect, setStickerEffect] = useState(false);
             
             useEffect(() => { 
                 if (!student) return;
@@ -567,13 +568,63 @@
             
             const level = Math.floor(stickerCount / 5) + 1;
             
+            const playLevelUpSound = () => {
+                if (appConfig.soundEnabled === false) return;
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContext) return;
+                    const ctx = new AudioContext();
+                    const now = ctx.currentTime;
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.type = 'sine';
+                        osc.frequency.value = freq;
+                        gain.gain.setValueAtTime(0.05, now + i * 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.2);
+                        osc.start(now + i * 0.1);
+                        osc.stop(now + i * 0.1 + 0.2);
+                    });
+                } catch (e) {}
+            };
+
+            const playStickerSound = () => {
+                if (appConfig.soundEnabled === false) return;
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContext) return;
+                    const ctx = new AudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.03, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.1);
+                } catch (e) {}
+            };
+
             const handleSticker = (delta) => { 
                 const newCount = Math.max(0, stickerCount + delta); 
                 setStickerCount(newCount); 
                 onSaveStickers(student.id, newCount); 
                 if(delta > 0) {
-                    if (newCount % 5 === 0) { confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } }); if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`); }
-                    else { confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'] }); }
+                    setStickerEffect(true); setTimeout(() => setStickerEffect(false), 200);
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    if (newCount % 5 === 0) { 
+                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 }); 
+                        playLevelUpSound();
+                        if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`); 
+                    }
+                    else { 
+                        confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 }); 
+                        playStickerSound();
+                    }
                 }
             };
             
@@ -607,8 +658,17 @@
                 setStickerCount(newCount);
                 onSaveStickerWithNote(student.id, newCount, newNotes);
                 setNoteInput("");
-                if (newCount % 5 === 0) { confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } }); if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`); }
-                else { confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'] }); }
+                setStickerEffect(true); setTimeout(() => setStickerEffect(false), 200);
+                if (navigator.vibrate) navigator.vibrate(50);
+                if (newCount % 5 === 0) { 
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 }); 
+                    playLevelUpSound();
+                    if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`); 
+                }
+                else { 
+                    confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 }); 
+                    playStickerSound();
+                }
             };
             const handleDeleteNote = (id) => {
                 openConfirm("이 기록을 삭제하시겠습니까?", () => {
@@ -1071,7 +1131,7 @@
                             </div>
                             <div className="p-4 border border-slate-100 rounded-2xl bg-white shadow-sm flex items-center justify-between">
                                 <div className="flex flex-col"><h4 className="text-xs font-bold text-slate-500 mb-1">🌟 칭찬 스티커</h4><span className="text-xs text-slate-400">긍정적 강화!</span></div>
-                                <div className="flex items-center gap-3"><Btn onClick={() => handleSticker(-1)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold">-</Btn><span className="text-2xl font-bold text-yellow-500 w-8 text-center">{stickerCount}</span><Btn onClick={() => handleSticker(1)} className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold">+</Btn></div>
+                                <div className="flex items-center gap-3"><Btn onClick={() => handleSticker(-1)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold">-</Btn><span className={`text-2xl font-bold text-yellow-500 w-8 text-center transition-transform duration-200 ${stickerEffect ? 'scale-150 text-orange-500' : ''}`}>{stickerCount}</span><Btn onClick={() => handleSticker(1)} className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold">+</Btn></div>
                             </div>
                             <div className="p-4 border border-slate-100 rounded-2xl bg-white shadow-sm flex flex-col h-[400px]">
                                 <h4 className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">📒 교사 관찰 및 칭찬 기록</h4>
@@ -1118,10 +1178,12 @@
                                 )}
                                 <div className="flex flex-col sm:flex-row gap-2 mb-3">
                                     <input type="date" value={noteDate} onChange={(e) => setNoteDate(e.target.value)} className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 w-full sm:w-auto" />
-                                    <div className="flex gap-2 w-full items-center">
-                                        <input ref={noteInputRef} value={noteInput} onChange={(e) => setNoteInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAddNoteOnly()} className="flex-1 min-w-0 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500" placeholder="관찰 내용 또는 칭찬 사유..." />
-                                        <Btn onClick={handleAddNoteOnly} className="flex-shrink-0 bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 whitespace-nowrap">기록</Btn>
-                                        <Btn onClick={handleGiveStickerWithNote} className="flex-shrink-0 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">칭찬 (+1)</Btn>
+                                    <div className="flex gap-2 w-full items-center flex-wrap">
+                                        <input ref={noteInputRef} value={noteInput} onChange={(e) => setNoteInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAddNoteOnly()} className="flex-1 min-w-[120px] p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500" placeholder="관찰 내용 또는 칭찬 사유..." />
+                                        <div className="flex gap-2 shrink-0 ml-auto sm:ml-0">
+                                            <Btn onClick={handleAddNoteOnly} className="bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 whitespace-nowrap">기록</Btn>
+                                            <Btn onClick={handleGiveStickerWithNote} className="bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">칭찬 (+1)</Btn>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex-1 overflow-y-auto custom-scroll space-y-2 pr-1">
@@ -2362,6 +2424,7 @@
             const [showManualModal, setShowManualModal] = useState(false);
             const [showStorageHelp, setShowStorageHelp] = useState(false);
             const [showCleanupModal, setShowCleanupModal] = useState(false);
+            const [isDataManagementOpen, setIsDataManagementOpen] = useState(true);
             
             const dataUsage = useMemo(() => {
                 const data = {
@@ -2964,6 +3027,10 @@
                                             <option value="hand">개구체 (손글씨)</option>
                                         </select>
                                     </div>
+                                    <div className="flex items-center justify-between p-2.5 border rounded-xl bg-white">
+                                        <span className="text-xs font-bold text-slate-500">효과음 사용</span>
+                                        <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={cfg.soundEnabled !== false} onChange={e => setCfg({ ...cfg, soundEnabled: e.target.checked })} className="sr-only peer" /><div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div></label>
+                                    </div>
                                     <div className="pt-4 border-t mt-4">
                                         <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span className="text-xl">🏖️</span> 방학 기간 설정</label>
                                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
@@ -2986,13 +3053,22 @@
                             </section>
                             
                             <section>
-                                <div className="flex items-center gap-2 mb-5 border-b-2 border-slate-100 pb-3">
-                                    <span className="text-2xl">💾</span>
-                                    <h3 className="text-xl font-bold text-slate-800">
-                                        데이터 관리
-                                    </h3>
+                                <div className="flex items-center justify-between gap-2 mb-5 border-b-2 border-slate-100 pb-3 cursor-pointer select-none" onClick={() => setIsDataManagementOpen(!isDataManagementOpen)}>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-2xl">💾</span>
+                                        <h3 className="text-xl font-bold text-slate-800">
+                                            데이터 관리
+                                        </h3>
+                                        {!isDataManagementOpen && !isLocalMode && (
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ml-2 animate-fade-in ${dataUsage.isCritical ? 'bg-rose-100 text-rose-600' : dataUsage.isWarning ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                                                {dataUsage.percent}%
+                                            </span>
+                                        )}
+                                    </div>
+                                    <Icon d={isDataManagementOpen ? PATHS.down : PATHS.right} size={20} className="text-slate-400" />
                                 </div>
-                                <div className="space-y-4">
+                                {isDataManagementOpen && (
+                                <div className="space-y-4 animate-fade-in">
                                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                                         {isAdminMode && (
                                             <div className="grid grid-cols-2 gap-3 mb-3 animate-fade-in">
@@ -3057,11 +3133,14 @@
                                         </div>
                                     )}
 
-                                    <div className={`p-4 rounded-xl border flex justify-between items-center transition-colors shadow-sm ${isLocalMode ? 'bg-slate-50 border-slate-200' : 'bg-green-50 border-green-200'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-3 h-3 rounded-full shadow-sm ${isLocalMode ? 'bg-slate-400' : 'bg-green-500 animate-pulse'}`}></div>
-                                            <div className="flex flex-col">
-                                                <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
+                                    <div className={`p-4 rounded-xl border transition-colors shadow-sm ${isLocalMode ? 'bg-slate-50 border-slate-200' : 'bg-green-50 border-green-200'}`}>
+                                        <div className="flex gap-3">
+                                            <div className={`w-3 h-3 rounded-full shadow-sm mt-1.5 flex-shrink-0 ${isLocalMode ? 'bg-slate-400' : 'bg-green-500 animate-pulse'}`}></div>
+                                            <div className="flex-1 flex flex-col">
+                                                <div className="flex justify-between items-center">
+                                                    <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
+                                                    {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("연결 해제?", () => { localStorage.removeItem('checklist_config'); window.location.reload(); }) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">해제</Btn>}
+                                                </div>
                                                 {!isLocalMode && (
                                                     <>
                                                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -3104,7 +3183,7 @@
                                                                                     <span className="text-[9px] text-rose-500 font-bold bg-rose-50 px-1 rounded">1MB 제한 ⚠️</span>
                                                                                 </div>
                                                                             </div>
-                                                                            <div className="flex justify-center -my-2 relative z-10"><Icon d={PATHS.down} size={16} className="text-slate-300 bg-slate-50 rounded-full p-0.5" /></div>
+                                                                            <div className="flex justify-center my-1 relative z-10"><Icon d={PATHS.down} size={16} className="text-slate-300 bg-slate-50 rounded-full p-0.5" /></div>
                                                                            <div className="grid grid-cols-3 gap-1.5 mt-2">
                                                                                 <div className="bg-white border-2 border-blue-200 rounded-lg p-1.5 pt-2.5 relative shadow-sm">
                                                                                     <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-100 text-blue-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">모둠</div>
@@ -3135,11 +3214,10 @@
                                                 )}
                                             </div>
                                         </div>
-                                        {isLocalMode ?
-                                        <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("연결 해제?", () => { localStorage.removeItem('checklist_config'); window.location.reload(); }) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">해제</Btn>}
                                     </div>
                                     <Btn onClick={() => { openConfirm("모든 데이터를 초기화하시겠습니까?", handleResetAllData) }} className="w-full py-4 border-2 border-rose-100 text-rose-500 rounded-xl font-bold hover:bg-rose-50 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><Icon d={PATHS.trash} size={18} /> 초기화</Btn>
                                 </div>
+                                )}
                             </section>
                             <DataCleanupModal isOpen={showCleanupModal} onClose={() => setShowCleanupModal(false)} groupsByDate={groupsByDate} records={records} setGroupsByDate={setGroupsByDate} setRecords={setRecords} saveData={saveData} isLocalMode={isLocalMode} showToast={showToast} onBackup={handleExportJson} />
                         </div>
@@ -3422,6 +3500,46 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.4.76", 
+                date: "2026-02-13", 
+                list: ["학생 인사이트 > 칭찬 스티커 지급 시 효과음 추가 (설정에서 ON/OFF 가능)"] 
+            },
+            { 
+                version: "v3.4.75", 
+                date: "2026-02-13", 
+                list: ["학생 인사이트 > 칭찬 스티커 지급 시 숫자가 튀어오르는 애니메이션 효과 추가"] 
+            },
+            { 
+                version: "v3.4.74", 
+                date: "2026-02-13", 
+                list: ["학생 인사이트 > 칭찬 스티커 지급 시 햅틱(진동) 피드백 추가"] 
+            },
+            { 
+                version: "v3.4.73", 
+                date: "2026-02-13", 
+                list: ["학생 인사이트 > 칭찬 스티커 레벨업 시 효과음 추가", "레벨업 축하 애니메이션(Confetti)이 팝업 위로 보이도록 수정"] 
+            },
+            { 
+                version: "v3.4.72", 
+                date: "2026-02-13", 
+                list: ["설정 > 데이터 관리 구조도 화살표 여백 조정 (가독성 개선)", "학생 인사이트 > 칭찬 기록 입력창 레이아웃 개선 (모바일/태블릿 줄바꿈 지원)"] 
+            },
+            { 
+                version: "v3.4.71", 
+                date: "2026-02-13", 
+                list: ["설정 > 데이터 관리 섹션이 접혀있을 때 데이터 용량 상태(%) 요약 표시 기능 추가"] 
+            },
+            { 
+                version: "v3.4.70", 
+                date: "2026-02-13", 
+                list: ["설정 > 데이터 관리 섹션에 접기/펼치기(아코디언) 기능 추가"] 
+            },
+            { 
+                version: "v3.4.69", 
+                date: "2026-02-13", 
+                list: ["설정 > 데이터 관리 > 클라우드 동기화 UI 개선: 도움말 확장 시 해제 버튼 위치 고정 (타이틀 우측)"] 
+            },
             { 
                 version: "v3.4.68", 
                 date: "2026-02-13", 
@@ -4892,7 +5010,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 4,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 68    // Patch: 기존 기능의 버그 수정
+                patch: 76    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
