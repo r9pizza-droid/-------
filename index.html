@@ -2428,6 +2428,7 @@
             const [showStorageHelp, setShowStorageHelp] = useState(false);
             const [showCleanupModal, setShowCleanupModal] = useState(false);
             const [isDataManagementOpen, setIsDataManagementOpen] = useState(true);
+            const [showFaviconHelp, setShowFaviconHelp] = useState(false);
             
             const dataUsage = useMemo(() => {
                 const data = {
@@ -2995,38 +2996,52 @@
                                 </h3>
                                 <div className="space-y-4">
                                     {isAdminMode && (
-                                        <div className="grid grid-cols-3 gap-3 animate-fade-in">
-                                            <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
-                                                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
-                                                    {cfg.runner.startsWith('data:image') ? <img src={cfg.runner} className="w-full h-full object-cover" /> : <span className="text-2xl">{cfg.runner}</span>}
+                                        <>
+                                            <div className="grid grid-cols-3 gap-3 animate-fade-in">
+                                                <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative">
+                                                    <button onClick={(e) => { e.stopPropagation(); setShowFaviconHelp(!showFaviconHelp); }} className="absolute top-2 right-2 text-slate-300 hover:text-indigo-500 transition-colors"><Icon d={PATHS.help} size={14} /></button>
+                                                    {showFaviconHelp && (
+                                                        <div className="absolute top-8 right-2 w-48 bg-slate-800/95 backdrop-blur text-white text-[10px] p-3 rounded-xl shadow-xl z-20 text-left leading-relaxed animate-fade-in border border-slate-700" onClick={() => setShowFaviconHelp(false)}>
+                                                            <p className="font-bold mb-1 text-indigo-300">💡 아이콘 업로드 가이드</p>
+                                                            <ul className="list-disc pl-3 space-y-1 opacity-90">
+                                                                <li>비율: 1:1 정사각형 (필수)</li>
+                                                                <li>크기: 192px 이상 권장</li>
+                                                                <li>배경: 투명(PNG) 권장</li>
+                                                                <li>용량: 가급적 작게 (로딩 속도)</li>
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100 mt-1">
+                                                        {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-2xl">📝</span>}
+                                                    </div>
+                                                    <div className="flex gap-1 w-full">
+                                                        <input type="file" ref={faviconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, favicon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                        <Btn onClick={() => faviconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">앱 아이콘</Btn>
+                                                        <Btn onClick={() => setCfg({ ...cfg, favicon: null })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-1 w-full">
-                                                    <input type="file" ref={runnerImgRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, runner: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
-                                                    <Btn onClick={() => runnerImgRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">러너 변경</Btn>
-                                                    <Btn onClick={() => setCfg({ ...cfg, runner: "🏃" })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
+                                                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
+                                                        {cfg.runner.startsWith('data:image') ? <img src={cfg.runner} className="w-full h-full object-cover" /> : <span className="text-2xl">{cfg.runner}</span>}
+                                                    </div>
+                                                    <div className="flex gap-1 w-full">
+                                                        <input type="file" ref={runnerImgRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, runner: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                        <Btn onClick={() => runnerImgRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">러너 변경</Btn>
+                                                        <Btn onClick={() => setCfg({ ...cfg, runner: "🏃" })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
+                                                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
+                                                        {cfg.cloudIcon ? <img src={cfg.cloudIcon} className="w-full h-full object-contain" /> : <span className="text-2xl">☁️</span>}
+                                                    </div>
+                                                    <div className="flex gap-1 w-full">
+                                                        <input type="file" ref={cloudIconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, cloudIcon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                        <Btn onClick={() => cloudIconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">구름 변경</Btn>
+                                                        <Btn onClick={() => setCfg({ ...cfg, cloudIcon: null })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
-                                                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
-                                                    {cfg.cloudIcon ? <img src={cfg.cloudIcon} className="w-full h-full object-contain" /> : <span className="text-2xl">☁️</span>}
-                                                </div>
-                                                <div className="flex gap-1 w-full">
-                                                    <input type="file" ref={cloudIconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, cloudIcon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
-                                                    <Btn onClick={() => cloudIconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">아이콘 변경</Btn>
-                                                    <Btn onClick={() => setCfg({ ...cfg, cloudIcon: null })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
-                                                </div>
-                                            </div>
-                                            <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
-                                                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
-                                                    {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-2xl">📝</span>}
-                                                </div>
-                                                <div className="flex gap-1 w-full">
-                                                    <input type="file" ref={faviconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, favicon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
-                                                    <Btn onClick={() => faviconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">앱 아이콘</Btn>
-                                                    <Btn onClick={() => setCfg({ ...cfg, favicon: null })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
-                                                </div>
-                                            </div>
-                                            <div className="col-span-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col justify-center animate-fade-in">
                                                 <div className="flex justify-between items-center mb-2">
                                                     <label className="text-xs font-bold text-slate-500 flex items-center gap-1">
                                                         <Icon d={PATHS.bot} size={14}/> Gemini API Key
@@ -3037,11 +3052,13 @@
                                                 <div className="flex gap-2">
                                                     <input type="password" value={apiKey} onChange={handleKeyChange} className="flex-1 p-2 border rounded-lg text-xs font-mono bg-white outline-none focus:border-indigo-500" placeholder="API Key 입력" />
                                                     <Btn onClick={checkApiKey} className="bg-white border border-slate-300 px-3 rounded-lg text-xs font-bold hover:bg-slate-50 whitespace-nowrap text-slate-600">{isCheckingKey ? '...' : '확인'}</Btn>
-                                                    <label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isKeySaved} onChange={toggleKeySave} className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span className="text-xs text-slate-600 font-bold">저장</span></label>
                                                 </div>
-                                                <div className="text-[10px] text-slate-400 mt-1 text-right">사용량: {aiUsage}회</div>
+                                                <div className="flex justify-between items-center mt-1">
+                                                    <label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isKeySaved} onChange={toggleKeySave} className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span className="text-xs text-slate-600 font-bold">저장</span></label>
+                                                    <div className="text-[10px] text-slate-400">사용량: {aiUsage}회</div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        </>
                                     )}
 
                                     <div className="grid grid-cols-1 gap-3">
@@ -3602,6 +3619,21 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.5.9", 
+                date: "2026-02-13", 
+                list: ["앱 아이콘, 러너, 클라우드 아이콘 변경 기능을 관리자 모드 전용으로 이동"] 
+            },
+            { 
+                version: "v3.5.8", 
+                date: "2026-02-13", 
+                list: ["앱 아이콘 설정 시 업로드 가이드(권장 크기, 비율 등) 도움말 추가"] 
+            },
+            { 
+                version: "v3.5.6", 
+                date: "2026-02-13", 
+                list: ["앱 아이콘 및 러너 아이콘 설정 기능을 일반 설정으로 이동 (접근성 개선)"] 
+            },
             { 
                 version: "v3.5.5", 
                 date: "2026-02-13", 
@@ -5147,7 +5179,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 5,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 5    // Patch: 기존 기능의 버그 수정
+                patch: 9    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
