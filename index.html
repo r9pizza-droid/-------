@@ -516,12 +516,9 @@
 
             
             const [notes, setNotes] = useState([]);
-            const [noteInput, setNoteInput] = useState("");
             const [stickerCount, setStickerCount] = useState(student.stickers || 0);
             const [selectedDate, setSelectedDate] = useState(null);
             const [searchTerm, setSearchTerm] = useState("");
-            const [noteDate, setNoteDate] = useState(dayjs().format('YYYY-MM-DD'));
-            const noteInputRef = useRef(null);
             const [editingNoteId, setEditingNoteId] = useState(null);
             const [editNoteContent, setEditNoteContent] = useState("");
             const [aiComment, setAiComment] = useState("");
@@ -548,6 +545,12 @@
             const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             const [stickerEffect, setStickerEffect] = useState(false);
             
+            // [New] 노션 저장 관련 State
+            const [notionCategory, setNotionCategory] = useState('📝 관찰');
+            const [notionDate, setNotionDate] = useState(dayjs().format('YYYY-MM-DD'));
+            const [notionContent, setNotionContent] = useState('');
+            const [notionStatus, setNotionStatus] = useState('idle'); // idle, saving, success, error
+            
             useEffect(() => { 
                 if (!student) return;
                 setStickerCount(student.stickers || 0);
@@ -572,13 +575,19 @@
                     else setNotes([]);
                 }
                 setAiComment("");
+
+                // [New] 노션 입력창 초기화
+                setNotionCategory('📝 관찰');
+                setNotionDate(dayjs().format('YYYY-MM-DD'));
+                setNotionContent('');
+                setNotionStatus('idle');
             }, [student, isLocalMode, db, appId]);
 
             // student prop이 변경될 때 notes 초기화 방지 (위 useEffect에서 처리)
             // useEffect(() => { ... }, [student]); // 기존 로직 대체됨
 
             useEffect(() => {
-                setNoteDate(selectedDate || dayjs().format('YYYY-MM-DD'));
+                setNotionDate(selectedDate || dayjs().format('YYYY-MM-DD'));
             }, [selectedDate]);
             
             const level = Math.floor(stickerCount / 5) + 1;
@@ -645,12 +654,12 @@
                 }
             };
             
-            const handleAddNoteOnly = () => {
-                if (!noteInput.trim()) return;
-                const newNotes = [{ id: Date.now(), date: noteDate, content: noteInput.trim() }, ...notes];
-                setNotes(newNotes);
-                onSaveCounseling(student.id, newNotes, "관찰 기록이 추가되었습니다.");
-                setNoteInput("");
+            const handleDeleteNote = (id) => {
+                openConfirm("이 기록을 삭제하시겠습니까?", () => {
+                    const newNotes = notes.filter(n => n.id !== id);
+                    setNotes(newNotes);
+                    onSaveCounseling(student.id, newNotes, "기록이 삭제되었습니다.");
+                });
             };
 
             const startEditing = (note) => {
@@ -667,32 +676,59 @@
                 setEditNoteContent("");
             };
 
-            const handleGiveStickerWithNote = () => {
-                if (!noteInput.trim()) return;
-                const newNotes = [{ id: Date.now(), date: noteDate, content: noteInput.trim() }, ...notes];
+            // [New] 통합 저장 핸들러 (앱 내 저장 + 노션 저장)
+            const handleIntegratedSave = async (withSticker) => {
+                if (!notionContent.trim()) return showToast("내용을 입력해주세요.");
+                
+                setNotionStatus('saving');
+                
+                // 1. 앱 내 데이터 저장 (낙관적 업데이트)
+                const newNote = { id: Date.now(), date: notionDate, content: notionContent.trim() };
+                const newNotes = [newNote, ...notes];
                 setNotes(newNotes);
-                const newCount = stickerCount + 1;
-                setStickerCount(newCount);
-                onSaveStickerWithNote(student.id, newCount, newNotes);
-                setNoteInput("");
-                setStickerEffect(true); setTimeout(() => setStickerEffect(false), 200);
-                if (navigator.vibrate) navigator.vibrate(50);
-                if (newCount % 5 === 0) { 
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 }); 
-                    playLevelUpSound();
-                    if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`); 
+                
+                if (withSticker) {
+                    const newCount = stickerCount + 1;
+                    setStickerCount(newCount);
+                    onSaveStickerWithNote(student.id, newCount, newNotes);
+                    
+                    // 스티커 효과
+                    setStickerEffect(true); setTimeout(() => setStickerEffect(false), 200);
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    if (newCount % 5 === 0) { 
+                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 }); 
+                        playLevelUpSound();
+                        if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`); 
+                    } else { 
+                        confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 }); 
+                        playStickerSound();
+                    }
+                } else {
+                    onSaveCounseling(student.id, newNotes, "기록이 저장되었습니다.");
                 }
-                else { 
-                    confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 }); 
-                    playStickerSound();
+
+                // 2. 노션 저장 (비동기)
+                try {
+                    const response = await fetch('/api/save-notion', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            studentName: student.name,
+                            date: notionDate,
+                            category: notionCategory.includes('칭찬') ? '칭찬' : '관찰',
+                            content: notionContent
+                        })
+                    });
+                    if (!response.ok) throw new Error('저장 실패');
+                    setNotionStatus('success');
+                    setNotionContent('');
+                    setTimeout(() => setNotionStatus('idle'), 3000);
+                } catch (e) {
+                    console.error(e);
+                    setNotionStatus('error');
+                    showToast("노션 저장 실패: " + e.message);
+                    setTimeout(() => setNotionStatus('idle'), 3000);
                 }
-            };
-            const handleDeleteNote = (id) => {
-                openConfirm("이 기록을 삭제하시겠습니까?", () => {
-                    const newNotes = notes.filter(n => n.id !== id);
-                    setNotes(newNotes);
-                    onSaveCounseling(student.id, newNotes, "기록이 삭제되었습니다.");
-                });
             };
             
             const calculateStatsForPeriod = (startStr, endStr) => {
@@ -1150,8 +1186,35 @@
                                 <div className="flex flex-col"><h4 className="text-xs font-bold text-slate-500 mb-1">🌟 칭찬 스티커</h4><span className="text-xs text-slate-400">긍정적 강화!</span></div>
                                 <div className="flex items-center gap-3"><Btn onClick={() => handleSticker(-1)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold">-</Btn><span className={`text-2xl font-bold text-yellow-500 w-8 text-center transition-transform duration-200 ${stickerEffect ? 'scale-150 text-orange-500' : ''}`}>{stickerCount}</span><Btn onClick={() => handleSticker(1)} className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold">+</Btn></div>
                             </div>
-                            <div className="p-4 border border-slate-100 rounded-2xl bg-white shadow-sm flex flex-col h-[400px]">
-                                <h4 className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">📒 교사 관찰 및 칭찬 기록</h4>
+                            <div className="p-4 border border-slate-100 rounded-2xl bg-white shadow-sm flex flex-col h-[500px]">
+                                <h4 className="text-xs font-bold text-slate-500 mb-3 flex items-center gap-1">
+                                    📒 교사 관찰 및 칭찬 기록 <span className="text-[10px] text-slate-400 font-normal ml-1">* 노션과 연동됩니다.</span>
+                                </h4>
+                                
+                                {/* [New] 통합 입력 폼 */}
+                                <div className="flex flex-col gap-3 mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="flex gap-2">
+                                        <div className="flex bg-white p-1 rounded-lg shrink-0 border border-slate-200">
+                                            {['⭐ 칭찬', '📝 관찰'].map(cat => (
+                                                <button key={cat} onClick={() => setNotionCategory(cat)} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${notionCategory === cat ? 'bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{cat}</button>
+                                            ))}
+                                        </div>
+                                        <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600" />
+                                    </div>
+                                    <textarea 
+                                        value={notionContent}
+                                        onChange={(e) => setNotionContent(e.target.value)}
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 resize-none h-20 placeholder-slate-400"
+                                        placeholder="내용을 입력하세요..."
+                                    />
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleIntegratedSave(false)} disabled={notionStatus === 'saving'} className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${notionStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>기록</button>
+                                        <button onClick={() => handleIntegratedSave(true)} disabled={notionStatus === 'saving'} className={`flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-2 ${notionStatus === 'saving' ? 'bg-indigo-300' : 'bg-indigo-600 hover:bg-indigo-700 shadow-md'}`}>칭찬 (+1)</button>
+                                    </div>
+                                    {notionStatus === 'success' && <div className="text-center text-[10px] text-green-500 font-bold animate-fade-in">✅ 성공적으로 저장되었습니다!</div>}
+                                    {notionStatus === 'error' && <div className="text-center text-[10px] text-rose-500 font-bold animate-fade-in">⚠️ 노션 전송 실패 (앱에는 저장됨)</div>}
+                                </div>
+
                                 <div className="flex gap-2 mb-2">
                                     <div className="relative flex-1">
                                         <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-2 pl-7 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500" placeholder="기록 검색..." />
@@ -1193,16 +1256,6 @@
                                         </div>
                                     </div>
                                 )}
-                                <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                                    <input type="date" value={noteDate} onChange={(e) => setNoteDate(e.target.value)} className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 w-full sm:w-auto" />
-                                    <div className="flex gap-2 w-full items-center flex-wrap">
-                                        <input ref={noteInputRef} value={noteInput} onChange={(e) => setNoteInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAddNoteOnly()} className="flex-1 min-w-[120px] p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500" placeholder="관찰 내용 또는 칭찬 사유..." />
-                                        <div className="flex gap-2 shrink-0 ml-auto sm:ml-0">
-                                            <Btn onClick={handleAddNoteOnly} className="bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 whitespace-nowrap">기록</Btn>
-                                            <Btn onClick={handleGiveStickerWithNote} className="bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">칭찬 (+1)</Btn>
-                                        </div>
-                                    </div>
-                                </div>
                                 <div className="flex-1 overflow-y-auto custom-scroll space-y-2 pr-1">
                                     {filteredNotes.length > 0 ? filteredNotes.map(n => (
                                         <div key={n.id} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 group hover:border-indigo-200 transition-colors">
@@ -1227,11 +1280,6 @@
                                     )) : (
                                         <div className="h-full flex flex-col items-center justify-center text-slate-300 text-xs gap-2">
                                             <span>{searchTerm || selectedDate ? "기록이 없습니다." : "기록이 없습니다."}</span>
-                                            {selectedDate && (
-                                                <button onClick={() => noteInputRef.current?.focus()} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1">
-                                                    <Icon d={PATHS.plus} size={12} /> 기록 추가하기
-                                                </button>
-                                            )}
                                         </div>
                                     )}
                                 </div>
