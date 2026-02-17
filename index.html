@@ -712,16 +712,16 @@
                     onSaveCounseling(student.id, newNotes, "기록이 저장되었습니다.");
                 }
 
-                // 노션 설정이 없으면 여기서 종료
-                if (!hasNotionConfig) {
-                    setTimeout(() => setNotionStatus('idle'), 1000);
-                    return;
-                }
-
                 // 2. 노션 저장 (비동기)
                 try {
                     const personalKey = localStorage.getItem('cls_notion_key');
                     const personalDbId = localStorage.getItem('cls_notion_db_id');
+
+                    if (!personalKey || !personalDbId) {
+                        showToast("설정(⚙️)에서 노션 연동 정보를 입력해주세요.");
+                        setTimeout(() => setNotionStatus('idle'), 1000);
+                        return;
+                    }
 
                     const response = await fetch('/api/save-notion', {
                         method: 'POST',
@@ -2330,6 +2330,7 @@
             const [dbId, setDbId] = useState("");
             const [saveLocally, setSaveLocally] = useState(false);
             const [showManual, setShowManual] = useState(false);
+            const [isTesting, setIsTesting] = useState(false);
 
             useEffect(() => {
                 if (isOpen) {
@@ -2341,6 +2342,31 @@
                 }
             }, [isOpen]);
 
+            const handleTestConnection = async () => {
+                if (!apiKey || !dbId) return showToast("API Key와 Database ID를 입력해주세요.");
+                setIsTesting(true);
+                try {
+                    const response = await fetch('/api/save-notion', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            personalKey: apiKey.trim(), 
+                            personalDbId: dbId.trim(),
+                            testMode: true 
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || "연동 실패");
+                    const msg = data.dbName ? `✅ 연동 성공! (DB: ${data.dbName})` : ("✅ " + data.message);
+                    showToast(msg);
+                    setSaveLocally(true);
+                } catch (e) {
+                    showToast("❌ " + e.message);
+                } finally {
+                    setIsTesting(false);
+                }
+            };
+
             const handleSave = () => {
                 if (saveLocally) {
                     localStorage.setItem('cls_notion_key', apiKey.trim());
@@ -2351,6 +2377,38 @@
                 }
                 showToast("노션 설정이 저장되었습니다.");
                 onClose();
+            };
+
+            const handlePasteKey = async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        setApiKey(text);
+                        showToast("붙여넣기 완료");
+                    }
+                } catch (err) { showToast("붙여넣기 실패 (권한 확인 필요)"); }
+            };
+
+            const extractAndSetDbId = (text) => {
+                if (text.includes("notion.so")) {
+                    const match = text.match(/([a-f0-9]{32})/);
+                    if (match) {
+                        setDbId(match[1]);
+                        return true;
+                    }
+                }
+                setDbId(text);
+                return false;
+            };
+
+            const handlePasteDbId = async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        if (extractAndSetDbId(text)) showToast("URL에서 ID를 추출하여 붙여넣었습니다.");
+                        else showToast("붙여넣기 완료");
+                    }
+                } catch (err) { showToast("붙여넣기 실패 (권한 확인 필요)"); }
             };
 
             if (!isOpen) return null;
@@ -2391,17 +2449,28 @@
 
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500">Notion API Key (Secret)</label>
-                            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="secret_..." />
+                            <div className="flex gap-2">
+                                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="secret_..." />
+                                <Btn onClick={handlePasteKey} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500">Database ID</label>
-                            <input type="text" value={dbId} onChange={e => setDbId(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID" />
+                            <div className="flex gap-2">
+                                <input type="text" value={dbId} onChange={e => { if(extractAndSetDbId(e.target.value)) showToast("URL에서 ID를 추출했습니다."); }} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID (URL 붙여넣기 가능)" />
+                                <Btn onClick={handlePasteDbId} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
+                            </div>
                         </div>
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" checked={saveLocally} onChange={e => setSaveLocally(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
                             <span className="text-sm text-slate-700 font-bold">이 기기에 정보 저장하기</span>
                         </label>
-                        <Btn onClick={handleSave} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">설정 저장하기</Btn>
+                        <div className="flex gap-2 pt-2">
+                            <Btn onClick={handleTestConnection} disabled={isTesting} className="flex-1 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors">
+                                {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : '🔌 연동 테스트'}
+                            </Btn>
+                            <Btn onClick={handleSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-colors">설정 저장하기</Btn>
+                        </div>
                     </div>
                 </BaseModal>
             );
@@ -2688,6 +2757,9 @@
             const [isDataManagementOpen, setIsDataManagementOpen] = useState(true);
             const [showFaviconHelp, setShowFaviconHelp] = useState(false);
             
+            const isNotionConnected = !!(localStorage.getItem('cls_notion_key') && localStorage.getItem('cls_notion_db_id'));
+            const isAiConnected = !!apiKey;
+
             const dataUsage = useMemo(() => {
                 const data = {
                     students, records, groupsByDate, avoidancePairs, mustPairs, 
@@ -3387,13 +3459,15 @@
                                                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.code} size={20} className="text-slate-500" /></div>
                                                     <span className="text-xs font-bold text-slate-600">코드 복사</span>
                                                 </Btn>
-                                                <Btn onClick={onOpenNotionSetup} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                <Btn onClick={onOpenNotionSetup} className={`h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isNotionConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
                                                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><span className="text-xl">N</span></div>
                                                     <span className="text-xs font-bold text-slate-600">노션 연동</span>
+                                                    {isNotionConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
-                                                <Btn onClick={onOpenApiKeySetup} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                <Btn onClick={onOpenApiKeySetup} className={`h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isAiConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
                                                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.bot} size={20} className="text-slate-500" /></div>
                                                     <span className="text-xs font-bold text-slate-600">AI 설정</span>
+                                                    {isAiConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
                                             </div>
                                         )}
@@ -3737,6 +3811,26 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.7.12", 
+                list: ["노션 연동 설정: URL 입력 시 ID 자동 추출 기능 추가", "AI 설정 버튼에 '연동됨' 상태 표시 추가"] 
+            },
+            { 
+                version: "v3.7.11", 
+                list: ["설정 > 노션 연동 버튼에 '연동됨' 상태 표시(초록색 체크) 추가"] 
+            },
+            { 
+                version: "v3.7.10", 
+                list: ["노션 연동 설정: Database ID 붙여넣기 버튼 추가", "연동 테스트 성공 시 DB 이름 표시 기능 추가"] 
+            },
+            { 
+                version: "v3.7.9", 
+                list: ["노션 연동 설정: API 키 붙여넣기 버튼 추가 및 테스트 성공 시 자동 저장 체크"] 
+            },
+            { 
+                version: "v3.7.8", 
+                list: ["노션 연동 설정창에 '연동 테스트' 버튼 추가"] 
+            },
             { 
                 version: "v3.7.7", 
                 list: ["설정 > 앱 설정 > 아이콘 변경 기능 그룹화 (UI 개선)", "초안 내보내기 버튼 위치 변경 (설정 → 통계 탭 활동 잔디)"] 
@@ -5313,7 +5407,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 7,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 7    // Patch: 기존 기능의 버그 수정
+                patch: 12   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
