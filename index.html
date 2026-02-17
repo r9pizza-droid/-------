@@ -3925,6 +3925,10 @@
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.7.27", 
+                list: ["모바일 기록 탭 날짜 스와이프 기능 제거"] 
+            },
+            { 
                 version: "v3.7.26", 
                 list: ["학급 스토리 결과 화면에 '다시 쓰기' 및 '다른 장르로' 버튼 추가"] 
             },
@@ -5576,7 +5580,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 7,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 26   // Patch: 기존 기능의 버그 수정
+                patch: 27   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5701,7 +5705,6 @@
             const [isIOS, setIsIOS] = useState(false);
             const [isStandalone, setIsStandalone] = useState(false);
             const [showInstallGuide, setShowInstallGuide] = useState(false);
-            const [slideDirection, setSlideDirection] = useState(null);
 
             // [Fix] onSnapshot 내부에서 최신 students 상태를 참조하기 위한 Ref
             const studentsRef = useRef(students);
@@ -5740,36 +5743,6 @@
 
                 return () => window.removeEventListener('beforeinstallprompt', handler);
             }, []);
-
-            // [New] 기록 탭 날짜 스와이프 로직
-            const touchStartX = useRef(null);
-            const touchEndX = useRef(null);
-            const minSwipeDistance = 50;
-
-            const onTouchStart = (e) => {
-                touchEndX.current = null;
-                touchStartX.current = e.targetTouches[0].clientX;
-            };
-
-            const onTouchMove = (e) => {
-                touchEndX.current = e.targetTouches[0].clientX;
-            };
-
-            const onTouchEnd = () => {
-                if (!touchStartX.current || !touchEndX.current) return;
-                const distance = touchStartX.current - touchEndX.current;
-                const isLeftSwipe = distance > minSwipeDistance;
-                const isRightSwipe = distance < -minSwipeDistance;
-                
-                if (isLeftSwipe) {
-                    if (appConfig.animationEnabled !== false) setSlideDirection('right');
-                    setDate(dayjs(date).add(1, 'day').format('YYYY-MM-DD'));
-                }
-                if (isRightSwipe) {
-                    if (appConfig.animationEnabled !== false) setSlideDirection('left');
-                    setDate(dayjs(date).subtract(1, 'day').format('YYYY-MM-DD'));
-                }
-            };
 
             const handleInstallApp = () => {
                 setShowInstallGuide(true);
@@ -7370,11 +7343,8 @@
 ><Btn onClick={()=>setDate(dayjs(date).subtract(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18}/></Btn><div className="flex flex-col items-center px-3" onClick={()=>setIsCalendarOpen(true)}><div className="text-base font-bold text-notion-text">{dayjs(date).format('YY.MM.DD')}</div><div className="text-[10px] font-bold text-notion-text-light">{dayjs(date).format('dddd')}</div></div><Btn onClick={()=>setDate(dayjs(date).add(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18}/></Btn></div>}</div></div>)}</header>
                     <main 
                         className="flex-1 overflow-y-auto p-4 md:p-6 custom-scroll pb-20 md:pb-6 bg-white"
-                        onTouchStart={mode === 'record' ? onTouchStart : undefined}
-                        onTouchMove={mode === 'record' ? onTouchMove : undefined}
-                        onTouchEnd={mode === 'record' ? onTouchEnd : undefined}
                     >
-                        <div key={date} className={`flex-1 ${slideDirection === 'right' ? 'animate-slide-in-right' : slideDirection === 'left' ? 'animate-slide-in-left' : ''}`}>
+                        <div key={date} className="flex-1">
                             {mode === 'record' && (
                                 <>
                                     <div className="flex justify-end mb-4 items-center gap-2">
