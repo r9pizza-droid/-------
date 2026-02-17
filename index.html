@@ -719,7 +719,10 @@
                             content: notionContent
                         })
                     });
-                    if (!response.ok) throw new Error('저장 실패');
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.message || `서버 오류 (${response.status})`);
+                    }
                     setNotionStatus('success');
                     setNotionContent('');
                     setTimeout(() => setNotionStatus('idle'), 3000);
