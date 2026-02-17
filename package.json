@@ -1,3 +1,8 @@
-"dependencies": {
-  "@notionhq/client": "^2.2.15"
+{
+  "name": "teacher-helper-app",
+  "version": "1.0.0",
+  "main": "index.html",
+  "dependencies": {
+    "@notionhq/client": "^2.2.15"
+  }
 }
