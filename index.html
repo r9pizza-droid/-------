@@ -311,7 +311,7 @@
                             <Icon d={PATHS.x} size={18} />
                         </button>
                         <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4 md:hidden" />
-                        <div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-notion-bg-hover text-notion-text rounded border border-notion-border font-medium hover:bg-gray-200">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:opacity-90 shadow-sm">확인</Btn></div></div></div>
+                        <div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-white text-slate-600 rounded border border-slate-200 font-medium hover:bg-slate-100 hover:border-slate-300 transition-colors">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:bg-red-600 shadow-sm transition-colors">확인</Btn></div></div></div>
             );
         };
         const UpdateNotificationModal = ({ isOpen, onUpdate, onClose }) => {
@@ -2354,7 +2354,7 @@
             );
         };
 
-        const NotionSetupModal = ({ isOpen, onClose, showToast }) => {
+        const NotionSetupModal = ({ isOpen, onClose, showToast, saveData, isLocalMode }) => {
             const [apiKey, setApiKey] = useState("");
             const [dbId, setDbId] = useState("");
             const [saveLocally, setSaveLocally] = useState(false);
@@ -2400,9 +2400,11 @@
                 if (saveLocally) {
                     localStorage.setItem('cls_notion_key', apiKey.trim());
                     localStorage.setItem('cls_notion_db_id', dbId.trim());
+                    if (!isLocalMode && saveData) saveData({ cls_notion_key: apiKey.trim(), cls_notion_db_id: dbId.trim() });
                 } else {
                     localStorage.removeItem('cls_notion_key');
                     localStorage.removeItem('cls_notion_db_id');
+                    if (!isLocalMode && saveData) saveData({ cls_notion_key: "", cls_notion_db_id: "" });
                 }
                 showToast("노션 설정이 저장되었습니다.");
                 onClose();
@@ -2761,6 +2763,74 @@
             );
         };
 
+        const ResetOptionsModal = ({ isOpen, onClose, onReset }) => {
+            const [selected, setSelected] = useState({
+                students: true, records: true, groups: true, tasks: true, seats: true, roles: true
+            });
+            
+            const options = [
+                { id: 'students', label: '학생 명단', desc: '이름, 성별, 실력 등' },
+                { id: 'records', label: '활동 기록', desc: '체크리스트, 상담, 스티커' },
+                { id: 'groups', label: '모둠 기록', desc: '편성 이력, 기피 관계' },
+                { id: 'tasks', label: '과제 설정', desc: '오늘/요일별 과제, 태그' },
+                { id: 'seats', label: '자리 배치', desc: '현재 배치, 책상 구조' },
+                { id: 'roles', label: '역할 설정', desc: '역할 목록, 설명' },
+            ];
+
+            const toggleAll = () => {
+                const allSelected = Object.values(selected).every(v => v);
+                const newVal = !allSelected;
+                const newSelected = {};
+                options.forEach(o => newSelected[o.id] = newVal);
+                setSelected(newSelected);
+            };
+
+            const handleReset = () => {
+                const items = Object.keys(selected).filter(k => selected[k]);
+                if (items.length === 0) return;
+                onReset(items);
+                onClose();
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="🗑️ 데이터 초기화" icon={PATHS.trash} maxWidth="max-w-md">
+                    <div className="space-y-4">
+                        <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 text-sm text-rose-800">
+                            <p className="font-bold mb-1">⚠️ 주의: 삭제된 데이터는 복구할 수 없습니다.</p>
+                            <p className="text-xs opacity-80">초기화할 항목을 선택해주세요.</p>
+                        </div>
+                        
+                        <div className="flex justify-end">
+                            <button onClick={toggleAll} className="text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors">
+                                {Object.values(selected).every(v => v) ? '전체 해제' : '전체 선택'}
+                            </button>
+                        </div>
+
+                        <div className="space-y-2">
+                            {options.map(opt => (
+                                <label key={opt.id} className={`flex items-center p-3 rounded-xl border cursor-pointer transition-all ${selected[opt.id] ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                                    <input type="checkbox" checked={selected[opt.id]} onChange={() => setSelected(prev => ({ ...prev, [opt.id]: !prev[opt.id] }))} className="w-4 h-4 text-rose-500 rounded border-gray-300 focus:ring-rose-500" />
+                                    <div className="ml-3 flex-1">
+                                        <div className={`text-sm font-bold ${selected[opt.id] ? 'text-rose-700' : 'text-slate-700'}`}>{opt.label}</div>
+                                        <div className="text-xs text-slate-400">{opt.desc}</div>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-2 mt-4">
+                            <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">취소</Btn>
+                            <Btn onClick={handleReset} className="flex-1 py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md">
+                                선택 항목 삭제
+                            </Btn>
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        };
+
         const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
@@ -2785,6 +2855,7 @@
             const [showCleanupModal, setShowCleanupModal] = useState(false);
             const [isDataManagementOpen, setIsDataManagementOpen] = useState(true);
             const [showFaviconHelp, setShowFaviconHelp] = useState(false);
+            const [showResetOptions, setShowResetOptions] = useState(false);
             
             const isNotionConnected = !!(localStorage.getItem('cls_notion_key') && localStorage.getItem('cls_notion_db_id'));
             const isAiConnected = !!apiKey;
@@ -2797,7 +2868,8 @@
                 };
                 const json = JSON.stringify(data);
                 const bytes = new Blob([json]).size;
-                const MAX_SIZE = 1048576; // 1MB
+                // [Mod] 로컬 모드: 5MB, 클라우드 모드: 1MB 기준
+                const MAX_SIZE = isLocalMode ? 5242880 : 1048576; 
                 const kb = (bytes / 1024).toFixed(1);
                 const percent = ((bytes / MAX_SIZE) * 100).toFixed(1);
                 
@@ -2822,7 +2894,7 @@
                 }).sort((a, b) => b.bytes - a.bytes);
 
                 return { kb, percent, bytes, isWarning: percent > 80, isCritical: percent > 95, details };
-            }, [students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig]);
+            }, [students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig, isLocalMode]);
 
             const updateAppConfig = (updates) => {
                 const newConfig = { ...appConfig, ...updates };
@@ -3438,7 +3510,7 @@
                                             ) : (<div className="text-center text-slate-400 text-xs py-4 border-2 border-dashed border-slate-200 rounded-lg bg-white/50">등록된 방학 기간이 없습니다.</div>)}
                                             
                                             <div className="pt-3 border-t border-slate-200">
-                                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                                <div className="grid grid-cols-2 gap-4 mb-2">
                                                     <div className="flex flex-col gap-1">
                                                         <span className="text-[10px] font-bold text-slate-400 ml-1">시작일</span>
                                                         <input type="date" value={newVacStart} onChange={e => setNewVacStart(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white outline-none focus:border-indigo-500 font-bold text-slate-600" />
@@ -3467,8 +3539,8 @@
                                         <h3 className="text-xl font-bold text-slate-800">
                                             데이터 관리
                                         </h3>
-                                        {!isDataManagementOpen && !isLocalMode && (
-                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ml-2 animate-fade-in ${dataUsage.isCritical ? 'bg-rose-100 text-rose-600' : dataUsage.isWarning ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                                        {!isDataManagementOpen && (
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ml-2 animate-fade-in ${dataUsage.isCritical ? 'bg-rose-100 text-rose-600' : dataUsage.isWarning ? 'bg-orange-100 text-orange-600' : (isLocalMode ? 'bg-slate-100 text-slate-600' : 'bg-green-100 text-green-600')}`}>
                                                 {dataUsage.percent}%
                                             </span>
                                         )}
@@ -3573,39 +3645,50 @@
                                                     <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
                                                     {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("연결 해제?", () => { localStorage.removeItem('checklist_config'); window.location.reload(); }) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">해제</Btn>}
                                                 </div>
-                                                {!isLocalMode && (
-                                                    <>
-                                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                            <div className="w-20 h-1.5 bg-green-200/50 rounded-full overflow-hidden">
-                                                                <div className={`h-full rounded-full transition-all duration-500 ${dataUsage.isCritical ? 'bg-rose-500' : dataUsage.isWarning ? 'bg-orange-500' : 'bg-green-500'}`} style={{ width: `${Math.min(dataUsage.percent, 100)}%` }}></div>
-                                                            </div>
-                                                            <span className={`text-[9px] font-mono ${dataUsage.isCritical ? 'text-rose-600 font-bold' : 'text-green-600 opacity-80'}`}>{dataUsage.percent}% ({dataUsage.kb}KB)</span>
-                                                            <button onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }} className="text-slate-400 hover:text-indigo-500 ml-1 p-1 rounded hover:bg-slate-100 transition-colors">
-                                                                <Icon d={showStorageHelp ? PATHS.down : PATHS.right} size={12} />
-                                                            </button>
-                                                        </div>
-                                                        {showStorageHelp && (
-                                                            <div className="mt-2 p-3 bg-slate-100 rounded-lg border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
-                                                                <div className="flex flex-col md:flex-row gap-4">
-                                                                    <div className="flex-1">
-                                                                        <p className="font-bold mb-2 text-indigo-600 flex justify-between items-center">
-                                                                            <span>📊 데이터 용량 상세 분석</span>
-                                                                            <span className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-indigo-100">총 {dataUsage.kb}KB</span>
-                                                                        </p>
-                                                                        <div className="space-y-1.5 mb-3">
-                                                                            {dataUsage.details.map((d, i) => (
-                                                                                <div key={i} className="flex items-center justify-between gap-2">
-                                                                                    <span className="text-slate-500 w-14 shrink-0 truncate">{d.label}</span>
-                                                                                    <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                                                                        <div className="h-full bg-indigo-400" style={{ width: `${d.percent}%` }}></div>
-                                                                                    </div>
-                                                                                    <span className="font-mono w-12 text-right text-slate-700">{d.kb}KB</span>
-                                                                                </div>
-                                                                            ))}
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <div className={`w-20 h-1.5 rounded-full overflow-hidden ${isLocalMode ? 'bg-slate-200' : 'bg-green-200/50'}`}>
+                                                        <div className={`h-full rounded-full transition-all duration-500 ${dataUsage.isCritical ? 'bg-rose-500' : dataUsage.isWarning ? 'bg-orange-500' : (isLocalMode ? 'bg-slate-500' : 'bg-green-500')}`} style={{ width: `${Math.min(dataUsage.percent, 100)}%` }}></div>
+                                                    </div>
+                                                    <span className={`text-[9px] font-mono ${dataUsage.isCritical ? 'text-rose-600 font-bold' : (isLocalMode ? 'text-slate-500' : 'text-green-600 opacity-80')}`}>{dataUsage.percent}% ({dataUsage.kb}KB)</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }} className="text-slate-400 hover:text-indigo-500 ml-1 p-1 rounded hover:bg-slate-100 transition-colors">
+                                                        <Icon d={showStorageHelp ? PATHS.down : PATHS.right} size={12} />
+                                                    </button>
+                                                </div>
+                                                {showStorageHelp && (
+                                                    <div className="mt-2 p-3 bg-slate-100 rounded-lg border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
+                                                        <div className="flex flex-col md:flex-row gap-4">
+                                                            <div className="flex-1">
+                                                                <p className="font-bold mb-2 text-indigo-600 flex justify-between items-center">
+                                                                    <span>📊 데이터 용량 상세 분석</span>
+                                                                    <span className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-indigo-100">총 {dataUsage.kb}KB</span>
+                                                                </p>
+                                                                <div className="space-y-1.5 mb-3">
+                                                                    {dataUsage.details.map((d, i) => (
+                                                                        <div key={i} className="flex items-center justify-between gap-2">
+                                                                            <span className="text-slate-500 w-14 shrink-0 truncate">{d.label}</span>
+                                                                            <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                                                                <div className="h-full bg-indigo-400" style={{ width: `${d.percent}%` }}></div>
+                                                                            </div>
+                                                                            <span className="font-mono w-12 text-right text-slate-700">{d.kb}KB</span>
                                                                         </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="flex-1 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-3">
+                                                                {isLocalMode ? (
+                                                                    <div className="text-center py-4">
+                                                                        <p className="font-bold mb-2 text-slate-700">💾 로컬 저장소 모드</p>
+                                                                        <p className="text-slate-500 leading-relaxed">
+                                                                            현재 데이터는 브라우저에만 저장됩니다.<br/>
+                                                                            (최대 약 5MB까지 저장 가능)<br/><br/>
+                                                                            기기를 변경하거나 브라우저를 지우면<br/>
+                                                                            데이터가 사라질 수 있으니<br/>
+                                                                            <strong>주기적으로 백업</strong>해주세요.
+                                                                        </p>
                                                                     </div>
-                                                                    
-                                                                    <div className="flex-1 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-3">
+                                                                ) : (
+                                                                    <>
                                                                         <p className="font-bold mb-2 text-slate-700 text-[10px] flex items-center justify-center gap-1">
                                                                             <span>🏗️</span> 데이터 관리 구조도
                                                                         </p>
@@ -3640,22 +3723,23 @@
                                                                             * 용량이 큰 데이터(모둠, 상담)는 자동으로<br/>
                                                                             <strong>분리 저장</strong>되어 용량 걱정 없이 쓸 수 있습니다.
                                                                         </p>
-                                                                    </div>
-                                                                </div>
+                                                                    </>
+                                                                )}
                                                             </div>
-                                                        )}
-                                                    </>
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
-                                    <Btn onClick={() => { openConfirm("모든 데이터를 초기화하시겠습니까?", handleResetAllData) }} className="w-full py-4 border-2 border-rose-100 text-rose-500 rounded-xl font-bold hover:bg-rose-50 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><Icon d={PATHS.trash} size={18} /> 초기화</Btn>
+                                    <Btn onClick={() => setShowResetOptions(true)} className="w-full py-4 border-2 border-rose-100 text-rose-500 rounded-xl font-bold hover:bg-rose-50 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><Icon d={PATHS.trash} size={18} /> 초기화</Btn>
                                 </div>
                                 )}
                             </section>
                             <DataCleanupModal isOpen={showCleanupModal} onClose={() => setShowCleanupModal(false)} groupsByDate={groupsByDate} records={records} setGroupsByDate={setGroupsByDate} setRecords={setRecords} saveData={saveData} isLocalMode={isLocalMode} showToast={showToast} onBackup={handleExportJson} />
                         </div>
                     </div>
+                    <ResetOptionsModal isOpen={showResetOptions} onClose={() => setShowResetOptions(false)} onReset={handleResetAllData} />
                 </BaseModal>
             );
         };
@@ -3840,6 +3924,38 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.7.26", 
+                list: ["학급 스토리 결과 화면에 '다시 쓰기' 및 '다른 장르로' 버튼 추가"] 
+            },
+            { 
+                version: "v3.7.25", 
+                list: ["학급 스토리 장르 선택 UI 개선 (직관적인 아이콘 카드 적용)", "초기화 확인 창 취소 버튼 스타일 개선"] 
+            },
+            { 
+                version: "v3.7.24", 
+                list: ["초기화 확인 창 버튼 스타일 수정 (마우스 오버 시 색상 유지)", "방학 기간 설정 입력칸 간격 조정", "학급 스토리 버튼 스타일 개선"] 
+            },
+            { 
+                version: "v3.7.23", 
+                list: ["데이터 초기화 시 항목별 선택 삭제 기능 추가"] 
+            },
+            { 
+                version: "v3.7.22", 
+                list: ["데이터 관리 섹션에 로컬 스토리지 사용량 시각화 기능 추가"] 
+            },
+            { 
+                version: "v3.7.21", 
+                list: ["노션 연동 설정 Firebase 동기화 기능 복구"] 
+            },
+            { 
+                version: "v3.7.20", 
+                list: ["노션 연동 설정 저장 시 Firebase 동기화 제외 (로컬 저장만 유지)"] 
+            },
+            { 
+                version: "v3.7.19", 
+                list: ["Firebase 연동 시 AI 키 및 노션 설정 자동 동기화 기능 추가"] 
+            },
             { 
                 version: "v3.7.18", 
                 list: ["AI 상담소 결과 화면 카드형 UI로 개선 (가독성 향상)", "관찰 기록 저장 시 '내용 유지' 옵션 추가", "칭찬 버튼 클릭 시 배경색 밝아짐 효과 추가"] 
@@ -5460,7 +5576,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 7,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 18   // Patch: 기존 기능의 버그 수정
+                patch: 26   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -6155,6 +6271,14 @@
                                         if (d.groupNames) setGroupNames(d.groupNames);
                                         if (d.groupRoles) setGroupRoles(d.groupRoles);
                                         if (d.rolesList) setRolesList(d.rolesList);
+
+                                        // [New] AI Key 및 Notion 설정 자동 동기화
+                                        if (d.aiKey) {
+                                            setApiKey(d.aiKey);
+                                            localStorage.setItem('cls_ai_key', d.aiKey);
+                                        }
+                                        if (d.notionKey) localStorage.setItem('cls_notion_key', d.notionKey);
+                                        if (d.notionDbId) localStorage.setItem('cls_notion_db_id', d.notionDbId);
                                         
                                         // [추가됨] 로딩 완료 처리
                                         setIsLoading(false);
@@ -6950,44 +7074,76 @@
             const handleFirebaseConnect = (config) => { localStorage.setItem('checklist_config', JSON.stringify(config)); setIsSetupOpen(false);
             setToastMessage("연결 정보가 저장되었습니다. 새로고침합니다."); setTimeout(() => window.location.reload(), 1500); };
             
-            const handleResetAllData = () => { 
-                setStudents([]); setRecords({}); setSimpleChecks({}); setGroupsByDate({}); setAvoidancePairs([]); setMustPairs([]); setDailyTasks({});
-                setWeeklyTasks({0:[],1:[],2:[],3:[],4:[],5:[],6:[]}); setTags(['국어', '수학', '사회', '과학', '영어', '기타']); 
-                setGroupNames({}); setGroupRoles({}); setRolesList(['나눔이', '맺음이', '챙김이', '깔끔이']); setRoleDescriptions(DEFAULT_ROLE_DESCRIPTIONS); 
-                setSeatAssignments({}); setSeatConfig({rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']}); 
-                
-                if(!isLocalMode) { 
-                    saveData({
-                        cls_students: [], cls_avoidance: [], cls_mustPairs: [],
-                        cls_daily_tasks: {}, cls_weekly_tasks: {0:[],1:[],2:[],3:[],4:[],5:[],6:[]},
-                        cls_tags: ['국어', '수학', '사회', '과학', '영어', '기타'],
-                        cls_group_names: {}, cls_group_roles: {}, cls_roles_list: ['나눔이', '맺음이', '챙김이', '깔끔이'],
-                        cls_role_descriptions: DEFAULT_ROLE_DESCRIPTIONS,
-                        cls_seat_assignments: {},
-                        cls_seat_config: {rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']}
-                    });
-                    // [New] 모둠 데이터 하위 컬렉션 전체 삭제
-                    if (db && appId) {
-                        db.collection('classes').doc(appId).collection('groupResults').get().then(snapshot => {
-                            const batch = db.batch();
-                            snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                            batch.commit();
-                        });
-                        // [New] 활동 기록 하위 컬렉션 전체 삭제
-                        db.collection('classes').doc(appId).collection('records').get().then(snapshot => {
-                            const batch = db.batch();
-                            snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                            batch.commit();
-                        });
-                        // [New] 학생 개별 데이터 하위 컬렉션 전체 삭제
-                        db.collection('classes').doc(appId).collection('studentData').get().then(snapshot => {
-                            const batch = db.batch();
-                            snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                            batch.commit();
-                        });
+            const handleResetAllData = (selectedItems) => { 
+                openConfirm("선택한 항목을 영구적으로 삭제하시겠습니까?", () => {
+                    const updates = {};
+                    
+                    if (selectedItems.includes('students')) {
+                        setStudents([]);
+                        updates['cls_students'] = [];
                     }
-                } 
-                setToastMessage("모든 데이터가 초기화되었습니다."); 
+                    if (selectedItems.includes('records')) {
+                        setRecords({});
+                        setSimpleChecks({});
+                        updates['cls_records'] = {};
+                    }
+                    if (selectedItems.includes('groups')) {
+                        setGroupsByDate({});
+                        setGroupNames({});
+                        setGroupRoles({});
+                        setAvoidancePairs([]);
+                        setMustPairs([]);
+                        updates['cls_groups_date'] = {};
+                        updates['cls_group_names'] = {};
+                        updates['cls_group_roles'] = {};
+                        updates['cls_avoidance'] = [];
+                        updates['cls_mustPairs'] = [];
+                    }
+                    if (selectedItems.includes('tasks')) {
+                        setDailyTasks({});
+                        setWeeklyTasks({0:[],1:[],2:[],3:[],4:[],5:[],6:[]});
+                        setTags(['국어', '수학', '사회', '과학', '영어', '기타']);
+                        updates['cls_daily_tasks'] = {};
+                        updates['cls_weekly_tasks'] = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+                        updates['cls_tags'] = ['국어', '수학', '사회', '과학', '영어', '기타'];
+                    }
+                    if (selectedItems.includes('seats')) {
+                        setSeatAssignments({});
+                        setSeatConfig({rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']});
+                        updates['cls_seat_assignments'] = {};
+                        updates['cls_seat_config'] = {rows:5, cols:5, disabledSeats:['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4']};
+                    }
+                    if (selectedItems.includes('roles')) {
+                        setRolesList(['나눔이', '맺음이', '챙김이', '깔끔이']);
+                        setRoleDescriptions(DEFAULT_ROLE_DESCRIPTIONS);
+                        updates['cls_roles_list'] = ['나눔이', '맺음이', '챙김이', '깔끔이'];
+                        updates['cls_role_descriptions'] = DEFAULT_ROLE_DESCRIPTIONS;
+                    }
+
+                    if (!isLocalMode) {
+                        saveData(updates);
+                        if (db && appId) {
+                            if (selectedItems.includes('students')) {
+                                db.collection('classes').doc(appId).collection('studentData').get().then(snapshot => {
+                                    const batch = db.batch(); snapshot.docs.forEach(doc => batch.delete(doc.ref)); batch.commit();
+                                });
+                            }
+                            if (selectedItems.includes('records')) {
+                                db.collection('classes').doc(appId).collection('records').get().then(snapshot => {
+                                    const batch = db.batch(); snapshot.docs.forEach(doc => batch.delete(doc.ref)); batch.commit();
+                                });
+                            }
+                            if (selectedItems.includes('groups')) {
+                                db.collection('classes').doc(appId).collection('groupResults').get().then(snapshot => {
+                                    const batch = db.batch(); snapshot.docs.forEach(doc => batch.delete(doc.ref)); batch.commit();
+                                });
+                            }
+                        }
+                    } else {
+                        saveData(updates);
+                    }
+                    setToastMessage("선택한 데이터가 초기화되었습니다."); 
+                });
             };
 
             const handleFormationTitleClick = () => {
@@ -7222,7 +7378,7 @@
                             {mode === 'record' && (
                                 <>
                                     <div className="flex justify-end mb-4 items-center gap-2">
-                                        <Btn onClick={() => { if(!apiKey) return setToastMessage("설정에서 API 키를 먼저 입력해주세요."); setAiContent(""); setShowClassStory(true); }} className={`px-3 py-1.5 rounded text-xs font-medium flex items-center gap-2 transition-all ${apiKey ? 'bg-notion-purple-bg text-notion-purple hover:bg-purple-100' : 'bg-notion-bg-hover text-notion-text-light cursor-not-allowed'}`}>
+                                        <Btn onClick={() => { if(!apiKey) return setToastMessage("설정에서 API 키를 먼저 입력해주세요."); setAiContent(""); setShowClassStory(true); }} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-colors ${apiKey ? 'bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50' : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'}`}>
                                             <Icon d={PATHS.book} size={16} /> 오늘의 학급 스토리 보기
                                         </Btn>
                                         <button onClick={() => setShowStoryHelp(true)} className="text-notion-text-light hover:text-notion-text p-1 rounded hover:bg-notion-bg-hover transition-colors" title="도움말"><Icon d={PATHS.help} size={18} /></button>
@@ -7614,7 +7770,7 @@
                         isDevMode={isDevMode}
                         onDevModeClick={handleGearClick}
                     />
-                    <NotionSetupModal isOpen={isNotionSetupOpen} onClose={() => setIsNotionSetupOpen(false)} showToast={setToastMessage} />
+                    <NotionSetupModal isOpen={isNotionSetupOpen} onClose={() => setIsNotionSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} />
                     <ApiKeySetupModal isOpen={isApiKeySetupOpen} onClose={() => setIsApiKeySetupOpen(false)} apiKey={apiKey} setApiKey={setApiKey} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} validateApiKey={validateApiKey} />
                     <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} onInstall={confirmInstall} isIOS={isIOS} />
                     <TaskModal isOpen={isTaskModalOpen} onClose={()=>setIsTaskModalOpen(false)} date={date} dailyTasks={dailyTasks} setDailyTasks={setDailyTasks} weeklyTasks={weeklyTasks} setWeeklyTasks={setWeeklyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} tags={tags} setTags={setTags} openConfirm={openConfirm} />
@@ -7718,9 +7874,18 @@
                                 <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 space-y-3">
                                     <div className="flex flex-col gap-2">
                                         <span className="text-xs font-bold text-purple-700">장르 선택:</span>
-                                        <div className="grid grid-cols-5 gap-1">
-                                            {[{id:'school',label:'🏫 학교'},{id:'adventure',label:'🗺️ 모험'},{id:'fairytale',label:'🐻 동화'},{id:'detective',label:'🕵️ 탐정'},{id:'hero',label:'🦸 히어로'}].map(g => (
-                                                <button key={g.id} onClick={()=>setStoryGenre(g.id)} className={`py-3 text-xs font-bold rounded-xl transition-all ${storyGenre===g.id?'bg-purple-500 text-white shadow-md':'bg-white text-purple-400 hover:bg-purple-100'}`}>{g.label}</button>
+                                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                                            {[
+                                                {id:'school', emoji:'🏫', label:'학교'},
+                                                {id:'adventure', emoji:'🗺️', label:'모험'},
+                                                {id:'fairytale', emoji:'🐻', label:'동화'},
+                                                {id:'detective', emoji:'🕵️', label:'탐정'},
+                                                {id:'hero', emoji:'🦸', label:'히어로'}
+                                            ].map(g => (
+                                                <button key={g.id} onClick={()=>setStoryGenre(g.id)} className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${storyGenre===g.id?'bg-purple-50 border-purple-500 text-purple-700 shadow-md scale-105':'bg-white border-transparent hover:bg-purple-50 hover:border-purple-200 text-slate-500'}`}>
+                                                    <span className="text-2xl mb-1">{g.emoji}</span>
+                                                    <span className="text-xs font-bold">{g.label}</span>
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
@@ -7740,16 +7905,21 @@
                                     {aiContent || "스토리 내용이 없습니다."}
                                 </div>
                             )}
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end gap-2 flex-wrap">
                                 {aiContent && !isGenerating && (
                                     <>
-                                        <Btn onClick={() => setAiContent("")} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">다시 하기</Btn>
-                                        <Btn onClick={() => { navigator.clipboard.writeText(aiContent); setToastMessage("스토리가 복사되었습니다."); }} className="px-4 py-2 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold hover:bg-slate-50 flex items-center gap-2">
-                                            <Icon d={PATHS.copy} size={16} /> 복사
+                                        <Btn onClick={handleGenerateStory} className="px-3 py-2 bg-purple-100 text-purple-700 rounded-xl font-bold hover:bg-purple-200 flex items-center gap-1">
+                                            <Icon d={PATHS.magic} size={14} /> 다시 쓰기
+                                        </Btn>
+                                        <Btn onClick={() => setAiContent("")} className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">
+                                            다른 장르로
+                                        </Btn>
+                                        <Btn onClick={() => { navigator.clipboard.writeText(aiContent); setToastMessage("스토리가 복사되었습니다."); }} className="px-3 py-2 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold hover:bg-slate-50 flex items-center gap-1">
+                                            <Icon d={PATHS.copy} size={14} /> 복사
                                         </Btn>
                                     </>
                                 )}
-                                <Btn onClick={() => setShowClassStory(false)} className="px-4 py-2 bg-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-300">닫기</Btn>
+                                <Btn onClick={() => setShowClassStory(false)} className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-300">닫기</Btn>
                             </div>
                         </div>
                     </BaseModal>
