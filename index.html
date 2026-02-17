@@ -60,12 +60,16 @@
                         'fade-in': 'fadeIn 0.3s ease-out',
                         'pop-up': 'popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                         'modal-enter': 'modalEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                        'slide-in-right': 'slideInRight 0.3s ease-out',
+                        'slide-in-left': 'slideInLeft 0.3s ease-out',
                     },
                     keyframes: {
                         bounceIn: { '0%': { transform: 'scale(0.9)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         fadeIn: { 'from': { opacity: 0 }, 'to': { opacity: 1 } },
                         popUp: { 'from': { transform: 'translate(-50%, -40%) scale(0.9)', opacity: 0 }, 'to': { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 } },
                         modalEnter: { '0%': { opacity: 0, transform: 'scale(0.95) translateY(10px)' }, '100%': { opacity: 1, transform: 'scale(1) translateY(0)' } },
+                        slideInRight: { '0%': { transform: 'translateX(20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
+                        slideInLeft: { '0%': { transform: 'translateX(-20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
                     }
                 }
             }
@@ -211,7 +215,8 @@
             heart: "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z",
             key: "M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4",
             speaker: "M11 5L6 9H2v6h4l5 4V5z M19.07 4.93a10 10 0 0 1 0 14.14 M15.54 8.46a5 5 0 0 1 0 7.07",
-            mute: "M11 5L6 9H2v6h4l5 4V5z M23 9l-6 6 M17 9l6 6"
+            mute: "M11 5L6 9H2v6h4l5 4V5z M23 9l-6 6 M17 9l6 6",
+            play: "M5 3l14 9-14 9V3z"
         };
 
         const Icon = ({ d, size = 20, className = "" }) => (
@@ -298,10 +303,13 @@
             return (
                 <div className="fixed inset-0 bg-black/40 z-[2500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
                     <div 
-                        className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm animate-modal-enter"
+                        className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm animate-modal-enter relative"
                         onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
                         style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}
                     >
+                        <button onClick={onCancel} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                            <Icon d={PATHS.x} size={18} />
+                        </button>
                         <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4 md:hidden" />
                         <div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-notion-bg-hover text-notion-text rounded border border-notion-border font-medium hover:bg-gray-200">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:opacity-90 shadow-sm">확인</Btn></div></div></div>
             );
@@ -311,6 +319,9 @@
             return (
                 <div className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center animate-bounce-in relative overflow-hidden border border-white/50">
+                        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors z-20">
+                            <Icon d={PATHS.x} size={20} />
+                        </button>
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
                         <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner ring-4 ring-indigo-50/50">
                             <span className="text-5xl animate-pulse drop-shadow-sm select-none">🚀</span>
@@ -1966,8 +1977,11 @@
                                 <Icon d={PATHS.calendar} className="text-indigo-500" /> 
                                 {selectionMode === 'range' ? '기간 선택 (시작일 → 종료일)' : '날짜 선택'}
                             </h3>
-                            {selectionMode === 'single' && <Btn onClick={() => { onSelectDate(getToday()); onClose(); }} className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-200">오늘</Btn>}
-                            {selectionMode === 'range' && <Btn onClick={() => { if(onSelectRange) onSelectRange(currentDate, currentDate); onClose(); }} className="text-xs bg-rose-50 text-rose-500 px-3 py-1.5 rounded-full font-bold hover:bg-rose-100">기간 초기화 (1일)</Btn>}
+                            <div className="flex items-center gap-2">
+                                {selectionMode === 'single' && <Btn onClick={() => { onSelectDate(getToday()); onClose(); }} className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-200">오늘</Btn>}
+                                {selectionMode === 'range' && <Btn onClick={() => { if(onSelectRange) onSelectRange(currentDate, currentDate); onClose(); }} className="text-xs bg-rose-50 text-rose-500 px-3 py-1.5 rounded-full font-bold hover:bg-rose-100">기간 초기화 (1일)</Btn>}
+                                <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><Icon d={PATHS.x} size={20} /></button>
+                            </div>
                         </div>
                         <div className="flex justify-between items-center mb-4 px-2">
                             <Btn onClick={() => setViewDate(viewDate.subtract(1, 'month'))} className="p-2 hover:bg-slate-100 rounded-full"><Icon d={PATHS.left} size={18} /></Btn>
@@ -2036,7 +2050,15 @@
             const holidayName = HOLIDAYS[date];
             const moveDate = (direction) => { let nextDate = dayjs(date).add(direction, 'day'); let count = 0; while (count < 365) { const dStr = nextDate.format('YYYY-MM-DD'); const day = nextDate.day(); const isWknd = day === 0 || day === 6; const isHol = !!HOLIDAYS[dStr]; if (!isWknd && !isHol) break; nextDate = nextDate.add(direction, 'day'); count++; } setDate(nextDate.format('YYYY-MM-DD')); };
             return (
-                <div className="flex flex-col items-center">{isVacation && <div className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1 rounded mb-2">🏖️ 방학 기간입니다</div>}{isHoliday && <div className="bg-rose-100 text-rose-600 text-xs font-bold px-3 py-1 rounded mb-2">🎉 {holidayName}</div>}<div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border w-fit mx-auto justify-center">{onAdd && <><Btn onClick={onAdd} className="text-notion-text p-1.5 rounded hover:bg-notion-bg-hover flex items-center justify-center"><Icon d={PATHS.plus} size={18} /></Btn><div className="w-px h-4 bg-notion-border"></div></>}<Btn onClick={() => moveDate(-1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18} /></Btn><div className="flex flex-col items-center cursor-pointer hover:bg-notion-bg-hover rounded px-3 py-1 transition-colors" onClick={onCalendar}><div className="text-base font-bold text-notion-text tracking-tight">{dayjs(date).format('YY.MM.DD')}</div><div className={`text-[10px] font-bold ${isHoliday || dayjs(date).day()===0 ? 'text-notion-red' : dayjs(date).day()===6 ? 'text-notion-blue' : 'text-notion-text-light'}`}>{dayjs(date).format('dddd')}</div></div><Btn onClick={() => moveDate(1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18} /></Btn>{onReset && <><div className="w-px h-4 bg-notion-border"></div><Btn onClick={(e) => { e.stopPropagation(); onReset(); }} className="p-1.5 text-notion-text-light hover:text-notion-red hover:bg-notion-bg-hover rounded"><Icon d={PATHS.trash} size={16} /></Btn></>}</div></div>
+                <div className="flex flex-col items-center">
+                    {(isVacation || isHoliday) && (
+                        <div className="flex gap-2 mb-2">
+                            {isVacation && <div className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1 rounded">🏖️ 방학 기간입니다</div>}
+                            {isHoliday && <div className="bg-rose-100 text-rose-600 text-xs font-bold px-3 py-1 rounded">🎉 {holidayName}</div>}
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border w-fit mx-auto justify-center">{onAdd && <><Btn onClick={onAdd} className="text-notion-text p-1.5 rounded hover:bg-notion-bg-hover flex items-center justify-center"><Icon d={PATHS.plus} size={18} /></Btn><div className="w-px h-4 bg-notion-border"></div></>}<Btn onClick={() => moveDate(-1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18} /></Btn><div className="flex flex-col items-center cursor-pointer hover:bg-notion-bg-hover rounded px-3 py-1 transition-colors" onClick={onCalendar}><div className="text-base font-bold text-notion-text tracking-tight">{dayjs(date).format('YY.MM.DD')}</div><div className={`text-[10px] font-bold ${isHoliday || dayjs(date).day()===0 ? 'text-notion-red' : dayjs(date).day()===6 ? 'text-notion-blue' : 'text-notion-text-light'}`}>{dayjs(date).format('dddd')}</div></div><Btn onClick={() => moveDate(1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18} /></Btn>{onReset && <><div className="w-px h-4 bg-notion-border"></div><Btn onClick={(e) => { e.stopPropagation(); onReset(); }} className="p-1.5 text-notion-text-light hover:text-notion-red hover:bg-notion-bg-hover rounded"><Icon d={PATHS.trash} size={16} /></Btn></>}</div>
+                </div>
             );
         };
         const TagSelector = ({ current, setTag, tags, onAdd, onEdit, onDelete }) => {
@@ -3104,7 +3126,7 @@
                                                                     setAppConfig(newConfig); // 화면 즉시 반영
                                                                     saveData('cls_app_config', newConfig); // 로컬/클라우드 즉시 저장
                                                                     
-                                                                    openConfirm("앱 아이콘이 변경되었습니다.\n\n변경된 아이콘을 홈 화면에 적용하려면,\n기존 앱을 삭제하고 '홈 화면에 추가'를 다시 진행해주세요.", () => {}); 
+                                                                    openConfirm("앱 아이콘이 변경되었습니다.\n\n변경된 아이콘을 홈 화면에 적용하려면,\n기존 앱을 삭제하고 '홈 화면에 추가'를 다시 진행해주세요.\n\n(확인을 누르면 설치 가이드가 표시됩니다)", () => onInstallApp()); 
                                                                 }; 
                                                                 r.readAsDataURL(f); 
                                                             } 
@@ -3242,6 +3264,21 @@
                                                 <span className={`text-[10px] font-bold ${cfg.soundEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{cfg.soundEnabled !== false ? "ON" : "OFF"}</span>
                                                 <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${cfg.soundEnabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}>
                                                     <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform ${cfg.soundEnabled !== false ? 'translate-x-4' : ''}`}></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div 
+                                            className={`border rounded-xl p-3 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${cfg.animationEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                            onClick={() => setCfg({ ...cfg, animationEnabled: !(cfg.animationEnabled !== false) })}
+                                        >
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Icon d={PATHS.play} size={16} className={cfg.animationEnabled !== false ? "text-indigo-500" : "text-slate-400"}/>
+                                                <span className={`text-xs font-bold ${cfg.animationEnabled !== false ? "text-indigo-700" : "text-slate-500"}`}>화면 전환 효과</span>
+                                            </div>
+                                            <div className="flex justify-end items-center gap-2">
+                                                <span className={`text-[10px] font-bold ${cfg.animationEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{cfg.animationEnabled !== false ? "ON" : "OFF"}</span>
+                                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${cfg.animationEnabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}>
+                                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform ${cfg.animationEnabled !== false ? 'translate-x-4' : ''}`}></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -3665,1188 +3702,919 @@
                 </div>
             );
         };
-const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
-            const [inputConfig, setInputConfig] = useState(""); 
-            const [authId, setAuthId] = useState(""); 
-            const [authPw, setAuthPw] = useState("");
-            const [rememberMe, setRememberMe] = useState(false);
-
-            useEffect(() => {
-                if (isOpen) {
-                    const sId = localStorage.getItem('cls_fb_id');
-                    const sPw = localStorage.getItem('cls_fb_pw');
-                    const sCfg = localStorage.getItem('cls_fb_config');
-                    if (sId || sPw || sCfg) {
-                        setAuthId(sId || "");
-                        setAuthPw(sPw || "");
-                        setInputConfig(sCfg || "");
-                        setRememberMe(true);
-                    }
-                }
-            }, [isOpen]);
-            
-            const handleConnect = async () => { 
-                if(!authId || !authPw) { 
-                    showToast("아이디와 비밀번호를 입력해주세요."); 
-                    return;
-                } 
-                
-                let config;
-                try { 
-                    let cleanInput = inputConfig.trim();
-                    cleanInput = cleanInput.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '');
-                    cleanInput = cleanInput.replace(/^(export\s+)?(const|let|var)\s+\w+\s*=\s*/, '');
-                    cleanInput = cleanInput.replace(/;+\s*$/, '');
-
-                    try { config = JSON.parse(cleanInput); } 
-                    catch (e) { config = new Function("return " + cleanInput)(); }
-                } catch (e) { 
-                    showToast("설정 코드 형식이 올바르지 않습니다.");
-                    return;
-                }
-
-                if (!config || !config.projectId) {
-                    showToast("올바른 설정 코드가 아닙니다 (projectId 누락).");
-                    return;
-                }
-
-                try {
-                    if (!firebase.apps.length) firebase.initializeApp(config);
-                    await firebase.auth().signInWithEmailAndPassword(authId, authPw); 
-                    
-                    if (rememberMe) {
-                        localStorage.setItem('cls_fb_id', authId);
-                        localStorage.setItem('cls_fb_pw', authPw);
-                        localStorage.setItem('cls_fb_config', inputConfig);
-                    } else {
-                        localStorage.removeItem('cls_fb_id');
-                        localStorage.removeItem('cls_fb_pw');
-                        localStorage.removeItem('cls_fb_config');
-                    }
-
-                    onConnect(config); 
-                } catch (e) { 
-                    let errMsg = "연결 실패: " + e.message;
-                    if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
-                    showToast(errMsg); 
-                } 
-                logSystemEvent(errMsg, 'error');
-            };
-
-            if (!isOpen) return null;
-
-            return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="⛅️ Firebase 연결 설정" icon={null}>
-                    <div className="flex flex-col gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                        <div className="text-xs font-bold text-slate-500 mb-1">Firebase 인증 (이메일/비밀번호)</div>
-                        <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일 (ID)" value={authId} onChange={e => setAuthId(e.target.value)} />
-                        <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} />
-                    </div>
-                    <textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder='설정 코드 붙여넣기 (예: const firebaseConfig = ...)' value={inputConfig} onChange={e => setInputConfig(e.target.value)} />
-                    <div className="flex items-center gap-2 mt-2 px-1">
-                        <label className="flex items-center gap-2 cursor-pointer select-none group">
-                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-slate-300 group-hover:border-indigo-400'}`}>
-                                {rememberMe && <Icon d={PATHS.check} size={14} className="text-white" />}
-                            </div>
-                            <input type="checkbox" className="hidden" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
-                            <span className="text-sm font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">로그인 정보 저장</span>
-                        </label>
-                    </div>
-                    <div className="flex gap-3 mt-5">
-                        <Btn onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">취소</Btn>
-                        <Btn onClick={handleConnect} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">연결하기</Btn>
-                    </div>
-                </BaseModal>
-            );
-        };
         
         
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.6.1", 
+                list: ["스와이프 화면 전환 애니메이션 효과 추가", "설정 > 화면 전환 효과 ON/OFF 스위치 추가", "업데이트 노트 날짜 표시 제거"] 
+            },
+            { 
+                version: "v3.6.0", 
+                list: ["기록 탭에서 좌우 스와이프로 날짜 이동 기능 추가"] 
+            },
+            { 
+                version: "v3.5.37", 
+                list: ["기록 탭 배경색 변경 기능 제거 (항상 흰색 배경 유지)"] 
+            },
+            { 
+                version: "v3.5.36", 
+                list: ["앱 실행 오류 수정 (SetupModal 컴포넌트 복구)"] 
+            },
+            { 
+                version: "v3.5.35", 
+                list: ["기록 탭에서 방학 기간(주황색) 및 공휴일(분홍색) 배경색 구분 표시 기능 추가"] 
+            },
+            { 
+                version: "v3.5.34", 
+                list: ["기록 탭 상단 날짜 헤더 UI 개선: 방학/공휴일 알림을 한 줄로 배치"] 
+            },
+            { 
+                version: "v3.5.33", 
+                list: ["모든 팝업(확인창, 달력, 업데이트 알림 등)에 닫기(X) 버튼 추가"] 
+            },
+            { 
+                version: "v3.5.32", 
+                list: ["앱 아이콘 변경 후 설치 가이드 팝업 자동 연결 기능 추가"] 
+            },
+            { 
                 version: "v3.5.31", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘 변경 시스템 최종 점검 및 최적화"] 
             },
             { 
                 version: "v3.5.30", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘 변경 시 로컬/클라우드 상관없이 즉시 저장 및 반영되도록 개선"] 
             },
             { 
                 version: "v3.5.29", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘 업로드 시 즉시 적용되도록 개선"] 
             },
             { 
                 version: "v3.5.28", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘 실시간 반영 로직 강화 (캐시 우회 및 태그 재생성 최적화)"] 
             },
             { 
                 version: "v3.5.27", 
-                date: "2026-02-13", 
                 list: ["설정 > 방학 기간 설정 UI 개선 (입력창 분리 및 리스트 디자인 직관화)"] 
             },
             { 
                 version: "v3.5.26", 
-                date: "2026-02-13", 
                 list: ["설정 > 효과음 토글 버튼 디자인 개선 (아이콘 및 상태 표시 추가)"] 
             },
             { 
                 version: "v3.5.25", 
-                date: "2026-02-13", 
                 list: ["설정 > 앱 폰트 선택 시 각 폰트 스타일 미리보기 기능 추가"] 
             },
             { 
                 version: "v3.5.24", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘 변경 시 브라우저 캐시 무시 및 즉시 반영 로직 강화 (태그 재생성 방식)"] 
             },
             { 
                 version: "v3.5.23", 
-                date: "2026-02-13", 
                 list: ["설정 > 앱 아이콘 미리보기에 'iOS 홈 화면 스타일(배경화면 효과)' 적용"] 
             },
             { 
                 version: "v3.5.22", 
-                date: "2026-02-13", 
                 list: ["앱 설치 안내 팝업 추가 (설치 혜택 및 iOS 가이드 제공)", "설정 메뉴의 앱 설치 섹션 디자인 개선"] 
             },
             { 
                 version: "v3.5.21", 
-                date: "2026-02-13", 
                 list: ["앱 설치(홈 화면에 추가) 버튼 추가 (설정 > 앱 설정)", "앱 아이콘 변경 시 즉시 반영되도록 캐시 갱신 로직 개선"] 
             },
             { 
                 version: "v3.5.20", 
-                date: "2026-02-13", 
                 list: ["iOS 홈 화면 아이콘(apple-touch-icon) 정적 링크 추가 및 Manifest 경로 통일"] 
             },
             { 
                 version: "v3.5.19", 
-                date: "2026-02-13", 
                 list: ["모바일 과제 설정 UI 개선 (입력창과 추가 버튼 레이아웃 최적화)", "숙제 체크 시 햅틱 피드백 강도 조절"] 
             },
             { 
                 version: "v3.5.18", 
-                date: "2026-02-13", 
                 list: ["홈 화면 아이콘 적용 로직 개선 (태그 재생성 방식 적용)", "숙제 체크 및 칭찬 스티커 지급 시 햅틱(진동) 피드백 추가"] 
             },
             { 
                 version: "v3.5.17", 
-                date: "2026-02-13", 
                 list: ["iOS 홈 화면 아이콘 적용 문제 해결 (SVG/이미지를 PNG로 자동 변환 및 흰색 배경 적용)"] 
             },
             { 
                 version: "v3.5.16", 
-                date: "2026-02-13", 
                 list: ["데이터 로딩 실패 시 '강제 로컬 모드' 전환 버튼 추가 (Safari 무한 로딩 해결)", "로딩 지연 감지 시간 단축 (10초 → 7초)"] 
             },
             { 
                 version: "v3.5.15", 
-                date: "2026-02-13", 
                 list: ["Safari 등 모바일 환경에서 데이터 로딩이 멈추는 현상 수정 (예외 처리 강화)"] 
             },
             { 
                 version: "v3.5.14", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘 설정 시 iOS 홈 화면 스타일 미리보기 추가", "아이콘 변경 후 재설치 안내 메시지 추가"] 
             },
             { 
                 version: "v3.5.12", 
-                date: "2026-02-13", 
                 list: ["로딩 지연(10초 이상) 시 새로고침 버튼 표시 기능 추가 (모바일 무한 로딩 문제 대응)"] 
             },
             { 
                 version: "v3.5.11", 
-                date: "2026-02-13", 
                 list: ["앱 초기 실행 시 로딩 바 및 진행률(%) 표시 기능 추가 (데이터 로딩 상태 시각화)"] 
             },
             { 
                 version: "v3.5.10", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘 복원 시 확인 메시지 추가", "앱 아이콘 도움말에 적용 위치 안내 추가"] 
             },
             { 
                 version: "v3.5.9", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘, 러너, 클라우드 아이콘 변경 기능을 관리자 모드 전용으로 이동"] 
             },
             { 
                 version: "v3.5.8", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘 설정 시 업로드 가이드(권장 크기, 비율 등) 도움말 추가"] 
             },
             { 
                 version: "v3.5.6", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘 및 러너 아이콘 설정 기능을 일반 설정으로 이동 (접근성 개선)"] 
             },
             { 
                 version: "v3.5.5", 
-                date: "2026-02-13", 
                 list: ["앱 아이콘(Favicon) 설정 기능 추가 (설정 > 앱 설정 > 관리자 모드)"] 
             },
             { 
                 version: "v3.5.4", 
-                date: "2026-02-13", 
                 list: ["앱 메타 태그(og:title) 변경 ('이거했어?' → '다했나요!?')"] 
             },
             { 
                 version: "v3.5.3", 
-                date: "2026-02-13", 
                 list: ["기록 모드 기본 제목 변경 ('이거했어?' → '다했나요!?')"] 
             },
             { 
                 version: "v3.5.2", 
-                date: "2026-02-13", 
                 list: ["설정 > 앱 설정 섹션 UI 개선: 아이콘 위주의 카드형 레이아웃 적용 (가독성 및 사용성 향상)"] 
             },
             { 
                 version: "v3.5.1", 
-                date: "2026-02-13", 
                 list: ["설정 > 데이터 관리 섹션 UI 개선: 버튼을 아이콘 위주로 직관적으로 재배치 (3열 그리드 적용)"] 
             },
             { 
                 version: "v3.5.0", 
-                date: "2026-02-13", 
                 list: ["기능 추가에 따른 마이너 버전 업데이트", "칭찬 스티커 효과음, 애니메이션, 햅틱 피드백 등 사용자 경험 개선", "설정 메뉴 UI 디자인 개선 (가독성 향상 및 깔끔한 스타일 적용)"] 
             },
             { 
                 version: "v3.4.77", 
-                date: "2026-02-13", 
                 list: ["앱 안정성 최적화: 효과음 재생 리소스 관리 개선 (메모리 누수 방지)"] 
             },
             { 
                 version: "v3.4.76", 
-                date: "2026-02-13", 
                 list: ["학생 인사이트 > 칭찬 스티커 지급 시 효과음 추가 (설정에서 ON/OFF 가능)"] 
             },
             { 
                 version: "v3.4.75", 
-                date: "2026-02-13", 
                 list: ["학생 인사이트 > 칭찬 스티커 지급 시 숫자가 튀어오르는 애니메이션 효과 추가"] 
             },
             { 
                 version: "v3.4.74", 
-                date: "2026-02-13", 
                 list: ["학생 인사이트 > 칭찬 스티커 지급 시 햅틱(진동) 피드백 추가"] 
             },
             { 
                 version: "v3.4.73", 
-                date: "2026-02-13", 
                 list: ["학생 인사이트 > 칭찬 스티커 레벨업 시 효과음 추가", "레벨업 축하 애니메이션(Confetti)이 팝업 위로 보이도록 수정"] 
             },
             { 
                 version: "v3.4.72", 
-                date: "2026-02-13", 
                 list: ["설정 > 데이터 관리 구조도 화살표 여백 조정 (가독성 개선)", "학생 인사이트 > 칭찬 기록 입력창 레이아웃 개선 (모바일/태블릿 줄바꿈 지원)"] 
             },
             { 
                 version: "v3.4.71", 
-                date: "2026-02-13", 
                 list: ["설정 > 데이터 관리 섹션이 접혀있을 때 데이터 용량 상태(%) 요약 표시 기능 추가"] 
             },
             { 
                 version: "v3.4.70", 
-                date: "2026-02-13", 
                 list: ["설정 > 데이터 관리 섹션에 접기/펼치기(아코디언) 기능 추가"] 
             },
             { 
                 version: "v3.4.69", 
-                date: "2026-02-13", 
                 list: ["설정 > 데이터 관리 > 클라우드 동기화 UI 개선: 도움말 확장 시 해제 버튼 위치 고정 (타이틀 우측)"] 
             },
             { 
                 version: "v3.4.68", 
-                date: "2026-02-13", 
                 list: ["활동 잔디 팝업 기능 제거 (인사이트 카드 내 통합)"] 
             },
             { 
                 version: "v3.4.66", 
-                date: "2026-02-13", 
                 list: ["방학 기간 설정 기능 개선: 여러 개의 방학 기간을 추가하고 목록으로 관리 가능"] 
             },
             { 
                 version: "v3.4.65", 
-                date: "2026-02-13", 
                 list: ["활동 잔디 데이터 생성 로직 수정: 주말(토, 일) 데이터 원천 제외 (메인 화면 및 상세 보기 모두 적용)"] 
             },
             { 
                 version: "v3.4.63", 
-                date: "2026-02-13", 
                 list: ["활동 잔디 및 리포트 분석에서 주말(토, 일) 제외 (평일 기준 통계 적용)", "활동 잔디 5열 보기로 변경"] 
             },
             { 
                 version: "v3.4.60", 
-                date: "2026-02-13", 
                 list: ["데이터 내보내기 시 파일명에 학급 이름 포함 기능 추가 (설정 > 앱 설정)", "활동 잔디 날짜 표시에 요일 추가"] 
             },
             { 
                 version: "v3.4.59", 
-                date: "2026-02-13", 
                 list: ["데이터 내보내기 시 클라우드에 분산된 모든 데이터(활동 기록, 모둠 결과 포함)를 완벽하게 백업하도록 개선"] 
             },
             { 
                 version: "v3.4.58", 
-                date: "2026-02-13", 
                 list: ["데이터 내보내기(백업) 기능 강화: 클라우드에 분산 저장된 학생 상세 기록(상담, 생기부)까지 모두 포함하여 저장하도록 개선"] 
             },
             { 
                 version: "v3.4.57", 
-                date: "2026-02-13", 
                 list: ["클라우드 동기화 도움말의 '데이터 관리 구조도' 최신화 (활동 기록 분리 반영)"] 
             },
             { 
                 version: "v3.4.56", 
-                date: "2026-02-13", 
                 list: ["활동 기록(체크리스트) 데이터를 날짜별 독립 문서로 분리 저장 (용량 제한 해결 및 속도 개선)"] 
             },
             { 
                 version: "v3.4.55", 
-                date: "2026-02-13", 
                 list: ["클라우드 동기화 도움말 UI 개선: 용량 분석과 구조도를 가로로 배치", "데이터 관리 구조도 아이콘을 이모지(🏗️)로 변경"] 
             },
             { 
                 version: "v3.4.54", 
-                date: "2026-02-13", 
                 list: ["클라우드 동기화 도움말에 '데이터 관리 구조도(도식화)' 추가 (초보자 가이드 강화)"] 
             },
             { 
                 version: "v3.4.53", 
-                date: "2026-02-13", 
                 list: ["학생별 관찰 기록 및 생활기록부 초안 데이터를 독립된 저장소로 분리 (용량 제한 해결 및 데이터 안전성 강화)"] 
             },
             { 
                 version: "v3.4.52", 
-                date: "2026-02-13", 
                 list: ["데이터 용량 분석 기능 개선: '기타 설정'을 '과제 목록', '모둠 이름' 등으로 세분화하여 표시"] 
             },
             { 
                 version: "v3.4.51", 
-                date: "2026-02-13", 
                 list: ["설정 > 데이터 관리 > 클라우드 동기화 도움말에 '데이터 용량 상세 분석' 기능 추가"] 
             },
             { 
                 version: "v3.4.50", 
-                date: "2026-02-13", 
                 list: ["설정 > 초기화 시 모든 탭(단순, 모둠, 역할 등)의 데이터가 완벽하게 삭제되도록 개선"] 
             },
             { 
                 version: "v3.4.49", 
-                date: "2026-02-13", 
                 list: ["데이터 정리 도구 실행 시 삭제 전 자동 백업(JSON 다운로드) 기능 추가"] 
             },
             { 
                 version: "v3.4.48", 
-                date: "2026-02-13", 
                 list: ["설정 > 데이터 관리에 '데이터 정리 도구' 추가 (오래된 기록 삭제 기능)", "클라우드 용량 안내 문구 수정 (1년치 데이터 보관 가능 안내)"] 
             },
             { 
                 version: "v3.4.47", 
-                date: "2026-02-13", 
                 list: ["클라우드 동기화 용량 제한(1MB)에 대한 도움말 설명 추가"] 
             },
             { 
                 version: "v3.4.46", 
-                date: "2026-02-13", 
                 list: ["설정 > 데이터 관리 > 클라우드 동기화 섹션에 데이터 사용량(용량/비율) 표시 기능 추가"] 
             },
             { 
                 version: "v3.4.45", 
-                date: "2026-02-13", 
                 list: ["자리 배치도에서 학생을 3번 터치하면 대기 명단으로 이동하는 기능 추가 (모바일 우클릭 대체)"] 
             },
             { 
                 version: "v3.4.44", 
-                date: "2026-02-13", 
                 list: ["업데이트 날짜 표기 오류 수정 (v3.4.x 버전 일괄 2026-02-13으로 변경)"] 
             },
             { 
                 version: "v3.4.43", 
-                date: "2026-02-13", 
                 list: ["앱 안정성 최적화 및 버전 관리 점검"] 
             },
             { 
                 version: "v3.4.42", 
-                date: "2026-02-13", 
                 list: ["앱 실행 오류 긴급 수정 (자리 배치도 UI 구조 문제 해결)"] 
             },
             { 
                 version: "v3.4.41", 
-                date: "2026-02-13", 
                 list: ["자리 배치도 섹션 접기/펼치기 기능 추가 (대기 명단 포함)"] 
             },
             { 
                 version: "v3.4.40", 
-                date: "2026-02-13", 
                 list: ["모바일 화면에서 모둠 도구 버튼(역할 수정, 짝꿍 분석) 배치 개선 (한 줄 보기, 폰트 크기 확대)"] 
             },
             { 
                 version: "v3.4.38", 
-                date: "2026-02-13", 
                 list: ["Firebase 저장 오류 해결: 모둠 데이터 저장 시 'Nested arrays' 에러 수정 (데이터 구조 개선)", "데이터 로딩 시 앱 멈춤 현상 방지 코드 추가"] 
             },
             { 
                 version: "v3.4.37", 
-                date: "2026-02-13", 
                 list: ["Firebase 동기화 시 모둠 편성 결과가 사라지는 현상 완벽 해결 (로컬 데이터 우선 병합 로직 적용)"] 
             },
             { 
                 version: "v3.4.34", 
-                date: "2026-02-13", 
                 list: ["자리 배치도 기본 설정 변경 (5행 5열, 십자 형태 비활성화)", "모둠 편성 로직 안정화 (동기식 처리로 Firebase 데이터 충돌 방지)"] 
             },
             { 
                 version: "v3.4.33", 
-                date: "2026-02-13", 
                 list: ["자리 배치도 기본 설정 변경 (5행 5열, 특정 좌석 비활성화)", "모둠 편성 시 최신 데이터 참조 로직 강화 (Firebase 동기화 충돌 방지)"] 
             },
             { 
                 version: "v3.4.32", 
-                date: "2026-02-13", 
                 list: ["자리 배치도 기본 설정 변경 (특정 좌석 비활성화 적용: 1-3, 2-3, 3행 전체, 4-4, 5-4)"] 
             },
             { 
                 version: "v3.4.31", 
-                date: "2026-02-13", 
                 list: ["모둠 데이터 자동 삭제 로직(sanitizeGroupsData) 제거로 데이터 유실 문제 원천 차단", "모둠 편성 직후 데이터가 사라지는 현상 최종 해결"] 
             },
             { 
                 version: "v3.4.30", 
-                date: "2026-02-13", 
                 list: ["모둠 편성 데이터 동기화 및 다음 날짜 저장 오류 최종 수정", "데이터 복구(Hydration) 로직 강화로 깜빡임 현상 해결"] 
             },
             { 
                 version: "v3.4.29", 
-                date: "2026-02-13", 
                 list: ["Firebase 모둠 데이터 저장 방식 변경 (ID 변환 로직 완전 제거)", "모둠 편성 결과가 사라지거나 깜빡이는 현상 긴급 수정"] 
             },
             { 
                 version: "v3.4.28", 
-                date: "2026-02-13", 
                 list: ["Firebase 데이터 동기화 시 모둠 정보 유실 방지 로직 강화 (학생 정보 매칭 실패 시 원본 데이터 유지)", "모둠 편성 결과 깜빡임 현상 최종 해결"] 
             },
             { 
                 version: "v3.4.27", 
-                date: "2026-02-13", 
                 list: ["Firebase 모둠 데이터 저장 안정성 강화 (데이터 최적화 로직 롤백)", "모둠 편성 후 데이터가 사라지는 현상 최종 수정"] 
             },
             { 
                 version: "v3.4.26", 
-                date: "2026-02-13", 
                 list: ["Firebase 동기화 시 모둠 편성 결과 깜빡임 및 데이터 유실 문제 해결 (Batch Update 적용)"] 
             },
             { 
                 version: "v3.4.25", 
-                date: "2026-02-13", 
                 list: ["Firebase 동기화 시 모둠 데이터 표시 오류 수정 (서버/로컬 데이터 병합 로직 강화)", "모둠 편성 직후 데이터가 보이지 않는 현상 해결"] 
             },
             { 
                 version: "v3.4.24", 
-                date: "2026-02-13", 
                 list: ["클라우드 저장 용량 최적화 (학생 ID만 저장하여 데이터 크기 90% 감소)", "모둠 편성 결과 저장 오류 근본 해결"] 
             },
             { 
                 version: "v3.4.23", 
-                date: "2026-02-13", 
                 list: ["클라우드 모둠 결과 표시 오류 해결 (실시간 데이터 동기화 및 복구 로직 강화)", "학생 정보 변경 시 모둠 배치도 자동 업데이트 적용"] 
             },
             { 
                 version: "v3.4.22", 
-                date: "2026-02-13", 
                 list: ["클라우드 모둠 데이터 저장 구조 최적화 (ID 기반 저장으로 용량 90% 절감)", "데이터 로딩 시 자동 복구(Hydration) 로직 추가"] 
             },
             { 
                 version: "v3.4.21", 
-                date: "2026-02-13", 
                 list: ["모둠 편성 알고리즘 안정성 강화 (오류 발생 시 예외 처리 및 알림)", "자리 배치 동기화 로직 개선"] 
             },
             { 
                 version: "v3.4.20", 
-                date: "2026-02-13", 
                 list: ["모둠 편성 시 자리 배치도에 결과가 즉시 반영되지 않는 문제 해결 (데이터 처리 안정성 강화)"] 
             },
             { 
                 version: "v3.4.19", 
-                date: "2026-02-13", 
                 list: ["클라우드 모둠 저장 안정성 강화 (데이터 정제 로직 개선)", "저장 실패 시 상세 에러 메시지 표시"] 
             },
             { 
                 version: "v3.4.18", 
-                date: "2026-02-13", 
                 list: ["클라우드 저장 안정성 긴급 패치: 모둠 데이터 용량 초과 시 오래된 기록 자동 삭제 로직 강화 (보관 기간 1년 → 3개월 단축)"] 
             },
             { 
                 version: "v3.4.17", 
-                date: "2026-02-13", 
                 list: ["클라우드 저장 용량 최적화를 위해 1년이 지난 오래된 모둠 기록 자동 삭제 기능 추가"] 
             },
             { 
                 version: "v3.4.16", 
-                date: "2026-02-13", 
                 list: ["클라우드 모둠 편성 저장 오류 해결 (과거 데이터 포함 전체 경량화 적용)", "데이터 저장 실패 시 알림 메시지 표시"] 
             },
             { 
                 version: "v3.4.15", 
-                date: "2026-02-13", 
                 list: ["사진 업로드 및 표시 기능 제거 (데이터 용량 최적화 및 클라우드 동기화 안정성 향상)"] 
             },
             { 
                 version: "v3.4.14", 
-                date: "2026-02-13", 
                 list: ["자리 배치도에서 모둠 설정 저장 시 학생 사진 데이터 제외 (클라우드 저장 용량 최적화)", "모둠 데이터 저장 로직 안정성 강화"] 
             },
             { 
                 version: "v3.4.13", 
-                date: "2026-02-13", 
                 list: ["클라우드 동기화 시 모둠 편성 데이터 저장 오류 해결 (데이터 크기 최적화)", "모둠 편성 시 학생 사진 등 불필요한 정보 제외하여 저장"] 
             },
             { 
                 version: "v3.4.12", 
-                date: "2026-02-13", 
                 list: ["모바일에서 모둠 편성 시 결과 화면으로 자동 전환되도록 개선", "자리 배치도 설정 버튼 아이콘 변경 (<, >)"] 
             },
             { 
                 version: "v3.4.11", 
-                date: "2026-02-13", 
                 list: ["모바일 화면에서 자리 배치도 설정 패널이 화면을 벗어나는 문제 해결 (하단 배치 및 줄바꿈 적용)"] 
             },
             { 
                 version: "v3.4.10", 
-                date: "2026-02-13", 
                 list: ["모바일 화면에서 학생 인사이트 카드 상단 버튼 간격 조정 (타이틀 줄바꿈 현상 개선)"] 
             },
             { 
                 version: "v3.4.9", 
-                date: "2026-02-13", 
                 list: ["앱 업데이트 알림 팝업 디자인 개선 (로켓 아이콘 강조 및 UI 고도화)"] 
             },
             { 
                 version: "v3.4.8", 
-                date: "2026-02-13", 
                 list: ["모바일 통계 탭에서 기간 선택(주간/월간/전체)을 드롭다운 메뉴로 변경하여 공간 효율 개선"] 
             },
             { 
                 version: "v3.4.7", 
-                date: "2026-02-13", 
                 list: ["모바일에서 팝업창을 아래로 쓸어내려 닫는 기능(Swipe down to close) 추가"] 
             },
             { 
                 version: "v3.4.6", 
-                date: "2026-02-13", 
                 list: ["데스크탑 하단 버전 정보 마우스 오버 시 배경색 변경 효과 추가"] 
             },
             { 
                 version: "v3.4.5", 
-                date: "2026-02-13", 
                 list: ["데스크탑 하단 버전 정보 글자 크기 확대 (10px → 12px)"] 
             },
             { 
                 version: "v3.4.4", 
-                date: "2026-02-13", 
                 list: ["데스크탑 화면에서 하단 버전 정보 디자인 개선 (고정 위치 및 배경색 적용)"] 
             },
             { 
                 version: "v3.4.3", 
-                date: "2026-02-13", 
                 list: ["모바일 하단 네비게이션 바 터치 영역 개선 (하단 여백 추가)"] 
             },
             { 
                 version: "v3.4.2", 
-                date: "2026-02-13", 
                 list: ["노션(Notion) 및 CSV 파일에서 학생 관찰 기록 일괄 가져오기 기능 추가 (설정 > 데이터 관리)", "관찰 기록 가져오기 시 이름/내용/날짜 열 자동 인식"] 
             },
             { 
                 version: "v3.4.1", 
-                date: "2026-02-13", 
                 list: ["모둠 편성 시 '고정 학생(자물쇠)' 배정 로직 개선 (새로운 날짜에도 이전 모둠 위치 유지)", "짝꿍 이력 분석 강화 (최근 짝꿍 가중치 적용하여 연속 배정 방지)"] 
             },
             { 
                 version: "v3.4.0", 
-                date: "2026-02-13", 
                 list: ["'짝꿍 이력 분석' 기능 추가 (모둠 편성 시 중복 짝꿍 현황 확인)", "AI 모둠 편성 프롬프트 개선 (학생 중복 배정 방지 조건 강화)"] 
             },
             { 
                 version: "v3.3.3", 
-                date: "2026-02-12", 
                 list: ["달력 기간 선택 모달에 '기간 초기화 (1일)' 버튼 추가"] 
             },
             // 모둠 유지 기간 초기화 버튼 추가 및 사용자 지정 기간 표시 개선
             { 
                 version: "v3.3.2", 
-                date: "2026-02-12", 
                 list: ["모둠 유지 기간 초기화 버튼 추가", "사용자 지정 기간 표시 개선"] 
             },
             { 
                 // 모둠 유지 기간 설정을 위한 달력 범위 선택 기능 및 유지 기간 UI 개선
                 version: "v3.3.1", 
-                date: "2026-02-12", 
                 list: ["모둠 유지 기간 설정을 위한 달력 범위 선택 기능 추가", "유지 기간 UI 개선 (주단위 선택 및 날짜 범위 표시)"] 
             },
             { 
                 version: "v3.3.0", 
                 // 모둠 편성 시 유지 기간 설정 기능 추가
-                date: "2026-02-12", 
                 list: ["모둠 편성 시 유지 기간 설정 기능 추가 (1일~4주)", "편성된 모둠을 지정된 기간 동안 자동 적용"] 
             },
             { 
                 version: "v3.2.0", 
-                date: "2026-02-11", 
                 list: ["학생 카드 '갤러리 뷰' 옵션 추가 (설정 > 앱 설정에서 사진 크게 보기 활성화 가능)"] 
             },
             { 
                 version: "v3.1.0", 
-                date: "2026-02-11", 
                 list: ["학생 카드 디자인을 Notion 갤러리 뷰 스타일로 심플하게 개선 (테두리, 그림자, 상태 표시바 적용)", "단순 확인 모드 카드 디자인 개선"] 
             },
             { 
                 version: "v3.0.0", 
-                date: "2026-02-11", 
                 list: ["전체 UI/UX 디자인을 Notion 스타일로 전면 개편 (깔끔하고 모던한 인터페이스)", "색상 팔레트, 폰트, 버튼, 모달, 카드 디자인 등 전체 테마 변경"] 
             },
             { 
                 version: "v2.88.3", 
-                date: "2026-02-10", 
                 list: ["모둠 클릭 시 해당 모둠원 기피 관계 하이라이트 기능 추가", "기피 관계 시각화 버튼 위치 이동 (관계 설정 패널 내부)"] 
             },
             { 
                 version: "v2.88.2", 
-                date: "2026-02-06", 
                 list: ["모둠 편성 시 기피 관계 시각화(빨간 점선) 기능 추가", "실력 균형 편성 알고리즘 개선 (모둠 간 평균 편차 최소화)"] 
             },
             { 
                 version: "v2.88.0", 
-                date: "2026-02-06", 
                 list: ["'학급 도구 상자' 추가 (랜덤 발표자 뽑기, 수업 타이머 기능)"] 
             },
             { 
                 version: "v2.87.1", 
-                date: "2026-02-06", 
                 list: ["업데이트 노트 날짜 표기 정책 재확인 (수정 시점의 날짜로 고정 표기)"] 
             },
             { 
                 version: "v2.87.0", 
-                date: "2026-02-06", 
                 list: ["학생 인사이트 리포트 AI 프롬프트 강화 (칭찬 스티커 획득 패턴 분석 및 칭찬 포인트 섹션 추가)"] 
             },
             { 
                 version: "v2.86.1", 
-                date: "2026-02-06", 
                 list: ["업데이트 노트 날짜 표기 수정 (2026-02-06)"] 
             },
             { 
                 version: "v2.86.0", 
-                date: "2026-02-06", 
                 list: ["학생 인사이트 학급 평균 비교 그래프에 '방사형 차트(Radar Chart)' 보기 옵션 추가"] 
             },
             { 
                 version: "v2.85.7", 
-                date: "2026-02-06", 
                 list: ["과목별 상세 통계에서 학급 평균보다 높을 때 칭찬 메시지 표시"] 
             },
             { 
                 version: "v2.85.6", 
-                date: "2026-02-06", 
                 list: ["학생 인사이트 학급 평균 비교 시 제출 내역이 있는 과목만 표시하도록 개선"] 
             },
             { 
                 version: "v2.85.0", 
-                date: "2026-02-05", 
                 list: ["업데이트 노트 버전 클릭 시 상세 내용 팝업 보기 기능 추가"] 
             },
             { 
                 version: "v2.85.0", 
-                date: "2026-02-05", 
                 list: ["업데이트 노트 버전 클릭 시 상세 내용 팝업 보기 기능 추가"] 
             },
             { 
                 version: "v2.84.5", 
-                date: "2026-02-05", 
                 list: ["업데이트 노트에 '주요 변경 사항만 보기' 필터 옵션 추가"] 
             },
             { 
                 version: "v2.84.4", 
-                date: "2026-02-05", 
                 list: ["업데이트 노트 날짜 표기 방식 변경 (동적 날짜 → 고정 날짜)"] 
             },
             { 
                 version: "v2.84.3", 
-                date: "2026-02-05", 
                 list: ["AI 모둠 편성 결과 '다시 편성' 및 리포트 저장/복사 기능 추가"] 
             },
             { 
                 version: "v2.84.2", 
-                date: "2026-02-04", 
                 list: ["AI 모둠 편성 시 '이전 모둠 겹침 방지' 옵션 적용", "AI 편성 결과에 대한 '이유 설명(리포트)' 기능 추가"] 
             },
             { 
                 version: "v2.84.1", 
-                date: "2026-02-04", 
                 list: ["AI 모둠 편성 기능 강화 (기피/필수 관계, 성별/실력 정보 자동 반영)"] 
             },
             { 
                 version: "v2.84.0", 
-                date: "2026-02-04", 
                 list: ["AI 총평 초안 생성 창에 '상용구' 기능 추가 (문장 선택 저장 및 불러오기)"] 
             },
             { 
                 version: "v2.83.2", 
-                date: "2026-02-04", 
                 list: ["AI 총평 초안 생성 프롬프트 개선 (기존 작성 원칙 복원 및 품질 향상 지침 추가)"] 
             },
             { 
                 version: "v2.83.1", 
-                date: "2026-01-28", 
                 list: ["AI 기능 전면 강화 (프롬프트 고도화로 분석 및 창작 품질 향상)"] 
             },
             { 
                 version: "v2.82.1", 
-                date: "2026-02-04", 
                 list: ["사용 설명서 내용 최신화 (사진 관리, 폰트 변경, AI 기능 등 반영)"] 
             },
             { 
                 version: "v2.82.0", 
-                date: "2026-02-04", 
                 list: ["나눔고딕 폰트 선택 시 'Bold(굵게)' 옵션 추가"] 
             },
             { 
                 version: "v2.81.0", 
-                date: "2026-02-03", 
                 list: ["앱 전체 폰트 설정에 '주아체', '나눔고딕' 추가 및 드롭다운 UI 적용"] 
             },
             { 
                 version: "v2.80.0", 
-                date: "2026-02-03", 
                 list: ["앱 전체 폰트 변경 기능 추가 (설정 > 앱 설정)"] 
             },
             { 
                 version: "v2.79.0", 
-                date: "2026-02-03", 
                 list: ["학생 인사이트 리포트 폰트 변경 옵션 추가 (고딕/명조/손글씨)"] 
             },
             { 
                 version: "v2.78.0", 
-                date: "2026-02-03", 
                 list: ["버전 표기 정책 재정립 (기능 추가 시 Minor 버전 업데이트)"] 
             },
             { 
                 version: "v2.77.74", 
-                date: "2026-02-03", 
                 list: ["학생 인사이트 리포트 그래프에 날짜 및 수행률 툴팁 추가"] 
             },
             { 
                 version: "v2.77.73", 
-                date: "2026-02-03", 
                 list: ["학생 인사이트 리포트 '상용구' 저장/불러오기 기능 추가", "리포트에 '성취도 추이' 꺾은선 그래프 추가"] 
             },
             { 
                 version: "v2.77.72", 
-                date: "2026-02-03", 
                 list: ["학생 인사이트 리포트 그래프 색상을 레벨에 따라 다르게 표시 (초록-파랑-남색-보라-주황)"] 
             },
             { 
                 version: "v2.77.71", 
-                date: "2026-02-03", 
                 list: ["학생 인사이트 리포트 AI 프롬프트 개선 (학급 평균 대비 부족한 과목 맞춤형 학습 전략 제안)"] 
             },
             { 
                 version: "v2.77.70", 
-                date: "2026-02-03", 
                 list: ["과목별 상세 통계에서 학급 평균보다 20% 이상 낮은 경우 빨간색 강조 표시"] 
             },
             { 
                 version: "v2.77.69", 
-                date: "2026-02-03", 
                 list: ["학생 인사이트 그래프 클릭 시 과목별 상세 통계(나 vs 학급) 보기 기능 추가"] 
             },
             { 
                 version: "v2.77.68", 
-                date: "2026-02-02", 
                 list: ["학생 인사이트 화면에 '학급 평균 비교 그래프' 표시"] 
             },
             { 
                 version: "v2.77.67", 
-                date: "2026-02-02", 
                 list: ["학생 인사이트 리포트에 '학급 평균 비교 그래프' 추가"] 
             },
             { 
                 version: "v2.77.66", 
-                date: "2026-02-02", 
                 list: ["학생 인사이트 리포트 '초안 저장' 및 '불러오기' 기능 추가"] 
             },
             { 
                 version: "v2.77.65", 
-                date: "2026-02-02", 
                 list: ["학생 인사이트 리포트 AI 프롬프트 개선 (자주 놓치는 과목에 대한 구체적 학습 조언 추가)"] 
             },
             { 
                 version: "v2.77.64", 
-                date: "2026-02-02", 
                 list: ["학생 인사이트 리포트 AI 프롬프트 강화 (학급 평균 대비 성취도 분석 추가)"] 
             },
             { 
                 version: "v2.77.63", 
-                date: "2026-02-02", 
                 list: ["테스트 명단 추가 시 성별 자동 설정 (이름에 맞게)"] 
             },
             { 
                 version: "v2.77.62", 
-                date: "2026-02-02", 
                 list: ["테스트 명단 이름을 유명 연예인으로 변경"] 
             },
             { 
                 version: "v2.77.61", 
-                date: "2026-02-02", 
                 list: ["업데이트 노트 최신 항목에 'NEW' 뱃지 추가"] 
             },
             { 
                 version: "v2.77.60", 
-                date: "2026-02-02", 
                 list: ["사용 설명서 팝업 뷰어 추가 (설정 > 데이터 관리)"] 
             },
             { 
                 version: "v2.77.59", 
-                date: "2026-02-02", 
                 list: ["설정 > 데이터 관리에 '사용 설명서 다운로드' 기능 추가"] 
             },
             { 
                 version: "v2.77.58", 
-                date: "2026-02-02", 
                 list: ["자동 백업 및 데이터 내보내기 시 모든 앱 데이터(모둠, 역할, 자리배치 등) 포함하도록 개선"] 
             },
             { 
                 version: "v2.77.57", 
-                date: "2026-02-01", 
                 list: ["시스템 로그 기능 강화 (앱 전반의 오류 자동 기록)"] 
             },
             { 
                 version: "v2.77.56", 
-                date: "2026-02-01", 
                 list: ["AI 행발 초안 생성을 'AI 총평 초안 생성'으로 명칭 변경", "총평 초안 생성 시 학기별 글자 수 제한 적용 (1학기 450자, 2학기 550자)"] 
             },
             { 
                 version: "v2.77.55", 
-                date: "2026-02-01", 
                 list: ["AI 기능 사용량 카운터 추가 (설정 > 앱 설정)"] 
             },
             { 
                 version: "v2.77.54", 
-                date: "2026-02-01", 
                 list: ["저장된 행발 초안 일괄 내보내기(TXT) 기능 추가 (설정 > 데이터 관리)"] 
             },
             { 
                 version: "v2.77.53", 
-                date: "2026-02-01", 
                 list: ["AI 행발 초안 저장 기능 추가 (학기별/항목별 저장 및 불러오기)"] 
             },
             { 
                 version: "v2.77.47", 
-                date: "2026-02-01", 
                 list: ["업데이트 노트 및 버전 번호 정리"] 
             },
             { 
                 version: "v2.77.46", 
-                date: "2026-02-01", 
                 list: ["학급 스토리 장르를 초등학생 눈높이에 맞춰 변경 (학교, 모험, 탐정 등)"] 
             },
             { 
                 version: "v2.77.45", 
-                date: "2026-01-28", 
                 list: ["다크 모드 기능 제거 (안정성 문제로 인한 롤백)"] 
             },
             { 
                 version: "v2.77.44", 
-                date: "2026-01-28", 
                 list: ["관리자 모드 전용 '시스템 로그' 확인 기능 추가"] 
             },
             { 
                 version: "v2.77.43", 
-                date: "2026-01-28", 
                 list: ["관리자 모드 진입 경로 변경 ('데이터 관리' → '앱 설정' 타이틀 3회 클릭)"] 
             },
             { 
                 version: "v2.77.42", 
-                date: "2026-01-28", 
                 list: ["AI 행발 초안 생성기 PDF 저장 및 교과 학습 발달 상황 생성 옵션 추가"] 
             },
             { 
                 version: "v2.77.41", 
-                date: "2026-01-28", 
                 list: ["AI 생활기록부(행발) 초안 생성기 기능 추가"] 
             },
             { 
                 version: "v2.77.40", 
-                date: "2026-01-28", 
                 list: ["AI 은샘이 상담소 '이전 기록 불러오기' 기능 추가"] 
             },
             { 
                 version: "v2.77.39", 
-                date: "2026-01-28", 
                 list: ["AI 은샘이 상담소 상담 내용 PDF 저장 기능 추가"] 
             },
             { 
                 version: "v2.77.38", 
-                date: "2026-01-28", 
                 list: ["'AI 금쪽이 상담소' 명칭을 'AI 은샘이 상담소'로 변경"] 
             },
             { 
                 version: "v2.77.37", 
-                date: "2026-01-28", 
                 list: ["AI 금쪽이 상담소 답변에 '부모님 상담 가이드' 섹션 추가"] 
             },
             { 
                 version: "v2.77.36", 
-                date: "2026-01-28", 
                 list: ["AI 금쪽이 상담소 상담 스타일(따뜻함/단호함/분석적) 선택 옵션 추가"] 
             },
             { 
                 version: "v2.77.35", 
-                date: "2026-01-28", 
                 list: ["AI 금쪽이 상담소 답변 저장 및 복사 기능 추가"] 
             },
             { 
                 version: "v2.77.34", 
-                date: "2026-01-28", 
                 list: ["AI 금쪽이 상담소 기능 추가 (학생 상세 정보 모달 내)"] 
             },
             { 
                 version: "v2.77.33", 
-                date: "2026-01-28", 
                 list: ["학급 세계관 스토리 장르 선택 옵션(판타지, SF, 동화 등) 추가"] 
             },
             { 
                 version: "v2.77.31", 
-                date: "2026-01-28", 
                 list: ["학급 세계관 스토리 도움말 내용 보강 (사용 방법, 예시 추가) 및 오류 수정"] 
             },
             { 
                 version: "v2.77.30", 
-                date: "2026-01-28", 
                 list: ["학급 세계관 스토리텔링 기능 추가 (기록 탭)"] 
             },
             { 
                 version: "v2.77.28", 
-                date: "2026-01-28", 
                 list: ["AI 주간 브리핑 어조(Tone) 선택 옵션 추가"] 
             },
             { 
                 version: "v2.77.27", 
-                date: "2026-01-27", 
                 list: ["AI 주간 브리핑 PDF 저장 기능 추가"] 
             },
             { 
                 version: "v2.77.26", 
-                date: "2026-01-27", 
                 list: ["AI 주간 브리핑 기간 선택 기능을 팝업 내부로 이동"] 
             },
             { 
                 version: "v2.77.25", 
-                date: "2026-01-27", 
                 list: ["AI 주간 브리핑 분석 기간(날짜 범위) 선택 기능 추가"] 
             },
             { 
                 version: "v2.77.24", 
-                date: "2026-01-27", 
                 list: ["AI 주간 브리핑 내용 복사 버튼 추가"] 
             },
             { 
                 version: "v2.77.23", 
-                date: "2026-01-27", 
                 list: ["AI 주간 브리핑 로딩바(진행률) 표시 기능 추가"] 
             },
             { 
                 version: "v2.77.22", 
-                date: "2026-01-27", 
                 list: ["AI 주간 브리핑 도움말 모달 추가 (누락된 기능 구현)"] 
             },
             { 
                 version: "v2.77.20", 
-                date: "2026-01-27", 
                 list: ["AI 주간 브리핑 도움말 텍스트 추가 및 접근성 개선"] 
             },
             { 
                 version: "v2.77.19", 
-                date: "2026-01-27", 
                 list: ["AI 주간 브리핑 도움말 버튼 동작 수정"] 
             },
             { 
                 version: "v2.77.18", 
-                date: "2026-01-27", 
                 list: ["AI 주간 브리핑 도움말 추가 및 버튼 동작 개선 (API 키 미입력 시 안내)"] 
             },
             { 
                 version: "v2.77.17", 
-                date: "2026-01-27", 
                 list: ["AI 학급 주간 브리핑 기능 재구현"] 
             },
             { 
                 version: "v2.77.16", 
-                date: "2026-01-27", 
                 list: ["업데이트 노트 날짜 표기 원복 및 금일 수정분 날짜 적용"] 
             },
             { 
                 version: "v2.77.14", 
-                date: "2026-01-27", 
                 list: ["설정 모달 '키 발급 방법' 안내 가이드(모달) 추가"] 
             },
             { 
                 version: "v2.77.13", 
-                date: "2026-01-27", 
                 list: ["AI 기능(주간 브리핑, 명령 제어, 학급 스토리) 코드 초기화 (재구현 예정)"] 
             },
             { 
                 version: "v2.77.12", 
-                date: "2026-01-27", 
                 list: ["학급 스토리 도움말 모달 렌더링 위치 수정"] 
             },
             { 
                 version: "v2.77.11", 
-                date: "2026-01-27", 
                 list: ["학급 스토리 도움말 모달 렌더링 오류 수정"] 
             },
             { 
                 version: "v2.77.9", 
-                date: "2026-01-28", 
                 list: ["API 키 없이도 AI 기능 설명 및 활용 팁 확인 가능하도록 개선"] 
             },
             { 
                 version: "v2.77.8", 
-                date: "2026-01-28", 
                 list: ["학급 세계관 스토리 기능 도움말 추가 및 안정성 개선"] 
             },
             { 
                 version: "v2.77.7", 
-                date: "2026-01-27", 
                 list: ["설정 모달 API 키 입력란 옆에 '키 발급 방법' 링크 추가"] 
             },
             { 
                 version: "v2.77.6", 
-                date: "2026-01-27", 
                 list: ["AI 기능 버튼 비활성화 처리 (API 키 미입력 시 회색 표시)"] 
             },
             { 
                 version: "v2.77.5", 
-                date: "2026-01-27", 
                 list: ["통계 탭 접근 오류 수정 (AI 브리핑 버튼 핸들러 안정화)"] 
             },
             { 
                 version: "v2.77.3", 
-                date: "2026-01-27", 
                 list: ["AI 기능 실행 시 API 키 미입력 안내 메시지 강화"] 
             },
             { 
                 version: "v2.77.2", 
-                date: "2026-01-27", 
                 list: ["AI 학급 주간 브리핑 실행 로직 보완 (API 키 확인 및 로딩 상태 처리 강화)"] 
             },
             { 
                 version: "v2.77.1", 
-                date: "2026-01-27", 
                 list: ["AI 기능 실행 버튼 UI 추가 (주간 브리핑, 명령 제어, 스토리텔링)"] 
             },
             { 
                 version: "v2.77.0", 
-                date: "2026-01-27", 
                 list: ["AI 학급 주간 브리핑 기능 추가 (통계 탭)", "자연어 명령 제어 기능 추가 (헤더 마이크 아이콘)", "학급 세계관 스토리텔링 기능 추가 (기록 탭)"] 
             },
             { 
                 version: "v2.76.1", 
-                date: "2026-01-26", 
                 list: ["모둠 분석 결과 카드에 '리더' 표시 추가", "모둠 상세 보기(더블클릭) 실력 분포 디자인 개선 (평균 점수, 그래프, 명단 그리드)"] 
             },
             { 
                 version: "v2.76.0", 
-                date: "2026-01-26", 
                 list: ["모둠 분석 결과 UI 개선 (2열 그리드 배치, 카드 크기 확대)", "모둠 분석 섹션 접기/펼치기 토글 추가", "모둠 카드 더블 클릭 시 상세 정보(학생 명단) 보기 기능 추가"] 
             },
             { 
                 version: "v2.75.4", 
-                date: "2026-01-26", 
                 list: ["드래그 앤 드롭 기능 전면 강화 (모바일 터치 지원, 인식률 개선)", "드래그 중 하위 요소 간섭 완벽 차단"] 
             },
             { 
                 version: "v2.75.3", 
-                date: "2026-01-26", 
                 list: ["자리 배치도 드래그 앤 드롭 안정성 추가 개선 (Drag Start 로직 최적화)"] 
             },
             { 
                 version: "v2.75.2", 
-                date: "2026-01-26", 
                 list: ["모둠 편성 드래그 앤 드롭 반응성 및 안정성 개선 (Ref 기반 데이터 처리)"] 
             },
             { 
                 version: "v2.75.1", 
-                date: "2026-01-26", 
                 list: ["모둠 편성 드래그 앤 드롭 오류 수정 (인식률 개선 및 안정화)"] 
             },
             { 
                 version: "v2.75.0", 
-                date: "2026-01-26", 
                 list: ["모둠 편성 시 실력 균형이 깨질 경우(전체 평균과 0.5점 이상 차이) 경고 아이콘 표시 기능 추가"] 
             },
             { 
                 version: "v2.74.0", 
-                date: "2026-01-26", 
                 list: ["모둠 편성 '실력 균형' 알고리즘 강화 (모둠 간 실력 평균 편차 최소화)", "자리 배치도 이미지 저장 시 대기 명단 제외"] 
             },
             { 
                 version: "v2.73.7", 
-                date: "2026-01-26", 
                 list: ["자리 배치도 이미지 저장 기능 추가 (타이틀 우측 버튼)"] 
             },
             { 
                 version: "v2.73.6", 
-                date: "2026-01-26", 
                 list: ["AI 편성 버튼 로딩 상태 디자인 개선 (회색 버튼 + 스피너)", "모둠 편성 결과 이미지 저장 기능 추가"] 
             },
-            { version: "v2.73.3", date: "2026-01-26", changes: ["AI 모둠 편성 활성화 조건 변경 (API 키 필수)", "AI 모델명(Gemini 2.5 Flash) 표시 추가"] },
-            { version: "v2.73.2", date: "2026-01-20", changes: ["학생 인사이트 리포트 옵션 수정 ('진로/진학 상담' 삭제)"] },
-            { version: "v2.73.1", date: "2026-01-20", changes: ["학생 인사이트 리포트 프롬프트 개선 (초등 교육 특성 반영)"] },
-            { version: "v2.73.0", date: "2026-01-20", changes: ["학생 인사이트 리포트 생성 기능 강화 (Gemini 프롬프트 고도화 및 분석 옵션 세분화)"] },
-            { version: "v2.72.6", date: "2026-01-20", changes: ["자리 배치도 UI 구조 오류 수정 (메인 컨테이너 닫힘 태그 위치 조정)"] },
-            { version: "v2.72.5", date: "2026-01-20", changes: ["자리 배치도 설정 버튼 토글 기능 추가 (숨기기/펼치기)"] },
-            { version: "v2.72.4", date: "2026-01-20", changes: ["모둠 탭 섹션 간격 통일 (자리 배치도 상단 여백 제거)"] },
-            { version: "v2.72.3", date: "2026-01-20", changes: ["자리 배치도 섹션 모서리 곡률 수정 (디자인 일관성 개선)"] },
-            { version: "v2.72.2", date: "2026-01-20", changes: ["달력 날짜 표시 점(Dot) 모드별 분리 (기록 탭: 기록 유무, 모둠 탭: 모둠 유무)"] },
-            { version: "v2.72.1", date: "2026-01-20", changes: ["모둠 탭 왼쪽 패널 토글 버튼 위치 조정 (모둠 분석 결과 상단으로 이동)"] },
-            { version: "v2.72.0", date: "2026-01-20", changes: ["모둠 탭에 왼쪽 패널(편성/도구) 숨기기/표시 기능 추가"] },
-            { version: "v2.71.20", date: "2026-01-20", changes: ["대기 명단 카드 잘림 방지 (크기 축소 및 간격 조정)"] },
-            { version: "v2.71.19", date: "2026-01-20", changes: ["업데이트 히스토리 누락분 반영 및 버전 동기화"] },
-            { version: "v2.71.18", date: "2026-01-20", changes: ["자리 배치도 그리드 너비 반응형 조정 (창 크기에 따라 변동)"] },
-            { version: "v2.71.17", date: "2026-01-20", changes: ["대기 명단 카드 내부 요소(이모지, 이름) 크기 확대"] },
-            { version: "v2.71.16", date: "2026-01-20", changes: ["대기 명단 너비 확대 (lg:w-72) 및 자리 배치도 셀 크기 조정"] },
-            { version: "v2.71.15", date: "2026-01-20", changes: ["VERSION_CONFIG 구문 오류 수정 (중복된 patch 속성 제거)"] },
-            { version: "v2.71.14", date: "2026-01-20", changes: ["대기 명단 너비 확대 (UI 비율 조정)"] },
-            { version: "v2.71.13", date: "2026-01-20", changes: ["대기 명단 학생 선택 시 파란색 테두리 및 배경 강조 효과 적용"] },
-            { version: "v2.71.12", date: "2026-01-20", changes: ["대기 명단 UI 개선 (스크롤 제거, 선택 강조 효과 적용)"] },
-            { version: "v2.71.11", date: "2026-01-20", changes: ["대기 명단 선택 시 파란색 테두리 강조 효과 적용"] },
-            { version: "v2.71.10", date: "2026-01-20", changes: ["대기 명단 렌더링 코드 복구 및 확인"] },
-            { version: "v2.71.9", date: "2026-01-20", changes: ["대기 명단 높이 자동 맞춤 설정 (고정 높이 제거)"] },
-            { version: "v2.71.8", date: "2026-01-20", changes: ["대기 명단 높이 자동 맞춤 설정 (고정 높이 제거)"] },
-            { version: "v2.71.7", date: "2026-01-20", changes: ["대기 명단 영역 높이 고정(h-[400px]) 누락 수정", "버전 정보 동기화"] },
-            { version: "v2.71.6", date: "2026-01-20", changes: ["대기 명단 학생 선택 시 시각적 효과 강화 및 패딩 조정 재적용"] },
-            { version: "v2.71.5", date: "2026-01-20", changes: ["자리 배치도 및 대기 명단 UI 코드 가독성 개선 (JSX 구조 정리)"] },
-            { version: "v2.71.4", date: "2026-01-20", changes: ["대기 명단 학생 선택 시 시각적 효과 강화 (파란색 테두리 및 강조)", "대기 명단 UI 패딩 조정 (자리 배치도와 통일)"] },
-            { version: "v2.71.3", date: "2026-01-20", changes: ["날짜 표기 규칙 준수를 위해 자동 날짜 설정 로직 제거 (Static Date Rule 적용)"] },
-            { version: "v2.71.2", date: "2026-01-19", changes: ["업데이트 노트 날짜 자동 설정 기능 개선 (파일 수정일 기준)"] },
-            { version: "v2.71.1", date: "2026-01-19", changes: ["업데이트 히스토리 날짜 오류 수정 (2026-01-19로 통일)"] },
-            { version: "v2.71.0", date: "2026-01-19", changes: ["자리 배치도 상세 정보 보기(더블 클릭) 및 대기 명단 클릭 배정 기능 추가", "대기 명단 UI 높이 자동 맞춤 개선"] },
-            { version: "v2.70.13", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 문제 해결 (이벤트 전파 및 CSS 제어 최적화)"] },
-            { version: "v2.70.12", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 로직 단순화 및 CSS 강화 (자식 요소 간섭 원천 차단)"] },
-            { version: "v2.70.11", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 안정화 (드래그 소스 이벤트 유지, 타겟 자식 요소 차단)"] },
-            { version: "v2.70.10", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 최종 수정 (CSS pointer-events 강화 및 로직 단순화)"] },
-            { version: "v2.70.9", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 로직 재수정 (relatedTarget 체크 및 pointer-events 제어 병행)"] },
-            { version: "v2.70.8", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 깜빡임 문제 완벽 해결 (이벤트 카운터 방식 적용)"] },
-            { version: "v2.70.7", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 인식 오류 완벽 해결 (CSS pointer-events 적용 범위 확대)"] },
-            { version: "v2.70.6", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 오류 수정 (CSS pointer-events 충돌 해결)"] },
-            { version: "v2.70.5", date: "2026-01-19", changes: ["자리 배치도 애니메이션 효과 강화 (배치 시 바운스 효과, 부드러운 전환 적용)"] },
-            { version: "v2.70.4", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 문제 해결 (드래그 중 모든 학생 카드 이벤트 차단)"] },
-            { version: "v2.70.3", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 안정성 강화 (대기 명단 드래그 시 드롭 중단 문제 해결)"] },
-            { version: "v2.70.2", date: "2026-01-19", changes: ["자리 배치도 드래그 앤 드롭 오류 수정 (effectAllowed 불일치 해결)"] },
-            { version: "v2.70.1", date: "2026-01-19", changes: ["자리 배치도 클릭 상호작용 개선 (학생 클릭 시 자리 선택/교체 기능 복구)"] },
-            { version: "v2.70.0", date: "2026-01-19", changes: ["자리 배치도 개선: 자리 크기 확대, 역할 표시, 드래그 시 '+' 표시 추가"] },
+            { version: "v2.73.3", changes: ["AI 모둠 편성 활성화 조건 변경 (API 키 필수)", "AI 모델명(Gemini 2.5 Flash) 표시 추가"] },
+            { version: "v2.73.2", changes: ["학생 인사이트 리포트 옵션 수정 ('진로/진학 상담' 삭제)"] },
+            { version: "v2.73.1", changes: ["학생 인사이트 리포트 프롬프트 개선 (초등 교육 특성 반영)"] },
+            { version: "v2.73.0", changes: ["학생 인사이트 리포트 생성 기능 강화 (Gemini 프롬프트 고도화 및 분석 옵션 세분화)"] },
+            { version: "v2.72.6", changes: ["자리 배치도 UI 구조 오류 수정 (메인 컨테이너 닫힘 태그 위치 조정)"] },
+            { version: "v2.72.5", changes: ["자리 배치도 설정 버튼 토글 기능 추가 (숨기기/펼치기)"] },
+            { version: "v2.72.4", changes: ["모둠 탭 섹션 간격 통일 (자리 배치도 상단 여백 제거)"] },
+            { version: "v2.72.3", changes: ["자리 배치도 섹션 모서리 곡률 수정 (디자인 일관성 개선)"] },
+            { version: "v2.72.2", changes: ["달력 날짜 표시 점(Dot) 모드별 분리 (기록 탭: 기록 유무, 모둠 탭: 모둠 유무)"] },
+            { version: "v2.72.1", changes: ["모둠 탭 왼쪽 패널 토글 버튼 위치 조정 (모둠 분석 결과 상단으로 이동)"] },
+            { version: "v2.72.0", changes: ["모둠 탭에 왼쪽 패널(편성/도구) 숨기기/표시 기능 추가"] },
+            { version: "v2.71.20", changes: ["대기 명단 카드 잘림 방지 (크기 축소 및 간격 조정)"] },
+            { version: "v2.71.19", changes: ["업데이트 히스토리 누락분 반영 및 버전 동기화"] },
+            { version: "v2.71.18", changes: ["자리 배치도 그리드 너비 반응형 조정 (창 크기에 따라 변동)"] },
+            { version: "v2.71.17", changes: ["대기 명단 카드 내부 요소(이모지, 이름) 크기 확대"] },
+            { version: "v2.71.16", changes: ["대기 명단 너비 확대 (lg:w-72) 및 자리 배치도 셀 크기 조정"] },
+            { version: "v2.71.15", changes: ["VERSION_CONFIG 구문 오류 수정 (중복된 patch 속성 제거)"] },
+            { version: "v2.71.14", changes: ["대기 명단 너비 확대 (UI 비율 조정)"] },
+            { version: "v2.71.13", changes: ["대기 명단 학생 선택 시 파란색 테두리 및 배경 강조 효과 적용"] },
+            { version: "v2.71.12", changes: ["대기 명단 UI 개선 (스크롤 제거, 선택 강조 효과 적용)"] },
+            { version: "v2.71.11", changes: ["대기 명단 선택 시 파란색 테두리 강조 효과 적용"] },
+            { version: "v2.71.10", changes: ["대기 명단 렌더링 코드 복구 및 확인"] },
+            { version: "v2.71.9", changes: ["대기 명단 높이 자동 맞춤 설정 (고정 높이 제거)"] },
+            { version: "v2.71.8", changes: ["대기 명단 높이 자동 맞춤 설정 (고정 높이 제거)"] },
+            { version: "v2.71.7", changes: ["대기 명단 영역 높이 고정(h-[400px]) 누락 수정", "버전 정보 동기화"] },
+            { version: "v2.71.6", changes: ["대기 명단 학생 선택 시 시각적 효과 강화 및 패딩 조정 재적용"] },
+            { version: "v2.71.5", changes: ["자리 배치도 및 대기 명단 UI 코드 가독성 개선 (JSX 구조 정리)"] },
+            { version: "v2.71.4", changes: ["대기 명단 학생 선택 시 시각적 효과 강화 (파란색 테두리 및 강조)", "대기 명단 UI 패딩 조정 (자리 배치도와 통일)"] },
+            { version: "v2.71.3", changes: ["날짜 표기 규칙 준수를 위해 자동 날짜 설정 로직 제거 (Static Date Rule 적용)"] },
+            { version: "v2.71.2", changes: ["업데이트 노트 날짜 자동 설정 기능 개선 (파일 수정일 기준)"] },
+            { version: "v2.71.1", changes: ["업데이트 히스토리 날짜 오류 수정 (2026-01-19로 통일)"] },
+            { version: "v2.71.0", changes: ["자리 배치도 상세 정보 보기(더블 클릭) 및 대기 명단 클릭 배정 기능 추가", "대기 명단 UI 높이 자동 맞춤 개선"] },
+            { version: "v2.70.13", changes: ["자리 배치도 드래그 앤 드롭 문제 해결 (이벤트 전파 및 CSS 제어 최적화)"] },
+            { version: "v2.70.12", changes: ["자리 배치도 드래그 앤 드롭 로직 단순화 및 CSS 강화 (자식 요소 간섭 원천 차단)"] },
+            { version: "v2.70.11", changes: ["자리 배치도 드래그 앤 드롭 안정화 (드래그 소스 이벤트 유지, 타겟 자식 요소 차단)"] },
+            { version: "v2.70.10", changes: ["자리 배치도 드래그 앤 드롭 최종 수정 (CSS pointer-events 강화 및 로직 단순화)"] },
+            { version: "v2.70.9", changes: ["자리 배치도 드래그 앤 드롭 로직 재수정 (relatedTarget 체크 및 pointer-events 제어 병행)"] },
+            { version: "v2.70.8", changes: ["자리 배치도 드래그 앤 드롭 깜빡임 문제 완벽 해결 (이벤트 카운터 방식 적용)"] },
+            { version: "v2.70.7", changes: ["자리 배치도 드래그 앤 드롭 인식 오류 완벽 해결 (CSS pointer-events 적용 범위 확대)"] },
+            { version: "v2.70.6", changes: ["자리 배치도 드래그 앤 드롭 오류 수정 (CSS pointer-events 충돌 해결)"] },
+            { version: "v2.70.5", changes: ["자리 배치도 애니메이션 효과 강화 (배치 시 바운스 효과, 부드러운 전환 적용)"] },
+            { version: "v2.70.4", changes: ["자리 배치도 드래그 앤 드롭 문제 해결 (드래그 중 모든 학생 카드 이벤트 차단)"] },
+            { version: "v2.70.3", changes: ["자리 배치도 드래그 앤 드롭 안정성 강화 (대기 명단 드래그 시 드롭 중단 문제 해결)"] },
+            { version: "v2.70.2", changes: ["자리 배치도 드래그 앤 드롭 오류 수정 (effectAllowed 불일치 해결)"] },
+            { version: "v2.70.1", changes: ["자리 배치도 클릭 상호작용 개선 (학생 클릭 시 자리 선택/교체 기능 복구)"] },
+            { version: "v2.70.0", changes: ["자리 배치도 개선: 자리 크기 확대, 역할 표시, 드래그 시 '+' 표시 추가"] },
         
         ];
 
@@ -4947,7 +4715,6 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                                             {groupIndex === 0 && i === 0 && <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold animate-pulse">NEW</span>}
                                                             <Icon d={PATHS.right} size={12} className="opacity-0 group-hover/title:opacity-100 transition-opacity text-slate-400 -ml-1" />
                                                         </h5>
-                                                        <span className="text-xs text-slate-400">{update.date}</span>
                                                     </div>
                                                     <ul className="space-y-1">
                                                         {(update.list || update.changes).map((change, j) => (
@@ -4974,7 +4741,6 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
                                             <h3 className="text-xl font-bold text-indigo-600">{selectedNote.version}</h3>
-                                            <p className="text-xs text-slate-400 font-bold mt-1">{selectedNote.date}</p>
                                         </div>
                                         <button onClick={() => setSelectedNote(null)} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><Icon d={PATHS.x} /></button>
                                     </div>
@@ -5424,11 +5190,63 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             );
         };
 
+        const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
+            const [inputConfig, setInputConfig] = useState(""); 
+            const [authId, setAuthId] = useState(""); 
+            const [authPw, setAuthPw] = useState("");
+            const [rememberMe, setRememberMe] = useState(false);
+
+            useEffect(() => {
+                if (isOpen) {
+                    const sId = localStorage.getItem('cls_fb_id');
+                    const sPw = localStorage.getItem('cls_fb_pw');
+                    const sCfg = localStorage.getItem('cls_fb_config');
+                    if (sId || sPw || sCfg) {
+                        setAuthId(sId || "");
+                        setAuthPw(sPw || "");
+                        setInputConfig(sCfg || "");
+                        setRememberMe(true);
+                    }
+                }
+            }, [isOpen]);
+            
+            const handleConnect = async () => { 
+                if(!authId || !authPw) { showToast("아이디와 비밀번호를 입력해주세요."); return; } 
+                let config;
+                try { 
+                    let cleanInput = inputConfig.trim();
+                    cleanInput = cleanInput.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '');
+                    cleanInput = cleanInput.replace(/^(export\s+)?(const|let|var)\s+\w+\s*=\s*/, '');
+                    cleanInput = cleanInput.replace(/;+\s*$/, '');
+                    try { config = JSON.parse(cleanInput); } catch (e) { config = new Function("return " + cleanInput)(); }
+                } catch (e) { showToast("설정 코드 형식이 올바르지 않습니다."); return; }
+
+                if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
+
+                try {
+                    if (!firebase.apps.length) firebase.initializeApp(config);
+                    await firebase.auth().signInWithEmailAndPassword(authId, authPw); 
+                    if (rememberMe) { localStorage.setItem('cls_fb_id', authId); localStorage.setItem('cls_fb_pw', authPw); localStorage.setItem('cls_fb_config', inputConfig); } 
+                    else { localStorage.removeItem('cls_fb_id'); localStorage.removeItem('cls_fb_pw'); localStorage.removeItem('cls_fb_config'); }
+                    onConnect(config); 
+                } catch (e) { 
+                    let errMsg = "연결 실패: " + e.message;
+                    if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
+                    showToast(errMsg); logSystemEvent(errMsg, 'error');
+                } 
+            };
+
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="⛅️ Firebase 연결 설정" icon={null}><div className="flex flex-col gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200"><div className="text-xs font-bold text-slate-500 mb-1">Firebase 인증 (이메일/비밀번호)</div><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일 (ID)" value={authId} onChange={e => setAuthId(e.target.value)} /><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} /></div><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder='설정 코드 붙여넣기 (예: const firebaseConfig = ...)' value={inputConfig} onChange={e => setInputConfig(e.target.value)} /><div className="flex items-center gap-2 mt-2 px-1"><label className="flex items-center gap-2 cursor-pointer select-none group"><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-slate-300 group-hover:border-indigo-400'}`}>{rememberMe && <Icon d={PATHS.check} size={14} className="text-white" />}</div><input type="checkbox" className="hidden" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} /><span className="text-sm font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">로그인 정보 저장</span></label></div><div className="flex gap-3 mt-5"><Btn onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">취소</Btn><Btn onClick={handleConnect} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">연결하기</Btn></div></BaseModal>
+            );
+        };
+
         const App = () => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
-                minor: 5,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 31    // Patch: 기존 기능의 버그 수정
+                minor: 6,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
+                patch: 1    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5509,7 +5327,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [isSettingOpen, setIsSettingOpen] = useState(false); const [isSetupOpen, setIsSetupOpen] = useState(false); const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null }); const [toastMessage, setToastMessage] = useState(null);
-            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null });
+            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const lastBackupTime = useRef("");
@@ -5547,6 +5365,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [isIOS, setIsIOS] = useState(false);
             const [isStandalone, setIsStandalone] = useState(false);
             const [showInstallGuide, setShowInstallGuide] = useState(false);
+            const [slideDirection, setSlideDirection] = useState(null);
 
             // [Fix] onSnapshot 내부에서 최신 students 상태를 참조하기 위한 Ref
             const studentsRef = useRef(students);
@@ -5585,6 +5404,36 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
 
                 return () => window.removeEventListener('beforeinstallprompt', handler);
             }, []);
+
+            // [New] 기록 탭 날짜 스와이프 로직
+            const touchStartX = useRef(null);
+            const touchEndX = useRef(null);
+            const minSwipeDistance = 50;
+
+            const onTouchStart = (e) => {
+                touchEndX.current = null;
+                touchStartX.current = e.targetTouches[0].clientX;
+            };
+
+            const onTouchMove = (e) => {
+                touchEndX.current = e.targetTouches[0].clientX;
+            };
+
+            const onTouchEnd = () => {
+                if (!touchStartX.current || !touchEndX.current) return;
+                const distance = touchStartX.current - touchEndX.current;
+                const isLeftSwipe = distance > minSwipeDistance;
+                const isRightSwipe = distance < -minSwipeDistance;
+                
+                if (isLeftSwipe) {
+                    if (appConfig.animationEnabled !== false) setSlideDirection('right');
+                    setDate(dayjs(date).add(1, 'day').format('YYYY-MM-DD'));
+                }
+                if (isRightSwipe) {
+                    if (appConfig.animationEnabled !== false) setSlideDirection('left');
+                    setDate(dayjs(date).subtract(1, 'day').format('YYYY-MM-DD'));
+                }
+            };
 
             const handleInstallApp = () => {
                 setShowInstallGuide(true);
@@ -6173,7 +6022,7 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_config', seatConfig); }, [seatConfig]);
 
             const toggleCheck = (id, taskIndex = null) => { 
-                if (navigator.vibrate) navigator.vibrate(30); // [New] 햅틱 피드백 추가 (강도 증가)
+                if (navigator.vibrate) navigator.vibrate(50);
 
                 if (mode === 'simple') { const newDone = !simpleChecks[id];
             setSimpleChecks({ ...simpleChecks, [id]: newDone }); if (newDone) confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#6366f1', '#8b5cf6'] });
@@ -7074,278 +6923,285 @@ const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
                     </div>
                     </div>{(mode === 'record' || mode === 'group') && (<div className="bg-white border-b border-notion-border pt-2 pb-2 flex justify-center"><div className="w-full max-w-2xl px-4 flex flex-col gap-2">{mode === 'record' ? <><DateHeader date={date} setDate={setDate} onAdd={()=>setIsTaskModalOpen(true)} onReset={resetDateRecord} onCalendar={()=>setIsCalendarOpen(true)} appConfig={appConfig}/> <ProgressBar progress={progress} appConfig={appConfig} /></> : <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border mx-auto w-fit justify-center cursor-pointer"
 ><Btn onClick={()=>setDate(dayjs(date).subtract(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18}/></Btn><div className="flex flex-col items-center px-3" onClick={()=>setIsCalendarOpen(true)}><div className="text-base font-bold text-notion-text">{dayjs(date).format('YY.MM.DD')}</div><div className="text-[10px] font-bold text-notion-text-light">{dayjs(date).format('dddd')}</div></div><Btn onClick={()=>setDate(dayjs(date).add(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18}/></Btn></div>}</div></div>)}</header>
-                    <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scroll bg-white pb-20 md:pb-6">
-                        {mode === 'record' && (
-                            <>
-                                <div className="flex justify-end mb-4 items-center gap-2">
-                                    <Btn onClick={() => { if(!apiKey) return setToastMessage("설정에서 API 키를 먼저 입력해주세요."); setAiContent(""); setShowClassStory(true); }} className={`px-3 py-1.5 rounded text-xs font-medium flex items-center gap-2 transition-all ${apiKey ? 'bg-notion-purple-bg text-notion-purple hover:bg-purple-100' : 'bg-notion-bg-hover text-notion-text-light cursor-not-allowed'}`}>
-                                        <Icon d={PATHS.book} size={16} /> 오늘의 학급 스토리 보기
-                                    </Btn>
-                                    <button onClick={() => setShowStoryHelp(true)} className="text-notion-text-light hover:text-notion-text p-1 rounded hover:bg-notion-bg-hover transition-colors" title="도움말"><Icon d={PATHS.help} size={18} /></button>
-                                </div>
-                                <RecordView students={students} records={records} dailyTasks={dailyTasks} date={date} toggleCheck={toggleCheck} appConfig={appConfig} stats={stats} />
-                            </>
-                        )}
-                        {mode === 'simple' && <SimpleView students={students} simpleChecks={simpleChecks} toggleCheck={toggleCheck} />}
-                        {mode === 'group' && (
-                            <div className="w-full md:h-full h-auto flex flex-col md:flex-row gap-6 pb-4 md:overflow-hidden">
-                                <div className={`md:w-1/3 lg:w-1/4 space-y-4 md:h-full h-auto md:overflow-y-auto custom-scroll transition-all duration-300 ${isGroupPanelOpen ? 'block' : 'hidden'}`}>
-                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                                        <div className="flex justify-between items-center mb-4"><h3 onClick={handleFormationTitleClick} className="font-bold text-slate-800 flex items-center gap-2 cursor-default select-none"><span className="text-xl">🧩</span> 편성</h3><Btn onClick={()=>setIsAvoidanceVisible(!isAvoidanceVisible)} className="text-slate-400"><Icon d={isAvoidanceVisible ? PATHS.unlock : PATHS.lock}/></Btn></div>
-                                        <div className="grid grid-cols-2 gap-2 mb-4">
-                                            <Btn onClick={() => applyPreset('coop')} className={`py-2 rounded-lg text-xs font-bold ${useGender && useSkill && useHistory ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}>협동 학습<span className="block text-[9px] font-normal opacity-80 mt-0.5">실력/성별/겹침방지</span></Btn>
-                                            <Btn onClick={() => applyPreset('peer')} className={`py-2 rounded-lg text-xs font-bold ${!useGender && useSkill && !useHistory ? 'bg-green-600 text-white shadow-md' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>또래 교수<span className="block text-[9px] font-normal opacity-80 mt-0.5">실력(상+하) 매칭</span></Btn>
-                                            <Btn onClick={() => applyPreset('project')} className={`py-2 rounded-lg text-xs font-bold ${useLeader ? 'bg-purple-600 text-white shadow-md' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}>프로젝트<span className="block text-[9px] font-normal opacity-80 mt-0.5">리더 분산 배치</span></Btn>
-                                            <Btn onClick={() => applyPreset('random')} className={`py-2 rounded-lg text-xs font-bold ${!useGender && !useSkill && !useLeader ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>완전 랜덤<span className="block text-[9px] font-normal opacity-80 mt-0.5">조건 없이 섞기</span></Btn>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2 mb-4">
-                                            <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useGender ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useGender} onChange={e=>setUseGender(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useGender ? 'text-indigo-700' : 'text-slate-400'}`}>성별 균형</span></label>
-                                            <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useSkill ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useSkill} onChange={e=>setUseSkill(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useSkill ? 'text-indigo-700' : 'text-slate-400'}`}>실력 균형</span></label>
-                                            <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useLeader ? 'bg-purple-50 border-purple-200 ring-1 ring-purple-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useLeader} onChange={e=>setUseLeader(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useLeader ? 'text-purple-700' : 'text-slate-400'}`}>👑 리더 분산</span></label>
-                                            <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useHistory ? 'bg-orange-50 border-orange-200 ring-1 ring-orange-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useHistory} onChange={e=>setUseHistory(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useHistory ? 'text-orange-700' : 'text-slate-400'}`}>🔄 겹침 방지</span></label>
-                                        </div>
-                                        {isAvoidanceVisible && (
-                                            <div className="mb-6 animate-fade-in bg-slate-50 p-3 rounded-xl">
-                                                <div className="flex bg-white rounded-lg p-1 mb-3 border">
-                                                    <button onClick={()=>setPairTab('avoid')} className={`flex-1 py-1.5 text-xs font-bold rounded ${pairTab==='avoid'?'bg-rose-100 text-rose-600 shadow-sm':'text-slate-400'}`}>🚫 기피 관계</button>
-                                                    <button onClick={()=>setPairTab('must')} className={`flex-1 py-1.5 text-xs font-bold rounded ${pairTab==='must'?'bg-green-100 text-green-600 shadow-sm':'text-slate-400'}`}>🤝 필수 짝꿍</button>
-                                                </div>
-                                                <div className="flex gap-2 mb-2">
-                                                    <select value={p1} onChange={e=>setP1(e.target.value)} className="flex-1 p-2 border rounded-lg text-sm bg-white"><option value="">학생1</option>{students.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select>
-                                                    <select value={p2} onChange={e=>setP2(e.target.value)} className="flex-1 p-2 border rounded-lg text-sm bg-white"><option value="">학생2</option>{students.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select>
-                                                    <Btn onClick={()=>{ if(p1&&p2&&p1!==p2){ if(pairTab==='avoid') { setAvoidancePairs([...avoidancePairs,{p1,p2,id:Date.now()}]); } else { setMustPairs([...mustPairs,{p1,p2,id:Date.now()}]); } setP1(""); setP2(""); } }} className={`text-white px-3 rounded-lg ${pairTab==='avoid'?'bg-rose-500':'bg-green-500'}`}>+</Btn>
-                                                </div>
-                                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto custom-scroll">
-                                                    {pairTab === 'avoid' ? avoidancePairs.map(p=><span key={p.id} className="text-xs bg-rose-50 text-rose-600 px-2 py-1 rounded border border-rose-100">{p.p1}≠{p.p2} <button onClick={()=>setAvoidancePairs(avoidancePairs.filter(x=>x.id!==p.id))}>×</button></span>) : mustPairs.map(p=><span key={p.id} className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded border border-green-100">{p.p1}={p.p2} <button onClick={()=>setMustPairs(mustPairs.filter(x=>x.id!==p.id))}>×</button></span>)}
-                                                </div>
-                                                <div className="mt-3 pt-3 border-t border-rose-100">
-                                                    <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${showAvoidanceLines ? 'bg-rose-100 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={showAvoidanceLines} onChange={e=>setShowAvoidanceLines(e.target.checked)} className="hidden"/><span className="text-xs font-bold">🚫 기피 관계 시각화</span></label>
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div className="pt-4 border-t mt-4 border-slate-100">
-                                            <div className={`flex items-center p-2 rounded-xl border transition-all mb-2 ${!apiKey ? 'bg-slate-50 border-slate-200' : useAI ? 'bg-violet-50 border-violet-200 ring-1 ring-violet-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                                                <label className={`flex items-center flex-1 cursor-pointer ${!apiKey ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center mr-2 ${useAI ? 'bg-violet-500 border-violet-500' : 'border-slate-300'}`}>{useAI && <Icon d={PATHS.check} size={10} className="text-white"/>}</div>
-                                                    <span className={`text-sm font-bold flex-1 ${useAI ? 'text-violet-700' : 'text-slate-500'}`}>AI 모둠 편성</span>
-                                                    <input type="checkbox" checked={useAI} onChange={e => { if(!apiKey) { setToastMessage("설정에서 API 키를 먼저 입력해주세요."); return; } setUseAI(e.target.checked); }} className="hidden" disabled={!apiKey} />
-                                                </label>
-                                                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowAiHelp(true); }} className="text-slate-400 hover:text-violet-600 p-2 rounded-full hover:bg-white/50 transition-colors" title="도움말"><Icon d={PATHS.help} size={16}/></button>
-                                            </div>
-                                        {showQuickApiKey && (
-                                            <div className="mb-2 animate-fade-in p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-                                                <div className="flex justify-between items-center mb-1"><label className="text-xs font-bold text-indigo-700">Gemini API Key</label></div>
-                                                <div className="flex gap-2">
-                                                    <input type="password" value={apiKey} onChange={(e) => { setApiKey(e.target.value); if(isLocalMode) localStorage.setItem('cls_ai_key', e.target.value); else saveData('cls_ai_key', e.target.value); }} className="flex-1 p-2 border border-indigo-200 rounded-lg text-xs outline-none focus:border-indigo-500 bg-white" placeholder="API 키를 입력해주세요" />
-                                                    <Btn onClick={async () => {
-                                                        if (!apiKey) return setToastMessage("API 키를 입력해주세요.");
-                                                        setToastMessage("키 확인 중...");
-                                                        try {
-                                                            await callGemini(apiKey, "Hello");
-                                                            setUseAI(true);
-                                                            setToastMessage("API 키가 확인되었습니다. AI 기능이 활성화됩니다.");
-                                                        } catch (e) { setToastMessage("유효하지 않은 키입니다."); }
-                                                    }} className="bg-indigo-600 text-white px-3 rounded-lg text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">확인</Btn>
-                                                </div>
-                                            </div>
-                                        )}
-                                            {useAI && (
-                                            <div className="animate-fade-in space-y-2 relative">
-                                                    <textarea value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} className="w-full p-2 border rounded-xl text-xs outline-none focus:border-violet-500 resize-none bg-violet-50/30" placeholder="예: 남녀 섞고 수학 잘하는 친구 골고루 넣어줘" rows="2"></textarea>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="space-y-3 mt-4 pt-4 border-t border-slate-100">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-slate-500 flex items-center gap-1">📅 유지 기간</span>
-                                                <div className="flex items-center gap-1">
-                                                    <select value={groupDuration} onChange={e=>setGroupDuration(parseInt(e.target.value))} className="p-1.5 border rounded-lg text-xs bg-white outline-none font-bold text-slate-700 focus:border-indigo-500 w-24">
-                                                        <option value={1}>1일</option>
-                                                        <option value={7}>1주</option>
-                                                        <option value={14}>2주</option>
-                                                        <option value={21}>3주</option>
-                                                        <option value={28}>4주</option>
-                                                        {![1, 7, 14, 21, 28].includes(groupDuration) && <option value={groupDuration}>{groupDuration}일</option>}
-                                                    </select>
-                                                    <Btn onClick={() => setIsRangeCalendarOpen(true)} className="p-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200" title="달력에서 기간 선택"><Icon d={PATHS.calendar} size={14}/></Btn>
-                                                    {groupDuration > 1 && <Btn onClick={() => setGroupDuration(1)} className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100" title="기간 초기화"><Icon d={PATHS.x} size={14}/></Btn>}
-                                                </div>
-                                            </div>
-                                            <div className="text-[10px] text-slate-400 text-right mt-1 font-mono">
-                                                {dayjs(date).format('MM/DD')} ~ {dayjs(date).add(groupDuration-1, 'day').format('MM/DD')} ({groupDuration}일)
-                                            </div>
-                                            <div className="flex bg-slate-100 p-1 rounded-lg"><Btn onClick={()=>setGroupMethod('count')} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${groupMethod==='count'?'bg-white shadow text-indigo-600':'text-slate-400'}`}>모둠 수 기준</Btn><Btn onClick={()=>setGroupMethod('size')} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${groupMethod==='size'?'bg-white shadow text-indigo-600':'text-slate-400'}`}>인원 수 기준</Btn></div>
-                                            <div className="flex items-center gap-2">
-                                                <input type="number" value={groupNumber} onChange={e=>setGroupNumber(parseInt(e.target.value))} className="flex-1 p-2 border rounded-lg text-center font-bold" min="1" max="20"/>
-                                                <span className="text-sm text-slate-500 shrink-0">{groupMethod==='count'?'개':'명'}</span>
-                                                <Btn onClick={generateGroups} disabled={isGenerating} className={`w-auto px-4 py-2 rounded-lg font-bold shadow-md text-sm whitespace-nowrap flex items-center gap-2 transition-all ${isGenerating ? 'bg-slate-400 text-slate-100 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-                                                    {isGenerating ? (
-                                                        <>
-                                                            <Icon d={PATHS.spinner} className="animate-spin" size={14} />
-                                                            <span>편성 중...</span>
-                                                        </>
-                                                    ) : (useAI ? 'AI 편성' : '모둠 편성')}
-                                                </Btn>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2 mt-2"><Btn onClick={rotateCurrentGroups} className="py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-bold">자전과 공전</Btn><Btn onClick={()=>{openConfirm("모둠 기록과 자리 배치를 모두 초기화합니다.", ()=>{ const newGroups = {...groupsByDate, [date]: []}; setGroupsByDate(newGroups); if(!isLocalMode) saveData('cls_groups_date', newGroups); setSeatAssignments({}); if(!isLocalMode) saveData('cls_seat_assignments', {}); showToast("초기화되었습니다."); })}} className="py-2.5 bg-white border border-rose-200 text-rose-500 rounded-xl font-bold">초기화</Btn></div>
-                                        </div>
+                    <main 
+                        className="flex-1 overflow-y-auto p-4 md:p-6 custom-scroll pb-20 md:pb-6 bg-white"
+                        onTouchStart={mode === 'record' ? onTouchStart : undefined}
+                        onTouchMove={mode === 'record' ? onTouchMove : undefined}
+                        onTouchEnd={mode === 'record' ? onTouchEnd : undefined}
+                    >
+                        <div key={date} className={`flex-1 ${slideDirection === 'right' ? 'animate-slide-in-right' : slideDirection === 'left' ? 'animate-slide-in-left' : ''}`}>
+                            {mode === 'record' && (
+                                <>
+                                    <div className="flex justify-end mb-4 items-center gap-2">
+                                        <Btn onClick={() => { if(!apiKey) return setToastMessage("설정에서 API 키를 먼저 입력해주세요."); setAiContent(""); setShowClassStory(true); }} className={`px-3 py-1.5 rounded text-xs font-medium flex items-center gap-2 transition-all ${apiKey ? 'bg-notion-purple-bg text-notion-purple hover:bg-purple-100' : 'bg-notion-bg-hover text-notion-text-light cursor-not-allowed'}`}>
+                                            <Icon d={PATHS.book} size={16} /> 오늘의 학급 스토리 보기
+                                        </Btn>
+                                        <button onClick={() => setShowStoryHelp(true)} className="text-notion-text-light hover:text-notion-text p-1 rounded hover:bg-notion-bg-hover transition-colors" title="도움말"><Icon d={PATHS.help} size={18} /></button>
                                     </div>
-                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 transition-all">
-                                        <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setIsGroupToolsOpen(!isGroupToolsOpen)}>
-                                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                                <span className="text-xl">🛠️</span> 모둠 도구
-                                                <button onClick={(e) => { e.stopPropagation(); setShowRoleHelp(true); }} className="text-slate-400 hover:text-indigo-500"><Icon d={PATHS.help} size={16} /></button>
-                                            </h3>
-                                            <Icon d={isGroupToolsOpen ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
-                                        </div>
-                                        {isGroupToolsOpen && (
-                                            <div className="mt-4 grid grid-cols-1 gap-2 animate-fade-in">
-                                                <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${groupRoles[date] && Object.keys(groupRoles[date]).length > 0 ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                                                    <span className={`text-sm font-bold ${groupRoles[date] && Object.keys(groupRoles[date]).length > 0 ? 'text-indigo-700' : 'text-slate-500'}`}>모둠 역할 자동 분담</span>
-                                                    <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors ${groupRoles[date] && Object.keys(groupRoles[date]).length > 0 ? 'bg-indigo-500' : 'bg-slate-300'}`}><div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${groupRoles[date] && Object.keys(groupRoles[date]).length > 0 ? 'translate-x-4' : ''}`}></div></div>
-                                                    <input type="checkbox" checked={!!(groupRoles[date] && Object.keys(groupRoles[date]).length > 0)} onChange={(e) => { if(e.target.checked) handleAssignRoles(); else openConfirm("역할 배정을 해제하시겠습니까?", handleClearRoles); }} className="hidden" />
-                                                </label>
-                                                <div className="flex gap-2">
-                                                    <Btn onClick={() => setIsRoleEditOpen(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-sm">역할 목록 수정</Btn>
-                                                    <Btn onClick={() => setShowPartnerAnalysis(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-sm">👫 짝꿍 이력 분석</Btn>
-                                                </div>
+                                    <RecordView students={students} records={records} dailyTasks={dailyTasks} date={date} toggleCheck={toggleCheck} appConfig={appConfig} stats={stats} />
+                                </>
+                            )}
+                            {mode === 'simple' && <SimpleView students={students} simpleChecks={simpleChecks} toggleCheck={toggleCheck} />}
+                            {mode === 'group' && (
+                                <div className="w-full md:h-full h-auto flex flex-col md:flex-row gap-6 pb-4 md:overflow-hidden">
+                                    <div className={`md:w-1/3 lg:w-1/4 space-y-4 md:h-full h-auto md:overflow-y-auto custom-scroll transition-all duration-300 ${isGroupPanelOpen ? 'block' : 'hidden'}`}>
+                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                            <div className="flex justify-between items-center mb-4"><h3 onClick={handleFormationTitleClick} className="font-bold text-slate-800 flex items-center gap-2 cursor-default select-none"><span className="text-xl">🧩</span> 편성</h3><Btn onClick={()=>setIsAvoidanceVisible(!isAvoidanceVisible)} className="text-slate-400"><Icon d={isAvoidanceVisible ? PATHS.unlock : PATHS.lock}/></Btn></div>
+                                            <div className="grid grid-cols-2 gap-2 mb-4">
+                                                <Btn onClick={() => applyPreset('coop')} className={`py-2 rounded-lg text-xs font-bold ${useGender && useSkill && useHistory ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}>협동 학습<span className="block text-[9px] font-normal opacity-80 mt-0.5">실력/성별/겹침방지</span></Btn>
+                                                <Btn onClick={() => applyPreset('peer')} className={`py-2 rounded-lg text-xs font-bold ${!useGender && useSkill && !useHistory ? 'bg-green-600 text-white shadow-md' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>또래 교수<span className="block text-[9px] font-normal opacity-80 mt-0.5">실력(상+하) 매칭</span></Btn>
+                                                <Btn onClick={() => applyPreset('project')} className={`py-2 rounded-lg text-xs font-bold ${useLeader ? 'bg-purple-600 text-white shadow-md' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}>프로젝트<span className="block text-[9px] font-normal opacity-80 mt-0.5">리더 분산 배치</span></Btn>
+                                                <Btn onClick={() => applyPreset('random')} className={`py-2 rounded-lg text-xs font-bold ${!useGender && !useSkill && !useLeader ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>완전 랜덤<span className="block text-[9px] font-normal opacity-80 mt-0.5">조건 없이 섞기</span></Btn>
                                             </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className={`flex flex-col md:h-full h-auto gap-4 md:overflow-y-auto custom-scroll pb-10 transition-all duration-300 ${isGroupPanelOpen ? 'md:w-2/3 lg:w-3/4' : 'md:w-full'}`}>
-                                    <div id="groups-container" className={`bg-white rounded-2xl border border-slate-200 flex flex-col relative transition-all duration-300 h-auto`}>
-                                        <div className="flex justify-between items-center px-4 py-3 border-b border-slate-200 flex-shrink-0 bg-white rounded-t-2xl md:sticky md:top-0 z-10">
-                                            <div className="flex items-center gap-2 w-full">
-                                                <Btn onClick={() => setIsGroupPanelOpen(!isGroupPanelOpen)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
-                                                    <Icon d={isGroupPanelOpen ? PATHS.left : PATHS.right} />
-                                                </Btn>
-                                                <h3 className="font-bold text-slate-700 flex items-center gap-2">📅 {date} 모둠 ({groups.length}개)</h3>
-                                                {groups.length > 0 && <Btn onClick={handleDownloadGroupsImage} className="ml-auto p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg" title="이미지로 저장"><Icon d={PATHS.download} size={18} /></Btn>}
+                                            <div className="grid grid-cols-2 gap-2 mb-4">
+                                                <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useGender ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useGender} onChange={e=>setUseGender(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useGender ? 'text-indigo-700' : 'text-slate-400'}`}>성별 균형</span></label>
+                                                <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useSkill ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useSkill} onChange={e=>setUseSkill(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useSkill ? 'text-indigo-700' : 'text-slate-400'}`}>실력 균형</span></label>
+                                                <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useLeader ? 'bg-purple-50 border-purple-200 ring-1 ring-purple-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useLeader} onChange={e=>setUseLeader(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useLeader ? 'text-purple-700' : 'text-slate-400'}`}>👑 리더 분산</span></label>
+                                                <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useHistory ? 'bg-orange-50 border-orange-200 ring-1 ring-orange-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useHistory} onChange={e=>setUseHistory(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useHistory ? 'text-orange-700' : 'text-slate-400'}`}>🔄 겹침 방지</span></label>
                                             </div>
-                                        </div>
-                                        <GroupOverlay groups={groups} avoidancePairs={avoidancePairs} isVisible={showAvoidanceLines} focusedGroupIdx={focusedGroupIdx} />
-                                        <div className="p-4" ref={groupsRef}>
-                                            {groups.length > 0 ? (
-                                                <div className="flex flex-wrap gap-4 pb-4 items-start">
-                                                    {groups.map((g, i) => {
-                                                        const groupAvgSkill = g.length > 0 ? g.reduce((a, s) => a + s.skill, 0) / g.length : 0;
-                                                        const isSkillImbalanced = g.length > 0 && Math.abs(groupAvgSkill - classAvgSkill) > 0.5;
-                                                        const isExpanded = expandedGroupCards[i];
-                                                        const MAX_VISIBLE = 6;
-                                                        const visibleStudents = (g.length > MAX_VISIBLE && !isExpanded) ? g.slice(0, MAX_VISIBLE) : g;
-                                                        const hiddenCount = g.length - MAX_VISIBLE;
-                                                        return (
-                                                        <div key={i} className={`group-card bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-4 transition-all hover:shadow-md flex flex-col w-full sm:w-auto flex-grow ${focusedGroupIdx === i ? 'ring-2 ring-rose-400 shadow-md' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, i)} onClick={() => setFocusedGroupIdx(prev => prev === i ? null : i)}>
-                                                            <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-50">
-                                                                {editingGroupIdx === i ? (
-                                                                    <div className="flex items-center gap-1 w-full max-w-[150px]">
-                                                                        <input 
-                                                                            className="font-bold text-lg text-slate-800 bg-white border border-indigo-200 rounded px-1 outline-none w-full focus:ring-2 focus:ring-indigo-200"
-                                                                            defaultValue={groupNames[date]?.[i] || `${i+1}모둠`}
-                                                                            placeholder={`${i+1}모둠`}
-                                                                            autoFocus
-                                                                            onInput={(e) => {
-                                                                                const newNames = { ...groupNames };
-                                                                                if (!newNames[date]) newNames[date] = {};
-                                                                                newNames[date][i] = e.target.value;
-                                                                                setGroupNames(newNames);
-                                                                            }}
-                                                                            onKeyDown={(e) => {
-                                                                                if(e.key === 'Enter') {
-                                                                                    setEditingGroupIdx(null);
-                                                                                    if(!isLocalMode) saveData('cls_group_names', groupNames);
-                                                                                }
-                                                                            }}
-                                                                            onBlur={() => {
-                                                                                setEditingGroupIdx(null);
-                                                                                if(!isLocalMode) saveData('cls_group_names', groupNames);
-                                                                            }}
-                                                                        />
-                                                                        <Btn onClick={() => {
-                                                                            setEditingGroupIdx(null);
-                                                                            if(!isLocalMode) saveData('cls_group_names', groupNames);
-                                                                        }} className="p-1 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200"><Icon d={PATHS.check} size={14} /></Btn>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex items-center gap-2 group/title">
-                                                                        <span className="font-bold text-lg text-slate-800 truncate max-w-[120px]" title={groupNames[date]?.[i] || `${i+1}모둠`}>{groupNames[date]?.[i] || `${i+1}모둠`}</span>
-                                                                        <Btn onClick={() => setEditingGroupIdx(i)} className="opacity-0 group-hover/title:opacity-100 p-1 text-slate-400 hover:text-indigo-500 transition-opacity"><Icon d={PATHS.edit} size={14} /></Btn>
-                                                                    </div>
-                                                                )}
-                                                                <div className="flex items-center gap-1">
-                                                                    {isSkillImbalanced && (
-                                                                        <div className="text-orange-500 flex items-center animate-pulse" title={`실력 불균형 경고 (모둠 평균 ${groupAvgSkill.toFixed(1)} vs 전체 ${classAvgSkill.toFixed(1)})`}>
-                                                                            <Icon d={PATHS.warning} size={16} />
-                                                                        </div>
-                                                                    )}
-                                                                    <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-full">{g.length}명</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex flex-col gap-2 flex-1">
-                                                                {visibleStudents.map((s, sIdx) => {
-                                                                    const isLocked = lockedIds.includes(s.id);
-                                                                    // 자리(Index) 기준 역할 조회 (없으면 학생 ID 기준 레거시 데이터 조회 시도)
-                                                                    const role = groupRoles[date]?.[i]?.[sIdx] || groupRoles[date]?.[i]?.[s.id];
-                                                                    return (
-                                                                        <div key={s.id} data-student-name={s.name} draggable="true" onDragStart={(e) => handleDragStart(e, s.id, i)} onDragEnd={handleDragEnd} className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-grab active:cursor-grabbing touch-none ${s.gender === 'M' ? 'bg-blue-50/50 border-blue-100 hover:bg-blue-50' : 'bg-pink-50/50 border-pink-100 hover:bg-pink-50'} ${isLocked ? 'ring-2 ring-indigo-400 shadow-sm' : ''}`}>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${s.gender==='M'?'bg-blue-200 text-blue-700':'bg-pink-200 text-pink-700'}`}>{s.order}</span>
-                                                                                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">{s.name}</span>
-                                                                                {s.leader && <span className="text-xs" title="리더">👑</span>}
-                                                                                {role && <span className="text-[10px] bg-white/80 px-1.5 py-0.5 rounded border border-slate-200 text-slate-600">{role}</span>}
-                                                                            </div>
-                                                                            <button onClick={(e) => { e.stopPropagation(); toggleLock(s.id); }} className={`p-1 rounded-full hover:bg-white/50 transition-colors ${isLocked ? 'text-indigo-500' : 'text-slate-300 hover:text-slate-400'}`} title={isLocked ? "고정 해제" : "고정하기"}>
-                                                                                <Icon d={isLocked ? PATHS.lock : PATHS.unlock} size={12} />
-                                                                            </button>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                                {g.length > MAX_VISIBLE && (
-                                                                    <button 
-                                                                        onClick={(e) => { e.stopPropagation(); setExpandedGroupCards(prev => ({...prev, [i]: !prev[i]})); }}
-                                                                        className="w-full py-2 text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors flex items-center justify-center gap-1 mt-1"
-                                                                    >
-                                                                        {isExpanded ? <>접기 <Icon d={PATHS.down} size={12} className="rotate-180"/></> : <>+{hiddenCount}명 더 보기 <Icon d={PATHS.down} size={12}/></>}
-                                                                    </button>
-                                                                )}
-                                                                {g.length === 0 && (
-                                                                    <div className="flex-1 flex items-center justify-center text-slate-300 text-xs border-2 border-dashed border-slate-100 rounded-xl min-h-[60px]">빈 모둠</div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ); })}
-                                                </div>
-                                            ) : (
-                                                <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4"><Icon d={PATHS.users} size={48} className="opacity-20"/><p>편성된 모둠 없음</p></div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {groups.length > 0 && (
-                                        <div className="h-auto flex-shrink-0 transition-all duration-300">
-                                            {aiReason && (
-                                                <div className="bg-violet-50 p-4 rounded-2xl border border-violet-100 mb-4 animate-fade-in relative shadow-sm">
-                                                    <button onClick={() => setAiReason(null)} className="absolute top-2 right-2 text-violet-300 hover:text-violet-500 p-1"><Icon d={PATHS.x} size={14}/></button>
-                                                    <h4 className="font-bold text-violet-700 mb-2 flex items-center gap-2 text-sm"><Icon d={PATHS.magic} size={16}/> AI 편성 리포트</h4>
-                                                    <p className="text-xs text-violet-800 leading-relaxed whitespace-pre-wrap mb-3">{aiReason}</p>
-                                                    <div className="flex justify-end gap-2 border-t border-violet-200/50 pt-3">
-                                                        <Btn onClick={generateGroups} disabled={isGenerating} className="px-3 py-1.5 bg-white border border-violet-200 text-violet-600 rounded-lg text-xs font-bold hover:bg-violet-50 flex items-center gap-1 shadow-sm">
-                                                            {isGenerating ? <Icon d={PATHS.spinner} size={12} className="animate-spin"/> : <Icon d={PATHS.magic} size={12}/>} 다시 편성
-                                                        </Btn>
-                                                        <div className="w-px h-6 bg-violet-200 mx-1"></div>
-                                                        <Btn onClick={handleCopyAiReport} className="px-3 py-1.5 bg-white border border-violet-200 text-violet-600 rounded-lg text-xs font-bold hover:bg-violet-50 flex items-center gap-1 shadow-sm"><Icon d={PATHS.copy} size={12}/> 복사</Btn>
-                                                        <Btn onClick={handleSaveAiReport} className="px-3 py-1.5 bg-white border border-violet-200 text-violet-600 rounded-lg text-xs font-bold hover:bg-violet-50 flex items-center gap-1 shadow-sm"><Icon d={PATHS.download} size={12}/> 저장</Btn>
+                                            {isAvoidanceVisible && (
+                                                <div className="mb-6 animate-fade-in bg-slate-50 p-3 rounded-xl">
+                                                    <div className="flex bg-white rounded-lg p-1 mb-3 border">
+                                                        <button onClick={()=>setPairTab('avoid')} className={`flex-1 py-1.5 text-xs font-bold rounded ${pairTab==='avoid'?'bg-rose-100 text-rose-600 shadow-sm':'text-slate-400'}`}>🚫 기피 관계</button>
+                                                        <button onClick={()=>setPairTab('must')} className={`flex-1 py-1.5 text-xs font-bold rounded ${pairTab==='must'?'bg-green-100 text-green-600 shadow-sm':'text-slate-400'}`}>🤝 필수 짝꿍</button>
+                                                    </div>
+                                                    <div className="flex gap-2 mb-2">
+                                                        <select value={p1} onChange={e=>setP1(e.target.value)} className="flex-1 p-2 border rounded-lg text-sm bg-white"><option value="">학생1</option>{students.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select>
+                                                        <select value={p2} onChange={e=>setP2(e.target.value)} className="flex-1 p-2 border rounded-lg text-sm bg-white"><option value="">학생2</option>{students.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select>
+                                                        <Btn onClick={()=>{ if(p1&&p2&&p1!==p2){ if(pairTab==='avoid') { setAvoidancePairs([...avoidancePairs,{p1,p2,id:Date.now()}]); } else { setMustPairs([...mustPairs,{p1,p2,id:Date.now()}]); } setP1(""); setP2(""); } }} className={`text-white px-3 rounded-lg ${pairTab==='avoid'?'bg-rose-500':'bg-green-500'}`}>+</Btn>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto custom-scroll">
+                                                        {pairTab === 'avoid' ? avoidancePairs.map(p=><span key={p.id} className="text-xs bg-rose-50 text-rose-600 px-2 py-1 rounded border border-rose-100">{p.p1}≠{p.p2} <button onClick={()=>setAvoidancePairs(avoidancePairs.filter(x=>x.id!==p.id))}>×</button></span>) : mustPairs.map(p=><span key={p.id} className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded border border-green-100">{p.p1}={p.p2} <button onClick={()=>setMustPairs(mustPairs.filter(x=>x.id!==p.id))}>×</button></span>)}
+                                                    </div>
+                                                    <div className="mt-3 pt-3 border-t border-rose-100">
+                                                        <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${showAvoidanceLines ? 'bg-rose-100 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={showAvoidanceLines} onChange={e=>setShowAvoidanceLines(e.target.checked)} className="hidden"/><span className="text-xs font-bold">🚫 기피 관계 시각화</span></label>
                                                     </div>
                                                 </div>
                                             )}
-                                            <BalanceVisualizer groups={groups} students={students} groupNames={groupNames} date={date} />
+                                            <div className="pt-4 border-t mt-4 border-slate-100">
+                                                <div className={`flex items-center p-2 rounded-xl border transition-all mb-2 ${!apiKey ? 'bg-slate-50 border-slate-200' : useAI ? 'bg-violet-50 border-violet-200 ring-1 ring-violet-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                                                    <label className={`flex items-center flex-1 cursor-pointer ${!apiKey ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center mr-2 ${useAI ? 'bg-violet-500 border-violet-500' : 'border-slate-300'}`}>{useAI && <Icon d={PATHS.check} size={10} className="text-white"/>}</div>
+                                                        <span className={`text-sm font-bold flex-1 ${useAI ? 'text-violet-700' : 'text-slate-500'}`}>AI 모둠 편성</span>
+                                                        <input type="checkbox" checked={useAI} onChange={e => { if(!apiKey) { setToastMessage("설정에서 API 키를 먼저 입력해주세요."); return; } setUseAI(e.target.checked); }} className="hidden" disabled={!apiKey} />
+                                                    </label>
+                                                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowAiHelp(true); }} className="text-slate-400 hover:text-violet-600 p-2 rounded-full hover:bg-white/50 transition-colors" title="도움말"><Icon d={PATHS.help} size={16}/></button>
+                                                </div>
+                                            {showQuickApiKey && (
+                                                <div className="mb-2 animate-fade-in p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                                                    <div className="flex justify-between items-center mb-1"><label className="text-xs font-bold text-indigo-700">Gemini API Key</label></div>
+                                                    <div className="flex gap-2">
+                                                        <input type="password" value={apiKey} onChange={(e) => { setApiKey(e.target.value); if(isLocalMode) localStorage.setItem('cls_ai_key', e.target.value); else saveData('cls_ai_key', e.target.value); }} className="flex-1 p-2 border border-indigo-200 rounded-lg text-xs outline-none focus:border-indigo-500 bg-white" placeholder="API 키를 입력해주세요" />
+                                                        <Btn onClick={async () => {
+                                                            if (!apiKey) return setToastMessage("API 키를 입력해주세요.");
+                                                            setToastMessage("키 확인 중...");
+                                                            try {
+                                                                await callGemini(apiKey, "Hello");
+                                                                setUseAI(true);
+                                                                setToastMessage("API 키가 확인되었습니다. AI 기능이 활성화됩니다.");
+                                                            } catch (e) { setToastMessage("유효하지 않은 키입니다."); }
+                                                        }} className="bg-indigo-600 text-white px-3 rounded-lg text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">확인</Btn>
+                                                    </div>
+                                                </div>
+                                            )}
+                                                {useAI && (
+                                                <div className="animate-fade-in space-y-2 relative">
+                                                        <textarea value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} className="w-full p-2 border rounded-xl text-xs outline-none focus:border-violet-500 resize-none bg-violet-50/30" placeholder="예: 남녀 섞고 수학 잘하는 친구 골고루 넣어줘" rows="2"></textarea>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="space-y-3 mt-4 pt-4 border-t border-slate-100">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-slate-500 flex items-center gap-1">📅 유지 기간</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <select value={groupDuration} onChange={e=>setGroupDuration(parseInt(e.target.value))} className="p-1.5 border rounded-lg text-xs bg-white outline-none font-bold text-slate-700 focus:border-indigo-500 w-24">
+                                                            <option value={1}>1일</option>
+                                                            <option value={7}>1주</option>
+                                                            <option value={14}>2주</option>
+                                                            <option value={21}>3주</option>
+                                                            <option value={28}>4주</option>
+                                                            {![1, 7, 14, 21, 28].includes(groupDuration) && <option value={groupDuration}>{groupDuration}일</option>}
+                                                        </select>
+                                                        <Btn onClick={() => setIsRangeCalendarOpen(true)} className="p-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200" title="달력에서 기간 선택"><Icon d={PATHS.calendar} size={14}/></Btn>
+                                                        {groupDuration > 1 && <Btn onClick={() => setGroupDuration(1)} className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100" title="기간 초기화"><Icon d={PATHS.x} size={14}/></Btn>}
+                                                    </div>
+                                                </div>
+                                                <div className="text-[10px] text-slate-400 text-right mt-1 font-mono">
+                                                    {dayjs(date).format('MM/DD')} ~ {dayjs(date).add(groupDuration-1, 'day').format('MM/DD')} ({groupDuration}일)
+                                                </div>
+                                                <div className="flex bg-slate-100 p-1 rounded-lg"><Btn onClick={()=>setGroupMethod('count')} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${groupMethod==='count'?'bg-white shadow text-indigo-600':'text-slate-400'}`}>모둠 수 기준</Btn><Btn onClick={()=>setGroupMethod('size')} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${groupMethod==='size'?'bg-white shadow text-indigo-600':'text-slate-400'}`}>인원 수 기준</Btn></div>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="number" value={groupNumber} onChange={e=>setGroupNumber(parseInt(e.target.value))} className="flex-1 p-2 border rounded-lg text-center font-bold" min="1" max="20"/>
+                                                    <span className="text-sm text-slate-500 shrink-0">{groupMethod==='count'?'개':'명'}</span>
+                                                    <Btn onClick={generateGroups} disabled={isGenerating} className={`w-auto px-4 py-2 rounded-lg font-bold shadow-md text-sm whitespace-nowrap flex items-center gap-2 transition-all ${isGenerating ? 'bg-slate-400 text-slate-100 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+                                                        {isGenerating ? (
+                                                            <>
+                                                                <Icon d={PATHS.spinner} className="animate-spin" size={14} />
+                                                                <span>편성 중...</span>
+                                                            </>
+                                                        ) : (useAI ? 'AI 편성' : '모둠 편성')}
+                                                    </Btn>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2 mt-2"><Btn onClick={rotateCurrentGroups} className="py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-bold">자전과 공전</Btn><Btn onClick={()=>{openConfirm("모둠 기록과 자리 배치를 모두 초기화합니다.", ()=>{ const newGroups = {...groupsByDate, [date]: []}; setGroupsByDate(newGroups); if(!isLocalMode) saveData('cls_groups_date', newGroups); setSeatAssignments({}); if(!isLocalMode) saveData('cls_seat_assignments', {}); showToast("초기화되었습니다."); })}} className="py-2.5 bg-white border border-rose-200 text-rose-500 rounded-xl font-bold">초기화</Btn></div>
+                                            </div>
                                         </div>
-                                    )}
-                                    <SeatChart students={students} seatAssignments={seatAssignments} setSeatAssignments={setSeatAssignments} seatConfig={seatConfig} setSeatConfig={setSeatConfig} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} openConfirm={openConfirm} groups={groups} onGroupsChange={handleGroupsChange} groupNumber={groupNumber} groupMethod={groupMethod} roleMap={roleMap} onOpenStudentInfo={(id) => setGrassStudentId(id)} />
+                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 transition-all">
+                                            <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setIsGroupToolsOpen(!isGroupToolsOpen)}>
+                                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                                    <span className="text-xl">🛠️</span> 모둠 도구
+                                                    <button onClick={(e) => { e.stopPropagation(); setShowRoleHelp(true); }} className="text-slate-400 hover:text-indigo-500"><Icon d={PATHS.help} size={16} /></button>
+                                                </h3>
+                                                <Icon d={isGroupToolsOpen ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
+                                            </div>
+                                            {isGroupToolsOpen && (
+                                                <div className="mt-4 grid grid-cols-1 gap-2 animate-fade-in">
+                                                    <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${groupRoles[date] && Object.keys(groupRoles[date]).length > 0 ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                                                        <span className={`text-sm font-bold ${groupRoles[date] && Object.keys(groupRoles[date]).length > 0 ? 'text-indigo-700' : 'text-slate-500'}`}>모둠 역할 자동 분담</span>
+                                                        <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors ${groupRoles[date] && Object.keys(groupRoles[date]).length > 0 ? 'bg-indigo-500' : 'bg-slate-300'}`}><div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${groupRoles[date] && Object.keys(groupRoles[date]).length > 0 ? 'translate-x-4' : ''}`}></div></div>
+                                                        <input type="checkbox" checked={!!(groupRoles[date] && Object.keys(groupRoles[date]).length > 0)} onChange={(e) => { if(e.target.checked) handleAssignRoles(); else openConfirm("역할 배정을 해제하시겠습니까?", handleClearRoles); }} className="hidden" />
+                                                    </label>
+                                                    <div className="flex gap-2">
+                                                        <Btn onClick={() => setIsRoleEditOpen(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-sm">역할 목록 수정</Btn>
+                                                        <Btn onClick={() => setShowPartnerAnalysis(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-sm">👫 짝꿍 이력 분석</Btn>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className={`flex flex-col md:h-full h-auto gap-4 md:overflow-y-auto custom-scroll pb-10 transition-all duration-300 ${isGroupPanelOpen ? 'md:w-2/3 lg:w-3/4' : 'md:w-full'}`}>
+                                        <div id="groups-container" className={`bg-white rounded-2xl border border-slate-200 flex flex-col relative transition-all duration-300 h-auto`}>
+                                            <div className="flex justify-between items-center px-4 py-3 border-b border-slate-200 flex-shrink-0 bg-white rounded-t-2xl md:sticky md:top-0 z-10">
+                                                <div className="flex items-center gap-2 w-full">
+                                                    <Btn onClick={() => setIsGroupPanelOpen(!isGroupPanelOpen)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
+                                                        <Icon d={isGroupPanelOpen ? PATHS.left : PATHS.right} />
+                                                    </Btn>
+                                                    <h3 className="font-bold text-slate-700 flex items-center gap-2">📅 {date} 모둠 ({groups.length}개)</h3>
+                                                    {groups.length > 0 && <Btn onClick={handleDownloadGroupsImage} className="ml-auto p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg" title="이미지로 저장"><Icon d={PATHS.download} size={18} /></Btn>}
+                                                </div>
+                                            </div>
+                                            <GroupOverlay groups={groups} avoidancePairs={avoidancePairs} isVisible={showAvoidanceLines} focusedGroupIdx={focusedGroupIdx} />
+                                            <div className="p-4" ref={groupsRef}>
+                                                {groups.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-4 pb-4 items-start">
+                                                        {groups.map((g, i) => {
+                                                            const groupAvgSkill = g.length > 0 ? g.reduce((a, s) => a + s.skill, 0) / g.length : 0;
+                                                            const isSkillImbalanced = g.length > 0 && Math.abs(groupAvgSkill - classAvgSkill) > 0.5;
+                                                            const isExpanded = expandedGroupCards[i];
+                                                            const MAX_VISIBLE = 6;
+                                                            const visibleStudents = (g.length > MAX_VISIBLE && !isExpanded) ? g.slice(0, MAX_VISIBLE) : g;
+                                                            const hiddenCount = g.length - MAX_VISIBLE;
+                                                            return (
+                                                            <div key={i} className={`group-card bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-4 transition-all hover:shadow-md flex flex-col w-full sm:w-auto flex-grow ${focusedGroupIdx === i ? 'ring-2 ring-rose-400 shadow-md' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, i)} onClick={() => setFocusedGroupIdx(prev => prev === i ? null : i)}>
+                                                                <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-50">
+                                                                    {editingGroupIdx === i ? (
+                                                                        <div className="flex items-center gap-1 w-full max-w-[150px]">
+                                                                            <input 
+                                                                                className="font-bold text-lg text-slate-800 bg-white border border-indigo-200 rounded px-1 outline-none w-full focus:ring-2 focus:ring-indigo-200"
+                                                                                defaultValue={groupNames[date]?.[i] || `${i+1}모둠`}
+                                                                                placeholder={`${i+1}모둠`}
+                                                                                autoFocus
+                                                                                onInput={(e) => {
+                                                                                    const newNames = { ...groupNames };
+                                                                                    if (!newNames[date]) newNames[date] = {};
+                                                                                    newNames[date][i] = e.target.value;
+                                                                                    setGroupNames(newNames);
+                                                                                }}
+                                                                                onKeyDown={(e) => {
+                                                                                    if(e.key === 'Enter') {
+                                                                                        setEditingGroupIdx(null);
+                                                                                        if(!isLocalMode) saveData('cls_group_names', groupNames);
+                                                                                    }
+                                                                                }}
+                                                                                onBlur={() => {
+                                                                                    setEditingGroupIdx(null);
+                                                                                    if(!isLocalMode) saveData('cls_group_names', groupNames);
+                                                                                }}
+                                                                            />
+                                                                            <Btn onClick={() => {
+                                                                                setEditingGroupIdx(null);
+                                                                                if(!isLocalMode) saveData('cls_group_names', groupNames);
+                                                                            }} className="p-1 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200"><Icon d={PATHS.check} size={14} /></Btn>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-2 group/title">
+                                                                            <span className="font-bold text-lg text-slate-800 truncate max-w-[120px]" title={groupNames[date]?.[i] || `${i+1}모둠`}>{groupNames[date]?.[i] || `${i+1}모둠`}</span>
+                                                                            <Btn onClick={() => setEditingGroupIdx(i)} className="opacity-0 group-hover/title:opacity-100 p-1 text-slate-400 hover:text-indigo-500 transition-opacity"><Icon d={PATHS.edit} size={14} /></Btn>
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="flex items-center gap-1">
+                                                                        {isSkillImbalanced && (
+                                                                            <div className="text-orange-500 flex items-center animate-pulse" title={`실력 불균형 경고 (모둠 평균 ${groupAvgSkill.toFixed(1)} vs 전체 ${classAvgSkill.toFixed(1)})`}>
+                                                                                <Icon d={PATHS.warning} size={16} />
+                                                                            </div>
+                                                                        )}
+                                                                        <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-full">{g.length}명</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-col gap-2 flex-1">
+                                                                    {visibleStudents.map((s, sIdx) => {
+                                                                        const isLocked = lockedIds.includes(s.id);
+                                                                        // 자리(Index) 기준 역할 조회 (없으면 학생 ID 기준 레거시 데이터 조회 시도)
+                                                                        const role = groupRoles[date]?.[i]?.[sIdx] || groupRoles[date]?.[i]?.[s.id];
+                                                                        return (
+                                                                            <div key={s.id} data-student-name={s.name} draggable="true" onDragStart={(e) => handleDragStart(e, s.id, i)} onDragEnd={handleDragEnd} className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-grab active:cursor-grabbing touch-none ${s.gender === 'M' ? 'bg-blue-50/50 border-blue-100 hover:bg-blue-50' : 'bg-pink-50/50 border-pink-100 hover:bg-pink-50'} ${isLocked ? 'ring-2 ring-indigo-400 shadow-sm' : ''}`}>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${s.gender==='M'?'bg-blue-200 text-blue-700':'bg-pink-200 text-pink-700'}`}>{s.order}</span>
+                                                                                    <span className="text-sm font-bold text-slate-700 whitespace-nowrap">{s.name}</span>
+                                                                                    {s.leader && <span className="text-xs" title="리더">👑</span>}
+                                                                                    {role && <span className="text-[10px] bg-white/80 px-1.5 py-0.5 rounded border border-slate-200 text-slate-600">{role}</span>}
+                                                                                </div>
+                                                                                <button onClick={(e) => { e.stopPropagation(); toggleLock(s.id); }} className={`p-1 rounded-full hover:bg-white/50 transition-colors ${isLocked ? 'text-indigo-500' : 'text-slate-300 hover:text-slate-400'}`} title={isLocked ? "고정 해제" : "고정하기"}>
+                                                                                    <Icon d={isLocked ? PATHS.lock : PATHS.unlock} size={12} />
+                                                                                </button>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                    {g.length > MAX_VISIBLE && (
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); setExpandedGroupCards(prev => ({...prev, [i]: !prev[i]})); }}
+                                                                            className="w-full py-2 text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors flex items-center justify-center gap-1 mt-1"
+                                                                        >
+                                                                            {isExpanded ? <>접기 <Icon d={PATHS.down} size={12} className="rotate-180"/></> : <>+{hiddenCount}명 더 보기 <Icon d={PATHS.down} size={12}/></>}
+                                                                        </button>
+                                                                    )}
+                                                                    {g.length === 0 && (
+                                                                        <div className="flex-1 flex items-center justify-center text-slate-300 text-xs border-2 border-dashed border-slate-100 rounded-xl min-h-[60px]">빈 모둠</div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ); })}
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4"><Icon d={PATHS.users} size={48} className="opacity-20"/><p>편성된 모둠 없음</p></div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {groups.length > 0 && (
+                                            <div className="h-auto flex-shrink-0 transition-all duration-300">
+                                                {aiReason && (
+                                                    <div className="bg-violet-50 p-4 rounded-2xl border border-violet-100 mb-4 animate-fade-in relative shadow-sm">
+                                                        <button onClick={() => setAiReason(null)} className="absolute top-2 right-2 text-violet-300 hover:text-violet-500 p-1"><Icon d={PATHS.x} size={14}/></button>
+                                                        <h4 className="font-bold text-violet-700 mb-2 flex items-center gap-2 text-sm"><Icon d={PATHS.magic} size={16}/> AI 편성 리포트</h4>
+                                                        <p className="text-xs text-violet-800 leading-relaxed whitespace-pre-wrap mb-3">{aiReason}</p>
+                                                        <div className="flex justify-end gap-2 border-t border-violet-200/50 pt-3">
+                                                            <Btn onClick={generateGroups} disabled={isGenerating} className="px-3 py-1.5 bg-white border border-violet-200 text-violet-600 rounded-lg text-xs font-bold hover:bg-violet-50 flex items-center gap-1 shadow-sm">
+                                                                {isGenerating ? <Icon d={PATHS.spinner} size={12} className="animate-spin"/> : <Icon d={PATHS.magic} size={12}/>} 다시 편성
+                                                            </Btn>
+                                                            <div className="w-px h-6 bg-violet-200 mx-1"></div>
+                                                            <Btn onClick={handleCopyAiReport} className="px-3 py-1.5 bg-white border border-violet-200 text-violet-600 rounded-lg text-xs font-bold hover:bg-violet-50 flex items-center gap-1 shadow-sm"><Icon d={PATHS.copy} size={12}/> 복사</Btn>
+                                                            <Btn onClick={handleSaveAiReport} className="px-3 py-1.5 bg-white border border-violet-200 text-violet-600 rounded-lg text-xs font-bold hover:bg-violet-50 flex items-center gap-1 shadow-sm"><Icon d={PATHS.download} size={12}/> 저장</Btn>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <BalanceVisualizer groups={groups} students={students} groupNames={groupNames} date={date} />
+                                            </div>
+                                        )}
+                                        <SeatChart students={students} seatAssignments={seatAssignments} setSeatAssignments={setSeatAssignments} seatConfig={seatConfig} setSeatConfig={setSeatConfig} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} openConfirm={openConfirm} groups={groups} onGroupsChange={handleGroupsChange} groupNumber={groupNumber} groupMethod={groupMethod} roleMap={roleMap} onOpenStudentInfo={(id) => setGrassStudentId(id)} />
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                         {mode === 'stats' && (
                              <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-10">
                                 <div className="flex justify-end items-center gap-2">
