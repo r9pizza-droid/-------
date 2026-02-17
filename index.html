@@ -225,7 +225,7 @@
         const Btn = ({ onClick, className, children, ...props }) => (
             <button onClick={onClick} className={`transition-colors duration-100 active:opacity-70 flex items-center justify-center rounded hover:bg-notion-bg-hover ${className}`} {...props}>{children}</button>
         );
-        const BaseModal = ({ isOpen, onClose, title, icon, children, footer, maxWidth = "max-w-2xl", zIndex = "z-50" }) => {
+        const BaseModal = ({ isOpen, onClose, title, icon, children, footer, maxWidth = "max-w-2xl", zIndex = "z-50", onTitleClick }) => {
             const [translateY, setTranslateY] = useState(0);
             const [isDragging, setIsDragging] = useState(false);
             const startY = useRef(0);
@@ -269,7 +269,7 @@
                     >
                         <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 md:hidden flex-shrink-0" />
                         <div className="flex justify-between items-center mb-6 flex-shrink-0">
-                            <h3 className="text-lg font-bold flex items-center gap-2 text-notion-text">{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
+                            <h3 className={`text-lg font-bold flex items-center gap-2 text-notion-text ${onTitleClick ? 'cursor-pointer select-none' : ''}`} onClick={onTitleClick}>{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light"><Icon d={PATHS.x} /></button>
                         </div>
                         <div ref={contentRef} className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6 overscroll-contain">{children}</div>
@@ -470,7 +470,7 @@
                             );
                         })}
                         <polygon points={classPoints} fill="rgba(148, 163, 184, 0.3)" stroke="#94a3b8" strokeWidth="2" />
-                        <polygon points={studentPoints} fill="rgba(99, 102, 241, 0.3)" stroke="#6366f1" strokeWidth="2" />
+                        <polygon points={studentPoints} fill="rgba(99, 102, 241, 0.3)" stroke="#6366f1" strokeWidth="4" />
                         {tags.map((tag, i) => {
                              const stat = data[tag];
                              const sRate = stat.sTotal > 0 ? (stat.sDone / stat.sTotal) * 100 : 0;
@@ -550,6 +550,7 @@
             const [notionDate, setNotionDate] = useState(dayjs().format('YYYY-MM-DD'));
             const [notionContent, setNotionContent] = useState('');
             const [notionStatus, setNotionStatus] = useState('idle'); // idle, saving, success, error
+            const [hasNotionConfig, setHasNotionConfig] = useState(false);
             
             useEffect(() => { 
                 if (!student) return;
@@ -581,6 +582,10 @@
                 setNotionDate(dayjs().format('YYYY-MM-DD'));
                 setNotionContent('');
                 setNotionStatus('idle');
+
+                const key = localStorage.getItem('cls_notion_key');
+                const dbId = localStorage.getItem('cls_notion_db_id');
+                setHasNotionConfig(!!(key && dbId));
             }, [student, isLocalMode, db, appId]);
 
             // student prop이 변경될 때 notes 초기화 방지 (위 useEffect에서 처리)
@@ -707,8 +712,17 @@
                     onSaveCounseling(student.id, newNotes, "기록이 저장되었습니다.");
                 }
 
+                // 노션 설정이 없으면 여기서 종료
+                if (!hasNotionConfig) {
+                    setTimeout(() => setNotionStatus('idle'), 1000);
+                    return;
+                }
+
                 // 2. 노션 저장 (비동기)
                 try {
+                    const personalKey = localStorage.getItem('cls_notion_key');
+                    const personalDbId = localStorage.getItem('cls_notion_db_id');
+
                     const response = await fetch('/api/save-notion', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -716,7 +730,9 @@
                             studentName: student.name,
                             date: notionDate,
                             category: notionCategory.includes('칭찬') ? '칭찬' : '관찰',
-                            content: notionContent
+                            content: notionContent,
+                            personalKey,
+                            personalDbId
                         })
                     });
                     if (!response.ok) {
@@ -1194,7 +1210,7 @@
                             </div>
                             <div className="p-4 border border-slate-100 rounded-2xl bg-white shadow-sm flex flex-col h-[500px]">
                                 <h4 className="text-xs font-bold text-slate-500 mb-3 flex items-center gap-1">
-                                    📒 교사 관찰 및 칭찬 기록 <span className="text-[10px] text-slate-400 font-normal ml-1">* 노션과 연동됩니다.</span>
+                                    📒 교사 관찰 및 칭찬 기록 {hasNotionConfig && <span className="text-[10px] text-indigo-500 font-bold ml-1 bg-indigo-50 px-1.5 py-0.5 rounded">* 노션 연동됨</span>}
                                 </h4>
                                 
                                 {/* [New] 통합 입력 폼 */}
@@ -2309,19 +2325,147 @@
             );
         };
 
-        const SystemLogModal = ({ isOpen, onClose }) => {
+        const NotionSetupModal = ({ isOpen, onClose, showToast }) => {
+            const [apiKey, setApiKey] = useState("");
+            const [dbId, setDbId] = useState("");
+            const [saveLocally, setSaveLocally] = useState(false);
+            const [showManual, setShowManual] = useState(false);
+
+            useEffect(() => {
+                if (isOpen) {
+                    const savedKey = localStorage.getItem('cls_notion_key');
+                    const savedDbId = localStorage.getItem('cls_notion_db_id');
+                    if (savedKey) setApiKey(savedKey);
+                    if (savedDbId) setDbId(savedDbId);
+                    if (savedKey || savedDbId) setSaveLocally(true);
+                }
+            }, [isOpen]);
+
+            const handleSave = () => {
+                if (saveLocally) {
+                    localStorage.setItem('cls_notion_key', apiKey.trim());
+                    localStorage.setItem('cls_notion_db_id', dbId.trim());
+                } else {
+                    localStorage.removeItem('cls_notion_key');
+                    localStorage.removeItem('cls_notion_db_id');
+                }
+                showToast("노션 설정이 저장되었습니다.");
+                onClose();
+            };
+
             if (!isOpen) return null;
-            const logs = JSON.parse(localStorage.getItem('cls_system_logs') || '[]');
-            
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="📜 시스템 로그" icon={PATHS.list}>
-                    <div className="space-y-2 max-h-[60vh] overflow-y-auto custom-scroll">
-                        {logs.length === 0 ? <div className="text-center text-slate-400 py-4">로그가 없습니다.</div> : 
-                        logs.map((log, i) => (
-                            <div key={i} className="text-xs font-mono p-2 border-b border-slate-100 last:border-0"><span className="text-slate-400 mr-2">[{log.time}]</span><span className={log.type === 'error' ? 'text-rose-500' : 'text-slate-700'}>{log.message}</span></div>
-                        ))}
+                <BaseModal isOpen={isOpen} onClose={onClose} title="📓 Notion 연동 설정" icon={null}>
+                    <div className="space-y-4">
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm text-slate-600">
+                            <p className="font-bold mb-1">🔑 개인 노션 연동</p>
+                            <p>입력한 정보는 브라우저(Local Storage)에만 저장되며 서버에 별도로 저장되지 않습니다.</p>
+                        </div>
+                        
+                        <div className="flex justify-end">
+                            <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
+                                <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                            </button>
+                        </div>
+
+                        {showManual && (
+                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-xs text-slate-700 space-y-4 animate-fade-in">
+                                <div>
+                                    <h4 className="font-bold text-indigo-700 mb-2">🚀 노션 설정 (사용자)</h4>
+                                    <ol className="list-decimal pl-4 space-y-1">
+                                        <li><strong>통합 만들기:</strong> <a href="https://www.notion.so/my-integrations" target="_blank" className="text-blue-600 underline font-bold">노션 내 통합</a> 페이지에서 '새 통합'을 만들고 <strong>API Key</strong>(secret_...)를 복사하세요.</li>
+                                        <li><strong>연결하기:</strong> 연동할 노션 데이터베이스 페이지 우측 상단 <strong>[...] &gt; [연결]</strong> 메뉴에서 방금 만든 통합을 찾아 연결하세요.</li>
+                                        <li><strong>ID 찾기:</strong> 데이터베이스 페이지의 URL에서 <strong>32자리 ID</strong>를 찾아 복사하세요.<br/><span className="text-[10px] text-slate-500 bg-white px-1 border rounded mt-1 inline-block">https://notion.so/.../<b>30a285...</b>?v=...</span></li>
+                                    </ol>
+                                </div>
+                                <div className="pt-3 border-t border-indigo-200">
+                                    <h4 className="font-bold text-slate-700 mb-2">🌍 Vercel 배포 설정 (개발자/운영자)</h4>
+                                    <ul className="list-disc pl-4 space-y-1 text-slate-600">
+                                        <li><strong>서버리스 함수:</strong> 이 앱은 <code>api/save-notion.js</code> 파일을 통해 노션과 통신합니다. Vercel에 배포해야 정상 작동합니다.</li>
+                                        <li><strong>설정 파일:</strong> 프로젝트 최상위 경로에 <code>vercel.json</code> 파일이 있어야 API 경로가 올바르게 연결됩니다.</li>
+                                        <li><strong>환경 변수:</strong> 현재 버전은 사용자가 앱 내에서 직접 키를 입력하는 방식이므로, Vercel 대시보드에서 별도의 환경 변수(Env Vars)를 설정할 필요가 없습니다.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500">Notion API Key (Secret)</label>
+                            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="secret_..." />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500">Database ID</label>
+                            <input type="text" value={dbId} onChange={e => setDbId(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID" />
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked={saveLocally} onChange={e => setSaveLocally(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                            <span className="text-sm text-slate-700 font-bold">이 기기에 정보 저장하기</span>
+                        </label>
+                        <Btn onClick={handleSave} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">설정 저장하기</Btn>
                     </div>
-                    <div className="mt-4 flex justify-end"><Btn onClick={() => { localStorage.removeItem('cls_system_logs'); onClose(); }} className="px-3 py-1.5 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300">로그 삭제</Btn></div>
+                </BaseModal>
+            );
+        };
+
+        const ApiKeySetupModal = ({ isOpen, onClose, apiKey, setApiKey, saveData, isLocalMode, showToast, validateApiKey }) => {
+            const [isChecking, setIsChecking] = useState(false);
+            const [isSaved, setIsSaved] = useState(!!localStorage.getItem('cls_ai_key'));
+            const [showHelp, setShowHelp] = useState(false);
+            const [usage, setUsage] = useState(0);
+
+            useEffect(() => {
+                if (isOpen) {
+                    setUsage(parseInt(localStorage.getItem('cls_ai_usage') || '0'));
+                    setIsSaved(!!localStorage.getItem('cls_ai_key'));
+                }
+            }, [isOpen]);
+
+            const handleCheck = async () => {
+                setIsChecking(true);
+                await validateApiKey();
+                setIsChecking(false);
+            };
+
+            const handleSaveToggle = (e) => {
+                const checked = e.target.checked;
+                setIsSaved(checked);
+                if (checked) {
+                    if(!isLocalMode) saveData('cls_ai_key', apiKey);
+                    else localStorage.setItem('cls_ai_key', apiKey);
+                } else {
+                    if(!isLocalMode) saveData('cls_ai_key', "");
+                    else localStorage.removeItem('cls_ai_key');
+                }
+            };
+
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="🤖 AI 설정" icon={null}>
+                    <ApiKeyHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+                    <div className="space-y-4">
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm text-slate-600">
+                            <p className="font-bold mb-1">🔑 Gemini API Key 설정</p>
+                            <p>Google AI Studio에서 발급받은 키를 입력하세요. (무료)</p>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                                <label className="text-xs font-bold text-slate-500">API Key</label>
+                                <button onClick={() => setShowHelp(true)} className="text-[10px] text-indigo-500 hover:underline flex items-center gap-0.5">키 발급 방법 <Icon d={PATHS.help} size={10} /></button>
+                            </div>
+                            <div className="flex gap-2">
+                                <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="sk-..." />
+                                <Btn onClick={handleCheck} className="bg-indigo-600 text-white px-4 rounded-xl text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">{isChecking ? '확인 중...' : '확인'}</Btn>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-2">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" checked={isSaved} onChange={handleSaveToggle} className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                                <span className="text-sm text-slate-700 font-bold">이 기기에 키 저장하기</span>
+                            </label>
+                            <div className="text-xs text-slate-400">사용량: {usage}회</div>
+                        </div>
+                        <Btn onClick={onClose} className="w-full py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 mt-4">닫기</Btn>
+                    </div>
                 </BaseModal>
             );
         };
@@ -2519,16 +2663,15 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp }) => {
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
-            const fileRef = useRef(null); const jsonFileRef = useRef(null); const counselingFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
-            const [cfg, setCfg] = useState(appConfig);
+            const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
             const [deleteTargetId, setDeleteTargetId] = useState(null); const [isDeletingAll, setIsDeletingAll] = useState(false); const [editingId, setEditingId] = useState(null); const [editData, setEditData] = useState({});
+            const [isDeleteLocked, setIsDeleteLocked] = useState(true);
             const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => localStorage.getItem('cls_auto_backup') === 'true'); const [showBackupHelp, setShowBackupHelp] = useState(false); const [isAdminMode, setIsAdminMode] = useState(false);
             const [adminClickCount, setAdminClickCount] = useState(0); const [ampm, setAmpm] = useState("PM"); const [hour, setHour] = useState("12"); const [minute, setMinute] = useState("00");
-            const [vacStart, setVacStart] = useState(appConfig.vacationStart || ""); const [vacEnd, setVacEnd] = useState(appConfig.vacationEnd || "");
-            const [vacations, setVacations] = useState([]); const [newVacStart, setNewVacStart] = useState(""); const [newVacEnd, setNewVacEnd] = useState("");
+            const [newVacStart, setNewVacStart] = useState(""); const [newVacEnd, setNewVacEnd] = useState("");
             const [showFontList, setShowFontList] = useState(false);
             
             // 코드 업데이트 관련 상태
@@ -2538,11 +2681,6 @@
             const [updateProgress, setUpdateProgress] = useState(0);
             const [updateStatus, setUpdateStatus] = useState("");
             const [remainingTime, setRemainingTime] = useState(3);
-            const [isKeyValid, setIsKeyValid] = useState(false);
-            const [isCheckingKey, setIsCheckingKey] = useState(false);
-            const [isKeySaved, setIsKeySaved] = useState(!!localStorage.getItem('cls_ai_key'));
-            const [showApiKeyHelp, setShowApiKeyHelp] = useState(false);
-            const [showSystemLogs, setShowSystemLogs] = useState(false);
             const [aiUsage, setAiUsage] = useState(0);
             const [showManualModal, setShowManualModal] = useState(false);
             const [showStorageHelp, setShowStorageHelp] = useState(false);
@@ -2585,75 +2723,39 @@
                 return { kb, percent, bytes, isWarning: percent > 80, isCritical: percent > 95, details };
             }, [students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig]);
 
-            const handleKeyChange = (e) => {
-                const val = e.target.value;
-                setApiKey(val);
-                setIsKeyValid(false);
-                if (isKeySaved) {
-                    if(!isLocalMode) saveData('cls_ai_key', val);
-                    else localStorage.setItem('cls_ai_key', val);
-                }
-            };
-
-            const toggleKeySave = (e) => {
-                const checked = e.target.checked;
-                setIsKeySaved(checked);
-                if (checked) {
-                    if(!isLocalMode) saveData('cls_ai_key', apiKey);
-                    else localStorage.setItem('cls_ai_key', apiKey);
-                } else {
-                    if(!isLocalMode) saveData('cls_ai_key', "");
-                    else localStorage.removeItem('cls_ai_key');
-                }
-            };
-
-            const checkApiKey = async () => {
-                if (!apiKey) return;
-                setIsCheckingKey(true);
-                logSystemEvent('API 키 유효성 검사 시작');
-                try {
-                    await callGemini(apiKey, "Hello");
-                    setIsKeyValid(true);
-                    showToast(`API 키가 유효합니다. (${GEMINI_MODEL_NAME})`);
-                    setAiUsage(parseInt(localStorage.getItem('cls_ai_usage') || '0'));
-                } catch (e) {
-                    setIsKeyValid(false);
-                    logSystemEvent(`API 키 확인 실패: ${e.message}`, 'error');
-                    showToast("API 키 확인 실패: " + e.message);
-                } finally {
-                    setIsCheckingKey(false);
-                }
+            const updateAppConfig = (updates) => {
+                const newConfig = { ...appConfig, ...updates };
+                setAppConfig(newConfig);
+                saveData('cls_app_config', newConfig);
             };
 
             useEffect(() => { 
                 if (isOpen) { 
-                    setCfg({ ...appConfig }); 
                     setAiUsage(parseInt(localStorage.getItem('cls_ai_usage') || '0'));
-                    setVacStart(appConfig.vacationStart || ""); 
-                    setVacEnd(appConfig.vacationEnd || ""); 
-                    
-                    // 방학 데이터 초기화 (기존 데이터 마이그레이션 포함)
-                    let initVacations = appConfig.vacations || [];
-                    if (initVacations.length === 0 && appConfig.vacationStart && appConfig.vacationEnd) {
-                        initVacations = [{ start: appConfig.vacationStart, end: appConfig.vacationEnd }];
-                    }
-                    setVacations(initVacations);
                     setNewVacStart("");
                     setNewVacEnd("");
                 } 
-            }, [isOpen, appConfig]);
+            }, [isOpen]);
+
+            const currentVacations = useMemo(() => {
+                if (appConfig.vacations && appConfig.vacations.length > 0) return appConfig.vacations;
+                if (appConfig.vacationStart && appConfig.vacationEnd) return [{ start: appConfig.vacationStart, end: appConfig.vacationEnd }];
+                return [];
+            }, [appConfig.vacations, appConfig.vacationStart, appConfig.vacationEnd]);
 
             const addVacation = () => {
                 if (newVacStart && newVacEnd) {
                     if (newVacStart > newVacEnd) return showToast("종료일이 시작일보다 빠를 수 없습니다.");
-                    setVacations([...vacations, { start: newVacStart, end: newVacEnd }].sort((a, b) => a.start.localeCompare(b.start)));
+                    const newVacations = [...currentVacations, { start: newVacStart, end: newVacEnd }].sort((a, b) => a.start.localeCompare(b.start));
+                    updateAppConfig({ vacations: newVacations });
                     setNewVacStart(""); setNewVacEnd("");
                 } else { showToast("시작일과 종료일을 모두 선택해주세요."); }
             };
-            const removeVacation = (index) => { setVacations(vacations.filter((_, i) => i !== index)); };
+            const removeVacation = (index) => { 
+                const newVacations = currentVacations.filter((_, i) => i !== index);
+                updateAppConfig({ vacations: newVacations });
+            };
 
-            const handleConfigSave = () => { const newConfig = { ...cfg, vacations }; delete newConfig.vacationStart; delete newConfig.vacationEnd; setAppConfig(newConfig); if(!isLocalMode) saveData('cls_app_config', newConfig);
-            showToast("설정이 저장되었습니다."); };
             const toggleAutoBackup = () => { const newValue = !autoBackupEnabled; setAutoBackupEnabled(newValue); localStorage.setItem('cls_auto_backup', newValue);
             showToast(newValue ? "자동 백업이 켜졌습니다." : "자동 백업이 꺼졌습니다."); };
             
@@ -2669,10 +2771,9 @@
             const handleDataManagementClick = () => { 
                 const newCount = adminClickCount + 1; 
                 if(newCount >= 3) { 
-                    const newMode = !isAdminMode;
-                    setIsAdminMode(newMode);
+                    setIsAdminMode(!isAdminMode);
+                    showToast(!isAdminMode ? "관리자 모드가 활성화되었습니다." : "관리자 모드가 해제되었습니다."); 
                     setAdminClickCount(0);
-                    showToast(newMode ? "관리자 모드가 활성화되었습니다." : "관리자 모드가 해제되었습니다."); 
                 } else {
                     setAdminClickCount(newCount);
                 }
@@ -2706,62 +2807,7 @@
             if (!f) return; const r = new FileReader(); r.onload = (ev) => { const lines = ev.target.result.split(/[\r\n]+/).filter(l => l.trim());
             const newStds = []; lines.forEach((l, i) => { const p = l.split(','); if (p[0]) newStds.push({ id: Date.now() + i, name: p[0].trim(), gender: (p[1] || 'M').trim(), skill: parseInt(p[2] || 2), note: (p[3] || "").trim(), order: students.length + i + 1, leader: false }); });
             if (newStds.length) { const u = [...students, ...newStds]; setStudents(u); if(!isLocalMode) saveData('cls_students', u); showToast(`${newStds.length}명 추가됨`); } }; r.readAsText(f); };
-            
-            const handleCounselingImport = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    try {
-                        const text = ev.target.result;
-                        const parseCSV = (str) => {
-                            const arr = []; let quote = false; let row = 0, col = 0;
-                            for (let c = 0; c < str.length; c++) {
-                                let cc = str[c], nc = str[c+1];
-                                arr[row] = arr[row] || []; arr[row][col] = arr[row][col] || '';
-                                if (cc == '"' && quote && nc == '"') { arr[row][col] += cc; ++c; }
-                                else if (cc == '"') { quote = !quote; }
-                                else if (cc == ',' && !quote) { ++col; }
-                                else if (cc == '\r' && !quote && nc == '\n') { ++row; col = 0; ++c; }
-                                else if (cc == '\n' && !quote) { ++row; col = 0; }
-                                else { arr[row][col] += cc; }
-                            }
-                            return arr;
-                        };
-                        const rows = parseCSV(text);
-                        if (rows.length < 2) return showToast("데이터가 없는 파일입니다.");
-                        const headers = rows[0].map(h => h.trim().toLowerCase());
-                        const nameIdx = headers.findIndex(h => ['이름', 'name', 'student', '학생'].some(k => h.includes(k)));
-                        const dateIdx = headers.findIndex(h => ['날짜', 'date', 'time', '일시'].some(k => h.includes(k)));
-                        const contentIdx = headers.findIndex(h => ['내용', 'content', 'note', 'memo', '비고', '관찰', '기록'].some(k => h.includes(k)));
-                        if (nameIdx === -1 || contentIdx === -1) return showToast("필수 열(이름, 내용)을 찾을 수 없습니다.");
-                        
-                        let count = 0;
-                        const newStudents = [...students];
-                        for (let i = 1; i < rows.length; i++) {
-                            const row = rows[i];
-                            if (row.length <= nameIdx) continue;
-                            const name = row[nameIdx]?.trim(); 
-                            if (!name) continue;
-                            const student = newStudents.find(s => s.name === name);
-                            if (student) {
-                                const content = row[contentIdx]?.trim();
-                                if (!content) continue;
-                                let date = row[dateIdx]?.trim();
-                                if (date) { const d = dayjs(date); if (d.isValid()) date = d.format('YYYY-MM-DD'); else date = dayjs().format('YYYY-MM-DD'); } else { date = dayjs().format('YYYY-MM-DD'); }
-                                const newNote = { id: Date.now() + Math.random(), date, content }; 
-                                const prevNotes = Array.isArray(student.counseling) ? student.counseling : (student.counseling ? [{ id: Date.now(), date: dayjs().format('YYYY-MM-DD'), content: student.counseling }] : []);
-                                const isDuplicate = prevNotes.some(n => n.content === content && n.date === date);
-                                if (!isDuplicate) { student.counseling = [newNote, ...prevNotes].sort((a, b) => dayjs(a.date).diff(dayjs(b.date))); count++; }
-                            }
-                        } 
-                        if (count > 0) { setStudents(newStudents); if (!isLocalMode) saveData('cls_students', newStudents); showToast(`${count}건의 관찰 기록을 가져왔습니다.`); } else { showToast("가져올 기록이 없거나 학생 이름을 찾을 수 없습니다."); }
-                    } catch (err) { console.error(err); showToast("CSV 파일 처리 중 오류가 발생했습니다."); }
-                };
-                reader.readAsText(file);
-                e.target.value = '';
-            };
-            const handleDeleteAll = () => { setStudents([]); if(!isLocalMode) saveData('cls_students', []); setIsDeletingAll(false); showToast("전체 삭제됨"); };
+            const handleDeleteAll = () => { setStudents([]); if(!isLocalMode) saveData('cls_students', []); setIsDeletingAll(false); setIsDeleteLocked(true); showToast("전체 삭제됨"); };
             const getCleanHtmlCode = () => { const docClone = document.documentElement.cloneNode(true); const root = docClone.querySelector('#root'); if (root) root.innerHTML = '';
             const scripts = docClone.querySelectorAll('script'); scripts.forEach(s => { if (!s.hasAttribute('data-app-script')) s.remove(); }); const styles = docClone.querySelectorAll('style');
             styles.forEach(s => { if (!s.hasAttribute('data-app-style')) s.remove(); }); return "<!DOCTYPE html>\n" + docClone.outerHTML; };
@@ -2910,52 +2956,6 @@
                 showToast("오프라인 실행용 파일이 저장되었습니다.");
             };
 
-            const handleExportDrafts = () => {
-                logSystemEvent('총평 초안 내보내기 시도');
-                let content = "";
-                let count = 0;
-                const sortedStudents = [...students].sort((a, b) => a.order - b.order);
-
-                sortedStudents.forEach(s => {
-                    if (s.recordDrafts && Object.keys(s.recordDrafts).length > 0) {
-                        content += `##################################################\n`;
-                        content += `# ${s.order}번 ${s.name}\n`;
-                        content += `##################################################\n\n`;
-                        
-                        const drafts = Object.entries(s.recordDrafts).sort((a, b) => a[0].localeCompare(b[0]));
-                        
-                        drafts.forEach(([key, text]) => {
-                            if (!text) return;
-                            const [type, semester] = key.split('_');
-                            let typeName = type;
-                            if (type === 'behavior') typeName = '행동특성 및 종합의견';
-                            else if (type === 'subject') typeName = '교과 학습 발달 상황';
-                            
-                            const semesterName = semester === 'all' ? '전체' : `${semester}학기`;
-                            
-                            content += `[${typeName} - ${semesterName}]\n`;
-                            content += `${text}\n\n`;
-                            content += `--------------------------------------------------\n\n`;
-                        });
-                        content += `\n`;
-                        count++;
-                    }
-                });
-
-                if (count === 0) {
-                    showToast("저장된 행발 초안이 없습니다.");
-                    return;
-                }
-
-                const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `총평초안_일괄내보내기_${dayjs().format('YYYYMMDD')}.txt`;
-                link.click();
-                showToast(`${count}명의 초안을 텍스트 파일로 저장했습니다.`);
-            };
-
             const getManualContent = () => `
 ================================================================
   📘 이거했어? 사용 설명서 (v${appConfig.version})
@@ -3026,11 +3026,9 @@
 
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="⚙️ 설정" icon={null} maxWidth="max-w-6xl">
+                <BaseModal isOpen={isOpen} onClose={onClose} title={<><span onClick={onDevModeClick} className="cursor-default">⚙️</span> 설정</>} icon={null} maxWidth="max-w-6xl">
                     <HelpModal isOpen={showBackupHelp} onClose={()=>setShowBackupHelp(false)} />
                     <ManualModal isOpen={showManualModal} onClose={() => setShowManualModal(false)} content={getManualContent()} onDownload={handleDownloadManualFile} />
-                    <ApiKeyHelpModal isOpen={showApiKeyHelp} onClose={() => setShowApiKeyHelp(false)} />
-                    <SystemLogModal isOpen={showSystemLogs} onClose={() => setShowSystemLogs(false)} />
                     
                     {isUpdating && (
                         <div className="fixed inset-0 z-[9999] bg-slate-900/90 flex flex-col items-center justify-center text-white backdrop-blur-sm animate-fade-in">
@@ -3074,8 +3072,15 @@
                                 </div>
                             </div>
                             
-                            <h4 className="font-bold text-slate-700 mb-2 flex justify-between text-sm items-center flex-shrink-0 px-1"> <span>전체 명단 ({students.length}명)</span> <div className="flex gap-2"> <Btn onClick={addTestData} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 hover:bg-indigo-100 transition-colors">테스트 명단</Btn> {isDeletingAll ?
-                                <div className="flex gap-2"><Btn onClick={handleDeleteAll} className="text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg animate-pulse">확인</Btn><Btn onClick={() => setIsDeletingAll(false)} className="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg">취소</Btn></div> : <Btn onClick={() => setIsDeletingAll(true)} className="text-xs bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1"><Icon d={PATHS.trash} size={12} /> 명단 전체 삭제</Btn>} </div> </h4>
+                            <h4 className="font-bold text-slate-700 mb-2 flex justify-between text-sm items-center flex-shrink-0 px-1"> <span>전체 명단 ({students.length}명)</span> <div className="flex gap-2"> <Btn onClick={addTestData} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 hover:bg-indigo-100 transition-colors">테스트 명단</Btn> 
+                                {isDeleteLocked ? (
+                                    <Btn onClick={() => setIsDeleteLocked(false)} className="text-xs bg-slate-100 text-slate-400 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 hover:bg-slate-200 transition-colors"><Icon d={PATHS.lock} size={12} /> 잠금 해제</Btn>
+                                ) : (
+                                    isDeletingAll ?
+                                    <div className="flex gap-2"><Btn onClick={handleDeleteAll} className="text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg animate-pulse">확인</Btn><Btn onClick={() => { setIsDeletingAll(false); setIsDeleteLocked(true); }} className="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg">취소</Btn></div> : 
+                                    <Btn onClick={() => setIsDeletingAll(true)} className="text-xs bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1"><Icon d={PATHS.trash} size={12} /> 명단 전체 삭제</Btn>
+                                )} 
+                            </div> </h4>
                             
                             <div id="student-list" className="flex-1 overflow-y-auto bg-slate-50 p-2 rounded-xl space-y-1 custom-scroll border border-slate-200 h-full shadow-inner">
                                 {students.map(s => (
@@ -3113,6 +3118,7 @@
                             <section>
                                 <h3 className="text-xl font-bold text-slate-800 border-b-2 border-slate-100 pb-3 mb-5 flex items-center gap-2 cursor-default select-none" onClick={handleDataManagementClick}>
                                     <span className="text-2xl">📱</span> 앱 설정 {isAdminMode && <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-1">관리자 모드</span>}
+                                    {isDevMode && <span className="text-xs bg-slate-800 text-white px-2 py-0.5 rounded-full ml-1">개발자 모드</span>}
                                 </h3>
                                 {(!isStandalone && (deferredPrompt || isIOS)) && (
                                     <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-5 rounded-2xl text-white shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in mb-6 relative overflow-hidden group cursor-pointer" onClick={onInstallApp}>
@@ -3132,9 +3138,10 @@
                                     </div>
                                 )}
                                 <div className="space-y-4">
-                                    {isAdminMode && (
-                                        <>
-                                            <div className="grid grid-cols-3 gap-3 animate-fade-in">
+                                    {isDevMode && (
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-4 animate-fade-in">
+                                            <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2 text-sm">🎨 아이콘 설정</h4>
+                                            <div className="grid grid-cols-3 gap-3">
                                                 <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative">
                                                     <button onClick={(e) => { e.stopPropagation(); setShowFaviconHelp(!showFaviconHelp); }} className="absolute top-2 right-2 text-slate-300 hover:text-indigo-500 transition-colors"><Icon d={PATHS.help} size={14} /></button>
                                                     {showFaviconHelp && (
@@ -3153,16 +3160,16 @@
                                                         <div className="flex flex-col items-center gap-1">
                                                             <span className="text-[9px] text-slate-400 font-bold">브라우저</span>
                                                             <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
-                                                                {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-xl">📝</span>}
+                                                                {appConfig.favicon ? <img src={appConfig.favicon} className="w-full h-full object-cover" /> : <span className="text-xl">📝</span>}
                                                             </div>
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1">
                                                             <span className="text-[9px] text-slate-400 font-bold">iOS 홈</span>
                                                             <div className="relative w-14 h-16 bg-gradient-to-b from-sky-300 to-sky-500 rounded-lg flex flex-col items-center justify-center shadow-inner border border-slate-200 overflow-hidden pt-1">
                                                                 <div className="w-9 h-9 bg-white rounded-[8px] flex items-center justify-center overflow-hidden shadow-sm mb-0.5">
-                                                                    {cfg.favicon ? <img src={cfg.favicon} className="w-full h-full object-cover" /> : <span className="text-lg">📝</span>}
+                                                                    {appConfig.favicon ? <img src={appConfig.favicon} className="w-full h-full object-cover" /> : <span className="text-lg">📝</span>}
                                                                 </div>
-                                                                <span className="text-[6px] text-white font-medium drop-shadow-md truncate max-w-[48px] px-0.5">{cfg.recordTitle || "다했나요!?"}</span>
+                                                                <span className="text-[6px] text-white font-medium drop-shadow-md truncate max-w-[48px] px-0.5">{appConfig.recordTitle || "다했나요!?"}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -3173,12 +3180,7 @@
                                                                 const r = new FileReader(); 
                                                                 r.onload = (ev) => { 
                                                                     const newIcon = ev.target.result; 
-                                                                    const newConfig = { ...cfg, favicon: newIcon, vacations }; // 현재 설정 상태 유지하며 아이콘 업데이트
-                                                                    delete newConfig.vacationStart; delete newConfig.vacationEnd;
-                                                                    
-                                                                    setCfg(newConfig); 
-                                                                    setAppConfig(newConfig); // 화면 즉시 반영
-                                                                    saveData('cls_app_config', newConfig); // 로컬/클라우드 즉시 저장
+                                                                    updateAppConfig({ favicon: newIcon });
                                                                     
                                                                     openConfirm("앱 아이콘이 변경되었습니다.\n\n변경된 아이콘을 홈 화면에 적용하려면,\n기존 앱을 삭제하고 '홈 화면에 추가'를 다시 진행해주세요.\n\n(확인을 누르면 설치 가이드가 표시됩니다)", () => onInstallApp()); 
                                                                 }; 
@@ -3186,54 +3188,31 @@
                                                             } 
                                                         }} className="hidden" accept="image/*" />
                                                         <Btn onClick={() => faviconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">앱 아이콘</Btn>
-                                                        <Btn onClick={() => openConfirm("앱 아이콘을 기본값(📝)으로 복원하시겠습니까?", () => { 
-                                                            const newConfig = { ...cfg, favicon: null, vacations };
-                                                            delete newConfig.vacationStart; delete newConfig.vacationEnd;
-                                                            setCfg(newConfig);
-                                                            setAppConfig(newConfig);
-                                                            saveData('cls_app_config', newConfig);
-                                                        })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                        <Btn onClick={() => openConfirm("앱 아이콘을 기본값(📝)으로 복원하시겠습니까?", () => updateAppConfig({ favicon: null }))} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
                                                     </div>
                                                 </div>
                                                 <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
                                                     <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
-                                                        {cfg.runner.startsWith('data:image') ? <img src={cfg.runner} className="w-full h-full object-cover" /> : <span className="text-2xl">{cfg.runner}</span>}
+                                                        {appConfig.runner.startsWith('data:image') ? <img src={appConfig.runner} className="w-full h-full object-cover" /> : <span className="text-2xl">{appConfig.runner}</span>}
                                                     </div>
                                                     <div className="flex gap-1 w-full">
-                                                        <input type="file" ref={runnerImgRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, runner: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                        <input type="file" ref={runnerImgRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => updateAppConfig({ runner: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
                                                         <Btn onClick={() => runnerImgRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">러너 변경</Btn>
-                                                        <Btn onClick={() => setCfg({ ...cfg, runner: "🏃" })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                        <Btn onClick={() => updateAppConfig({ runner: "🏃" })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
                                                     </div>
                                                 </div>
                                                 <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
                                                     <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
-                                                        {cfg.cloudIcon ? <img src={cfg.cloudIcon} className="w-full h-full object-contain" /> : <span className="text-2xl">☁️</span>}
+                                                        {appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-full h-full object-contain" /> : <span className="text-2xl">☁️</span>}
                                                     </div>
                                                     <div className="flex gap-1 w-full">
-                                                        <input type="file" ref={cloudIconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => setCfg({ ...cfg, cloudIcon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                        <input type="file" ref={cloudIconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => updateAppConfig({ cloudIcon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
                                                         <Btn onClick={() => cloudIconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">구름 변경</Btn>
-                                                        <Btn onClick={() => setCfg({ ...cfg, cloudIcon: null })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                        <Btn onClick={() => updateAppConfig({ cloudIcon: null })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col justify-center animate-fade-in">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <label className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                                                        <Icon d={PATHS.bot} size={14}/> Gemini API Key
-                                                        {isKeyValid && <span className="text-green-500 text-xs flex items-center gap-0.5 animate-fade-in"><Icon d={PATHS.check} size={12}/> 유효함</span>}
-                                                    </label>
-                                                    <button onClick={() => setShowApiKeyHelp(true)} className="text-[10px] text-indigo-500 hover:underline flex items-center gap-0.5">키 발급 방법 <Icon d={PATHS.help} size={10} /></button>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <input type="password" value={apiKey} onChange={handleKeyChange} className="flex-1 p-2 border rounded-lg text-xs font-mono bg-white outline-none focus:border-indigo-500" placeholder="API Key 입력" />
-                                                    <Btn onClick={checkApiKey} className="bg-white border border-slate-300 px-3 rounded-lg text-xs font-bold hover:bg-slate-50 whitespace-nowrap text-slate-600">{isCheckingKey ? '...' : '확인'}</Btn>
-                                                </div>
-                                                <div className="flex justify-between items-center mt-1">
-                                                    <label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isKeySaved} onChange={toggleKeySave} className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span className="text-xs text-slate-600 font-bold">저장</span></label>
-                                                    <div className="text-[10px] text-slate-400">사용량: {aiUsage}회</div>
-                                                </div>
-                                            </div>
-                                        </>
+                                        </div>
                                     )}
 
                                     <div className="grid grid-cols-1 gap-3">
@@ -3241,21 +3220,21 @@
                                             <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0"><Icon d={PATHS.edit} size={20}/></div>
                                             <div className="flex-1 min-w-0">
                                                 <label className="text-[10px] font-bold text-slate-400 block mb-0.5">기록 모드 제목</label>
-                                                <input value={cfg.recordTitle} onChange={e => setCfg({ ...cfg, recordTitle: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="다했나요!?" />
+                                                <input value={appConfig.recordTitle} onChange={e => updateAppConfig({ recordTitle: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="다했나요!?" />
                                             </div>
                                         </div>
                                         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
                                             <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500 flex-shrink-0"><Icon d={PATHS.check} size={20}/></div>
                                             <div className="flex-1 min-w-0">
                                                 <label className="text-[10px] font-bold text-slate-400 block mb-0.5">완료 메시지</label>
-                                                <input value={cfg.recordMsg} onChange={e => setCfg({ ...cfg, recordMsg: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="모두 제출 완료! 🎉" />
+                                                <input value={appConfig.recordMsg} onChange={e => updateAppConfig({ recordMsg: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="모두 제출 완료! 🎉" />
                                             </div>
                                         </div>
                                         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
                                             <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 flex-shrink-0"><Icon d={PATHS.users} size={20}/></div>
                                             <div className="flex-1 min-w-0">
                                                 <label className="text-[10px] font-bold text-slate-400 block mb-0.5">학급명 (파일 저장용)</label>
-                                                <input value={cfg.className || ""} onChange={e => setCfg({ ...cfg, className: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="예: 3학년 2반" />
+                                                <input value={appConfig.className || ""} onChange={e => updateAppConfig({ className: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="예: 3학년 2반" />
                                             </div>
                                         </div>
                                     </div>
@@ -3268,16 +3247,16 @@
                                             </div>
                                             <button 
                                                 onClick={() => setShowFontList(!showFontList)} 
-                                                className={`w-full p-2 border rounded-lg text-xs bg-slate-50 outline-none focus:border-indigo-500 font-bold text-slate-700 flex justify-between items-center ${cfg.font === 'serif' ? 'font-serif' : cfg.font === 'hand' ? 'font-hand' : cfg.font === 'jua' ? 'font-jua' : cfg.font === 'nanum' ? 'font-nanum' : cfg.font === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'}`}
+                                                className={`w-full p-2 border rounded-lg text-xs bg-slate-50 outline-none focus:border-indigo-500 font-bold text-slate-700 flex justify-between items-center ${appConfig.font === 'serif' ? 'font-serif' : appConfig.font === 'hand' ? 'font-hand' : appConfig.font === 'jua' ? 'font-jua' : appConfig.font === 'nanum' ? 'font-nanum' : appConfig.font === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'}`}
                                             >
                                                 <span className="truncate">
                                                 {
-                                                    cfg.font === 'sans' ? '기본 고딕' :
-                                                    cfg.font === 'nanum' ? '나눔고딕' :
-                                                    cfg.font === 'nanum-bold' ? '나눔고딕 (Bold)' :
-                                                    cfg.font === 'serif' ? '나눔명조' :
-                                                    cfg.font === 'jua' ? '주아체' :
-                                                    cfg.font === 'hand' ? '개구체' : '기본 고딕'
+                                                    appConfig.font === 'sans' ? '기본 고딕' :
+                                                    appConfig.font === 'nanum' ? '나눔고딕' :
+                                                    appConfig.font === 'nanum-bold' ? '나눔고딕 (Bold)' :
+                                                    appConfig.font === 'serif' ? '나눔명조' :
+                                                    appConfig.font === 'jua' ? '주아체' :
+                                                    appConfig.font === 'hand' ? '개구체' : '기본 고딕'
                                                 }
                                                 </span>
                                                 <Icon d={PATHS.down} size={12} className="text-slate-400 flex-shrink-0" />
@@ -3296,8 +3275,8 @@
                                                         ].map(f => (
                                                             <button 
                                                                 key={f.id}
-                                                                onClick={() => { setCfg({ ...cfg, font: f.id }); setShowFontList(false); }}
-                                                                className={`w-full text-left px-3 py-2.5 text-xs hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0 ${f.cls} ${cfg.font === f.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-700'}`}
+                                                                onClick={() => { updateAppConfig({ font: f.id }); setShowFontList(false); }}
+                                                                className={`w-full text-left px-3 py-2.5 text-xs hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0 ${f.cls} ${appConfig.font === f.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-700'}`}
                                                             >
                                                                 {f.label}
                                                             </button>
@@ -3306,33 +3285,35 @@
                                                 </>
                                             )}
                                         </div>
-                                        <div 
-                                            className={`border rounded-xl p-3 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${cfg.soundEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-                                            onClick={() => setCfg({ ...cfg, soundEnabled: !(cfg.soundEnabled !== false) })}
-                                        >
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Icon d={cfg.soundEnabled !== false ? PATHS.speaker : PATHS.mute} size={16} className={cfg.soundEnabled !== false ? "text-indigo-500" : "text-slate-400"}/>
-                                                <span className={`text-xs font-bold ${cfg.soundEnabled !== false ? "text-indigo-700" : "text-slate-500"}`}>효과음</span>
-                                            </div>
-                                            <div className="flex justify-end items-center gap-2">
-                                                <span className={`text-[10px] font-bold ${cfg.soundEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{cfg.soundEnabled !== false ? "ON" : "OFF"}</span>
-                                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${cfg.soundEnabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}>
-                                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform ${cfg.soundEnabled !== false ? 'translate-x-4' : ''}`}></div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div 
+                                                className={`border rounded-xl p-3 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.soundEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                                onClick={() => updateAppConfig({ soundEnabled: !(appConfig.soundEnabled !== false) })}
+                                            >
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icon d={appConfig.soundEnabled !== false ? PATHS.speaker : PATHS.mute} size={16} className={appConfig.soundEnabled !== false ? "text-indigo-500" : "text-slate-400"}/>
+                                                    <span className={`text-xs font-bold ${appConfig.soundEnabled !== false ? "text-indigo-700" : "text-slate-500"}`}>효과음</span>
+                                                </div>
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <span className={`text-[10px] font-bold ${appConfig.soundEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.soundEnabled !== false ? "ON" : "OFF"}</span>
+                                                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${appConfig.soundEnabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}>
+                                                        <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform ${appConfig.soundEnabled !== false ? 'translate-x-4' : ''}`}></div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div 
-                                            className={`border rounded-xl p-3 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${cfg.animationEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-                                            onClick={() => setCfg({ ...cfg, animationEnabled: !(cfg.animationEnabled !== false) })}
-                                        >
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Icon d={PATHS.play} size={16} className={cfg.animationEnabled !== false ? "text-indigo-500" : "text-slate-400"}/>
-                                                <span className={`text-xs font-bold ${cfg.animationEnabled !== false ? "text-indigo-700" : "text-slate-500"}`}>화면 전환 효과</span>
-                                            </div>
-                                            <div className="flex justify-end items-center gap-2">
-                                                <span className={`text-[10px] font-bold ${cfg.animationEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{cfg.animationEnabled !== false ? "ON" : "OFF"}</span>
-                                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${cfg.animationEnabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}>
-                                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform ${cfg.animationEnabled !== false ? 'translate-x-4' : ''}`}></div>
+                                            <div 
+                                                className={`border rounded-xl p-3 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.animationEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                                onClick={() => updateAppConfig({ animationEnabled: !(appConfig.animationEnabled !== false) })}
+                                            >
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icon d={PATHS.play} size={16} className={appConfig.animationEnabled !== false ? "text-indigo-500" : "text-slate-400"}/>
+                                                    <span className={`text-xs font-bold ${appConfig.animationEnabled !== false ? "text-indigo-700" : "text-slate-500"}`}>화면 전환</span>
+                                                </div>
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <span className={`text-[10px] font-bold ${appConfig.animationEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.animationEnabled !== false ? "ON" : "OFF"}</span>
+                                                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${appConfig.animationEnabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}>
+                                                        <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform ${appConfig.animationEnabled !== false ? 'translate-x-4' : ''}`}></div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -3341,9 +3322,9 @@
                                     <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
                                         <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span className="text-xl">🏖️</span> 방학 기간 설정</label>
                                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
-                                            {vacations.length > 0 ? (
+                                            {currentVacations.length > 0 ? (
                                                 <div className="space-y-2 max-h-32 overflow-y-auto custom-scroll pr-1">
-                                                    {vacations.map((v, i) => (
+                                                    {currentVacations.map((v, i) => (
                                                         <div key={i} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm group hover:border-indigo-200 transition-colors">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-[10px] font-bold">{i+1}</span>
@@ -3375,7 +3356,6 @@
                                             <Icon d={PATHS.help} size={10} /> 방학 기간에는 달력에서 날짜 선택이 제한됩니다.
                                         </div>
                                     </div>
-                                    <Btn onClick={handleConfigSave} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 active:scale-95 transition-all text-sm">설정 저장</Btn>
                                 </div>
                             </section>
                             
@@ -3399,10 +3379,6 @@
                                     <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
                                         {isAdminMode && (
                                             <div className="grid grid-cols-3 gap-3 mb-3 animate-fade-in">
-                                                <Btn onClick={() => setShowSystemLogs(true)} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.list} size={20} className="text-slate-500" /></div>
-                                                    <span className="text-xs font-bold text-slate-600">시스템 로그</span>
-                                                </Btn>
                                                 <Btn onClick={handleDownloadHtml} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
                                                     <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center"><Icon d={PATHS.download} size={20} className="text-indigo-500" /></div>
                                                     <span className="text-xs font-bold text-slate-600">파일로 저장</span>
@@ -3410,6 +3386,14 @@
                                                 <Btn onClick={handleCopyCode} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
                                                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.code} size={20} className="text-slate-500" /></div>
                                                     <span className="text-xs font-bold text-slate-600">코드 복사</span>
+                                                </Btn>
+                                                <Btn onClick={onOpenNotionSetup} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><span className="text-xl">N</span></div>
+                                                    <span className="text-xs font-bold text-slate-600">노션 연동</span>
+                                                </Btn>
+                                                <Btn onClick={onOpenApiKeySetup} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.bot} size={20} className="text-slate-500" /></div>
+                                                    <span className="text-xs font-bold text-slate-600">AI 설정</span>
                                                 </Btn>
                                             </div>
                                         )}
@@ -3426,20 +3410,11 @@
                                                 <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center"><Icon d={PATHS.trash} size={20} className="text-rose-500" /></div>
                                                 <span className="text-xs font-bold text-slate-600">데이터 정리</span>
                                             </Btn>
-                                            <Btn onClick={()=>counselingFileRef.current.click()} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all" title="필수 열: 이름, 내용 / 선택 열: 날짜">
-                                                <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center"><Icon d={PATHS.document} size={20} className="text-purple-500" /></div>
-                                                <span className="text-xs font-bold text-slate-600">기록 가져오기</span>
-                                            </Btn>
-                                            <Btn onClick={handleExportDrafts} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
-                                                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center"><Icon d={PATHS.upload} size={20} className="text-indigo-500" /></div>
-                                                <span className="text-xs font-bold text-slate-600">초안 내보내기</span>
-                                            </Btn>
                                             <Btn onClick={() => setShowManualModal(true)} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
                                                 <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center"><Icon d={PATHS.book} size={20} className="text-orange-500" /></div>
                                                 <span className="text-xs font-bold text-slate-600">사용 설명서</span>
                                             </Btn>
                                             <input type="file" ref={jsonFileRef} onChange={handleImportJson} className="hidden" accept=".json" />
-                                            <input type="file" ref={counselingFileRef} onChange={handleCounselingImport} className="hidden" accept=".csv" />
                                         </div>
                                         <div className="flex flex-col gap-2 p-3 bg-indigo-50/50 border-2 border-indigo-100 rounded-xl">
                                             <div className="flex items-center justify-between">
@@ -3502,7 +3477,9 @@
                                                                 <div className={`h-full rounded-full transition-all duration-500 ${dataUsage.isCritical ? 'bg-rose-500' : dataUsage.isWarning ? 'bg-orange-500' : 'bg-green-500'}`} style={{ width: `${Math.min(dataUsage.percent, 100)}%` }}></div>
                                                             </div>
                                                             <span className={`text-[9px] font-mono ${dataUsage.isCritical ? 'text-rose-600 font-bold' : 'text-green-600 opacity-80'}`}>{dataUsage.percent}% ({dataUsage.kb}KB)</span>
-                                                            <button onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }} className="text-slate-400 hover:text-indigo-500 ml-1"><Icon d={PATHS.help} size={10} /></button>
+                                                            <button onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }} className="text-slate-400 hover:text-indigo-500 ml-1 p-1 rounded hover:bg-slate-100 transition-colors">
+                                                                <Icon d={showStorageHelp ? PATHS.down : PATHS.right} size={12} />
+                                                            </button>
                                                         </div>
                                                         {showStorageHelp && (
                                                             <div className="mt-2 p-3 bg-slate-100 rounded-lg border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
@@ -3760,6 +3737,42 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.7.7", 
+                list: ["설정 > 앱 설정 > 아이콘 변경 기능 그룹화 (UI 개선)", "초안 내보내기 버튼 위치 변경 (설정 → 통계 탭 활동 잔디)"] 
+            },
+            { 
+                version: "v3.7.6", 
+                list: ["개발자 모드 진입 위치 변경"] 
+            },
+            { 
+                version: "v3.7.5", 
+                list: ["학생 명단 전체 삭제 시 잠금 해제 단계 추가"] 
+            },
+            { 
+                version: "v3.7.4", 
+                list: ["학생 관리 '일괄 삭제' 버튼에 잠금 장치 추가 (실수 방지)", "개발자 모드 진입 UX 개선"] 
+            },
+            { 
+                version: "v3.7.3", 
+                list: ["관리자 모드와 개발자 모드 분리"] 
+            },
+            { 
+                version: "v3.7.2", 
+                list: [, "관리자 비밀번호 입력 기능 제거"] 
+            },
+            { 
+                version: "v3.7.1", 
+                list: ["노션 연동 매뉴얼에 Vercel 배포 가이드 추가", "데이터 관리에서 '기록 가져오기' 기능 제거"] 
+            },
+            { 
+                version: "v3.7.0", 
+                list: ["노션 연동 설정 매뉴얼(가이드) 추가", "설정 UI 아이콘 및 도움말 토글 개선", "클라우드 동기화 상세 보기 버튼 직관화"] 
+            },
+            { 
+                version: "v3.7.0", 
+                list: ["노션(Notion) 개인 연동 기능 추가 (설정 > 데이터 관리)", "AI 설정(API Key) 메뉴 접근성 개선", "설정 메뉴 UI 최적화 (버튼 배치 및 크기 조정)", "시스템 로그 기능 제거"] 
+            },
             { 
                 version: "v3.6.1", 
                 list: ["스와이프 화면 전환 애니메이션 효과 추가", "설정 > 화면 전환 효과 ON/OFF 스위치 추가", "업데이트 노트 날짜 표시 제거"] 
@@ -5299,8 +5312,8 @@
         const App = () => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
-                minor: 6,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 1    // Patch: 기존 기능의 버그 수정
+                minor: 7,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
+                patch: 7    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5325,7 +5338,8 @@
                     });
                     let refreshing = false;
                     navigator.serviceWorker.addEventListener('controllerchange', () => {
-                        if (!refreshing) { window.location.reload(); refreshing = true; }
+                        // [Fix] 입력 중 데이터 유실 방지를 위해 자동 새로고침 비활성화
+                        // if (!refreshing) { window.location.reload(); refreshing = true; }
                     });
                 }
             }, []);
@@ -5360,6 +5374,9 @@
             const [seatAssignments, setSeatAssignments] = useState({});
             const [seatConfig, setSeatConfig] = useState({ rows: 5, cols: 5, disabledSeats: ['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4'] });
             const [groupDuration, setGroupDuration] = useState(1);
+            const [isDevMode, setIsDevMode] = useState(false);
+            const [gearClickCount, setGearClickCount] = useState(0);
+            const gearClickTimer = useRef(null);
             
             const [p1, setP1] = useState(""); const [p2, setP2] = useState("");
             const [groupMethod, setGroupMethod] = useState('count'); const [groupNumber, setGroupNumber] = useState(4);
@@ -5381,6 +5398,8 @@
             const [isSettingOpen, setIsSettingOpen] = useState(false); const [isSetupOpen, setIsSetupOpen] = useState(false); const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null }); const [toastMessage, setToastMessage] = useState(null);
+            const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
+            const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
@@ -5500,6 +5519,22 @@
                     if (outcome === 'accepted') { setDeferredPrompt(null); setShowInstallGuide(false); }
                 } else if (!isIOS) {
                     setToastMessage("이미 설치되어 있거나 설치를 지원하지 않는 브라우저입니다.");
+                }
+            };
+
+            const handleGearClick = (e) => {
+                e.stopPropagation();
+                if (gearClickTimer.current) clearTimeout(gearClickTimer.current);
+                const newCount = gearClickCount + 1;
+                setGearClickCount(newCount);
+                
+                if (newCount >= 3) {
+                    const newMode = !isDevMode;
+                    setIsDevMode(newMode);
+                    setToastMessage(newMode ? "개발자 모드가 활성화되었습니다." : "개발자 모드가 해제되었습니다.");
+                    setGearClickCount(0);
+                } else {
+                    gearClickTimer.current = setTimeout(() => setGearClickCount(0), 500);
                 }
             };
 
@@ -5790,6 +5825,52 @@
             setToastMessage("리포트가 텍스트 파일로 저장되었습니다.");
         };
 
+            const handleExportDrafts = () => {
+                logSystemEvent('총평 초안 내보내기 시도');
+                let content = "";
+                let count = 0;
+                const sortedStudents = [...students].sort((a, b) => a.order - b.order);
+
+                sortedStudents.forEach(s => {
+                    if (s.recordDrafts && Object.keys(s.recordDrafts).length > 0) {
+                        content += `##################################################\n`;
+                        content += `# ${s.order}번 ${s.name}\n`;
+                        content += `##################################################\n\n`;
+                        
+                        const drafts = Object.entries(s.recordDrafts).sort((a, b) => a[0].localeCompare(b[0]));
+                        
+                        drafts.forEach(([key, text]) => {
+                            if (!text) return;
+                            const [type, semester] = key.split('_');
+                            let typeName = type;
+                            if (type === 'behavior') typeName = '행동특성 및 종합의견';
+                            else if (type === 'subject') typeName = '교과 학습 발달 상황';
+                            
+                            const semesterName = semester === 'all' ? '전체' : `${semester}학기`;
+                            
+                            content += `[${typeName} - ${semesterName}]\n`;
+                            content += `${text}\n\n`;
+                            content += `--------------------------------------------------\n\n`;
+                        });
+                        content += `\n`;
+                        count++;
+                    }
+                });
+
+                if (count === 0) {
+                    setToastMessage("저장된 행발 초안이 없습니다.");
+                    return;
+                }
+
+                const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `총평초안_일괄내보내기_${dayjs().format('YYYYMMDD')}.txt`;
+                link.click();
+                setToastMessage(`${count}명의 초안을 텍스트 파일로 저장했습니다.`);
+            };
+
             const handleSaveStickerWithNote = (studentId, count, note) => {
                 const updatedStudents = students.map(s => s.id === studentId ? { ...s, stickers: count, counseling: note } : s);
                 setStudents(updatedStudents);
@@ -5847,6 +5928,27 @@
 
            useEffect(() => {
                 const savedConfig = safeLocalStorage.getItem('checklist_config');
+                
+                // [New] 캐시 우선 로딩 (Offline-First): 로컬 데이터를 먼저 불러와서 로딩 화면 즉시 제거
+                const ls = (k) => safeLocalStorage.getItem(k);
+                try {
+                    if (ls('cls_students')) setStudents(JSON.parse(ls('cls_students')));
+                    if (ls('cls_records')) setRecords(JSON.parse(ls('cls_records')));
+                    if (ls('cls_groups_date')) setGroupsByDate(JSON.parse(ls('cls_groups_date')));
+                    if (ls('cls_avoidance')) setAvoidancePairs(JSON.parse(ls('cls_avoidance')));
+                    if (ls('cls_mustPairs')) setMustPairs(JSON.parse(ls('cls_mustPairs')) || []);
+                    if (ls('cls_app_config')) setAppConfig({ ...JSON.parse(ls('cls_app_config')), version: CURRENT_VERSION });
+                    if (ls('cls_daily_tasks')) setDailyTasks(JSON.parse(ls('cls_daily_tasks')));
+                    if (ls('cls_weekly_tasks')) setWeeklyTasks(JSON.parse(ls('cls_weekly_tasks')));
+                    if (ls('cls_tags')) setTags(JSON.parse(ls('cls_tags')));
+                    if (ls('cls_group_names')) setGroupNames(JSON.parse(ls('cls_group_names')));
+                    if (ls('cls_group_roles')) setGroupRoles(JSON.parse(ls('cls_group_roles')));
+                    if (ls('cls_roles_list')) setRolesList(JSON.parse(ls('cls_roles_list')));
+                    if (ls('cls_role_descriptions')) setRoleDescriptions(JSON.parse(ls('cls_role_descriptions')));
+                    if (ls('cls_seat_assignments')) setSeatAssignments(JSON.parse(ls('cls_seat_assignments')));
+                    if (ls('cls_seat_config')) setSeatConfig(JSON.parse(ls('cls_seat_config')));
+                    if (ls('cls_ai_key')) setApiKey(ls('cls_ai_key'));
+                } catch (e) { console.error("Cache load error", e); }
                 
                 if (savedConfig) {
                     try {
@@ -5952,24 +6054,7 @@
                         });
                     } catch (e) { logSystemEvent(`Firebase 초기화 실패: ${e.message}`, 'error'); setIsLocalMode(true); setIsLoading(false); }
                 } else {
-                    // 로컬 모드 시작
-                    const ls = (k) => safeLocalStorage.getItem(k);
-                    if (ls('cls_students')) setStudents(JSON.parse(ls('cls_students')));
-                    if (ls('cls_records')) setRecords(JSON.parse(ls('cls_records')));
-                    if (ls('cls_groups_date')) setGroupsByDate(JSON.parse(ls('cls_groups_date')));
-                    if (ls('cls_avoidance')) setAvoidancePairs(JSON.parse(ls('cls_avoidance')));
-                    if (ls('cls_mustPairs')) setMustPairs(JSON.parse(ls('cls_mustPairs')) || []);
-                    if (ls('cls_app_config')) setAppConfig({ ...JSON.parse(ls('cls_app_config')), version: CURRENT_VERSION });
-                    if (ls('cls_daily_tasks')) setDailyTasks(JSON.parse(ls('cls_daily_tasks')));
-                    if (ls('cls_weekly_tasks')) setWeeklyTasks(JSON.parse(ls('cls_weekly_tasks')));
-                    if (ls('cls_tags')) setTags(JSON.parse(ls('cls_tags')));
-                    if (ls('cls_group_names')) setGroupNames(JSON.parse(ls('cls_group_names')));
-                    if (ls('cls_group_roles')) setGroupRoles(JSON.parse(ls('cls_group_roles')));
-                    if (ls('cls_roles_list')) setRolesList(JSON.parse(ls('cls_roles_list')));
-                    if (ls('cls_role_descriptions')) setRoleDescriptions(JSON.parse(ls('cls_role_descriptions')));
-                    if (ls('cls_seat_assignments')) setSeatAssignments(JSON.parse(ls('cls_seat_assignments')));
-                    if (ls('cls_seat_config')) setSeatConfig(JSON.parse(ls('cls_seat_config')));
-                    if (ls('cls_ai_key')) setApiKey(ls('cls_ai_key'));
+                    // 로컬 모드 (위에서 이미 로드함)
                     
                     // [추가됨] 로딩 완료 처리
                     setIsLoading(false);
@@ -5997,6 +6082,9 @@
             const saveData = async (keyOrData, value) => {
                 const updates = (typeof keyOrData === 'object') ? keyOrData : { [keyOrData]: value };
                 
+                // [New] 클라우드 모드여도 로컬 스토리지에 항상 캐시(백업) 저장 (빠른 로딩 및 오프라인 대비)
+                Object.entries(updates).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
+
                 if (isLocalMode) {
                     Object.entries(updates).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
                     return;
@@ -7272,7 +7360,16 @@
                                     <MissingView students={students} records={records} dailyTasks={dailyTasks} />
                                     <StickerAutomationView students={students} records={records} dailyTasks={dailyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} openConfirm={openConfirm} setStudents={setStudents} />
                                 </div>
-                                <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden mt-6"><div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">🌱</div><h3 onClick={handleGrassTitleClick} className="font-bold text-slate-800 mb-6 flex items-center gap-2 relative z-10 cursor-pointer select-none"><span className="text-xl">🌱</span> 활동 잔디 (30일)</h3><div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 relative z-10">{stats.students.map(s => (<div key={s.id} onClick={() => setGrassStudentId(s.id)} className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all group"><div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center font-bold text-xs text-slate-500 overflow-hidden">{s.photo ? <img src={s.photo} className="w-full h-full object-cover" alt={s.name} /> : s.order}</div><div className="flex flex-col min-w-0"><span className="text-sm font-bold text-slate-700 truncate">{s.name}</span><div className="flex gap-0.5 mt-1">{s.history.slice(0,5).map((h,i) => (<div key={i} className="w-2 h-2 rounded-full" style={h.ratio > 0 ? { background: `conic-gradient(#4ade80 0% ${h.ratio*100}%, #e2e8f0 ${h.ratio*100}% 100%)` } : { backgroundColor: '#e2e8f0' }}></div>))}</div></div></div>))}</div></div>
+                                <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden mt-6">
+                                    <div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">🌱</div>
+                                    <div className="flex justify-between items-center mb-6 relative z-10">
+                                        <h3 onClick={handleGrassTitleClick} className="font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none"><span className="text-xl">🌱</span> 활동 잔디 (30일)</h3>
+                                        <Btn onClick={handleExportDrafts} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 flex items-center gap-1 shadow-sm transition-transform active:scale-95">
+                                            <Icon d={PATHS.upload} size={14} /> 초안 내보내기
+                                        </Btn>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 relative z-10">{stats.students.map(s => (<div key={s.id} onClick={() => setGrassStudentId(s.id)} className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all group"><div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center font-bold text-xs text-slate-500 overflow-hidden">{s.photo ? <img src={s.photo} className="w-full h-full object-cover" alt={s.name} /> : s.order}</div><div className="flex flex-col min-w-0"><span className="text-sm font-bold text-slate-700 truncate">{s.name}</span><div className="flex gap-0.5 mt-1">{s.history.slice(0,5).map((h,i) => (<div key={i} className="w-2 h-2 rounded-full" style={h.ratio > 0 ? { background: `conic-gradient(#4ade80 0% ${h.ratio*100}%, #e2e8f0 ${h.ratio*100}% 100%)` } : { backgroundColor: '#e2e8f0' }}></div>))}</div></div></div>))}</div>
+                                </div>
                             </div>
                         )}
                         <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visual Studio Code With Gemini</footer>
@@ -7336,6 +7433,8 @@
                         openConfirm={openConfirm} 
                         handleResetAllData={handleResetAllData} 
                         onOpenSetup={() => setIsSetupOpen(true)}
+                        onOpenNotionSetup={() => setIsNotionSetupOpen(true)}
+                        onOpenApiKeySetup={() => setIsApiKeySetupOpen(true)}
                         records={records} 
                         groupsByDate={groupsByDate} 
                         avoidancePairs={avoidancePairs} 
@@ -7365,7 +7464,11 @@
                         isIOS={isIOS}
                         isStandalone={isStandalone}
                         onInstallApp={handleInstallApp}
+                        isDevMode={isDevMode}
+                        onDevModeClick={handleGearClick}
                     />
+                    <NotionSetupModal isOpen={isNotionSetupOpen} onClose={() => setIsNotionSetupOpen(false)} showToast={setToastMessage} />
+                    <ApiKeySetupModal isOpen={isApiKeySetupOpen} onClose={() => setIsApiKeySetupOpen(false)} apiKey={apiKey} setApiKey={setApiKey} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} validateApiKey={validateApiKey} />
                     <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} onInstall={confirmInstall} isIOS={isIOS} />
                     <TaskModal isOpen={isTaskModalOpen} onClose={()=>setIsTaskModalOpen(false)} date={date} dailyTasks={dailyTasks} setDailyTasks={setDailyTasks} weeklyTasks={weeklyTasks} setWeeklyTasks={setWeeklyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} tags={tags} setTags={setTags} openConfirm={openConfirm} />
                     <CalendarModal isOpen={isCalendarOpen} onClose={()=>setIsCalendarOpen(false)} currentDate={date} onSelectDate={setDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />

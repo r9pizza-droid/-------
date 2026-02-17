@@ -3,17 +3,20 @@ const { Client } = require('@notionhq/client');
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
-  // 1. 환경 변수에서 값을 가져오되, 앞뒤 공백과 대괄호([, ])를 강제로 제거합니다.
-  let rawDatabaseId = (process.env.NOTION_DATABASE_ID || "").trim().replace(/[\[\]]/g, "");
+  // 앱(프론트엔드)에서 직접 보낸 개인 키와 ID를 받습니다.
+  const { studentName, date, category, content, personalKey, personalDbId } = req.body;
 
-  // 2. 만약 주소 전체(https://...)가 들어왔다면, 32자리 ID만 추출하는 안전장치입니다.
-  const databaseId = rawDatabaseId.includes("notion.so") 
-    ? rawDatabaseId.split("/").pop().split("?")[0] 
-    : rawDatabaseId;
+  // 개인 키가 없으면 실행하지 않습니다.
+  if (!personalKey || !personalDbId) {
+    return res.status(400).json({ message: "노션 설정 정보가 없습니다." });
+  }
 
-  const notion = new Client({ auth: process.env.NOTION_KEY });
+  // ID에서 주소 형식을 제거하고 순수 ID만 추출 (안전장치)
+  const databaseId = personalDbId.includes("notion.so") 
+    ? personalDbId.split("/").pop().split("?")[0] 
+    : personalDbId.trim().replace(/[\[\]]/g, "");
 
-  const { studentName, date, category, content } = req.body;
+  const notion = new Client({ auth: personalKey });
 
   try {
     await notion.pages.create({
@@ -27,8 +30,6 @@ module.exports = async (req, res) => {
     });
     res.status(200).json({ success: true });
   } catch (error) {
-    console.error("Notion API Error:", error);
-    // 에러 메시지에 어떤 ID가 실제로 쓰였는지 출력하도록 수정했습니다 (확인용)
-    res.status(500).json({ message: `사용된 ID: [${databaseId}] / 오류: ${error.message}` });
+    res.status(500).json({ message: `노션 오류: ${error.message}` });
   }
 };
