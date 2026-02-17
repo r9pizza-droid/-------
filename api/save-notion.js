@@ -28,9 +28,6 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true, message: "연동 성공!", dbName });
     }
 
-    // 카테고리에 따른 페이지 아이콘(이모지) 설정
-    const iconEmoji = category === '칭찬' ? '⭐' : '📝';
-
     await notion.pages.create({
       parent: { database_id: databaseId },
       icon: {
@@ -39,7 +36,7 @@ module.exports = async (req, res) => {
       },
       properties: {
         '날짜': { date: { start: date } },
-        '이름': { title: [{ text: { content: `${iconEmoji} ${studentName || "이름 없음"}` } }] },
+        '이름': { title: [{ text: { content: studentName || "이름 없음" } }] },
         '분류': { select: { name: category || "기타" } },
         '내용': { rich_text: [{ text: { content: content || "" } }] },
       },
