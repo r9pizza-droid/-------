@@ -553,8 +553,14 @@
             const [isPortfolioMode, setIsPortfolioMode] = useState(false);
             const [selectedStudents, setSelectedStudents] = useState([]);
             const [searchQuery, setSearchQuery] = useState("");
+            const [showStudentDropdown, setShowStudentDropdown] = useState(false);
             const [notionStatus, setNotionStatus] = useState('idle'); // idle, saving, success, error
             const [hasNotionConfig, setHasNotionConfig] = useState(false);
+
+            const studentMapKeys = useMemo(() => {
+                try { return Object.keys(JSON.parse(localStorage.getItem('cls_student_map') || '{}')).sort(); } 
+                catch { return []; }
+            }, [isOpen]);
             
             useEffect(() => { 
                 if (!student) return;
@@ -689,17 +695,12 @@
                 setEditNoteContent("");
             };
 
-            const handleAddStudent = (e) => {
-                const val = e.target.value;
-                setSearchQuery(val);
-                // 입력된 값과 정확히 일치하는 학생이 있는지 확인 (datalist 선택 시)
-                const found = students.find(s => s.name === val);
-                if (found) {
-                    if (!selectedStudents.find(s => s.id === found.id)) {
-                        setSelectedStudents(prev => [...prev, found]);
-                    }
-                    setSearchQuery(""); // 선택 후 입력창 비우기
+            const handleSelectStudent = (s) => {
+                if (!selectedStudents.find(sel => sel.id === s.id)) {
+                    setSelectedStudents(prev => [...prev, s]);
                 }
+                setSearchQuery("");
+                setShowStudentDropdown(false);
             };
 
             const removeSelectedStudent = (id) => {
@@ -1281,14 +1282,30 @@
                                 <div className="flex flex-col gap-3 mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <div className="flex flex-col gap-2">
                                         <div className="flex gap-2">
-                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600" />
+                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'flex-1' : 'w-full'}`} />
                                             {isPortfolioMode && (
-                                                <div className="relative flex-1">
-                                                    <input list="student-list-options" value={searchQuery} onChange={handleAddStudent} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" placeholder="학생 추가..." />
-                                                    <datalist id="student-list-options">
-                                                        {students.map(s => <option key={s.id} value={s.name} />)}
+                                                <>
+                                                    <input 
+                                                        list="student-list"
+                                                        value={searchQuery} 
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setSearchQuery(val);
+                                                            const found = students.find(s => s.name === val);
+                                                            if (found) {
+                                                                if (!selectedStudents.find(sel => sel.id === found.id)) {
+                                                                    setSelectedStudents(prev => [...prev, found]);
+                                                                }
+                                                                setSearchQuery("");
+                                                            }
+                                                        }}
+                                                        className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
+                                                        placeholder="학생 검색..." 
+                                                    />
+                                                    <datalist id="student-list">
+                                                        {studentMapKeys.map(name => <option key={name} value={name} />)}
                                                     </datalist>
-                                                </div>
+                                                </>
                                             )}
                                         </div>
                                         {isPortfolioMode && selectedStudents.length > 0 && (
@@ -4178,6 +4195,18 @@
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.8.3", 
+                list: [
+                    "포트폴리오 학생 검색 드롭다운 표시 문제 수정 (레이어 순서 조정)"
+                ]
+            },
+            { 
+                version: "v3.8.2", 
+                list: [
+                    "포트폴리오 학생 검색 드롭다운 UI 개선 (커스텀 목록 적용)"
+                ]
+            },
+            { 
                 version: "v3.8.1", 
                 list: [
                     "노션 연동 설정 매뉴얼 개선 (기본 모드 vs 포트폴리오 모드 DB 설정 안내 추가)"
@@ -5857,7 +5886,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 1    // Patch: 기존 기능의 버그 수정
+                patch: 3    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
