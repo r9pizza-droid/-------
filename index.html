@@ -557,9 +557,9 @@
             const [notionStatus, setNotionStatus] = useState('idle'); // idle, saving, success, error
             const [hasNotionConfig, setHasNotionConfig] = useState(false);
 
-            const studentMapKeys = useMemo(() => {
-                try { return Object.keys(JSON.parse(localStorage.getItem('cls_student_map') || '{}')).sort(); } 
-                catch { return []; }
+            const studentMap = useMemo(() => {
+                try { return JSON.parse(localStorage.getItem('cls_student_map') || '{}'); } 
+                catch { return {}; }
             }, [isOpen]);
             
             useEffect(() => { 
@@ -695,12 +695,11 @@
                 setEditNoteContent("");
             };
 
-            const handleSelectStudent = (s) => {
-                if (!selectedStudents.find(sel => sel.id === s.id)) {
+            const handleStudentSelect = (name) => {
+                const s = students.find(st => st.name === name);
+                if (s && !selectedStudents.find(sel => sel.id === s.id)) {
                     setSelectedStudents(prev => [...prev, s]);
                 }
-                setSearchQuery("");
-                setShowStudentDropdown(false);
             };
 
             const removeSelectedStudent = (id) => {
@@ -1280,31 +1279,26 @@
                                 {/* [New] 통합 입력 폼 */}
                                 <div className="flex flex-col gap-3 mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <div className="flex flex-col gap-2">
-                                        <div className="flex gap-2">
-                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'flex-1' : 'w-full'}`} />
+                                        <div className="flex gap-2 items-end">
+                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
                                             {isPortfolioMode && (
-                                                <>
+                                                <div className="flex-1">
                                                     <input 
-                                                        list="student-list"
-                                                        value={searchQuery} 
+                                                        list="student-list" 
+                                                        placeholder="학생 검색..." 
+                                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
                                                         onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            setSearchQuery(val);
-                                                            const found = students.find(s => s.name === val);
-                                                            if (found) {
-                                                                if (!selectedStudents.find(sel => sel.id === found.id)) {
-                                                                    setSelectedStudents(prev => [...prev, found]);
-                                                                }
-                                                                setSearchQuery("");
+                                                            const name = e.target.value;
+                                                            if(studentMap[name]) {
+                                                                handleStudentSelect(name); 
+                                                                e.target.value = ""; 
                                                             }
                                                         }}
-                                                        className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
-                                                        placeholder="학생 검색..." 
                                                     />
                                                     <datalist id="student-list">
-                                                        {studentMapKeys.map(name => <option key={name} value={name} />)}
+                                                        {Object.keys(studentMap).sort().map(name => <option key={name} value={name} />)}
                                                     </datalist>
-                                                </>
+                                                </div>
                                             )}
                                         </div>
                                         {isPortfolioMode && selectedStudents.length > 0 && (
@@ -4194,6 +4188,13 @@
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.8.4", 
+                list: [
+                    "포트폴리오 모드 학생 검색 UI 개선 (입력창 통합)",
+                    "노션 저장 시 DB ID 검증 로직 강화"
+                ]
+            },
+            { 
                 version: "v3.8.3", 
                 list: [
                     "포트폴리오 학생 검색 드롭다운 표시 문제 수정 (레이어 순서 조정)"
@@ -5885,7 +5886,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 3    // Patch: 기존 기능의 버그 수정
+                patch: 4    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
