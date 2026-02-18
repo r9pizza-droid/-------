@@ -1293,14 +1293,15 @@
                                                         className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
                                                         onChange={(e) => {
                                                             const name = e.target.value;
-                                                            if(studentMap[name]) {
+                                                            const s = students.find(st => st.name === name);
+                                                            if(s) {
                                                                 handleStudentSelect(name); 
                                                                 e.target.value = ""; 
                                                             }
                                                         }}
                                                     />
                                                     <datalist id="portfolio-student-options">
-                                                        {Object.keys(studentMap).sort().map(name => <option key={name} value={name} />)}
+                                                        {students.slice().sort((a, b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.name} />)}
                                                     </datalist>
                                                 </div>
                                             )}
