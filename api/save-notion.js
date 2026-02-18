@@ -3,35 +3,31 @@ export default async function handler(req, res) {
 
     const { personalKey, personalDbId, studentName, date, category, content, mode, studentIds, studentNames } = req.body;
 
-    // 1. 공통 속성 (구분, 내용)
+    // ID가 비어있는지 서버에서도 한 번 더 체크
+    if (!personalDbId) return res.status(400).json({ error: "데이터베이스 ID가 없습니다. 설정에서 확인해주세요." });
+
     let properties = {
         "구분": { "select": { "name": category } },
         "내용": { "rich_text": [{ "text": { "content": content } }] }
     };
 
     if (mode === 'relation' && studentIds && studentIds.length > 0) {
-        /** [포트폴리오 모드 - 스타일 A 적용] **/
-        
-        // 제목 칸: "[칭찬] 내용 요약..." 형식으로 생성 (최대 15자 요약)
+        /** [포트폴리오 모드] **/
         const summary = content.length > 15 ? content.substring(0, 15) + "..." : content;
         const displayTitle = `[${category}] ${summary}`;
 
-        properties["이름"] = { 
+        // ★ 선생님의 사진에 맞춰 "이름" -> "제목"으로 수정했습니다.
+        properties["제목"] = { 
             "title": [{ "text": { "content": displayTitle } }] 
         };
         
-        // 학생 관계형 링크 (여기서 '김가원' 등 학생 페이지가 연결됨)
-        properties["학생"] = { 
-            "relation": studentIds.map(id => ({ "id": id })) 
-        };
-
-        // ★ 생성일시는 노션에서 '생성 일시' 속성으로 설정했으므로 여기서 보내지 않습니다.
-
+        properties["학생"] = { "relation": studentIds.map(id => ({ "id": id })) };
+        // "생성 일시"는 노션에서 자동 기록하므로 생략
     } else {
         /** [일반 기록 모드] **/
-        // 일반 모드는 기존처럼 "날짜" 칸(속성: 날짜)을 사용합니다.
         properties["날짜"] = { "date": { "start": date } };
-        properties["이름"] = { 
+        // 일반 모드도 "이름" 대신 "제목"을 쓸 수 있도록 처리
+        properties["제목"] = { 
             "title": [{ "text": { "content": Array.isArray(studentNames) ? studentNames.join(', ') : (studentName || "이름 없음") } }] 
         };
     }
