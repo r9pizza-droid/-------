@@ -550,6 +550,7 @@
             // [New] 노션 저장 관련 State
             const [notionDate, setNotionDate] = useState(dayjs().format('YYYY-MM-DD'));
             const [notionContent, setNotionContent] = useState('');
+            const [isPortfolioMode, setIsPortfolioMode] = useState(false);
             const [notionStatus, setNotionStatus] = useState('idle'); // idle, saving, success, error
             const [hasNotionConfig, setHasNotionConfig] = useState(false);
             
@@ -5643,6 +5644,7 @@
                 setNewVersionAvailable(false);
             };
 
+            const [isPortfolioMode, setIsPortfolioMode] = React.useState(false);
             const [mode, setMode] = useState("record");
             const [date, setDate] = useState(getToday());
             const [students, setStudents] = useState([]);
