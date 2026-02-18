@@ -1284,12 +1284,11 @@
                                 {/* [New] 통합 입력 폼 */}
                                 <div className="flex flex-col gap-3 mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <div className="flex flex-col gap-2">
-                                        <div className="flex gap-2">
-                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
+                                        <div className="flex items-center gap-2">
                                             {isPortfolioMode && (
                                                 <div className="flex-1">
                                                     <input 
-                                                        list="student-list" 
+                                                        list="portfolio-student-options" 
                                                         placeholder="학생 검색..." 
                                                         className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
                                                         onChange={(e) => {
@@ -1300,11 +1299,12 @@
                                                             }
                                                         }}
                                                     />
-                                                    <datalist id="student-list">
+                                                    <datalist id="portfolio-student-options">
                                                         {Object.keys(studentMap).sort().map(name => <option key={name} value={name} />)}
                                                     </datalist>
                                                 </div>
                                             )}
+                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
                                         </div>
                                         {isPortfolioMode && selectedStudents.length > 0 && (
                                             <div className="flex flex-wrap gap-1">
@@ -1327,15 +1327,15 @@
                                         <label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={keepContent} onChange={e => setKeepContent(e.target.checked)} className="w-3 h-3 text-indigo-600 rounded focus:ring-indigo-500" /><span className="text-[10px] text-slate-400 font-bold">내용 유지</span></label>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleIntegratedSave('칭찬')} disabled={notionStatus === 'saving'} className={`relative flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-2 ${notionStatus === 'saving' ? 'bg-indigo-300' : showButtonEffect ? 'bg-indigo-400 scale-95 shadow-inner' : 'bg-indigo-600 hover:bg-indigo-700 shadow-md'}`}>
-                                            칭찬 (+1)
+                                        <button onClick={() => handleIntegratedSave('칭찬')} disabled={notionStatus === 'saving'} className={`relative flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-2 ${notionStatus === 'saving' ? 'bg-rose-300' : 'bg-rose-500 hover:bg-rose-600 shadow-md'}`}>
+                                            칭찬하기
                                             {showButtonEffect && (
-                                                <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-indigo-600 font-extrabold text-lg animate-bounce bg-white px-2 py-1 rounded-full shadow-md border border-indigo-100 z-10 pointer-events-none whitespace-nowrap">
+                                                <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-rose-600 font-extrabold text-lg animate-bounce bg-white px-2 py-1 rounded-full shadow-md border border-rose-100 z-10 pointer-events-none whitespace-nowrap">
                                                     +1
                                                 </span>
                                             )}
                                         </button>
-                                        <button onClick={() => handleIntegratedSave('관찰')} disabled={notionStatus === 'saving'} className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${notionStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>기록</button>
+                                        <button onClick={() => handleIntegratedSave('관찰')} disabled={notionStatus === 'saving'} className={`flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-2 ${notionStatus === 'saving' ? 'bg-indigo-300' : 'bg-indigo-500 hover:bg-indigo-600 shadow-md'}`}>관찰기록</button>
                                     </div>
                                     {notionStatus === 'success' && <div className="text-center text-[10px] text-green-500 font-bold animate-fade-in">✅ 성공적으로 저장되었습니다!</div>}
                                     {notionStatus === 'error' && <div className="text-center text-[10px] text-rose-500 font-bold animate-fade-in">⚠️ 노션 전송 실패 (앱에는 저장됨)</div>}
@@ -4193,6 +4193,12 @@
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.8.5", 
+                list: [
+                    "포트폴리오 모드 학생 검색 드롭다운 동작 수정 (전체 명단 표시 및 ID 충돌 해결)"
+                ]
+            },
+            { 
                 version: "v3.8.4", 
                 list: [
                     "포트폴리오 모드 학생 검색 UI 개선 (입력창 통합)",
@@ -5891,7 +5897,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 4    // Patch: 기존 기능의 버그 수정
+                patch: 5    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
