@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
   }
 
   // 앱에서 보낸 데이터와 개인 설정값 받기
-  const { mode, studentName, studentIds, date, content, personalKey, personalDbId, testMode } = req.body;
+  const { mode, studentName, studentIds, date, category, content, personalKey, personalDbId, testMode } = req.body;
 
   if (!personalKey || !personalDbId) {
     return res.status(400).json({ message: "노션 설정 정보가 없습니다. 앱 설정(⚙️)을 확인해주세요." });
@@ -33,26 +33,42 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true, message: "연동 성공!", dbName });
     }
 
-    const properties = {
-      '날짜': { date: { start: date } },
-      '이름': { title: [{ text: { content: studentName || "이름 없음" } }] },
-      '상세내용': { rich_text: [{ text: { content: content || "" } }] },
-    };
-
-    if (mode === 'relation' && Array.isArray(studentIds)) {
-      properties['학생연결'] = { relation: studentIds.map(id => ({ id })) };
-    } else if (mode === 'text') {
-      properties['학생성함'] = { rich_text: [{ text: { content: studentName || "" } }] };
+    // 모드에 따라 '이름' 속성을 다르게 포장하기
+    let nameProperty;
+    
+    if (mode === 'relation' && studentIds && studentIds.length > 0) {
+        // [포트폴리오 모드] 관계형(Relation)으로 연결
+        nameProperty = { "relation": studentIds.map(id => ({ "id": id })) };
+    } else {
+        // [기본 모드] 그냥 텍스트(Title/Rich_text)로 저장
+        nameProperty = { "title": [{ "text": { "content": studentName || "이름 없음" } }] };
     }
 
-    await notion.pages.create({
-      parent: { database_id: databaseId },
-      icon: {
-        type: "emoji",
-        emoji: "🍀"
-      },
-      properties: properties,
+    const response = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${personalKey}`,
+            'Content-Type': 'application/json',
+            'Notion-Version': '2022-06-28'
+        },
+        body: JSON.stringify({
+            parent: { database_id: databaseId },
+            icon: { type: "emoji", emoji: "🍀" },
+            properties: {
+                "이름": nameProperty,
+                "날짜": { "date": { "start": date } },
+                "구분": { "select": { "name": category || "기타" } },
+                "내용": { "rich_text": [{ "text": { "content": content || "" } }] }
+            }
+        })
     });
+
+    const data = await response.json();
+    if (!response.ok) {
+        console.error('Notion Error:', data);
+        return res.status(response.status).json(data);
+    }
+
     res.status(200).json({ success: true });
   } catch (error) {
     console.error("Notion API Error:", error);

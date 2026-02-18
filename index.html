@@ -726,17 +726,35 @@
                         return;
                     }
 
+                    const isPortfolio = localStorage.getItem('cls_portfolio_mode') === 'true';
+                    const bodyData = {
+                        date: notionDate,
+                        category: withSticker ? '칭찬' : '관찰',
+                        content: notionContent,
+                        personalKey,
+                        personalDbId
+                    };
+
+                    if (isPortfolio) {
+                        const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
+                        const notionId = map[student.name];
+                        if (notionId) {
+                            bodyData.mode = 'relation';
+                            bodyData.studentIds = [notionId];
+                        } else {
+                            alert('설정에서 학생 ID를 먼저 연결해주세요.');
+                            setNotionStatus('idle');
+                            return;
+                        }
+                    } else {
+                        bodyData.mode = 'text';
+                        bodyData.studentName = student.name;
+                    }
+
                     const response = await fetch('/api/save-notion', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            studentName: student.name,
-                            date: notionDate,
-                            category: withSticker ? '칭찬' : '관찰',
-                            content: notionContent,
-                            personalKey,
-                            personalDbId
-                        })
+                        body: JSON.stringify(bodyData)
                     });
                     if (!response.ok) {
                         if (response.status === 404) {
@@ -1432,7 +1450,7 @@
                         <div ref={reportRef} className={`w-[800px] bg-white p-12 border border-slate-200 text-slate-800 ${reportFont === 'serif' ? 'font-serif' : reportFont === 'hand' ? 'font-hand' : reportFont === 'jua' ? 'font-jua' : reportFont === 'nanum' ? 'font-nanum' : reportFont === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'}`}>
                             <div className="text-center border-b-2 border-slate-800 pb-6 mb-8">
                                 <h1 className="text-4xl font-extrabold text-slate-900 mb-2">🌱 학습 성장 리포트</h1>
-                                <p className="text-slate-500 text-lg">{dayjs().format('YYYY년 M월 D일')}</p>
+                                <p className="text-slate-500 text-lg">{dayjs().format('YY.MM.DD')}</p>
                             </div>
                             <div className="flex gap-8 mb-8">
                                 <div className="w-32 h-32 rounded-full bg-slate-100 border-4 border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
@@ -2085,7 +2103,7 @@
                         </div>
                         <div className="flex justify-between items-center mb-4 px-2">
                             <Btn onClick={() => setViewDate(viewDate.subtract(1, 'month'))} className="p-2 hover:bg-slate-100 rounded-full"><Icon d={PATHS.left} size={18} /></Btn>
-                            <span className="font-bold text-lg text-slate-700">{viewDate.format('YYYY년 M월')}</span>
+                            <span className="font-bold text-lg text-slate-700">{viewDate.format('YY.MM')}</span>
                             <Btn onClick={() => setViewDate(viewDate.add(1, 'month'))} className="p-2 hover:bg-slate-100 rounded-full"><Icon d={PATHS.right} size={18} /></Btn>
                         </div>
                         <div className="grid grid-cols-7 mb-2 text-center">
@@ -2355,12 +2373,14 @@
             );
         };
 
-        const NotionSetupModal = ({ isOpen, onClose, showToast, saveData, isLocalMode }) => {
+        const NotionSetupModal = ({ isOpen, onClose, showToast, saveData, isLocalMode, isPortfolioMode, setIsPortfolioMode, studentMap, setStudentMap }) => {
             const [apiKey, setApiKey] = useState("");
             const [dbId, setDbId] = useState("");
             const [saveLocally, setSaveLocally] = useState(false);
             const [showManual, setShowManual] = useState(false);
             const [isTesting, setIsTesting] = useState(false);
+            const [manualInput, setManualInput] = useState("");
+            const fileInputRef = useRef(null);
 
             useEffect(() => {
                 if (isOpen) {
@@ -2369,6 +2389,9 @@
                     if (savedKey) setApiKey(savedKey);
                     if (savedDbId) setDbId(savedDbId);
                     if (savedKey || savedDbId) setSaveLocally(true);
+                    
+                    const savedMode = localStorage.getItem('cls_portfolio_mode') === 'true';
+                    if (setIsPortfolioMode && savedMode !== isPortfolioMode) setIsPortfolioMode(savedMode);
                 }
             }, [isOpen]);
 
@@ -2443,6 +2466,65 @@
                 } catch (err) { showToast("붙여넣기 실패 (권한 확인 필요)"); }
             };
 
+            const handlePortfolioToggle = (e) => {
+                const checked = e.target.checked;
+                if (setIsPortfolioMode) setIsPortfolioMode(checked);
+                localStorage.setItem('cls_portfolio_mode', checked);
+            };
+
+            const handleFileUploadPortfolio = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const text = ev.target.result;
+                    const lines = text.split(/[\r\n]+/);
+                    const newMap = { ...studentMap };
+                    let count = 0;
+                    lines.forEach(line => {
+                        if (!line.trim()) return;
+                        const parts = line.split(/[,:\t]+/).map(s => s.trim());
+                        if (parts.length >= 2) {
+                            const name = parts[0];
+                            const id = parts[parts.length - 1];
+                            if (name && id) { newMap[name] = id; count++; }
+                        }
+                    });
+                    if (setStudentMap) setStudentMap(newMap);
+                    localStorage.setItem('cls_student_map', JSON.stringify(newMap));
+                    showToast(`${count}명의 데이터가 등록되었습니다.`);
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            };
+
+            const handleManualAdd = () => {
+                if (!manualInput.trim()) return;
+                const lines = manualInput.split(/[\r\n]+/);
+                const newMap = { ...studentMap };
+                let count = 0;
+                lines.forEach(line => {
+                    if (!line.trim()) return;
+                    const parts = line.split(/[:=,]+/).map(s => s.trim());
+                    if (parts.length >= 2) {
+                        const name = parts[0];
+                        const id = parts[parts.length - 1];
+                        if (name && id) { newMap[name] = id; count++; }
+                    }
+                });
+                if (setStudentMap) setStudentMap(newMap);
+                localStorage.setItem('cls_student_map', JSON.stringify(newMap));
+                setManualInput("");
+                showToast(`${count}명이 추가되었습니다.`);
+            };
+
+            const handleDeleteItem = (name) => {
+                const newMap = { ...studentMap };
+                delete newMap[name];
+                if (setStudentMap) setStudentMap(newMap);
+                localStorage.setItem('cls_student_map', JSON.stringify(newMap));
+            };
+
             if (!isOpen) return null;
             return (
                 <BaseModal isOpen={isOpen} onClose={onClose} title="📓 Notion 연동 설정" icon={null}>
@@ -2493,6 +2575,43 @@
                                 <Btn onClick={handlePasteDbId} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                             </div>
                         </div>
+                        
+                        <div className="pt-4 border-t border-slate-200">
+                            <label className="flex items-center justify-between cursor-pointer select-none">
+                                <span className="text-sm font-bold text-slate-700">포트폴리오 모드 </span>
+                                <div className="relative">
+                                    <input type="checkbox" className="sr-only" checked={isPortfolioMode} onChange={handlePortfolioToggle} />
+                                    <div className={`w-10 h-6 rounded-full shadow-inner transition-colors ${isPortfolioMode ? 'bg-indigo-500' : 'bg-slate-300'}`}></div>
+                                    <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isPortfolioMode ? 'translate-x-4' : ''}`}></div>
+                                </div>
+                            </label>
+                            <p className="text-xs text-slate-500 mt-1">학생 이름을 클릭하면 연결된 노션 페이지로 이동합니다.</p>
+                        </div>
+
+                        {isPortfolioMode && (
+                            <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4 animate-fade-in">
+                                <div className="flex justify-between items-center">
+                                    <h4 className="text-xs font-bold text-slate-600">명단 관리 (이름:노션ID)</h4>
+                                    <Btn onClick={() => fileInputRef.current.click()} className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50">📂 엑셀(CSV) 업로드</Btn>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileUploadPortfolio} className="hidden" accept=".csv,.txt" />
+                                </div>
+                                <div className="max-h-32 overflow-y-auto custom-scroll bg-white border border-slate-200 rounded-lg p-2 space-y-1">
+                                    {studentMap && Object.keys(studentMap).length > 0 ? (
+                                        Object.entries(studentMap).map(([name, id]) => (
+                                            <div key={name} className="flex justify-between items-center text-xs p-1 hover:bg-slate-50 rounded">
+                                                <span className="font-bold text-slate-700">{name}</span>
+                                                <div className="flex items-center gap-2"><span className="text-slate-400 font-mono text-[10px] truncate max-w-[100px]">{id}</span><button onClick={() => handleDeleteItem(name)} className="text-rose-400 hover:text-rose-600">×</button></div>
+                                            </div>
+                                        ))
+                                    ) : (<div className="text-center text-slate-400 text-xs py-4">등록된 명단이 없습니다.</div>)}
+                                </div>
+                                <div className="flex gap-2">
+                                    <textarea value={manualInput} onChange={e => setManualInput(e.target.value)} className="flex-1 p-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 resize-none" placeholder="이름:ID (여러 명은 줄바꿈)" rows="2" />
+                                    <Btn onClick={handleManualAdd} className="px-3 bg-indigo-500 text-white rounded-lg text-xs font-bold hover:bg-indigo-600">추가</Btn>
+                                </div>
+                            </div>
+                        )}
+
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" checked={saveLocally} onChange={e => setSaveLocally(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
                             <span className="text-sm text-slate-700 font-bold">이 기기에 정보 저장하기</span>
@@ -2857,6 +2976,7 @@
             const [isDataManagementOpen, setIsDataManagementOpen] = useState(true);
             const [showFaviconHelp, setShowFaviconHelp] = useState(false);
             const [showResetOptions, setShowResetOptions] = useState(false);
+            const [isStudentListOpen, setIsStudentListOpen] = useState(true);
             
             const isNotionConnected = !!(localStorage.getItem('cls_notion_key') && localStorage.getItem('cls_notion_db_id'));
             const isAiConnected = !!apiKey;
@@ -3227,7 +3347,7 @@
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:h-full h-auto min-h-0">
                         
-                        <div className="flex flex-col lg:h-full h-96 overflow-hidden">
+                        <div className="flex flex-col lg:h-full h-auto">
                             <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3 mb-5 flex-shrink-0">
                                 <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><span className="text-2xl">🧑‍🎓</span> 학생 관리</h3>
                                 <div className="flex items-center">
@@ -3246,18 +3366,23 @@
                                 </div>
                             </div>
                             
-                            <h4 className="font-bold text-slate-700 mb-2 flex justify-between text-sm items-center flex-shrink-0 px-1"> <span>전체 명단 ({students.length}명)</span> <div className="flex gap-2"> <Btn onClick={addTestData} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 hover:bg-indigo-100 transition-colors">테스트 명단</Btn> 
+                            <h4 className="font-bold text-slate-700 mb-2 flex flex-wrap items-center flex-shrink-0 px-1 gap-2"> 
+                                <div className="flex items-center gap-2 cursor-pointer select-none py-1" onClick={() => setIsStudentListOpen(!isStudentListOpen)}>
+                                    <span className="whitespace-nowrap">전체 명단 ({students.length}명)</span>
+                                    <Icon d={isStudentListOpen ? PATHS.down : PATHS.right} size={14} className="text-slate-400 pointer-events-none" />
+                                </div>
+                                <div className="flex gap-2"> <Btn onClick={addTestData} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 hover:bg-indigo-100 transition-colors whitespace-nowrap">테스트 명단</Btn> 
                                 {isDeleteLocked ? (
-                                    <Btn onClick={() => setIsDeleteLocked(false)} className="text-xs bg-slate-100 text-slate-400 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 hover:bg-slate-200 transition-colors"><Icon d={PATHS.lock} size={12} /> 잠금 해제</Btn>
+                                    <Btn onClick={() => setIsDeleteLocked(false)} className="text-xs bg-slate-100 text-slate-400 p-1.5 rounded-lg font-bold flex items-center justify-center my-1 hover:bg-slate-200 transition-colors" title="잠금 해제"><Icon d={PATHS.lock} size={14} /></Btn>
                                 ) : (
                                     isDeletingAll ?
-                                    <div className="flex gap-2"><Btn onClick={handleDeleteAll} className="text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg animate-pulse">확인</Btn><Btn onClick={() => { setIsDeletingAll(false); setIsDeleteLocked(true); }} className="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg">취소</Btn></div> : 
-                                    <Btn onClick={() => setIsDeletingAll(true)} className="text-xs bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1"><Icon d={PATHS.trash} size={12} /> 명단 전체 삭제</Btn>
+                                    <div className="flex gap-2"><Btn onClick={handleDeleteAll} className="text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg animate-pulse whitespace-nowrap">확인</Btn><Btn onClick={() => { setIsDeletingAll(false); setIsDeleteLocked(true); }} className="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg whitespace-nowrap">취소</Btn></div> : 
+                                    <Btn onClick={() => setIsDeletingAll(true)} className="text-xs bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 whitespace-nowrap"><Icon d={PATHS.trash} size={12} /> 명단 전체 삭제</Btn>
                                 )} 
                             </div> </h4>
                             
-                            <div id="student-list" className="flex-1 overflow-y-auto bg-slate-50 p-2 rounded-xl space-y-1 custom-scroll border border-slate-200 h-full shadow-inner">
-                                {students.map(s => (
+                            <div id="student-list" className="flex-1 lg:overflow-y-auto overflow-visible bg-slate-50 p-2 rounded-xl space-y-1 custom-scroll border border-slate-200 lg:h-full h-auto shadow-inner animate-fade-in">
+                                {(isStudentListOpen ? students : students.slice(0, 2)).map(s => (
                                     <div key={s.id} className="flex justify-between items-center p-2.5 bg-white rounded-lg border border-slate-100 text-sm group min-h-[46px]">
                                         {editingId === s.id ? (
                                             <div className="flex gap-1 flex-1 items-center animate-fade-in w-full">
@@ -3285,6 +3410,11 @@
                                         )}
                                     </div>
                                 ))}
+                                {!isStudentListOpen && students.length > 2 && (
+                                    <div className="text-center text-xs text-slate-400 py-2 cursor-pointer hover:text-indigo-500 transition-colors" onClick={() => setIsStudentListOpen(true)}>
+                                        ... 외 {students.length - 2}명 더 보기
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -3470,8 +3600,8 @@
                                                 </div>
                                                 <div className="flex justify-end items-center gap-2">
                                                     <span className={`text-[10px] font-bold ${appConfig.soundEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.soundEnabled !== false ? "ON" : "OFF"}</span>
-                                                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${appConfig.soundEnabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}>
-                                                        <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform ${appConfig.soundEnabled !== false ? 'translate-x-4' : ''}`}></div>
+                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${appConfig.soundEnabled !== false ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}>
+                                                        {appConfig.soundEnabled !== false && <Icon d={PATHS.check} size={14} className="text-white" strokeWidth={3} />}
                                                     </div>
                                                 </div>
                                             </div>
@@ -3485,8 +3615,8 @@
                                                 </div>
                                                 <div className="flex justify-end items-center gap-2">
                                                     <span className={`text-[10px] font-bold ${appConfig.animationEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.animationEnabled !== false ? "ON" : "OFF"}</span>
-                                                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${appConfig.animationEnabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}>
-                                                        <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform ${appConfig.animationEnabled !== false ? 'translate-x-4' : ''}`}></div>
+                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${appConfig.animationEnabled !== false ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}>
+                                                        {appConfig.animationEnabled !== false && <Icon d={PATHS.check} size={14} className="text-white" strokeWidth={3} />}
                                                     </div>
                                                 </div>
                                             </div>
@@ -3502,7 +3632,7 @@
                                                         <div key={i} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm group hover:border-indigo-200 transition-colors">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-[10px] font-bold">{i+1}</span>
-                                                                <span className="font-bold text-slate-600 text-xs">{v.start} ~ {v.end}</span>
+                                                                <span className="font-bold text-slate-600 text-xs">{dayjs(v.start).format('YY.MM.DD')} ~ {dayjs(v.end).format('YY.MM.DD')}</span>
                                                             </div>
                                                             <button onClick={() => removeVacation(i)} className="text-slate-300 hover:text-rose-500 p-1 hover:bg-rose-50 rounded transition-colors"><Icon d={PATHS.trash} size={14}/></button>
                                                         </div>
@@ -3511,7 +3641,7 @@
                                             ) : (<div className="text-center text-slate-400 text-xs py-4 border-2 border-dashed border-slate-200 rounded-lg bg-white/50">등록된 방학 기간이 없습니다.</div>)}
                                             
                                             <div className="pt-3 border-t border-slate-200">
-                                                <div className="grid grid-cols-2 gap-4 mb-2">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
                                                     <div className="flex flex-col gap-1">
                                                         <span className="text-[10px] font-bold text-slate-400 ml-1">시작일</span>
                                                         <input type="date" value={newVacStart} onChange={e => setNewVacStart(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white outline-none focus:border-indigo-500 font-bold text-slate-600" />
@@ -3951,6 +4081,24 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.8.0", 
+                list: [
+                    "포트폴리오 모드 추가 (생기부용 노션 연동 강화)",
+                    "노션 저장 시 학생 ID 연결(Relation) 지원",
+                    "설정 > 학생 관리에서 노션 ID 매핑 및 엑셀 업로드 기능 추가"
+                ]
+            },
+            { 
+                version: "v3.7.37", 
+                list: [
+                    "설정 > 학생 명단 접기/펼치기 기능 추가 및 버튼 배치 개선",
+                    "모바일 모둠 결과 카드 접기 시 2명만 보이도록 수정",
+                    "설정 토글 버튼 디자인 변경 (원형 체크박스)",
+                    "년도 표기 방식 변경 (YYYY → YY)",
+                    "방학 설정 입력창 모바일 레이아웃 개선"
+                ]
+            },
             { 
                 version: "v3.7.27", 
                 list: ["모바일 기록 탭 날짜 스와이프 기능 제거"] 
@@ -5606,8 +5754,8 @@
         const App = () => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
-                minor: 7,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 36   // Patch: 기존 기능의 버그 수정
+                minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
+                patch: 0    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5644,9 +5792,21 @@
                 setNewVersionAvailable(false);
             };
 
-            const [isPortfolioMode, setIsPortfolioMode] = React.useState(false);
             const [mode, setMode] = useState("record");
             const [date, setDate] = useState(getToday());
+
+            /* --- 포트폴리오 모드 설정 시작 --- */
+            const [isPortfolioMode, setIsPortfolioMode] = React.useState(false);
+            const [studentMap, setStudentMap] = React.useState({});
+
+            React.useEffect(() => {
+              try {
+                const saved = localStorage.getItem('cls_student_map');
+                if (saved) setStudentMap(JSON.parse(saved));
+              } catch (e) {}
+            }, []);
+            /* --- 포트폴리오 모드 설정 끝 --- */
+
             const [students, setStudents] = useState([]);
             const [records, setRecords] = useState({});
             const [simpleChecks, setSimpleChecks] = useState({});
@@ -7531,7 +7691,7 @@
                                                             const groupAvgSkill = g.length > 0 ? g.reduce((a, s) => a + s.skill, 0) / g.length : 0;
                                                             const isSkillImbalanced = g.length > 0 && Math.abs(groupAvgSkill - classAvgSkill) > 0.5;
                                                             const isExpanded = expandedGroupCards[i];
-                                                            const MAX_VISIBLE = 6;
+                                                            const MAX_VISIBLE = 2;
                                                             const visibleStudents = (g.length > MAX_VISIBLE && !isExpanded) ? g.slice(0, MAX_VISIBLE) : g;
                                                             const hiddenCount = g.length - MAX_VISIBLE;
                                                             return (
@@ -7587,7 +7747,7 @@
                                                                         // 자리(Index) 기준 역할 조회 (없으면 학생 ID 기준 레거시 데이터 조회 시도)
                                                                         const role = groupRoles[date]?.[i]?.[sIdx] || groupRoles[date]?.[i]?.[s.id];
                                                                         return (
-                                                                            <div key={s.id} data-student-name={s.name} draggable="true" onDragStart={(e) => handleDragStart(e, s.id, i)} onDragEnd={handleDragEnd} className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-grab active:cursor-grabbing touch-none ${s.gender === 'M' ? 'bg-blue-50/50 border-blue-100 hover:bg-blue-50' : 'bg-pink-50/50 border-pink-100 hover:bg-pink-50'} ${isLocked ? 'ring-2 ring-indigo-400 shadow-sm' : ''}`}>
+                                                                            <div key={s.id} data-student-name={s.name} draggable="true" onDragStart={(e) => handleDragStart(e, s.id, i)} onDragEnd={handleDragEnd} className={`flex items-center justify-between p-2 rounded-2xl border transition-all cursor-grab active:cursor-grabbing touch-none ${s.gender === 'M' ? 'bg-blue-50/50 border-blue-100 hover:bg-blue-50' : 'bg-pink-50/50 border-pink-100 hover:bg-pink-50'} ${isLocked ? 'ring-2 ring-indigo-400 shadow-sm' : ''}`}>
                                                                                 <div className="flex items-center gap-2">
                                                                                     <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${s.gender==='M'?'bg-blue-200 text-blue-700':'bg-pink-200 text-pink-700'}`}>{s.order}</span>
                                                                                     <span className="text-sm font-bold text-slate-700 whitespace-nowrap">{s.name}</span>
@@ -7768,7 +7928,7 @@
                         isDevMode={isDevMode}
                         onDevModeClick={handleGearClick}
                     />
-                    <NotionSetupModal isOpen={isNotionSetupOpen} onClose={() => setIsNotionSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} />
+                    <NotionSetupModal isOpen={isNotionSetupOpen} onClose={() => setIsNotionSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} isPortfolioMode={isPortfolioMode} setIsPortfolioMode={setIsPortfolioMode} studentMap={studentMap} setStudentMap={setStudentMap} />
                     <ApiKeySetupModal isOpen={isApiKeySetupOpen} onClose={() => setIsApiKeySetupOpen(false)} apiKey={apiKey} setApiKey={setApiKey} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} validateApiKey={validateApiKey} />
                     <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} onInstall={confirmInstall} isIOS={isIOS} />
                     <TaskModal isOpen={isTaskModalOpen} onClose={()=>setIsTaskModalOpen(false)} date={date} dailyTasks={dailyTasks} setDailyTasks={setDailyTasks} weeklyTasks={weeklyTasks} setWeeklyTasks={setWeeklyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} tags={tags} setTags={setTags} openConfirm={openConfirm} />
