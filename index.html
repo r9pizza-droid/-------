@@ -3835,7 +3835,7 @@
             </div>
         );
         
-        const RecordView = ({ students, records, dailyTasks, date, toggleCheck, appConfig, stats }) => {
+        const RecordView = ({ students, records, dailyTasks, date, toggleCheck, appConfig, stats, onLongPress }) => {
             const getStreakBadge = (studentId) => {
                 const s = stats.students.find(st => st.id === studentId);
                 if(!s) return null;
@@ -3843,6 +3843,25 @@
                 if(s.streak >= 7) return "🔥";
                 if(s.streak >= 3) return "🌱";
                 return null;
+            };
+            
+            const longPressTimer = useRef(null);
+            const isLongPress = useRef(false);
+
+            const handleTouchStart = (id) => {
+                isLongPress.current = false;
+                longPressTimer.current = setTimeout(() => {
+                    isLongPress.current = true;
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    onLongPress(id);
+                }, 2000);
+            };
+
+            const handleTouchEnd = () => {
+                if (longPressTimer.current) {
+                    clearTimeout(longPressTimer.current);
+                    longPressTimer.current = null;
+                }
             };
 
             return (
@@ -3854,7 +3873,14 @@
                         const showPhoto = false;
 
                         return (
-                            <div key={s.id} onClick={() => toggleCheck(s.id)} className={`group relative flex flex-col bg-white rounded-md border transition-all duration-200 cursor-pointer overflow-hidden hover:bg-notion-bg-hover ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm hover:shadow-md"}`}>
+                            <div key={s.id} 
+                                onMouseDown={() => handleTouchStart(s.id)} 
+                                onMouseUp={handleTouchEnd} 
+                                onMouseLeave={handleTouchEnd}
+                                onTouchStart={() => handleTouchStart(s.id)} 
+                                onTouchEnd={handleTouchEnd}
+                                onClick={() => { if (!isLongPress.current) toggleCheck(s.id); }}
+                                className={`group relative flex flex-col bg-white rounded-md border transition-all duration-200 cursor-pointer overflow-hidden hover:bg-notion-bg-hover ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm hover:shadow-md"}`}>
                                 {showPhoto ? (
                                     <div className="w-full aspect-[4/3] bg-gray-50 relative border-b border-notion-border">
                                         <img src={s.photo} className="w-full h-full object-cover" alt={s.name} />
@@ -5580,7 +5606,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 7,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 27   // Patch: 기존 기능의 버그 수정
+                patch: 36   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -7353,7 +7379,7 @@
                                         </Btn>
                                         <button onClick={() => setShowStoryHelp(true)} className="text-notion-text-light hover:text-notion-text p-1 rounded hover:bg-notion-bg-hover transition-colors" title="도움말"><Icon d={PATHS.help} size={18} /></button>
                                     </div>
-                                    <RecordView students={students} records={records} dailyTasks={dailyTasks} date={date} toggleCheck={toggleCheck} appConfig={appConfig} stats={stats} />
+                                    <RecordView students={students} records={records} dailyTasks={dailyTasks} date={date} toggleCheck={toggleCheck} appConfig={appConfig} stats={stats} onLongPress={(id) => setGrassStudentId(id)} />
                                 </>
                             )}
                             {mode === 'simple' && <SimpleView students={students} simpleChecks={simpleChecks} toggleCheck={toggleCheck} />}
