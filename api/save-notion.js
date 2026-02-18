@@ -1,13 +1,18 @@
 const { Client } = require('@notionhq/client');
 
 module.exports = async (req, res) => {
-  // 웹 배포 전용: 불필요한 CORS 설정 삭제 및 POST 메서드 확인
+  // CORS 허용 설정
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
   // 앱에서 보낸 데이터와 개인 설정값 받기
-  const { studentName, date, category, content, personalKey, personalDbId, testMode } = req.body;
+  const { mode, studentName, studentIds, date, content, personalKey, personalDbId, testMode } = req.body;
 
   if (!personalKey || !personalDbId) {
     return res.status(400).json({ message: "노션 설정 정보가 없습니다. 앱 설정(⚙️)을 확인해주세요." });
@@ -28,18 +33,25 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true, message: "연동 성공!", dbName });
     }
 
+    const properties = {
+      '날짜': { date: { start: date } },
+      '이름': { title: [{ text: { content: studentName || "이름 없음" } }] },
+      '상세내용': { rich_text: [{ text: { content: content || "" } }] },
+    };
+
+    if (mode === 'relation' && Array.isArray(studentIds)) {
+      properties['학생연결'] = { relation: studentIds.map(id => ({ id })) };
+    } else if (mode === 'text') {
+      properties['학생성함'] = { rich_text: [{ text: { content: studentName || "" } }] };
+    }
+
     await notion.pages.create({
       parent: { database_id: databaseId },
       icon: {
         type: "emoji",
         emoji: "🍀"
       },
-      properties: {
-        '날짜': { date: { start: date } },
-        '이름': { title: [{ text: { content: studentName || "이름 없음" } }] },
-        '분류': { select: { name: category || "기타" } },
-        '내용': { rich_text: [{ text: { content: content || "" } }] },
-      },
+      properties: properties,
     });
     res.status(200).json({ success: true });
   } catch (error) {
