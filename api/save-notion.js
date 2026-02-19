@@ -3,10 +3,10 @@ export default async function handler(req, res) {
 
     let { personalKey, personalDbId, studentName, date, category, content, mode, studentIds } = req.body;
 
-    // ID 따옴표 제거 및 안전장치
-    const cleanDbId = personalDbId ? personalDbId.toString().replace(/"/g, '') : '';
-    const finalDate = date || new Date().toISOString().split('T')[0];
+    // [핵심] DB ID에서 따옴표(") 자동 제거
+    const cleanDbId = personalDbId ? personalDbId.toString().replace(/"/g, '').trim() : '';
     const finalCategory = category || "관찰";
+    const finalDate = date || new Date().toISOString().split('T')[0];
 
     if (!cleanDbId) return res.status(400).json({ error: "DB ID가 없습니다." });
 
@@ -18,19 +18,18 @@ export default async function handler(req, res) {
 
     if (mode === 'relation') {
         /** [포트폴리오 모드] **/
-        // 제목 칸 요약: [분류] 내용...
         const summary = content ? (content.length > 12 ? content.substring(0, 12) + "..." : content) : "기록";
         properties["제목"] = { "title": [{ "text": { "content": `[${finalCategory}] ${summary}` } }] };
-        
-        // 학생 관계형 연동 (노션 칸 이름이 '학생'이어야 함)
         if (studentIds && studentIds.length > 0) {
             properties["학생"] = { "relation": studentIds.map(id => ({ "id": id })) };
         }
-        // 포트폴리오 모드는 '날짜'를 보내지 않음 (노션 자동 생성일시 활용)
+        // 포트폴리오 모드는 '날짜'를 전송하지 않습니다 (노션 생성일시 활용)
     } else {
-        /** [일반 기록 모드] 선생님 요청: 날짜, 이름, 분류, 내용 **/
+        /** [일반 기록 모드] **/
         properties["날짜"] = { "date": { "start": finalDate } };
-        properties["이름"] = { "title": [{ "text": { "content": studentName || "기본 기록" } }] };
+        // ★ 선생님의 요청: 학생 이름 앞에 🍀 이모지 추가
+        const decoratedName = studentName ? `🍀 ${studentName}` : "🍀 기록";
+        properties["이름"] = { "title": [{ "text": { "content": decoratedName } }] };
     }
 
     try {
