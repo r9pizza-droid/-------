@@ -823,6 +823,10 @@
 
                     if (!response.ok) {
                         if (response.status === 404) {
+                            // [Fix] Notion DB 404 에러와 API 경로 404 구분
+                            if (responseData && (responseData.object === 'error' || responseData.message)) {
+                                throw new Error(`Notion DB를 찾을 수 없습니다: ${responseData.message}`);
+                            }
                             throw new Error("API 경로를 찾을 수 없습니다. (로컬 테스트라면 'vercel dev' 명령어로 실행해야 합니다)");
                         }
                         // [Fix] 에러 상세 출력
@@ -4244,6 +4248,12 @@
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.8.13", 
+                list: [
+                    "노션 저장 시 404 에러(DB 미발견) 메시지 상세 표시 기능 추가"
+                ]
+            },
+            { 
                 version: "v3.8.12", 
                 list: [
                     "포트폴리오 모드 전환 시 안내 메시지(토스트) 추가",
@@ -5996,7 +6006,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 12   // Patch: 기존 기능의 버그 수정
+                patch: 13   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
