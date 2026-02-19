@@ -749,14 +749,14 @@
 
                 // 2. 노션 저장 (비동기)
                 try {
-                    // [Fix] API 키 및 DB ID 강제 호출 (localStorage 직접 접근) + 따옴표 제거 (모드별 분리)
+                    // [Fix] API 키 및 DB ID 강제 호출 (localStorage 직접 접근) + 따옴표 제거
                     const rawKey = localStorage.getItem('cls_notion_key') || "";
                     const personalKey = rawKey.replace(/["']/g, '').trim();
                     
                     const rawDbId = isPortfolioMode 
                         ? (localStorage.getItem('notion_portfolio_db_id') || "")
                         : (localStorage.getItem('cls_notion_db_id') || "");
-                    const targetDbId = rawDbId.replace(/["']/g, '').trim(); // 전송 전 따옴표 제거 재확인
+                    const targetDbId = rawDbId.replace(/["']/g, '').trim();
 
                     if (!personalKey) {
                         showToast("설정(⚙️)에서 노션 API 키를 입력해주세요.");
@@ -2495,9 +2495,9 @@
                 }
             }, [isOpen]);
 
-            const handleTestConnection = async (targetId) => {
-                const idToTest = typeof targetId === 'string' ? targetId : (isPortfolioMode ? portfolioDbId : dbId);
-                if (!apiKey || !idToTest) return showToast("API Key와 Database ID를 입력해주세요.");
+            const handleTestConnection = async () => {
+                const targetId = isPortfolioMode ? portfolioDbId : dbId;
+                if (!apiKey || !targetId) return showToast("API Key와 Database ID를 입력해주세요.");
                 setIsTesting(true);
                 try {
                     const response = await fetch('/api/save-notion', {
@@ -2505,7 +2505,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             personalKey: apiKey.replace(/["']/g, '').trim(), 
-                            personalDbId: idToTest.replace(/["']/g, '').trim(),
+                            personalDbId: targetId.replace(/["']/g, '').trim(),
                             testMode: true 
                         })
                     });
@@ -2529,7 +2529,7 @@
                 if (saveLocally) {
                     localStorage.setItem('cls_notion_key', cleanKey);
                     localStorage.setItem('cls_notion_db_id', cleanDbId);
-                    localStorage.setItem('notion_portfolio_db_id', cleanPortfolioId);
+                    if (cleanPortfolioId) localStorage.setItem('notion_portfolio_db_id', cleanPortfolioId);
 
                     if (!isLocalMode && saveData) saveData({ 
                         cls_notion_key: cleanKey, 
@@ -2556,23 +2556,34 @@
                 } catch (err) { showToast("붙여넣기 실패 (권한 확인 필요)"); }
             };
 
-            const extractAndSet = (text, setter) => {
+            const setTargetDbId = (val) => {
+                const cleanVal = val.replace(/["']/g, '').trim();
+                if (isPortfolioMode) {
+                    setPortfolioDbId(cleanVal);
+                    localStorage.setItem('notion_portfolio_db_id', cleanVal);
+                } else {
+                    setDbId(cleanVal);
+                    localStorage.setItem('cls_notion_db_id', cleanVal);
+                }
+            };
+
+            const extractAndSetDbId = (text) => {
                 if (text.includes("notion.so")) {
                     const match = text.match(/([a-f0-9]{32})/);
                     if (match) {
-                        setter(match[1]);
+                        setTargetDbId(match[1]);
                         return true;
                     }
                 }
-                setter(text);
+                setTargetDbId(text);
                 return false;
             };
 
-            const handlePaste = async (setter) => {
+            const handlePasteDbId = async () => {
                 try {
                     const text = await navigator.clipboard.readText();
                     if (text) {
-                        if (extractAndSet(text, setter)) showToast("URL에서 ID를 추출하여 붙여넣었습니다.");
+                        if (extractAndSetDbId(text)) showToast("URL에서 ID를 추출하여 붙여넣었습니다.");
                         else showToast("붙여넣기 완료");
                     }
                 } catch (err) { showToast("붙여넣기 실패 (권한 확인 필요)"); }
@@ -2704,19 +2715,10 @@
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500">⚪ 일반 기록용 DB ID (단순 기록)</label>
+                            <label className="text-xs font-bold text-slate-500">{isPortfolioMode ? "🔵 포트폴리오용 DB ID (학생과 연결)" : "⚪ 일반 기록용 DB ID (단순 기록)"}</label>
                             <div className="flex gap-2">
-                                <input type="text" value={dbId} onChange={e => { const val = e.target.value.replace(/["']/g, ''); if(extractAndSet(val, setDbId)) showToast("URL에서 ID를 추출했습니다."); else setDbId(val); }} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID" />
-                                <Btn onClick={() => handlePaste(setDbId)} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
-                                <Btn onClick={() => handleTestConnection(dbId)} disabled={isTesting} className="px-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-50 whitespace-nowrap">테스트</Btn>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500">🔵 포트폴리오용 DB ID (학생과 연결)</label>
-                            <div className="flex gap-2">
-                                <input type="text" value={portfolioDbId} onChange={e => { const val = e.target.value.replace(/["']/g, ''); if(extractAndSet(val, setPortfolioDbId)) showToast("URL에서 ID를 추출했습니다."); else setPortfolioDbId(val); }} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID" />
-                                <Btn onClick={() => handlePaste(setPortfolioDbId)} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
-                                <Btn onClick={() => handleTestConnection(portfolioDbId)} disabled={isTesting} className="px-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-50 whitespace-nowrap">테스트</Btn>
+                                <input type="text" value={isPortfolioMode ? portfolioDbId : dbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); }} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID (URL 붙여넣기 가능)" />
+                                <Btn onClick={handlePasteDbId} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                             </div>
                         </div>
                         
@@ -2761,6 +2763,9 @@
                             <span className="text-sm text-slate-700 font-bold">이 기기에 정보 저장하기</span>
                         </label>
                         <div className="flex gap-2 pt-2">
+                            <Btn onClick={handleTestConnection} disabled={isTesting} className="flex-1 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors">
+                                {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : '🔌 연동 테스트'}
+                            </Btn>
                             <Btn onClick={handleSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-colors">설정 저장하기</Btn>
                         </div>
                     </div>
@@ -4222,13 +4227,6 @@
         
 
           const UPDATE_NOTES = [
-            { 
-                version: "v3.8.9", 
-                list: [
-                    "노션 연동 설정 UI 개선: 일반/포트폴리오 DB ID 입력창 분리 및 개별 테스트 지원",
-                    "노션 저장 로직 안정화 (모드별 ID 자동 전환 및 따옴표 제거 강화)"
-                ]
-            },
             { 
                 version: "v3.8.8", 
                 list: [
@@ -5957,7 +5955,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 9    // Patch: 기존 기능의 버그 수정
+                patch: 8    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
