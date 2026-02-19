@@ -5,7 +5,9 @@ export default async function handler(req, res) {
 
     // 1. ID 따옴표 및 공백 제거
     const cleanDbId = personalDbId ? personalDbId.toString().replace(/"/g, '').trim() : '';
-    const finalDate = date || new Date().toISOString().split('T')[0];
+    
+    // ★ [핵심 해결책] 앱에서 잘못된 시간 형식이 넘어와도 무조건 앞의 10자리(날짜)만 잘라서 사용합니다!
+    const finalDate = date ? date.substring(0, 10) : new Date().toISOString().split('T')[0];
     const finalCategory = category || "관찰";
 
     if (!cleanDbId) return res.status(400).json({ error: "DB ID가 없습니다." });
@@ -26,8 +28,9 @@ export default async function handler(req, res) {
         }
     } else {
         // [일반 기록 모드]
+        // ★ 에러 없이 깔끔하게 정제된 finalDate를 전송합니다.
         properties["날짜"] = { "date": { "start": finalDate } };
-        // 이름에 🍀 빼고 순수 이름만 전송 (아이콘으로 대체)
+        // 이름에 🍀 빼고 순수 이름만 전송 (페이지 아이콘으로 대체)
         properties["이름"] = { "title": [{ "text": { "content": studentName || "학생" } }] };
     }
 
@@ -44,5 +47,7 @@ export default async function handler(req, res) {
         const data = await response.json();
         if (!response.ok) return res.status(response.status).json(data);
         res.status(200).json({ success: true });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+    } catch (error) { 
+        res.status(500).json({ error: error.message }); 
+    }
 }
