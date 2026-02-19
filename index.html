@@ -562,6 +562,17 @@
                 try { return JSON.parse(localStorage.getItem('cls_student_map') || '{}'); } 
                 catch { return {}; }
             }, [isOpen]);
+
+            useEffect(() => {
+                if (isOpen) {
+                    const pm = localStorage.getItem('cls_portfolio_mode') === 'true';
+                    setIsPortfolioMode(pm);
+                    
+                    const key = localStorage.getItem('cls_notion_key');
+                    const dbId = localStorage.getItem('cls_notion_db_id');
+                    setHasNotionConfig(!!(key && dbId));
+                }
+            }, [isOpen]);
             
             useEffect(() => { 
                 if (!student) return;
@@ -588,9 +599,7 @@
                 }
                 setAiComment("");
 
-                // [New] 포트폴리오 모드 확인 및 선택된 학생 초기화
-                const pm = localStorage.getItem('cls_portfolio_mode') === 'true';
-                setIsPortfolioMode(pm);
+                // [New] 선택된 학생 초기화
                 setSelectedStudents([student]);
 
                 // [New] 노션 입력창 초기화
@@ -2598,6 +2607,7 @@
                 const checked = e.target.checked;
                 if (setIsPortfolioMode) setIsPortfolioMode(checked);
                 localStorage.setItem('cls_portfolio_mode', checked);
+                if (showToast) showToast(checked ? "포트폴리오 모드가 활성화 되었습니다." : "기록모드가 활성화 되었습니다.");
             };
 
             const handleFileUploadPortfolio = (e) => {
@@ -4232,6 +4242,19 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.8.12", 
+                list: [
+                    "포트폴리오 모드 전환 시 안내 메시지(토스트) 추가",
+                    "학생 인사이트 창 열릴 때 포트폴리오 모드 상태 최신화 로직 개선"
+                ]
+            },
+            { 
+                version: "v3.8.11", 
+                list: [
+                    "포트폴리오 모드 토글 시 학생 인사이트 창에 즉시 반영되도록 수정"
+                ]
+            },
             { 
                 version: "v3.8.10", 
                 list: [
@@ -5972,7 +5995,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 10   // Patch: 기존 기능의 버그 수정
+                patch: 12   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -8134,7 +8157,8 @@
                         onSaveRecordDraft={handleSaveRecordDraft}
                         isLocalMode={isLocalMode}
                         db={db}
-                        appId={appId} />
+                        appId={appId}
+                        isPortfolioMode={isPortfolioMode} />
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)} 
