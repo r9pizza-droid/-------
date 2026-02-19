@@ -551,6 +551,7 @@
             const [notionDate, setNotionDate] = useState(dayjs().format('YYYY-MM-DD'));
             const [notionContent, setNotionContent] = useState('');
             const [notionCategory, setNotionCategory] = useState('관찰');
+            const [searchText, setSearchText] = useState("");
             const [isPortfolioMode, setIsPortfolioMode] = useState(false);
             const [selectedStudents, setSelectedStudents] = useState([]);
             const [searchQuery, setSearchQuery] = useState("");
@@ -573,6 +574,13 @@
                     setHasNotionConfig(!!(key && dbId));
                 }
             }, [isOpen]);
+
+            useEffect(() => {
+                if (isOpen && isPortfolioMode && student) {
+                    setSearchText(student.name);
+                    setSelectedStudents([student]);
+                }
+            }, [isOpen, isPortfolioMode, student]);
             
             useEffect(() => { 
                 if (!student) return;
@@ -1317,12 +1325,14 @@
                                                         list="portfolio-student-list" 
                                                         placeholder="전체 학생 검색..." 
                                                         className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
+                                                        value={searchText}
                                                         onChange={(e) => {
                                                             const name = e.target.value;
+                                                            setSearchText(name);
                                                             const s = students.find(st => st.name === name);
                                                             if(s) {
                                                                 handleStudentSelect(name); 
-                                                                e.target.value = ""; 
+                                                                setSearchText(""); 
                                                             }
                                                         }}
                                                     />
