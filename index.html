@@ -716,10 +716,13 @@
                 // 안전장치: 카테고리가 없으면 기본값 '관찰'
                 const finalCategory = targetCategory || '관찰';
 
+                // [New] 날짜 안전장치: 비어있으면 오늘 날짜
+                const safeDate = notionDate || dayjs().format('YYYY-MM-DD');
+
                 setNotionStatus('saving');
                 
                 // 1. 앱 내 데이터 저장 (낙관적 업데이트)
-                const newNote = { id: Date.now(), date: notionDate, content: notionContent.trim() };
+                const newNote = { id: Date.now(), date: safeDate, content: notionContent.trim() };
                 const newNotes = [newNote, ...notes];
                 setNotes(newNotes);
                 
@@ -764,7 +767,7 @@
                         return;
                     }
 
-                    const formattedDateTime = dayjs(notionDate).format('YYYY-MM-DD') + 'T' + dayjs().format('HH:mm:ss');
+                    const formattedDateTime = dayjs(safeDate).format('YYYY-MM-DD') + 'T' + dayjs().format('HH:mm:ss');
 
                     const bodyData = {
                         date: formattedDateTime,
@@ -1285,6 +1288,7 @@
                                 <div className="flex flex-col gap-3 mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2">
+                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
                                             {isPortfolioMode && (
                                                 <div className="flex-1">
                                                     <input 
@@ -1305,7 +1309,6 @@
                                                     </datalist>
                                                 </div>
                                             )}
-                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
                                         </div>
                                         {isPortfolioMode && selectedStudents.length > 0 && (
                                             <div className="flex flex-wrap gap-1">
