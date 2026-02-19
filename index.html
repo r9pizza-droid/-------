@@ -711,22 +711,21 @@
 
             // [New] 통합 저장 핸들러 (앱 내 저장 + 노션 저장)
             const handleIntegratedSave = async (targetCategory) => {
-                if (!notionContent.trim()) return showToast("내용을 입력해주세요.");
+                // 1. 데이터 수집
+                const category = targetCategory || '관찰';
+                const content = notionContent.trim();
+                const date = notionDate || dayjs().format('YYYY-MM-DD');
+
+                if (!content) return showToast("내용을 입력해주세요.");
                 
-                // 안전장치: 카테고리가 없으면 기본값 '관찰'
-                const finalCategory = targetCategory || '관찰';
-
-                // [New] 날짜 안전장치: 비어있으면 오늘 날짜 (초기값 보장)
-                const safeDate = notionDate || dayjs().format('YYYY-MM-DD');
-
                 setNotionStatus('saving');
                 
                 // 1. 앱 내 데이터 저장 (낙관적 업데이트)
-                const newNote = { id: Date.now(), date: safeDate, content: notionContent.trim() };
+                const newNote = { id: Date.now(), date: date, content: content };
                 const newNotes = [newNote, ...notes];
                 setNotes(newNotes);
                 
-                if (finalCategory === '칭찬') {
+                if (category === '칭찬') {
                     const newCount = stickerCount + 1;
                     setStickerCount(newCount);
                     onSaveStickerWithNote(student.id, newCount, newNotes);
@@ -767,11 +766,9 @@
                         return;
                     }
 
-                    const formattedDateTime = dayjs(safeDate).format('YYYY-MM-DD') + 'T' + dayjs().format('HH:mm:ss');
-
                     const bodyData = {
-                        category: finalCategory || "관찰",
-                        content: notionContent || "",
+                        category: category,
+                        content: content,
                         personalKey,
                         personalDbId: targetDbId
                     };
@@ -795,10 +792,11 @@
                         
                         bodyData.mode = 'relation';
                         bodyData.studentIds = ids;
+                        // date is NOT sent in relation mode
                     } else {
                         bodyData.mode = 'normal';
                         bodyData.studentName = student.name || "이름 없음";
-                        bodyData.date = formattedDateTime;
+                        bodyData.date = dayjs(date).format('YYYY-MM-DD') + 'T' + dayjs().format('HH:mm:ss');
                     }
 
                     const response = await fetch('/api/save-notion', {
@@ -1292,7 +1290,7 @@
                                             {isPortfolioMode && (
                                                 <div className="flex-1">
                                                     <input 
-                                                        list="student-search-list" 
+                                                        list="student-list" 
                                                         placeholder="학생 검색..." 
                                                         className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
                                                         onChange={(e) => {
@@ -1304,7 +1302,7 @@
                                                             }
                                                         }}
                                                     />
-                                                    <datalist id="student-search-list">
+                                                    <datalist id="student-list">
                                                         {Object.keys(studentMap).sort().map(name => <option key={name} value={name} />)}
                                                     </datalist>
                                                 </div>
