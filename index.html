@@ -1288,7 +1288,7 @@
                                 {/* [New] 통합 입력 폼 */}
                                 <div className="flex flex-col gap-3 mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <div className="flex flex-col gap-2">
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 items-end">
                                             <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
                                             {isPortfolioMode && (
                                                 <div className="flex-1">
