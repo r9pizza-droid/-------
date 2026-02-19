@@ -799,7 +799,7 @@
                     } else {
                         bodyData.mode = 'normal';
                         bodyData.studentName = student.name || "이름 없음";
-                        bodyData.date = dayjs(date).format('YYYY-MM-DD') + 'T' + dayjs().format('HH:mm:ss');
+                        bodyData.date = dayjs(date).format('YYYY-MM-DD');
                     }
 
                     const response = await fetch('/api/save-notion', {
@@ -2497,7 +2497,7 @@
                     });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message || "연동 실패");
-                    const msg = data.dbName ? `✅ 연동 성공! (DB: ${data.dbName})` : ("✅ " + data.message);
+                    const msg = "✅ 노션 연동에 완벽하게 성공했습니다!";
                     showToast(msg);
                     setSaveLocally(true);
                 } catch (e) {
@@ -7407,6 +7407,13 @@
                         setRecords({});
                         setSimpleChecks({});
                         updates['cls_records'] = {};
+
+                        // [New] 학생 명단은 유지하면서 기록만 삭제하는 경우: 상담 기록과 스티커도 초기화
+                        if (!selectedItems.includes('students')) {
+                            const resetStudents = students.map(s => ({ ...s, counseling: [], stickers: 0 }));
+                            setStudents(resetStudents);
+                            updates['cls_students'] = resetStudents;
+                        }
                     }
                     if (selectedItems.includes('groups')) {
                         setGroupsByDate({});
@@ -7453,6 +7460,17 @@
                                 db.collection('classes').doc(appId).collection('records').get().then(snapshot => {
                                     const batch = db.batch(); snapshot.docs.forEach(doc => batch.delete(doc.ref)); batch.commit();
                                 });
+
+                                // [New] 상담 기록 필드 삭제 (학생 명단 유지 시)
+                                if (!selectedItems.includes('students')) {
+                                    db.collection('classes').doc(appId).collection('studentData').get().then(snapshot => {
+                                        const batch = db.batch();
+                                        snapshot.docs.forEach(doc => {
+                                            batch.update(doc.ref, { counseling: firebase.firestore.FieldValue.delete() });
+                                        });
+                                        batch.commit();
+                                    });
+                                }
                             }
                             if (selectedItems.includes('groups')) {
                                 db.collection('classes').doc(appId).collection('groupResults').get().then(snapshot => {
