@@ -577,7 +577,7 @@
 
             useEffect(() => {
                 if (isOpen && isPortfolioMode && student) {
-                    setSearchText(student.name);
+                    setSearchText("");
                     setSelectedStudents([student]);
                 }
             }, [isOpen, isPortfolioMode, student]);
@@ -722,7 +722,6 @@
             };
 
             const removeSelectedStudent = (id) => {
-                if (id === student.id) return; // 현재 주인공은 삭제 불가
                 setSelectedStudents(prev => prev.filter(s => s.id !== id));
             };
 
@@ -1318,41 +1317,54 @@
                                 {/* [New] 통합 입력 폼 */}
                                 <div className="flex flex-col gap-3 mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2">
-                                            {isPortfolioMode && (
-                                                <div className="flex-1">
-                                                    <input 
-                                                        list="portfolio-student-list" 
-                                                        placeholder="전체 학생 검색..." 
-                                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
-                                                        value={searchText}
-                                                        onChange={(e) => {
-                                                            const name = e.target.value;
-                                                            setSearchText(name);
-                                                            const s = students.find(st => st.name === name);
-                                                            if(s) {
-                                                                handleStudentSelect(name); 
-                                                                setSearchText(""); 
-                                                            }
-                                                        }}
-                                                    />
-                                                    <datalist id="portfolio-student-list">
-                                                        {students.slice().sort((a, b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.name} />)}
-                                                    </datalist>
-                                                </div>
-                                            )}
-                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
-                                        </div>
                                         {isPortfolioMode && selectedStudents.length > 0 && (
-                                            <div className="flex flex-wrap gap-1">
+                                            <div className="flex flex-wrap gap-1 mb-1">
                                                 {selectedStudents.map(s => (
-                                                    <span key={s.id} className={`text-[10px] px-2 py-1 rounded-full flex items-center gap-1 border ${s.id === student.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-slate-600 border-slate-200'}`}>
+                                                    <span key={s.id} className="text-[10px] px-2 py-1 rounded-full flex items-center gap-1 border bg-indigo-50 text-indigo-600 border-indigo-100 font-bold">
                                                         {s.name}
-                                                        {s.id !== student.id && <button onClick={() => removeSelectedStudent(s.id)} className="hover:text-rose-500"><Icon d={PATHS.x} size={10}/></button>}
+                                                        <button onClick={() => removeSelectedStudent(s.id)} className="hover:text-rose-500"><Icon d={PATHS.x} size={10}/></button>
                                                     </span>
                                                 ))}
                                             </div>
                                         )}
+                                        <div className="flex items-center gap-2 relative z-20">
+                                            {isPortfolioMode && (
+                                                <div className="flex-1">
+                                                    <input 
+                                                        placeholder="전체 학생 검색..." 
+                                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
+                                                        value={searchText}
+                                                        onChange={(e) => {
+                                                            setSearchText(e.target.value);
+                                                            setShowStudentDropdown(true);
+                                                        }}
+                                                        onFocus={() => setShowStudentDropdown(true)}
+                                                        onBlur={() => setTimeout(() => setShowStudentDropdown(false), 200)}
+                                                    />
+                                                    {showStudentDropdown && (
+                                                        <div className="absolute top-full left-0 w-full bg-white shadow-xl border border-slate-100 rounded-lg z-50 max-h-40 overflow-y-auto mt-1 custom-scroll">
+                                                            {students.filter(s => s.name.includes(searchText)).sort((a, b) => a.name.localeCompare(b.name)).map(s => (
+                                                                <div 
+                                                                    key={s.id} 
+                                                                    className="px-3 py-2 text-xs text-slate-700 hover:bg-indigo-50 cursor-pointer transition-colors flex justify-between items-center"
+                                                                    onClick={() => {
+                                                                        handleStudentSelect(s.name);
+                                                                        setSearchText("");
+                                                                    }}
+                                                                >
+                                                                    <span>{s.name}</span>
+                                                                    {selectedStudents.find(sel => sel.id === s.id) && <Icon d={PATHS.check} size={10} className="text-indigo-500"/>}
+                                                                </div>
+                                                            ))}
+                                                            {students.filter(s => s.name.includes(searchText)).length === 0 && (
+                                                                <div className="px-3 py-2 text-xs text-slate-400 text-center">검색 결과 없음</div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
+                                        </div>
                                     </div>
                                     <textarea 
                                         value={notionContent}
@@ -4259,6 +4271,12 @@
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.8.15", 
+                list: [
+                    "포트폴리오 모드 학생 선택 UI 개선 (태그 방식 및 커스텀 드롭다운 적용)"
+                ]
+            },
+            { 
                 version: "v3.8.14", 
                 list: [
                     "노션 포트폴리오 DB ID 저장 키 통일 및 안정화",
@@ -6024,7 +6042,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 14   // Patch: 기존 기능의 버그 수정
+                patch: 15   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
