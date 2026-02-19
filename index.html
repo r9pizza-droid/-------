@@ -763,7 +763,7 @@
                     const personalKey = rawKey.replace(/["']/g, '').trim();
                     
                     const rawDbId = isPortfolioMode 
-                        ? (localStorage.getItem('notion_portfolio_db_id') || "")
+                        ? (localStorage.getItem('cls_notion_portfolio_db_id') || "")
                         : (localStorage.getItem('cls_notion_db_id') || "");
                     const targetDbId = rawDbId.replace(/["']/g, '').trim();
 
@@ -824,8 +824,9 @@
                     if (!response.ok) {
                         if (response.status === 404) {
                             // [Fix] Notion DB 404 에러와 API 경로 404 구분
-                            if (responseData && (responseData.object === 'error' || responseData.message)) {
-                                throw new Error(`Notion DB를 찾을 수 없습니다: ${responseData.message}`);
+                            if (responseData && Object.keys(responseData).length > 0) {
+                                const msg = responseData.message || "노션 데이터베이스 설정(제목, 학생 칸 이름)을 확인해주세요";
+                                throw new Error(msg);
                             }
                             throw new Error("API 경로를 찾을 수 없습니다. (로컬 테스트라면 'vercel dev' 명령어로 실행해야 합니다)");
                         }
@@ -2547,7 +2548,7 @@
                 if (saveLocally) {
                     localStorage.setItem('cls_notion_key', cleanKey);
                     localStorage.setItem('cls_notion_db_id', cleanDbId);
-                    if (cleanPortfolioId) localStorage.setItem('notion_portfolio_db_id', cleanPortfolioId);
+                    if (cleanPortfolioId) localStorage.setItem('cls_notion_portfolio_db_id', cleanPortfolioId);
 
                     if (!isLocalMode && saveData) saveData({ 
                         cls_notion_key: cleanKey, 
@@ -2558,7 +2559,7 @@
                 } else {
                     localStorage.removeItem('cls_notion_key');
                     localStorage.removeItem('cls_notion_db_id');
-                    localStorage.removeItem('notion_portfolio_db_id');
+                    localStorage.removeItem('cls_notion_portfolio_db_id');
                     if (!isLocalMode && saveData) saveData({ cls_notion_key: "", cls_notion_db_id: "", cls_notion_portfolio_db_id: "" });
                 }
                 showToast("노션 설정이 저장되었습니다.");
@@ -2579,7 +2580,7 @@
                 const cleanVal = val.replace(/["']/g, '').trim();
                 if (isPortfolioMode) {
                     setPortfolioDbId(cleanVal);
-                    localStorage.setItem('notion_portfolio_db_id', cleanVal);
+                    localStorage.setItem('cls_notion_portfolio_db_id', cleanVal);
                 } else {
                     setDbId(cleanVal);
                     localStorage.setItem('cls_notion_db_id', cleanVal);
@@ -4247,6 +4248,13 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.8.14", 
+                list: [
+                    "노션 포트폴리오 DB ID 저장 키 통일 및 안정화",
+                    "노션 저장 실패 시 에러 메시지 안내 개선 (설정 확인 유도)"
+                ]
+            },
             { 
                 version: "v3.8.13", 
                 list: [
@@ -6006,7 +6014,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 13   // Patch: 기존 기능의 버그 수정
+                patch: 14   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -6053,7 +6061,7 @@
 
             // 초기 실행시 저장된 포트폴리오 ID 불러오기
             React.useEffect(() => {
-                const saved = localStorage.getItem('notion_portfolio_db_id');
+                const saved = localStorage.getItem('cls_notion_portfolio_db_id');
                 if (saved) setPortfolioDbId(saved);
                 
                 // [Fix] 앱 시작 시 포트폴리오 모드 상태 로드
@@ -6705,7 +6713,7 @@
                                         // [Fix] snake_case 키 지원 및 포트폴리오 ID 로딩
                                         if (d.notion_key) localStorage.setItem('cls_notion_key', d.notion_key);
                                         if (d.notion_db_id) localStorage.setItem('cls_notion_db_id', d.notion_db_id);
-                                        if (d.notion_portfolio_db_id) { localStorage.setItem('notion_portfolio_db_id', d.notion_portfolio_db_id); setPortfolioDbId(d.notion_portfolio_db_id); }
+                                        if (d.notion_portfolio_db_id) { localStorage.setItem('cls_notion_portfolio_db_id', d.notion_portfolio_db_id); setPortfolioDbId(d.notion_portfolio_db_id); }
                                         if (d.portfolio_mode !== undefined) { 
                                             setIsPortfolioMode(d.portfolio_mode); 
                                             localStorage.setItem('cls_portfolio_mode', d.portfolio_mode); 
