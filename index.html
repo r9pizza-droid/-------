@@ -2516,7 +2516,8 @@
                         body: JSON.stringify({ 
                             personalKey: apiKey.replace(/["']/g, '').trim(), 
                             personalDbId: targetId.replace(/["']/g, '').trim(),
-                            testMode: true 
+                            testMode: true,
+                            mode: isPortfolioMode ? 'relation' : 'normal'
                         })
                     });
                     const data = await response.json();

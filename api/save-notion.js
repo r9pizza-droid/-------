@@ -1,38 +1,38 @@
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
-    let { personalKey, personalDbId, studentName, date, category, content, mode, studentIds } = req.body;
+    let { personalKey, personalDbId, studentName, date, category, content, mode, studentIds, testMode } = req.body;
 
     const cleanKey = personalKey ? personalKey.replace(/["']/g, '').trim() : '';
     const cleanDbId = personalDbId ? personalDbId.toString().replace(/["']/g, '').trim() : '';
 
     if (!cleanKey || !cleanDbId) return res.status(400).json({ error: "설정 정보가 누락되었습니다." });
 
-    // 아이콘 설정
-    const pageIcon = { type: "emoji", emoji: "🍀" };
-    
-    // [공통 칸] 분류, 내용
-    let properties = {
-        "분류": { "select": { "name": category || "관찰" } },
-        "내용": { "rich_text": [{ "text": { "content": content || "" } }] }
-    };
+    const pageIcon = { type: "emoji", emoji: testMode ? "🧪" : "🍀" };
+    let properties = {};
 
-    if (mode === 'relation') {
-        /** [포트폴리오 모드] **/
-        // 제목 칸에 "[분류] 요약내용..." 형태로 기록 (선생님이 원하신 요약 기능)
-        const summary = content ? (content.length > 15 ? content.substring(0, 15) + "..." : content) : "새로운 기록";
-        properties["제목"] = { 
-            "title": [{ "text": { "content": `[${category || "관찰"}] ${summary}` } }] 
+    // [핵심] 모드에 따라 사용할 제목 칸 이름 결정
+    const titlePropertyName = (mode === 'relation') ? "제목" : "이름";
+
+    if (testMode) {
+        /** ✅ 연동 테스트 모드 **/
+        properties[titlePropertyName] = { 
+            "title": [{ "text": { "content": `✅ 노션 연동 테스트 성공! (${titlePropertyName} 칸 사용)` } }] 
         };
-        
-        // 학생 칸: 관계형 연결
-        if (studentIds && studentIds.length > 0) {
-            properties["학생"] = { "relation": studentIds.map(id => ({ "id": id })) };
-        }
     } else {
-        /** [일반 기록 모드] **/
-        // 일반 모드는 기존처럼 '이름' 칸을 사용 (일반 DB는 '이름' 칸을 유지하시면 됩니다)
-        properties["이름"] = { "title": [{ "text": { "content": studentName || "학생" } }] };
-        properties["날짜"] = { "date": { "start": date ? date.substring(0, 10) : new Date().toISOString().split('T')[0] } };
+        /** 📝 실제 기록 저장 모드 **/
+        properties["분류"] = { "select": { "name": category || "관찰" } };
+        properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };
+
+        if (mode === 'relation') {
+            const summary = content ? (content.length > 15 ? content.substring(0, 15) + "..." : content) : "새 기록";
+            properties["제목"] = { "title": [{ "text": { "content": `[${category || "관찰"}] ${summary}` } }] };
+            if (studentIds && studentIds.length > 0) {
+                properties["학생"] = { "relation": studentIds.map(id => ({ "id": id })) };
+            }
+        } else {
+            properties["이름"] = { "title": [{ "text": { "content": studentName || "학생" } }] };
+            properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };
+        }
     }
 
     try {
