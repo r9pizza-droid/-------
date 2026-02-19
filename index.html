@@ -749,7 +749,8 @@
 
                 // 2. 노션 저장 (비동기)
                 try {
-                    const personalKey = localStorage.getItem('cls_notion_key');
+                    // [Fix] API 키 확실하게 가져오기 (undefined 방지)
+                    const personalKey = (localStorage.getItem('cls_notion_key') || "").trim();
                     
                     // 모드에 따라 전송할 타겟 DB ID 결정
                     const targetDbId = isPortfolioMode ? localStorage.getItem('notion_portfolio_db_id') : localStorage.getItem('cls_notion_db_id');
@@ -772,7 +773,7 @@
                     const bodyData = {
                         category: category,
                         content: content,
-                        personalKey,
+                        personalKey: personalKey,
                         personalDbId: cleanDbId
                     };
 
