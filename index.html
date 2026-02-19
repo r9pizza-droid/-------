@@ -749,11 +749,14 @@
 
                 // 2. 노션 저장 (비동기)
                 try {
-                    // [Fix] API 키 확실하게 가져오기 (undefined 방지)
-                    const personalKey = (localStorage.getItem('cls_notion_key') || "").trim();
+                    // [Fix] API 키 및 DB ID 강제 호출 (localStorage 직접 접근) + 따옴표 제거
+                    const rawKey = localStorage.getItem('cls_notion_key') || "";
+                    const personalKey = rawKey.replace(/["']/g, '').trim();
                     
-                    // 모드에 따라 전송할 타겟 DB ID 결정
-                    const targetDbId = isPortfolioMode ? localStorage.getItem('notion_portfolio_db_id') : localStorage.getItem('cls_notion_db_id');
+                    const rawDbId = isPortfolioMode 
+                        ? (localStorage.getItem('notion_portfolio_db_id') || "")
+                        : (localStorage.getItem('cls_notion_db_id') || "");
+                    const targetDbId = rawDbId.replace(/["']/g, '').trim();
 
                     if (!personalKey) {
                         showToast("설정(⚙️)에서 노션 API 키를 입력해주세요.");
@@ -767,14 +770,11 @@
                         return;
                     }
 
-                    // ID 따옴표 제거 (강제)
-                    const cleanDbId = targetDbId.toString().replace(/"/g, '');
-
                     const bodyData = {
                         category: category,
                         content: content,
                         personalKey: personalKey,
-                        personalDbId: cleanDbId
+                        personalDbId: targetDbId
                     };
 
                     if (isPortfolioMode) {
@@ -800,6 +800,7 @@
                     } else {
                         bodyData.mode = 'normal';
                         bodyData.studentName = student.name || "이름 없음";
+                        // [Fix] 날짜 포맷 고정 (시간 제외)
                         bodyData.date = dayjs(date).format('YYYY-MM-DD');
                     }
 
@@ -808,12 +809,15 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(bodyData)
                     });
+                    
+                    const responseData = await response.json().catch(() => ({}));
+
                     if (!response.ok) {
                         if (response.status === 404) {
                             throw new Error("API 경로를 찾을 수 없습니다. (로컬 테스트라면 'vercel dev' 명령어로 실행해야 합니다)");
                         }
-                        const errData = await response.json().catch(() => ({}));
-                        throw new Error(errData.message || `서버 오류 (${response.status})`);
+                        // [Fix] 에러 상세 출력
+                        throw new Error(responseData.error || responseData.message || `서버 오류 (${response.status})`);
                     }
                     setNotionStatus('success');
                     if (!keepContent) setNotionContent('');
@@ -821,7 +825,9 @@
                 } catch (e) {
                     console.error(e);
                     setNotionStatus('error');
-                    showToast("노션 저장 실패: " + e.message);
+                    // [Fix] 에러 상세 출력 (alert 포함)
+                    alert(`노션 저장 실패:\n${e.message}`);
+                    showToast("노션 저장 실패");
                     setTimeout(() => setNotionStatus('idle'), 3000);
                 }
             };
@@ -2491,8 +2497,8 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
-                            personalKey: apiKey.trim(), 
-                            personalDbId: dbId.trim().replace(/"/g, ''),
+                            personalKey: apiKey.replace(/["']/g, '').trim(), 
+                            personalDbId: dbId.replace(/["']/g, '').trim(),
                             testMode: true 
                         })
                     });
@@ -2509,11 +2515,12 @@
             };
 
             const handleSave = () => {
-                const cleanDbId = dbId.trim().replace(/"/g, '');
+                const cleanKey = apiKey.replace(/["']/g, '').trim();
+                const cleanDbId = dbId.replace(/["']/g, '').trim();
                 if (saveLocally) {
-                    localStorage.setItem('cls_notion_key', apiKey.trim());
+                    localStorage.setItem('cls_notion_key', cleanKey);
                     localStorage.setItem('cls_notion_db_id', cleanDbId);
-                    if (!isLocalMode && saveData) saveData({ cls_notion_key: apiKey.trim(), cls_notion_db_id: cleanDbId });
+                    if (!isLocalMode && saveData) saveData({ cls_notion_key: cleanKey, cls_notion_db_id: cleanDbId });
                 } else {
                     localStorage.removeItem('cls_notion_key');
                     localStorage.removeItem('cls_notion_db_id');
@@ -2534,7 +2541,7 @@
             };
 
             const setTargetDbId = (val) => {
-                const cleanVal = val.replace(/"/g, '');
+                const cleanVal = val.replace(/["']/g, '').trim();
                 if (isPortfolioMode) {
                     setPortfolioDbId(cleanVal);
                     localStorage.setItem('notion_portfolio_db_id', cleanVal);
@@ -4204,6 +4211,15 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.8.6", 
+                list: [
+                    "노션 저장 시 API 키 인증 오류 및 날짜 형식 에러 수정",
+                    "설정 > 초기화 시 '활동 기록' 선택하면 상담 기록/스티커도 함께 초기화되도록 개선",
+                    "노션 연동 설정 UI 개선 (API 키 표시, DB ID 따옴표 자동 제거)",
+                    "포트폴리오 모드 학생 검색창 UI 및 동작 안정화"
+                ]
+            },
             { 
                 version: "v3.8.5", 
                 list: [
@@ -5909,7 +5925,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 5    // Patch: 기존 기능의 버그 수정
+                patch: 6    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
