@@ -2476,11 +2476,17 @@
                 if (isOpen) {
                     const savedKey = localStorage.getItem('cls_notion_key');
                     const savedDbId = localStorage.getItem('cls_notion_db_id');
-                    if (savedKey) setApiKey(savedKey);
-                    if (savedDbId) setDbId(savedDbId.replace(/"/g, ''));
                     
-                    if (portfolioDbId && portfolioDbId.includes('"')) {
-                        setPortfolioDbId(portfolioDbId.replace(/"/g, ''));
+                    // [Fix] 저장된 키/ID 불러올 때 따옴표 제거 (JSON.stringify로 인해 생기는 문제 해결)
+                    if (savedKey) {
+                        setApiKey(savedKey.replace(/["']/g, '').trim());
+                    }
+                    if (savedDbId) {
+                        setDbId(savedDbId.replace(/["']/g, '').trim());
+                    }
+                    
+                    if (portfolioDbId && (portfolioDbId.includes('"') || portfolioDbId.includes("'"))) {
+                        setPortfolioDbId(portfolioDbId.replace(/["']/g, '').trim());
                     }
                     if (savedKey || savedDbId) setSaveLocally(true);
                     
@@ -4212,6 +4218,13 @@
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.8.7", 
+                list: [
+                    "노션 연동 설정 저장 시 따옴표(\"\")가 포함되는 문제 수정",
+                    "설정 창을 다시 열었을 때 API 키가 올바르게 표시되도록 개선"
+                ]
+            },
+            { 
                 version: "v3.8.6", 
                 list: [
                     "노션 저장 시 API 키 인증 오류 및 날짜 형식 에러 수정",
@@ -5925,7 +5938,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 6    // Patch: 기존 기능의 버그 수정
+                patch: 7    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
