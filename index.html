@@ -2470,7 +2470,11 @@
                     const savedKey = localStorage.getItem('cls_notion_key');
                     const savedDbId = localStorage.getItem('cls_notion_db_id');
                     if (savedKey) setApiKey(savedKey);
-                    if (savedDbId) setDbId(savedDbId);
+                    if (savedDbId) setDbId(savedDbId.replace(/"/g, ''));
+                    
+                    if (portfolioDbId && portfolioDbId.includes('"')) {
+                        setPortfolioDbId(portfolioDbId.replace(/"/g, ''));
+                    }
                     if (savedKey || savedDbId) setSaveLocally(true);
                     
                     const savedMode = localStorage.getItem('cls_portfolio_mode') === 'true';
@@ -2487,7 +2491,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             personalKey: apiKey.trim(), 
-                            personalDbId: dbId.trim(),
+                            personalDbId: dbId.trim().replace(/"/g, ''),
                             testMode: true 
                         })
                     });
@@ -2504,10 +2508,11 @@
             };
 
             const handleSave = () => {
+                const cleanDbId = dbId.trim().replace(/"/g, '');
                 if (saveLocally) {
                     localStorage.setItem('cls_notion_key', apiKey.trim());
-                    localStorage.setItem('cls_notion_db_id', dbId.trim());
-                    if (!isLocalMode && saveData) saveData({ cls_notion_key: apiKey.trim(), cls_notion_db_id: dbId.trim() });
+                    localStorage.setItem('cls_notion_db_id', cleanDbId);
+                    if (!isLocalMode && saveData) saveData({ cls_notion_key: apiKey.trim(), cls_notion_db_id: cleanDbId });
                 } else {
                     localStorage.removeItem('cls_notion_key');
                     localStorage.removeItem('cls_notion_db_id');
