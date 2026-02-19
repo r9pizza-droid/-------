@@ -1,5 +1,5 @@
 // 캐시 이름 (버전 업데이트 시 이 이름을 변경하면 브라우저가 새로운 버전으로 인식합니다)
-const CACHE_NAME = 'checklist-app-v3.8.8';
+const CACHE_NAME = 'checklist-app-v3.8.9';
 const URLS_TO_CACHE = [
   './',
   './index.html',
