@@ -486,7 +486,7 @@
             );
         };
 
-        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId }) => {
+        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode }) => {
             if (!isOpen || !student || !student.history) return null;
 
             const [translateY, setTranslateY] = useState(0);
@@ -546,13 +546,13 @@
             const [stickerEffect, setStickerEffect] = useState(false);
             const [showButtonEffect, setShowButtonEffect] = useState(false);
             const [keepContent, setKeepContent] = useState(false);
+            const [isExpanded, setIsExpanded] = useState(false);
             
             // [New] 노션 저장 관련 State
             const [notionDate, setNotionDate] = useState(dayjs().format('YYYY-MM-DD'));
             const [notionContent, setNotionContent] = useState('');
             const [notionCategory, setNotionCategory] = useState('관찰');
             const [searchText, setSearchText] = useState("");
-            const [isPortfolioMode, setIsPortfolioMode] = useState(false);
             const [selectedStudents, setSelectedStudents] = useState([]);
             const [searchQuery, setSearchQuery] = useState("");
             const [showStudentDropdown, setShowStudentDropdown] = useState(false);
@@ -566,9 +566,6 @@
 
             useEffect(() => {
                 if (isOpen) {
-                    const pm = localStorage.getItem('cls_portfolio_mode') === 'true';
-                    setIsPortfolioMode(pm);
-                    
                     const key = localStorage.getItem('cls_notion_key');
                     const dbId = localStorage.getItem('cls_notion_db_id');
                     setHasNotionConfig(!!(key && dbId));
@@ -736,15 +733,30 @@
                 
                 setNotionStatus('saving');
                 
-                // 1. 앱 내 데이터 저장 (낙관적 업데이트)
                 const newNote = { id: Date.now(), date: date, content: content };
-                const newNotes = [newNote, ...notes];
-                setNotes(newNotes);
-                
+                const targetIds = selectedStudents.map(s => s.id);
+
+                // 1. 앱 내 데이터 일괄 저장 (Multi-Student Sync)
+                const updatedStudents = students.map(s => {
+                    if (targetIds.includes(s.id)) {
+                        const prevNotes = s.counseling || [];
+                        const updatedNotes = [newNote, ...prevNotes];
+                        let updatedStickers = s.stickers || 0;
+                        if (category === '칭찬') updatedStickers += 1;
+                        return { ...s, counseling: updatedNotes, stickers: updatedStickers };
+                    }
+                    return s;
+                });
+
+                setStudents(updatedStudents);
+                if (!isLocalMode) saveData('cls_students', updatedStudents);
+
+                // 현재 보고 있는 학생이 포함되어 있다면 로컬 상태(UI)도 즉시 업데이트
+                if (targetIds.includes(student.id)) {
+                    setNotes(prev => [newNote, ...prev]);
+                    
                 if (category === '칭찬') {
-                    const newCount = stickerCount + 1;
-                    setStickerCount(newCount);
-                    onSaveStickerWithNote(student.id, newCount, newNotes);
+                    setStickerCount(prev => prev + 1);
                     setShowButtonEffect(true);
                     setTimeout(() => setShowButtonEffect(false), 800);
                     
@@ -759,8 +771,7 @@
                         confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 }); 
                         playStickerSound();
                     }
-                } else {
-                    onSaveCounseling(student.id, newNotes, "관찰 기록 저장됨");
+                }
                 }
 
                 // 2. 노션 저장 (비동기)
@@ -1203,6 +1214,10 @@
                 return matchDate && matchText;
             });
 
+            // [New] Expandable List Logic
+            const displayedNotes = isExpanded ? filteredNotes : filteredNotes.slice(0, 2);
+            const hasMore = filteredNotes.length > 2;
+
             return (
                 <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
                     <div ref={modalRef} 
@@ -1308,7 +1323,7 @@
                                 <div className="flex flex-col"><h4 className="text-xs font-bold text-slate-500 mb-1">🌟 칭찬 스티커</h4><span className="text-xs text-slate-400">긍정적 강화!</span></div>
                                 <div className="flex items-center gap-3"><Btn onClick={() => handleSticker(-1)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold">-</Btn><span className={`text-2xl font-bold text-yellow-500 w-8 text-center transition-transform duration-200 ${stickerEffect ? 'scale-150 text-orange-500' : ''}`}>{stickerCount}</span><Btn onClick={() => handleSticker(1)} className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold">+</Btn></div>
                             </div>
-                            <div className="p-4 border border-slate-100 rounded-2xl bg-white shadow-sm flex flex-col h-[500px]">
+                            <div className="p-4 border border-slate-100 rounded-2xl bg-white shadow-sm flex flex-col">
                                 <h4 className="text-xs font-bold text-slate-500 mb-3 flex items-center gap-1">
                                     📒 교사 관찰 및 칭찬 기록 {hasNotionConfig && <span className="text-[10px] text-indigo-500 font-bold ml-1 bg-indigo-50 px-1.5 py-0.5 rounded">* 노션 연동됨</span>}
                                     {isPortfolioMode && <span className="text-[10px] text-blue-600 font-bold ml-1 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">포트폴리오 모드</span>}
@@ -1431,9 +1446,9 @@
                                         </div>
                                     </div>
                                 )}
-                                <div className="flex-1 overflow-y-auto custom-scroll space-y-2 pr-1">
-                                    {filteredNotes.length > 0 ? filteredNotes.map(n => (
-                                        <div key={n.id} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 group hover:border-indigo-200 transition-colors">
+                                <div className="flex-1 overflow-y-auto custom-scroll space-y-2 pr-1 max-h-[500px]">
+                                    {displayedNotes.length > 0 ? displayedNotes.map(n => (
+                                        <div key={n.id} className="bg-slate-50 p-2.5 rounded-xl border-b border-slate-200 last:border-0 group hover:bg-slate-100 transition-colors">
                                             {editingNoteId === n.id ? (
                                                 <div className="flex flex-col gap-2">
                                                     <textarea value={editNoteContent} onChange={(e) => setEditNoteContent(e.target.value)} className="w-full p-2 border rounded-lg text-xs outline-none focus:border-indigo-500 resize-none bg-white" rows="3" />
@@ -1453,9 +1468,14 @@
                                             )}
                                         </div>
                                     )) : (
-                                        <div className="h-full flex flex-col items-center justify-center text-slate-300 text-xs gap-2">
-                                            <span>{searchTerm || selectedDate ? "기록이 없습니다." : "기록이 없습니다."}</span>
+                                        <div className="h-32 flex flex-col items-center justify-center text-slate-400 text-xs gap-2 border-2 border-dashed border-slate-100 rounded-xl">
+                                            <span>아직 기록이 없습니다.</span>
                                         </div>
+                                    )}
+                                    {hasMore && (
+                                        <button onClick={() => setIsExpanded(!isExpanded)} className="w-full py-2 text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all flex items-center justify-center gap-1 mt-2">
+                                            {isExpanded ? '접기' : '더 보기'} <Icon d={PATHS.down} size={12} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -2086,7 +2106,7 @@
             if (!isOpen) return null;
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="📝 AI 총평 초안 생성" icon={PATHS.document} maxWidth="max-w-2xl">
+                <BaseModal isOpen={isOpen} onClose={onClose} title="📝 AI 총평 초안 생성">
                     <div className="space-y-4">
                         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm text-blue-800">
                             <p className="font-bold mb-1">💡 생활기록부 초안을 만들어드립니다.</p>
@@ -8205,7 +8225,9 @@
                         isLocalMode={isLocalMode}
                         db={db}
                         appId={appId}
-                        isPortfolioMode={isPortfolioMode} />
+                        isPortfolioMode={isPortfolioMode}
+                        setStudents={setStudents}
+                        saveData={saveData} />
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)} 
