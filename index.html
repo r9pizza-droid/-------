@@ -2496,7 +2496,8 @@
             }, [isOpen]);
 
             const handleTestConnection = async () => {
-                if (!apiKey || !dbId) return showToast("API Key와 Database ID를 입력해주세요.");
+                const targetId = isPortfolioMode ? portfolioDbId : dbId;
+                if (!apiKey || !targetId) return showToast("API Key와 Database ID를 입력해주세요.");
                 setIsTesting(true);
                 try {
                     const response = await fetch('/api/save-notion', {
@@ -2504,7 +2505,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             personalKey: apiKey.replace(/["']/g, '').trim(), 
-                            personalDbId: dbId.replace(/["']/g, '').trim(),
+                            personalDbId: targetId.replace(/["']/g, '').trim(),
                             testMode: true 
                         })
                     });
@@ -2523,14 +2524,23 @@
             const handleSave = () => {
                 const cleanKey = apiKey.replace(/["']/g, '').trim();
                 const cleanDbId = dbId.replace(/["']/g, '').trim();
+                const cleanPortfolioId = portfolioDbId ? portfolioDbId.replace(/["']/g, '').trim() : "";
+
                 if (saveLocally) {
                     localStorage.setItem('cls_notion_key', cleanKey);
                     localStorage.setItem('cls_notion_db_id', cleanDbId);
-                    if (!isLocalMode && saveData) saveData({ cls_notion_key: cleanKey, cls_notion_db_id: cleanDbId });
+                    if (cleanPortfolioId) localStorage.setItem('notion_portfolio_db_id', cleanPortfolioId);
+
+                    if (!isLocalMode && saveData) saveData({ 
+                        cls_notion_key: cleanKey, 
+                        cls_notion_db_id: cleanDbId,
+                        cls_notion_portfolio_db_id: cleanPortfolioId
+                    });
                 } else {
                     localStorage.removeItem('cls_notion_key');
                     localStorage.removeItem('cls_notion_db_id');
-                    if (!isLocalMode && saveData) saveData({ cls_notion_key: "", cls_notion_db_id: "" });
+                    localStorage.removeItem('notion_portfolio_db_id');
+                    if (!isLocalMode && saveData) saveData({ cls_notion_key: "", cls_notion_db_id: "", cls_notion_portfolio_db_id: "" });
                 }
                 showToast("노션 설정이 저장되었습니다.");
                 onClose();
@@ -4217,6 +4227,13 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.8.8", 
+                list: [
+                    "노션 연동 설정에서 모드별(기본/포트폴리오) DB ID 분리 적용 및 테스트 기능 개선",
+                    "포트폴리오 DB ID 클라우드 동기화 지원"
+                ]
+            },
             { 
                 version: "v3.8.7", 
                 list: [
@@ -5938,7 +5955,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 7    // Patch: 기존 기능의 버그 수정
+                patch: 8    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -6630,6 +6647,10 @@
                                         }
                                         if (d.notionKey) localStorage.setItem('cls_notion_key', d.notionKey);
                                         if (d.notionDbId) localStorage.setItem('cls_notion_db_id', d.notionDbId);
+                                        // [Fix] snake_case 키 지원 및 포트폴리오 ID 로딩
+                                        if (d.notion_key) localStorage.setItem('cls_notion_key', d.notion_key);
+                                        if (d.notion_db_id) localStorage.setItem('cls_notion_db_id', d.notion_db_id);
+                                        if (d.notion_portfolio_db_id) { localStorage.setItem('notion_portfolio_db_id', d.notion_portfolio_db_id); setPortfolioDbId(d.notion_portfolio_db_id); }
                                         
                                         // [추가됨] 로딩 완료 처리
                                         setIsLoading(false);
