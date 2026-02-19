@@ -2693,7 +2693,7 @@
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500">{isPortfolioMode ? "🔵 포트폴리오용 DB ID (학생과 연결)" : "⚪ 일반 기록용 DB ID (단순 기록)"}</label>
                             <div className="flex gap-2">
-                                <input type="text" value={isPortfolioMode ? portfolioDbId : dbId} onChange={e => { if(extractAndSetDbId(e.target.value)) showToast("URL에서 ID를 추출했습니다."); }} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID (URL 붙여넣기 가능)" />
+                                <input type="text" value={isPortfolioMode ? portfolioDbId : dbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); }} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID (URL 붙여넣기 가능)" />
                                 <Btn onClick={handlePasteDbId} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                             </div>
                         </div>
