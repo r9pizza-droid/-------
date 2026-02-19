@@ -1290,18 +1290,18 @@
                             <div className="p-4 border border-slate-100 rounded-2xl bg-white shadow-sm flex flex-col h-[500px]">
                                 <h4 className="text-xs font-bold text-slate-500 mb-3 flex items-center gap-1">
                                     📒 교사 관찰 및 칭찬 기록 {hasNotionConfig && <span className="text-[10px] text-indigo-500 font-bold ml-1 bg-indigo-50 px-1.5 py-0.5 rounded">* 노션 연동됨</span>}
+                                    {isPortfolioMode && <span className="text-[10px] text-blue-600 font-bold ml-1 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">포트폴리오 모드</span>}
                                 </h4>
                                 
                                 {/* [New] 통합 입력 폼 */}
                                 <div className="flex flex-col gap-3 mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <div className="flex flex-col gap-2">
-                                        <div className="flex gap-2 items-end">
-                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
+                                        <div className="flex items-center gap-2">
                                             {isPortfolioMode && (
                                                 <div className="flex-1">
                                                     <input 
-                                                        list="student-list" 
-                                                        placeholder="학생 검색..." 
+                                                        list="portfolio-student-list" 
+                                                        placeholder="전체 학생 검색..." 
                                                         className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500" 
                                                         onChange={(e) => {
                                                             const name = e.target.value;
@@ -1312,11 +1312,12 @@
                                                             }
                                                         }}
                                                     />
-                                                    <datalist id="student-list">
-                                                        {Object.keys(studentMap).sort().map(name => <option key={name} value={name} />)}
+                                                    <datalist id="portfolio-student-list">
+                                                        {students.slice().sort((a, b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.name} />)}
                                                     </datalist>
                                                 </div>
                                             )}
+                                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
                                         </div>
                                         {isPortfolioMode && selectedStudents.length > 0 && (
                                             <div className="flex flex-wrap gap-1">
@@ -2525,6 +2526,9 @@
                 const cleanKey = apiKey.replace(/["']/g, '').trim();
                 const cleanDbId = dbId.replace(/["']/g, '').trim();
                 const cleanPortfolioId = portfolioDbId ? portfolioDbId.replace(/["']/g, '').trim() : "";
+                
+                // [Fix] 포트폴리오 모드 상태 명시적 저장
+                localStorage.setItem('cls_portfolio_mode', isPortfolioMode);
 
                 if (saveLocally) {
                     localStorage.setItem('cls_notion_key', cleanKey);
@@ -2534,7 +2538,8 @@
                     if (!isLocalMode && saveData) saveData({ 
                         cls_notion_key: cleanKey, 
                         cls_notion_db_id: cleanDbId,
-                        cls_notion_portfolio_db_id: cleanPortfolioId
+                        cls_notion_portfolio_db_id: cleanPortfolioId,
+                        cls_portfolio_mode: isPortfolioMode
                     });
                 } else {
                     localStorage.removeItem('cls_notion_key');
@@ -4227,6 +4232,18 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.8.10", 
+                list: [
+                    "노션 연동 설정 저장 시 포트폴리오 모드 상태도 함께 저장되도록 개선"
+                ]
+            },
+            { 
+                version: "v3.8.9", 
+                list: [
+                    "학생 인사이트 창에 '포트폴리오 모드' 상태 표시 배지 추가"
+                ]
+            },
             { 
                 version: "v3.8.8", 
                 list: [
@@ -5955,7 +5972,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 8    // Patch: 기존 기능의 버그 수정
+                patch: 10   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -6004,6 +6021,10 @@
             React.useEffect(() => {
                 const saved = localStorage.getItem('notion_portfolio_db_id');
                 if (saved) setPortfolioDbId(saved);
+                
+                // [Fix] 앱 시작 시 포트폴리오 모드 상태 로드
+                const savedMode = localStorage.getItem('cls_portfolio_mode') === 'true';
+                setIsPortfolioMode(savedMode);
             }, []);
 
             React.useEffect(() => {
@@ -6651,6 +6672,10 @@
                                         if (d.notion_key) localStorage.setItem('cls_notion_key', d.notion_key);
                                         if (d.notion_db_id) localStorage.setItem('cls_notion_db_id', d.notion_db_id);
                                         if (d.notion_portfolio_db_id) { localStorage.setItem('notion_portfolio_db_id', d.notion_portfolio_db_id); setPortfolioDbId(d.notion_portfolio_db_id); }
+                                        if (d.portfolio_mode !== undefined) { 
+                                            setIsPortfolioMode(d.portfolio_mode); 
+                                            localStorage.setItem('cls_portfolio_mode', d.portfolio_mode); 
+                                        }
                                         
                                         // [추가됨] 로딩 완료 처리
                                         setIsLoading(false);
