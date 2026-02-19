@@ -770,7 +770,6 @@
                     const formattedDateTime = dayjs(safeDate).format('YYYY-MM-DD') + 'T' + dayjs().format('HH:mm:ss');
 
                     const bodyData = {
-                        date: formattedDateTime,
                         category: finalCategory || "관찰",
                         content: notionContent || "",
                         personalKey,
@@ -797,8 +796,9 @@
                         bodyData.mode = 'relation';
                         bodyData.studentIds = ids;
                     } else {
-                        bodyData.mode = 'text';
+                        bodyData.mode = 'normal';
                         bodyData.studentName = student.name || "이름 없음";
+                        bodyData.date = formattedDateTime;
                     }
 
                     const response = await fetch('/api/save-notion', {
@@ -1287,7 +1287,7 @@
                                 {/* [New] 통합 입력 폼 */}
                                 <div className="flex flex-col gap-3 mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <div className="flex flex-col gap-2">
-                                        <div className="flex gap-2 items-end">
+                                        <div className="flex gap-2">
                                             <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className={`p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 font-bold text-slate-600 ${isPortfolioMode ? 'w-auto' : 'w-full'}`} />
                                             {isPortfolioMode && (
                                                 <div className="flex-1">
@@ -1305,7 +1305,7 @@
                                                         }}
                                                     />
                                                     <datalist id="student-search-list">
-                                                        {students.slice().sort((a, b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.name} />)}
+                                                        {Object.keys(studentMap).sort().map(name => <option key={name} value={name} />)}
                                                     </datalist>
                                                 </div>
                                             )}
