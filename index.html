@@ -766,11 +766,14 @@
                         return;
                     }
 
+                    // ID 따옴표 제거 (강제)
+                    const cleanDbId = targetDbId.toString().replace(/"/g, '');
+
                     const bodyData = {
                         category: category,
                         content: content,
                         personalKey,
-                        personalDbId: targetDbId
+                        personalDbId: cleanDbId
                     };
 
                     if (isPortfolioMode) {
@@ -2525,12 +2528,13 @@
             };
 
             const setTargetDbId = (val) => {
+                const cleanVal = val.replace(/"/g, '');
                 if (isPortfolioMode) {
-                    setPortfolioDbId(val);
-                    localStorage.setItem('notion_portfolio_db_id', val);
+                    setPortfolioDbId(cleanVal);
+                    localStorage.setItem('notion_portfolio_db_id', cleanVal);
                 } else {
-                    setDbId(val);
-                    localStorage.setItem('cls_notion_db_id', val);
+                    setDbId(cleanVal);
+                    localStorage.setItem('cls_notion_db_id', cleanVal);
                 }
             };
 
@@ -2677,7 +2681,7 @@
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500">Notion API Key (Secret)</label>
                             <div className="flex gap-2">
-                                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="secret_..." />
+                                <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="secret_..." />
                                 <Btn onClick={handlePasteKey} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                             </div>
                         </div>
