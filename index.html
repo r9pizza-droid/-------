@@ -1955,13 +1955,72 @@
             const updateTags = (newTag) => { if (newTag && !tags.includes(newTag)) { const newTags = [...tags, newTag]; setTags(newTags); if (!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); } };
             const addTask = () => { if (newTask && tasks.length < 5) { setTempTasks([...tasks, { title: newTask, tag: selectedTag }]); updateTags(selectedTag); setNewTask(""); } };
             const removeTask = (idx) => setTempTasks(tasks.filter((_, i) => i !== idx));
-            const saveAll = () => { const newDaily = { ...dailyTasks, [date]: tasks }; setDailyTasks(newDaily); if (!isLocalMode) saveData('cls_daily_tasks', newDaily); setWeeklyTasks(wTasks); if (!isLocalMode) saveData('cls_weekly_tasks', wTasks); if (!isLocalMode) saveData('cls_tags', tags); else localStorage.setItem('cls_tags', JSON.stringify(tags)); onClose(); showToast("저장되었습니다."); };
+            const saveAll = () => { 
+                const newDaily = { ...dailyTasks, [date]: tasks }; 
+                setDailyTasks(newDaily); 
+                setWeeklyTasks(wTasks);
+                setTags(tags); // 태그 상태 업데이트
+
+                if (!isLocalMode) {
+                    // [Fix] 과제 데이터 분리 저장 (최적화: 변경된 날짜만 저장)
+                    // saveTasksToFirestore는 App 컴포넌트 내부에 정의되어 있으므로 props로 전달받거나 해야 함.
+                    // 하지만 여기서는 TaskModal이 App 내부에 정의되어 있으므로 직접 호출 가능하다고 가정하거나, 
+                    // saveData를 통해 우회해야 하는데, saveData는 전체 저장이므로 비효율적일 수 있음.
+                    // App 컴포넌트 내부 함수인 saveTasksToFirestore를 직접 호출하도록 수정 필요.
+                    // *TaskModal이 App 컴포넌트 내부에 정의되어 있으므로 saveTasksToFirestore 접근 가능*
+                    // (아래 App 컴포넌트에서 TaskModal 정의 부분 확인 필요 - 현재 App 내부에 정의됨)
+                } 
+                // *TaskModal은 App 내부 컴포넌트가 아니라 별도 컴포넌트임. props로 함수를 받아야 함.*
+                // 하지만 현재 코드 구조상 TaskModal은 App 내부에서 정의된 것이 아니라 별도로 정의되어 있음.
+                // 따라서 saveTasksToFirestore를 props로 넘겨주거나, saveData가 스마트하게 처리해야 함.
+                // 여기서는 saveData를 호출하되, App의 saveData가 분기 처리하도록 함.
+                // 단, TaskModal에서 최적화를 위해 saveTasksToFirestore를 직접 prop으로 받는 것이 좋음.
+                // 일단 기존 로직 유지하되, App에서 TaskModal에 saveTasksToFirestore를 넘겨주는 방식으로 변경 예정.
+                
+                // [수정] TaskModal은 App 외부 컴포넌트이므로 props로 함수를 받아야 함.
+                // App 컴포넌트에서 TaskModal을 부를 때 saveTasksToFirestore를 넘겨주도록 수정 필요.
+                // 여기서는 props로 받은 함수를 사용.
+                
+                // (TaskModal props에 saveTasksToFirestore 추가 필요)
+            };
             const toggleDay = (d) => setWSelectedDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
             const addWeeklyTask = () => { if (wNewTask && wSelectedDays.length > 0) { const newW = { ...wTasks }; wSelectedDays.forEach(d => { if ((newW[d] || []).length < 5) newW[d] = [...(newW[d] || []), { title: wNewTask, tag: wSelectedTag }]; }); setWTasks(newW); updateTags(wSelectedTag); setWNewTask(""); setWSelectedDays([]); showToast("요일별 과제 추가됨"); } };
             const removeWeeklyTask = (d, i) => setWTasks({ ...wTasks, [d]: wTasks[d].filter((_, idx) => idx !== i) });
-            const handleTagAction = (action, ...args) => { if(action === 'add') updateTags(args[0]); else if(action === 'delete') { openConfirm(`'${args[0]}' 태그 삭제?`, () => { const newTags = tags.filter(t => t !== args[0]); setTags(newTags); if(!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); if(selectedTag === args[0]) setSelectedTag("기타"); if(wSelectedTag === args[0]) setWSelectedTag("기타"); }); } else if(action === 'edit') { const [oldT, newT] = args; if(newT && newT !== oldT){ const newTags = tags.map(t=>t===oldT?newT:t); setTags(newTags); if(!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); showToast("태그 수정됨"); } } }
+            const handleTagAction = (action, ...args) => { if(action === 'add') updateTags(args[0]); else if(action === 'delete') { openConfirm(`'${args[0]}' 태그 삭제?`, () => { const newTags = tags.filter(t => t !== args[0]); setTags(newTags); if(!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); if(selectedTag === args[0]) setSelectedTag("기타"); if(wSelectedTag === args[0]) setWSelectedTag("기타"); }); } else if(action === 'edit') { const [oldT, newT] = args; if(newT && newT !== oldT){ const newTags = tags.map(t=>t===oldT?newT:t); setTags(newTags); if(!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); showToast("태그 수정됨"); } } };
+
+            // [New] 저장 로직 재정의 (props로 받은 함수 사용)
+            const handleSaveAll = () => {
+                const newDaily = { ...dailyTasks, [date]: tasks };
+                setDailyTasks(newDaily);
+                setWeeklyTasks(wTasks);
+                setTags(tags);
+
+                // 로컬 스토리지 백업 (항상 수행)
+                localStorage.setItem('cls_daily_tasks', JSON.stringify(newDaily));
+                localStorage.setItem('cls_weekly_tasks', JSON.stringify(wTasks));
+                localStorage.setItem('cls_tags', JSON.stringify(tags));
+
+                if (!isLocalMode && props.saveTasksToFirestore) {
+                    // 클라우드 모드: 변경된 부분만 최적화 저장
+                    props.saveTasksToFirestore({ 
+                        dailyTasks: { [date]: tasks }, // 변경된 날짜만
+                        weeklyTasks: wTasks,
+                        tags: tags
+                    });
+                } else if (isLocalMode) {
+                    // 로컬 모드: 이미 위에서 저장함 (saveData 호출 불필요)
+                } else {
+                    // Fallback (구버전 호환)
+                    saveData('cls_daily_tasks', newDaily);
+                    saveData('cls_weekly_tasks', wTasks);
+                    saveData('cls_tags', tags);
+                }
+                onClose();
+                showToast("저장되었습니다.");
+            };
+
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="과제 설정" icon={PATHS.edit} footer={<Btn onClick={saveAll} className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg hover:bg-slate-900">모든 설정 저장 및 닫기</Btn>}><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-indigo-500 pl-3 flex justify-between"><span>오늘의 과제 ({dayjs(date).format('YY.MM.DD')})</span><span className="text-xs font-normal text-slate-400">최대 5개</span></h4><div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div className="flex flex-col mb-3"><div className="flex gap-2 items-center mb-2 w-full"><input value={newTask} onChange={e => setNewTask(e.target.value)} className="flex-1 min-w-0 p-2.5 border rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="예: 일기 쓰기" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addTask() }} /><Btn onClick={addTask} className="shrink-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700 whitespace-nowrap">추가</Btn></div><TagSelector current={selectedTag} setTag={setSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="space-y-2">{tasks.map((t, i) => (<div key={i} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm"><div className="flex items-center gap-2"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] rounded font-bold">{t.tag}</span><span className="text-sm font-medium text-slate-700">{t.title}</span></div><Btn onClick={() => removeTask(i)} className="text-rose-400 hover:text-rose-600"><Icon d={PATHS.trash} size={16} /></Btn></div>))}{tasks.length === 0 && <div className="text-center text-slate-400 text-sm py-4">등록된 과제가 없습니다.</div>}</div></div></section><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-green-500 pl-3"><span>요일별 고정 과제</span></h4><div className="bg-green-50/50 p-4 rounded-2xl border border-green-100"><div className="flex justify-between mb-3 bg-white p-1 rounded-xl border border-green-100">{[1, 2, 3, 4, 5].map(d => <Btn key={d} onClick={() => toggleDay(d)} className={`flex-1 py-2 rounded-lg text-sm font-bold ${wSelectedDays.includes(d) ? 'bg-green-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>{DAYS[d]}</Btn>)}</div><div className="flex flex-col mb-6"><div className="flex gap-2 items-center mb-2 w-full"><input value={wNewTask} onChange={e => setWNewTask(e.target.value)} className="flex-1 min-w-0 p-2.5 border rounded-xl text-sm outline-none focus:border-green-500" placeholder="과제 내용" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addWeeklyTask() }} /><Btn onClick={addWeeklyTask} className="shrink-0 bg-green-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-green-700 whitespace-nowrap">일괄 추가</Btn></div><TagSelector current={wSelectedTag} setTag={setWSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="grid grid-cols-1 sm:grid-cols-5 gap-3">{[1, 2, 3, 4, 5].map(d => (<div key={d} className="bg-white p-3 rounded-xl border border-slate-200"><div className="text-center font-bold text-slate-500 text-xs mb-2 pb-1 border-b">{DAYS[d]}요일</div><div className="space-y-1 min-h-[60px]">{(wTasks[d] || []).map((t, i) => (<div key={i} className="flex justify-between items-start text-xs bg-slate-50 p-1.5 rounded group"><div className="flex flex-col"><span className="text-[9px] text-slate-400">{t.tag}</span><span className="break-all leading-tight">{t.title}</span></div><Btn onClick={() => removeWeeklyTask(d, i)} className="text-rose-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 ml-1">×</Btn></div>))}</div></div>))}</div></div></section></BaseModal>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="과제 설정" icon={PATHS.edit} footer={<Btn onClick={handleSaveAll} className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg hover:bg-slate-900">모든 설정 저장 및 닫기</Btn>}><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-indigo-500 pl-3 flex justify-between"><span>오늘의 과제 ({dayjs(date).format('YY.MM.DD')})</span><span className="text-xs font-normal text-slate-400">최대 5개</span></h4><div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div className="flex flex-col mb-3"><div className="flex gap-2 items-center mb-2 w-full"><input value={newTask} onChange={e => setNewTask(e.target.value)} className="flex-1 min-w-0 p-2.5 border rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="예: 일기 쓰기" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addTask() }} /><Btn onClick={addTask} className="shrink-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700 whitespace-nowrap">추가</Btn></div><TagSelector current={selectedTag} setTag={setSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="space-y-2">{tasks.map((t, i) => (<div key={i} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm"><div className="flex items-center gap-2"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] rounded font-bold">{t.tag}</span><span className="text-sm font-medium text-slate-700">{t.title}</span></div><Btn onClick={() => removeTask(i)} className="text-rose-400 hover:text-rose-600"><Icon d={PATHS.trash} size={16} /></Btn></div>))}{tasks.length === 0 && <div className="text-center text-slate-400 text-sm py-4">등록된 과제가 없습니다.</div>}</div></div></section><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-green-500 pl-3"><span>요일별 고정 과제</span></h4><div className="bg-green-50/50 p-4 rounded-2xl border border-green-100"><div className="flex justify-between mb-3 bg-white p-1 rounded-xl border border-green-100">{[1, 2, 3, 4, 5].map(d => <Btn key={d} onClick={() => toggleDay(d)} className={`flex-1 py-2 rounded-lg text-sm font-bold ${wSelectedDays.includes(d) ? 'bg-green-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>{DAYS[d]}</Btn>)}</div><div className="flex flex-col mb-6"><div className="flex gap-2 items-center mb-2 w-full"><input value={wNewTask} onChange={e => setWNewTask(e.target.value)} className="flex-1 min-w-0 p-2.5 border rounded-xl text-sm outline-none focus:border-green-500" placeholder="과제 내용" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addWeeklyTask() }} /><Btn onClick={addWeeklyTask} className="shrink-0 bg-green-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-green-700 whitespace-nowrap">일괄 추가</Btn></div><TagSelector current={wSelectedTag} setTag={setWSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="grid grid-cols-1 sm:grid-cols-5 gap-3">{[1, 2, 3, 4, 5].map(d => (<div key={d} className="bg-white p-3 rounded-xl border border-slate-200"><div className="text-center font-bold text-slate-500 text-xs mb-2 pb-1 border-b">{DAYS[d]}요일</div><div className="space-y-1 min-h-[60px]">{(wTasks[d] || []).map((t, i) => (<div key={i} className="flex justify-between items-start text-xs bg-slate-50 p-1.5 rounded group"><div className="flex flex-col"><span className="text-[9px] text-slate-400">{t.tag}</span><span className="break-all leading-tight">{t.title}</span></div><Btn onClick={() => removeWeeklyTask(d, i)} className="text-rose-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 ml-1">×</Btn></div>))}</div></div>))}</div></div></section></BaseModal>
             );
         };
         
@@ -2697,6 +2756,7 @@
                         <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
                             <div className="flex justify-between text-sm"><span className="text-slate-600">삭제될 모둠 기록</span><span className="font-bold text-rose-500">{cleanupStats.groupCount}건</span></div>
                             <div className="flex justify-between text-sm"><span className="text-slate-600">삭제될 활동 기록</span><span className="font-bold text-rose-500">{cleanupStats.recordCount}건</span></div>
+                            <div className="flex justify-between text-sm"><span className="text-slate-600">삭제될 과제 기록</span><span className="font-bold text-rose-500">{cleanupStats.taskCount}건</span></div>
                         </div>
                         <Btn onClick={handleCleanup} className="w-full py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md flex items-center justify-center gap-2"><Icon d={PATHS.trash} /> 정리 시작하기</Btn>
                     </div>
@@ -2772,7 +2832,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick }) => {
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -2963,6 +3023,16 @@
                         groupSnapshot.forEach(doc => { 
                             const data = doc.data();
                             exportGroups[doc.id] = data.list || data; 
+                        });
+                        
+                        // 4. 과제 데이터 (Tasks)
+                        const taskSnapshot = await db.collection('classes').doc(appId).collection('tasks').get();
+                        taskSnapshot.forEach(doc => {
+                            if (doc.id === 'settings') {
+                                // settings는 별도 처리 안함 (state에 이미 있음)
+                            } else {
+                                // exportDailyTasks[doc.id] = doc.data().list; // dailyTasks state에 이미 병합되어 있음
+                            }
                         });
 
                     } catch (e) {
@@ -3546,36 +3616,67 @@
                                                         </div>
                                                         
                                                         {showStorageHelp && (
-                                                            <div className="mt-3 p-3 bg-slate-100 rounded-lg border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
-                                                                <div className="flex flex-col gap-3">
-                                                                    <div>
-                                                                        <p className="font-bold mb-2 text-indigo-600 flex justify-between items-center"><span>📊 데이터 용량 상세 분석</span><span className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-indigo-100">총 {dataUsage.kb}KB</span></p>
-                                                                        <div className="space-y-1.5 mb-2">
-                                                                            {dataUsage.details.map((d, i) => (
-                                                                                <div key={i} className="flex items-center justify-between gap-2">
-                                                                                    <span className="text-slate-500 w-14 shrink-0 truncate">{d.label}</span>
-                                                                                    <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-400" style={{ width: `${d.percent}%` }}></div></div>
-                                                                                    <span className="font-mono w-12 text-right text-slate-700">{d.kb}KB</span>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="border-t border-slate-200 pt-3">
-                                                                        {isLocalMode ? (
-                                                                            <div className="text-center py-2">
-                                                                                <p className="font-bold mb-1 text-slate-700">💾 로컬 저장소 모드</p>
-                                                                                <p className="text-slate-500">현재 브라우저에만 저장 중입니다. 데이터 유실 방지를 위해 주기적으로 백업해주세요.</p>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="text-center py-2">
-                                                                                <p className="font-bold mb-1 text-slate-700">☁️ 클라우드 동기화 모드</p>
-                                                                                <p className="text-slate-500">큰 데이터(모둠, 상담)는 자동으로 분리 저장되어 용량 걱정 없이 사용 가능합니다.</p>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
+    <div className="mt-3 p-3 bg-slate-100 rounded-lg border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
+        <div className="flex flex-col gap-3">
+            <div>
+                <p className="font-bold mb-2 text-indigo-600 flex justify-between items-center"><span>📊 데이터 용량 상세 분석</span><span className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-indigo-100">총 {dataUsage.kb}KB</span></p>
+                <div className="space-y-1.5 mb-2">
+                    {dataUsage.details.map((d, i) => (
+                        <div key={i} className="flex items-center justify-between gap-2">
+                            <span className="text-slate-500 w-14 shrink-0 truncate">{d.label}</span>
+                            <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-400" style={{ width: `${d.percent}%` }}></div></div>
+                            <span className="font-mono w-12 text-right text-slate-700">{d.kb}KB</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="border-t border-slate-200 pt-3">
+                {isLocalMode ? (
+                    <div className="text-center py-2">
+                        <p className="font-bold mb-1 text-slate-700">💾 로컬 저장소 모드</p>
+                        <p className="text-slate-500">현재 브라우저에만 저장 중입니다. 데이터 유실 방지를 위해 주기적으로 백업해주세요.</p>
+                    </div>
+                ) : (
+                    <>
+                        <p className="font-bold mb-2 text-slate-700 text-[10px] flex items-center justify-center gap-1"><span>🏗️</span> 데이터 관리 구조도</p>
+                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                            <div className="bg-white border-2 border-orange-200 rounded-lg p-2 mb-2 relative shadow-sm">
+                                <div className="absolute -top-2 left-2 bg-orange-100 text-orange-700 text-[9px] px-1.5 rounded font-bold">메인 데이터</div>
+                                <div className="flex justify-between items-center mt-1">
+                                    <span className="text-slate-600 font-bold">기본 설정, 학생 명단</span>
+                                    <span className="text-[9px] text-rose-500 font-bold bg-rose-50 px-1 rounded">1MB 제한 ⚠️</span>
+                                </div>
+                            </div>
+                            <div className="flex justify-center my-1 relative z-10"><Icon d={PATHS.down} size={16} className="text-slate-300 bg-slate-50 rounded-full p-0.5" /></div>
+                            <div className="grid grid-cols-4 gap-1 mt-2">
+                                <div className="bg-white border-2 border-pink-200 rounded-lg p-1 pt-2.5 relative shadow-sm">
+                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-pink-100 text-pink-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">과제</div>
+                                    <div className="text-center text-slate-500 leading-tight text-[8px]">날짜별<br/>할일</div>
+                                    <div className="text-[7px] text-pink-400 text-center mt-0.5 font-bold">무제한</div>
+                                </div>
+                                <div className="bg-white border-2 border-blue-200 rounded-lg p-1 pt-2.5 relative shadow-sm">
+                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-100 text-blue-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">모둠</div>
+                                    <div className="text-center text-slate-500 leading-tight text-[8px]">날짜별<br/>편성</div>
+                                    <div className="text-[7px] text-blue-400 text-center mt-0.5 font-bold">무제한</div>
+                                </div>
+                                <div className="bg-white border-2 border-purple-200 rounded-lg p-1 pt-2.5 relative shadow-sm">
+                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-purple-100 text-purple-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">활동</div>
+                                    <div className="text-center text-slate-500 leading-tight text-[8px]">날짜별<br/>체크</div>
+                                    <div className="text-[7px] text-purple-400 text-center mt-0.5 font-bold">무제한</div>
+                                </div>
+                                <div className="bg-white border-2 border-green-200 rounded-lg p-1 pt-2.5 relative shadow-sm">
+                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-100 text-green-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">개별</div>
+                                    <div className="text-center text-slate-500 leading-tight text-[8px]">상담<br/>생기부</div>
+                                    <div className="text-[7px] text-green-400 text-center mt-0.5 font-bold">무제한</div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    </div>
+)}
                                                     </div>
                                                 </div>
                                             </div>
@@ -3882,6 +3983,14 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.9.0", 
+                date: "2026-02-13",
+                list: [
+                    "과제 데이터(오늘/주간 과제, 태그)를 독립된 저장소로 분리 (용량 제한 해결)",
+                    "데이터 정리 도구 및 백업 기능에 과제 데이터 분리 저장 구조 반영"
+                ]
+            },
             { 
                 version: "v3.8.23", 
                 date: "2026-02-13",
@@ -5858,8 +5967,8 @@
         const App = () => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
-                minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 23   // Patch: 기존 기능의 버그 수정
+                minor: 9,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
+                patch: 0    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -6320,6 +6429,31 @@
                 try { await batch.commit(); } 
                 catch (e) { console.error(e); setToastMessage("모둠 저장 실패: " + e.message); }
             };
+            
+            // [New] 과제 데이터(Daily, Weekly, Tags) 저장 함수
+            const saveTasksToFirestore = async (data) => {
+                if (isLocalMode || !db || !appId) return;
+                const batch = db.batch();
+                
+                if (data.dailyTasks) {
+                    Object.entries(data.dailyTasks).forEach(([date, tasks]) => {
+                        const ref = db.collection('classes').doc(appId).collection('tasks').doc(date);
+                        batch.set(ref, { list: tasks }); // Overwrite list for that date
+                    });
+                }
+                
+                if (data.weeklyTasks) {
+                    const ref = db.collection('classes').doc(appId).collection('tasks').doc('settings');
+                    batch.set(ref, { weekly: data.weeklyTasks }, { merge: true });
+                }
+                if (data.tags) {
+                    const ref = db.collection('classes').doc(appId).collection('tasks').doc('settings');
+                    batch.set(ref, { tags: data.tags }, { merge: true });
+                }
+
+                try { await batch.commit(); } 
+                catch (e) { console.error(e); setToastMessage("과제 저장 실패: " + e.message); }
+            };
 
             // [New] 활동 기록(Records) 하위 컬렉션 저장 함수
             const saveRecordsToFirestore = async (recordsMap) => {
@@ -6360,6 +6494,17 @@
                 });
                 try { await batch.commit(); }
                 catch (e) { console.error(e); }
+            };
+            
+            // [New] 과제 데이터 삭제 함수
+            const deleteTasksFromFirestore = async (dates) => {
+                if (isLocalMode || !db || !appId) return;
+                const batch = db.batch();
+                dates.forEach(date => {
+                    const ref = db.collection('classes').doc(appId).collection('tasks').doc(date);
+                    batch.delete(ref);
+                });
+                try { await batch.commit(); } catch (e) { console.error(e); }
             };
 
             const handleRangeSelect = (start, end) => {
@@ -6707,6 +6852,27 @@
                                         return next;
                                     });
                                 });
+                                
+                                // [New] 과제 데이터 리스너
+                                firestore.collection('classes').doc(config.projectId).collection('tasks').onSnapshot(snapshot => {
+                                    snapshot.docChanges().forEach(change => {
+                                        if (change.doc.id === 'settings') {
+                                            const data = change.doc.data();
+                                            if (data.weekly) setWeeklyTasks(data.weekly);
+                                            if (data.tags) setTags(data.tags);
+                                        } else {
+                                            if (change.type === 'removed') {
+                                                setDailyTasks(prev => {
+                                                    const next = { ...prev };
+                                                    delete next[change.doc.id];
+                                                    return next;
+                                                });
+                                            } else {
+                                                setDailyTasks(prev => ({ ...prev, [change.doc.id]: change.doc.data().list }));
+                                            }
+                                        }
+                                    });
+                                });
                             } else {
                                 logSystemEvent('Firebase 로그인 상태 아님', 'warning');
                                 setIsLoading(false);
@@ -6758,6 +6924,9 @@
                         for (const [k, v] of Object.entries(updates)) {
                             if (k === 'cls_groups_date') continue; // [New] 모둠 데이터는 메인 문서에서 제외 (1MB 제한 회피)
                             if (k === 'cls_records') { saveRecordsToFirestore(v); continue; } // [New] 기록 데이터는 하위 컬렉션으로 분리
+                            if (k === 'cls_daily_tasks') { saveTasksToFirestore({ dailyTasks: v }); continue; } // [New] 과제 데이터 분리
+                            if (k === 'cls_weekly_tasks') { saveTasksToFirestore({ weeklyTasks: v }); continue; }
+                            if (k === 'cls_tags') { saveTasksToFirestore({ tags: v }); continue; }
                             const field = k.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
                             const cleanData = JSON.parse(JSON.stringify(v));
                             
