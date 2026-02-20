@@ -62,6 +62,7 @@
                         'modal-enter': 'modalEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                         'slide-in-right': 'slideInRight 0.3s ease-out',
                         'slide-in-left': 'slideInLeft 0.3s ease-out',
+                        'expand-from': 'expandFrom 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                     },
                     keyframes: {
                         bounceIn: { '0%': { transform: 'scale(0.9)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
@@ -70,6 +71,7 @@
                         modalEnter: { '0%': { opacity: 0, transform: 'scale(0.95) translateY(10px)' }, '100%': { opacity: 1, transform: 'scale(1) translateY(0)' } },
                         slideInRight: { '0%': { transform: 'translateX(20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
                         slideInLeft: { '0%': { transform: 'translateX(-20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
+                        expandFrom: { '0%': { transform: 'scale(0)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                     }
                 }
             }
@@ -2796,6 +2798,7 @@
             const [showFaviconHelp, setShowFaviconHelp] = useState(false);
             const [showResetOptions, setShowResetOptions] = useState(false);
             const [isStudentListOpen, setIsStudentListOpen] = useState(true);
+            const [activeTab, setActiveTab] = useState('app');
             
             const isNotionConnected = !!(localStorage.getItem('cls_notion_key') && localStorage.getItem('cls_notion_db_id'));
             const isAiConnected = !!apiKey;
@@ -3139,7 +3142,7 @@
 
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title={<><span onClick={onDevModeClick} className="cursor-default">⚙️</span> 설정</>} icon={null} maxWidth="max-w-6xl">
+                <BaseModal isOpen={isOpen} onClose={onClose} title={<><span onClick={onDevModeClick} className="cursor-default">⚙️</span> <span onClick={handleDataManagementClick} className="cursor-default select-none">설정</span></>} icon={null} maxWidth="max-w-6xl">
                     <HelpModal isOpen={showBackupHelp} onClose={()=>setShowBackupHelp(false)} />
                     <ManualModal isOpen={showManualModal} onClose={() => setShowManualModal(false)} content={getManualContent()} onDownload={handleDownloadManualFile} />
                     
@@ -3164,44 +3167,53 @@
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:h-full h-auto min-h-0">
-                        
-                        <div className="flex flex-col lg:h-full h-auto">
-                            <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3 mb-5 flex-shrink-0">
-                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><span className="text-2xl">🧑‍🎓</span> 학생 관리</h3>
-                                <div className="flex items-center">
-                                    <Btn onClick={() => fileRef.current.click()} className="text-xs bg-white border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 flex items-center gap-1 font-bold" title="CSV/TXT 업로드"> <Icon d={PATHS.upload} size={14} /> <span>CSV 업로드</span> </Btn>
-                                    <input type="file" ref={fileRef} onChange={handleFileUpload} className="hidden" accept=".csv,.txt" />
-                                </div>
-                            </div>
-                            <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3 mb-4 flex-shrink-0">
+                    <div className="flex flex-col md:flex-row h-[65vh] gap-6">
+                        <div className="w-full md:w-40 flex-shrink-0 flex flex-row md:flex-col gap-2 bg-slate-50 md:bg-transparent p-2 md:p-0 rounded-xl">
+                            <button onClick={() => setActiveTab('student')} className={`px-4 py-2.5 text-sm font-bold rounded-xl text-left transition-all ${activeTab === 'student' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>👤 학생 관리</button>
+                            <button onClick={() => setActiveTab('app')} className={`px-4 py-2.5 text-sm font-bold rounded-xl text-left transition-all ${activeTab === 'app' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>📱 앱 설정</button>
+                            <button onClick={() => setActiveTab('data')} className={`px-4 py-2.5 text-sm font-bold rounded-xl text-left transition-all ${activeTab === 'data' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>💾 데이터 관리</button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scroll pr-2 space-y-6 pb-10 animate-fade-in">
+                            {activeTab === 'student' && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><span className="text-xl">🧑‍🎓</span> 학생 명단 관리</h3>
+                                            <div className="flex items-center">
+                                                <Btn onClick={() => fileRef.current.click()} className="text-xs bg-white border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 flex items-center gap-1 font-bold" title="CSV/TXT 업로드"> <Icon d={PATHS.upload} size={14} /> <span>CSV 업로드</span> </Btn>
+                                                <input type="file" ref={fileRef} onChange={handleFileUpload} className="hidden" accept=".csv,.txt" />
+                                            </div>
+                                        </div>
                                 <div className="flex flex-wrap gap-2 items-center">
-                                    <input value={name} onChange={e => setName(e.target.value)} className="h-11 p-2.5 border rounded-xl text-sm w-24 sm:w-32" placeholder="이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addStudent() }} />
-                                    <select value={gender} onChange={e => setGender(e.target.value)} className="h-11 w-16 p-2.5 border rounded-xl text-sm"><option value="M">남</option><option value="F">여</option></select>
-                                    <select value={skill} onChange={e => setSkill(parseInt(e.target.value))} className="h-11 w-16 p-2.5 border rounded-xl text-sm"><option value="3">상</option><option value="2">중</option><option value="1">하</option></select>
-                                    <input value={note} onChange={e => setNote(e.target.value)} className="h-11 flex-1 p-2.5 border rounded-xl text-sm min-w-[100px]" placeholder="비고" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addStudent() }} />
-                                    <button onClick={() => setIsLeader(!isLeader)} className={`h-11 px-3 border rounded-xl text-lg ${isLeader ? 'bg-yellow-100 border-yellow-300 text-yellow-600' : 'bg-white border-slate-200 text-slate-300'}`} title="리더(이끄미)">👑</button>
-                                    <Btn onClick={addStudent} className="h-11 bg-indigo-600 text-white px-4 rounded-xl font-bold hover:bg-indigo-700 text-sm whitespace-nowrap">추가</Btn>
+                                    <input value={name} onChange={e => setName(e.target.value)} className="h-10 p-2.5 border rounded-xl text-sm w-24 sm:w-32" placeholder="이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addStudent() }} />
+                                    <select value={gender} onChange={e => setGender(e.target.value)} className="h-10 w-16 p-2.5 border rounded-xl text-sm"><option value="M">남</option><option value="F">여</option></select>
+                                    <select value={skill} onChange={e => setSkill(parseInt(e.target.value))} className="h-10 w-16 p-2.5 border rounded-xl text-sm"><option value="3">상</option><option value="2">중</option><option value="1">하</option></select>
+                                    <input value={note} onChange={e => setNote(e.target.value)} className="h-10 flex-1 p-2.5 border rounded-xl text-sm min-w-[100px]" placeholder="비고" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addStudent() }} />
+                                    <button onClick={() => setIsLeader(!isLeader)} className={`h-10 px-3 border rounded-xl text-lg ${isLeader ? 'bg-yellow-100 border-yellow-300 text-yellow-600' : 'bg-white border-slate-200 text-slate-300'}`} title="리더(이끄미)">👑</button>
+                                    <Btn onClick={addStudent} className="h-10 bg-indigo-600 text-white px-4 rounded-xl font-bold hover:bg-indigo-700 text-sm whitespace-nowrap">추가</Btn>
                                 </div>
-                            </div>
+                                    </div>
                             
-                            <h4 className="font-bold text-slate-700 mb-2 flex flex-wrap items-center flex-shrink-0 px-1 gap-2"> 
-                                <div className="flex items-center gap-2 cursor-pointer select-none py-1" onClick={() => setIsStudentListOpen(!isStudentListOpen)}>
-                                    <span className="whitespace-nowrap">전체 명단 ({students.length}명)</span>
-                                    <Icon d={isStudentListOpen ? PATHS.down : PATHS.right} size={14} className="text-slate-400 pointer-events-none" />
-                                </div>
-                                <div className="flex gap-2"> <Btn onClick={addTestData} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 hover:bg-indigo-100 transition-colors whitespace-nowrap">테스트 명단</Btn> 
-                                {isDeleteLocked ? (
-                                    <Btn onClick={() => setIsDeleteLocked(false)} className="text-xs bg-slate-100 text-slate-400 p-1.5 rounded-lg font-bold flex items-center justify-center my-1 hover:bg-slate-200 transition-colors" title="잠금 해제"><Icon d={PATHS.lock} size={14} /></Btn>
-                                ) : (
-                                    isDeletingAll ?
-                                    <div className="flex gap-2"><Btn onClick={handleDeleteAll} className="text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg animate-pulse whitespace-nowrap">확인</Btn><Btn onClick={() => { setIsDeletingAll(false); setIsDeleteLocked(true); }} className="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg whitespace-nowrap">취소</Btn></div> : 
-                                    <Btn onClick={() => setIsDeletingAll(true)} className="text-xs bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 my-1 whitespace-nowrap"><Icon d={PATHS.trash} size={12} /> 명단 전체 삭제</Btn>
-                                )} 
-                            </div> </h4>
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col h-[500px]">
+                                        <div className="flex justify-between items-center mb-3 flex-shrink-0">
+                                            <h4 className="font-bold text-slate-700 flex items-center gap-2">
+                                                <span className="text-lg">📋</span> 등록된 학생 명단 ({students.length}명)
+                                            </h4>
+                                            <div className="flex gap-2">
+                                                <Btn onClick={addTestData} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-indigo-100 transition-colors whitespace-nowrap">테스트 명단</Btn>
+                                                {isDeleteLocked ? (
+                                                    <Btn onClick={() => setIsDeleteLocked(false)} className="text-xs bg-slate-100 text-slate-400 p-1.5 rounded-lg font-bold flex items-center justify-center hover:bg-slate-200 transition-colors" title="잠금 해제"><Icon d={PATHS.lock} size={14} /></Btn>
+                                                ) : (
+                                                    isDeletingAll ?
+                                                    <div className="flex gap-2"><Btn onClick={handleDeleteAll} className="text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg animate-pulse whitespace-nowrap">확인</Btn><Btn onClick={() => { setIsDeletingAll(false); setIsDeleteLocked(true); }} className="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg whitespace-nowrap">취소</Btn></div> : 
+                                                    <Btn onClick={() => setIsDeletingAll(true)} className="text-xs bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 whitespace-nowrap"><Icon d={PATHS.trash} size={12} /> 전체 삭제</Btn>
+                                                )}
+                                            </div>
+                                        </div>
                             
-                            <div id="student-list" className="flex-1 lg:overflow-y-auto overflow-visible bg-slate-50 p-2 rounded-xl space-y-1 custom-scroll border border-slate-200 lg:h-full h-auto shadow-inner animate-fade-in">
-                                {(isStudentListOpen ? students : students.slice(0, 2)).map(s => (
+                                        <div id="student-list" className="flex-1 overflow-y-auto custom-scroll bg-white p-2 rounded-xl border border-slate-200 shadow-inner space-y-1">
+                                            {students.map(s => (
                                     <div key={s.id} className="flex justify-between items-center p-2.5 bg-white rounded-lg border border-slate-100 text-sm group min-h-[46px]">
                                         {editingId === s.id ? (
                                             <div className="flex gap-1 flex-1 items-center animate-fade-in w-full">
@@ -3229,22 +3241,20 @@
                                         )}
                                     </div>
                                 ))}
-                                {!isStudentListOpen && students.length > 2 && (
-                                    <div className="text-center text-xs text-slate-400 py-2 cursor-pointer hover:text-indigo-500 transition-colors" onClick={() => setIsStudentListOpen(true)}>
-                                        ... 외 {students.length - 2}명 더 보기
                                     </div>
-                                )}
-                            </div>
-                        </div>
+                                    </div>
+                                </div>
+                            )}
 
-                        <div className="space-y-8">
-                            <section>
-                                <h3 className="text-xl font-bold text-slate-800 border-b-2 border-slate-100 pb-3 mb-5 flex items-center gap-2 cursor-default select-none" onClick={handleDataManagementClick}>
+                            {activeTab === 'app' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <h3 className="text-xl font-bold text-slate-800 border-b-2 border-slate-100 pb-3 mb-5 flex items-center gap-2 cursor-default select-none">
                                     <span className="text-2xl">📱</span> 앱 설정 {isAdminMode && <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-1">관리자 모드</span>}
                                     {isDevMode && <span className="text-xs bg-slate-800 text-white px-2 py-0.5 rounded-full ml-1">개발자 모드</span>}
                                 </h3>
                                 {(!isStandalone && (deferredPrompt || isIOS)) && (
-                                    <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-5 rounded-2xl text-white shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in mb-6 relative overflow-hidden group cursor-pointer" onClick={onInstallApp}>
+                                    <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-5 rounded-2xl text-white shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in mb-6 relative overflow-hidden group cursor-pointer mx-1" onClick={onInstallApp}>
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/20 transition-all"></div>
                                         <div className="flex items-center gap-4 relative z-10">
                                             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
@@ -3260,100 +3270,102 @@
                                         </Btn>
                                     </div>
                                 )}
-                                <div className="space-y-4">
-                                    {isDevMode && (
-                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-4 animate-fade-in">
-                                            <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2 text-sm">🎨 아이콘 설정</h4>
-                                            <div className="grid grid-cols-3 gap-3">
-                                                <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative">
-                                                    <button onClick={(e) => { e.stopPropagation(); setShowFaviconHelp(!showFaviconHelp); }} className="absolute top-2 right-2 text-slate-300 hover:text-indigo-500 transition-colors"><Icon d={PATHS.help} size={14} /></button>
-                                                    {showFaviconHelp && (
-                                                        <div className="absolute top-8 right-2 w-48 bg-slate-800/95 backdrop-blur text-white text-[10px] p-3 rounded-xl shadow-xl z-20 text-left leading-relaxed animate-fade-in border border-slate-700" onClick={() => setShowFaviconHelp(false)}>
-                                                            <p className="font-bold mb-1 text-indigo-300">💡 아이콘 업로드 가이드</p>
-                                                            <ul className="list-disc pl-3 space-y-1 opacity-90">
-                                                                <li>적용: 브라우저 탭, 홈 화면(PWA)</li>
-                                                                <li>비율: 1:1 정사각형 (필수)</li>
-                                                                <li>크기: 192px 이상 권장</li>
-                                                                <li>배경: 투명(PNG) 권장</li>
-                                                                <li>용량: 가급적 작게 (로딩 속도)</li>
-                                                            </ul>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex gap-4 items-end mb-2 mt-1">
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <span className="text-[9px] text-slate-400 font-bold">브라우저</span>
-                                                            <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
-                                                                {appConfig.favicon ? <img src={appConfig.favicon} className="w-full h-full object-cover" /> : <span className="text-xl">📝</span>}
+
+                                    <div className={`grid gap-4 ${isDevMode ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                                        {isDevMode && (
+                                            <div className="space-y-2">
+                                                <h4 className="font-bold text-slate-700 mb-2 flex items-center gap-2 text-sm">🎨 아이콘 설정</h4>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-2 flex flex-col items-center justify-center gap-1 shadow-sm relative">
+                                                        <button onClick={(e) => { e.stopPropagation(); setShowFaviconHelp(!showFaviconHelp); }} className="absolute top-1 right-1 text-slate-300 hover:text-indigo-500 transition-colors"><Icon d={PATHS.help} size={12} /></button>
+                                                        {showFaviconHelp && (
+                                                            <div className="absolute top-6 right-1 w-48 bg-slate-800/95 backdrop-blur text-white text-[10px] p-3 rounded-xl shadow-xl z-20 text-left leading-relaxed animate-fade-in border border-slate-700" onClick={() => setShowFaviconHelp(false)}>
+                                                                <p className="font-bold mb-1 text-indigo-300">💡 아이콘 업로드 가이드</p>
+                                                                <ul className="list-disc pl-3 space-y-1 opacity-90">
+                                                                    <li>적용: 브라우저 탭, 홈 화면(PWA)</li>
+                                                                    <li>비율: 1:1 정사각형 (필수)</li>
+                                                                    <li>크기: 192px 이상 권장</li>
+                                                                    <li>배경: 투명(PNG) 권장</li>
+                                                                    <li>용량: 가급적 작게 (로딩 속도)</li>
+                                                                </ul>
                                                             </div>
-                                                        </div>
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <span className="text-[9px] text-slate-400 font-bold">iOS 홈</span>
-                                                            <div className="relative w-14 h-16 bg-gradient-to-b from-sky-300 to-sky-500 rounded-lg flex flex-col items-center justify-center shadow-inner border border-slate-200 overflow-hidden pt-1">
-                                                                <div className="w-9 h-9 bg-white rounded-[8px] flex items-center justify-center overflow-hidden shadow-sm mb-0.5">
+                                                        )}
+                                                        <div className="flex gap-2 items-end mb-1 mt-1">
+                                                            <div className="flex flex-col items-center gap-0.5">
+                                                                <span className="text-[8px] text-slate-400 font-bold">브라우저</span>
+                                                                <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
                                                                     {appConfig.favicon ? <img src={appConfig.favicon} className="w-full h-full object-cover" /> : <span className="text-lg">📝</span>}
                                                                 </div>
-                                                                <span className="text-[6px] text-white font-medium drop-shadow-md truncate max-w-[48px] px-0.5">{appConfig.recordTitle || "다했나요!?"}</span>
+                                                            </div>
+                                                            <div className="flex flex-col items-center gap-0.5">
+                                                                <span className="text-[8px] text-slate-400 font-bold">iOS 홈</span>
+                                                                <div className="relative w-10 h-12 bg-gradient-to-b from-sky-300 to-sky-500 rounded-md flex flex-col items-center justify-center shadow-inner border border-slate-200 overflow-hidden pt-0.5">
+                                                                    <div className="w-6 h-6 bg-white rounded-[6px] flex items-center justify-center overflow-hidden shadow-sm mb-0.5">
+                                                                        {appConfig.favicon ? <img src={appConfig.favicon} className="w-full h-full object-cover" /> : <span className="text-sm">📝</span>}
+                                                                    </div>
+                                                                    <span className="text-[4px] text-white font-medium drop-shadow-md truncate max-w-[36px] px-0.5">{appConfig.recordTitle || "다했나요!?"}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
+                                                        <div className="flex gap-1 w-full">
+                                                            <input type="file" ref={faviconRef} onChange={(e) => { 
+                                                                const f = e.target.files[0]; 
+                                                                if (f) { 
+                                                                    const r = new FileReader(); 
+                                                                    r.onload = (ev) => { 
+                                                                        const newIcon = ev.target.result; 
+                                                                        updateAppConfig({ favicon: newIcon });
+                                                                        openConfirm("앱 아이콘이 변경되었습니다.\n\n변경된 아이콘을 홈 화면에 적용하려면,\n기존 앱을 삭제하고 '홈 화면에 추가'를 다시 진행해주세요.\n\n(확인을 누르면 설치 가이드가 표시됩니다)", () => onInstallApp()); 
+                                                                    }; 
+                                                                    r.readAsDataURL(f); 
+                                                                } 
+                                                            }} className="hidden" accept="image/*" />
+                                                            <Btn onClick={() => faviconRef.current.click()} className="flex-1 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100">변경</Btn>
+                                                            <Btn onClick={() => openConfirm("앱 아이콘을 기본값(📝)으로 복원하시겠습니까?", () => updateAppConfig({ favicon: null }))} className="px-1.5 py-1 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={12}/></Btn>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex gap-1 w-full">
-                                                        <input type="file" ref={faviconRef} onChange={(e) => { 
-                                                            const f = e.target.files[0]; 
-                                                            if (f) { 
-                                                                const r = new FileReader(); 
-                                                                r.onload = (ev) => { 
-                                                                    const newIcon = ev.target.result; 
-                                                                    updateAppConfig({ favicon: newIcon });
-                                                                    
-                                                                    openConfirm("앱 아이콘이 변경되었습니다.\n\n변경된 아이콘을 홈 화면에 적용하려면,\n기존 앱을 삭제하고 '홈 화면에 추가'를 다시 진행해주세요.\n\n(확인을 누르면 설치 가이드가 표시됩니다)", () => onInstallApp()); 
-                                                                }; 
-                                                                r.readAsDataURL(f); 
-                                                            } 
-                                                        }} className="hidden" accept="image/*" />
-                                                        <Btn onClick={() => faviconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">앱 아이콘</Btn>
-                                                        <Btn onClick={() => openConfirm("앱 아이콘을 기본값(📝)으로 복원하시겠습니까?", () => updateAppConfig({ favicon: null }))} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-2 flex flex-col items-center justify-center gap-1 shadow-sm relative overflow-hidden">
+                                                        <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100 mb-1">
+                                                            {appConfig.runner.startsWith('data:image') ? <img src={appConfig.runner} className="w-full h-full object-cover" /> : <span className="text-xl">{appConfig.runner}</span>}
+                                                        </div>
+                                                        <div className="flex gap-1 w-full">
+                                                            <input type="file" ref={runnerImgRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => updateAppConfig({ runner: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                            <Btn onClick={() => runnerImgRef.current.click()} className="flex-1 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100">러너</Btn>
+                                                            <Btn onClick={() => updateAppConfig({ runner: "🏃" })} className="px-1.5 py-1 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={12}/></Btn>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
-                                                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
-                                                        {appConfig.runner.startsWith('data:image') ? <img src={appConfig.runner} className="w-full h-full object-cover" /> : <span className="text-2xl">{appConfig.runner}</span>}
-                                                    </div>
-                                                    <div className="flex gap-1 w-full">
-                                                        <input type="file" ref={runnerImgRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => updateAppConfig({ runner: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
-                                                        <Btn onClick={() => runnerImgRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">러너 변경</Btn>
-                                                        <Btn onClick={() => updateAppConfig({ runner: "🏃" })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden">
-                                                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100">
-                                                        {appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-full h-full object-contain" /> : <span className="text-2xl">☁️</span>}
-                                                    </div>
-                                                    <div className="flex gap-1 w-full">
-                                                        <input type="file" ref={cloudIconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => updateAppConfig({ cloudIcon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
-                                                        <Btn onClick={() => cloudIconRef.current.click()} className="flex-1 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">구름 변경</Btn>
-                                                        <Btn onClick={() => updateAppConfig({ cloudIcon: null })} className="px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={14}/></Btn>
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-2 flex flex-col items-center justify-center gap-1 shadow-sm relative overflow-hidden">
+                                                        <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border border-slate-100 mb-1">
+                                                            {appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-full h-full object-contain" /> : <span className="text-xl">☁️</span>}
+                                                        </div>
+                                                        <div className="flex gap-1 w-full">
+                                                            <input type="file" ref={cloudIconRef} onChange={(e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => updateAppConfig({ cloudIcon: ev.target.result }); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
+                                                            <Btn onClick={() => cloudIconRef.current.click()} className="flex-1 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100">구름</Btn>
+                                                            <Btn onClick={() => updateAppConfig({ cloudIcon: null })} className="px-1.5 py-1 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><Icon d={PATHS.trash} size={12}/></Btn>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    <div className="grid grid-cols-1 gap-3">
-                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
+                                        <div className="space-y-2">
+                                            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-2"><span className="text-lg">📝</span> 앱 기본 설정</h4>
+                                            <div className="grid grid-cols-1 gap-2">
+                                        <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
                                             <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0"><Icon d={PATHS.edit} size={20}/></div>
                                             <div className="flex-1 min-w-0">
                                                 <label className="text-[10px] font-bold text-slate-400 block mb-0.5">기록 모드 제목</label>
                                                 <input value={appConfig.recordTitle} onChange={e => updateAppConfig({ recordTitle: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="다했나요!?" />
                                             </div>
                                         </div>
-                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
+                                        <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
                                             <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500 flex-shrink-0"><Icon d={PATHS.check} size={20}/></div>
                                             <div className="flex-1 min-w-0">
                                                 <label className="text-[10px] font-bold text-slate-400 block mb-0.5">완료 메시지</label>
                                                 <input value={appConfig.recordMsg} onChange={e => updateAppConfig({ recordMsg: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="모두 제출 완료! 🎉" />
                                             </div>
                                         </div>
-                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
+                                        <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
                                             <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 flex-shrink-0"><Icon d={PATHS.users} size={20}/></div>
                                             <div className="flex-1 min-w-0">
                                                 <label className="text-[10px] font-bold text-slate-400 block mb-0.5">학급명 (파일 저장용)</label>
@@ -3361,9 +3373,15 @@
                                             </div>
                                         </div>
                                     </div>
+                                        </div>
+                                    </div>
+                                    </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-indigo-300 transition-colors relative">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
+                                        <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">🎨</span> 화면 및 소리 설정</h4>
+                                        <div className="flex flex-col gap-3">
+                                            <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors relative">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Icon d={PATHS.document} size={16} className="text-slate-400"/>
                                                 <span className="text-xs font-bold text-slate-500">앱 폰트</span>
@@ -3408,9 +3426,9 @@
                                                 </>
                                             )}
                                         </div>
-                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-2 gap-2">
                                             <div 
-                                                className={`border rounded-xl p-3 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.soundEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                                className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.soundEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
                                                 onClick={() => updateAppConfig({ soundEnabled: !(appConfig.soundEnabled !== false) })}
                                             >
                                                 <div className="flex items-center gap-2 mb-2">
@@ -3425,7 +3443,7 @@
                                                 </div>
                                             </div>
                                             <div 
-                                                className={`border rounded-xl p-3 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.animationEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                                className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.animationEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
                                                 onClick={() => updateAppConfig({ animationEnabled: !(appConfig.animationEnabled !== false) })}
                                             >
                                                 <div className="flex items-center gap-2 mb-2">
@@ -3441,10 +3459,12 @@
                                             </div>
                                         </div>
                                     </div>
+                                    </div>
 
-                                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
+                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-indigo-300 transition-colors h-full flex flex-col">
                                         <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span className="text-xl">🏖️</span> 방학 기간 설정</label>
-                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3 flex-1">
                                             {currentVacations.length > 0 ? (
                                                 <div className="space-y-2 max-h-32 overflow-y-auto custom-scroll pr-1">
                                                     {currentVacations.map((v, i) => (
@@ -3479,213 +3499,175 @@
                                             <Icon d={PATHS.help} size={10} /> 방학 기간에는 달력에서 날짜 선택이 제한됩니다.
                                         </div>
                                     </div>
-                                </div>
-                            </section>
-                            
-                            <section>
-                                <div className="flex items-center justify-between gap-2 mb-5 border-b-2 border-slate-100 pb-3 cursor-pointer select-none" onClick={() => setIsDataManagementOpen(!isDataManagementOpen)}>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-2xl">💾</span>
-                                        <h3 className="text-xl font-bold text-slate-800">
-                                            데이터 관리
-                                        </h3>
-                                        {!isDataManagementOpen && (
-                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ml-2 animate-fade-in ${dataUsage.isCritical ? 'bg-rose-100 text-rose-600' : dataUsage.isWarning ? 'bg-orange-100 text-orange-600' : (isLocalMode ? 'bg-slate-100 text-slate-600' : 'bg-green-100 text-green-600')}`}>
-                                                {dataUsage.percent}%
-                                            </span>
-                                        )}
                                     </div>
-                                    <Icon d={isDataManagementOpen ? PATHS.down : PATHS.right} size={20} className="text-slate-400" />
+                                    </div>
                                 </div>
-                                {isDataManagementOpen && (
+                            )}
+                            
+                            {activeTab === 'data' && (
                                 <div className="space-y-4 animate-fade-in">
-                                    <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                        {isAdminMode && (
-                                            <div className="grid grid-cols-3 gap-3 mb-3 animate-fade-in">
-                                                <Btn onClick={handleDownloadHtml} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
-                                                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center"><Icon d={PATHS.download} size={20} className="text-indigo-500" /></div>
-                                                    <span className="text-xs font-bold text-slate-600">파일로 저장</span>
-                                                </Btn>
-                                                <Btn onClick={handleCopyCode} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.code} size={20} className="text-slate-500" /></div>
-                                                    <span className="text-xs font-bold text-slate-600">코드 복사</span>
-                                                </Btn>
-                                                <Btn onClick={onOpenNotionSetup} className={`h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isNotionConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><span className="text-xl">N</span></div>
+                                    
+                                    {/* [1단] 연동 및 용량 분석 */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
+                                            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">🔗</span> 외부 서비스 연동</h4>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Btn onClick={onOpenNotionSetup} className={`py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isNotionConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><span className="text-lg">N</span></div>
                                                     <span className="text-xs font-bold text-slate-600">노션 연동</span>
                                                     {isNotionConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
-                                                <Btn onClick={onOpenApiKeySetup} className={`h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isAiConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.bot} size={20} className="text-slate-500" /></div>
+                                                <Btn onClick={onOpenApiKeySetup} className={`py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isAiConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.bot} size={18} className="text-slate-500" /></div>
                                                     <span className="text-xs font-bold text-slate-600">AI 설정</span>
                                                     {isAiConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
                                             </div>
-                                        )}
-                                        <div className="grid grid-cols-3 gap-3 mb-3">
-                                            <Btn onClick={handleExportJson} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
-                                                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center"><Icon d={PATHS.upload} size={20} className="text-blue-500" /></div>
-                                                <span className="text-xs font-bold text-slate-600">데이터 백업</span>
-                                            </Btn>
-                                            <Btn onClick={()=>jsonFileRef.current.click()} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
-                                                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center"><Icon d={PATHS.download} size={20} className="text-green-500" /></div>
-                                                <span className="text-xs font-bold text-slate-600">데이터 복원</span>
-                                            </Btn>
-                                            <Btn onClick={() => setShowCleanupModal(true)} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
-                                                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center"><Icon d={PATHS.trash} size={20} className="text-rose-500" /></div>
-                                                <span className="text-xs font-bold text-slate-600">데이터 정리</span>
-                                            </Btn>
-                                            <Btn onClick={() => setShowManualModal(true)} className="h-24 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
-                                                <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center"><Icon d={PATHS.book} size={20} className="text-orange-500" /></div>
-                                                <span className="text-xs font-bold text-slate-600">사용 설명서</span>
-                                            </Btn>
-                                            <input type="file" ref={jsonFileRef} onChange={handleImportJson} className="hidden" accept=".json" />
                                         </div>
-                                        <div className="flex flex-col gap-2 p-3 bg-indigo-50/50 border-2 border-indigo-100 rounded-xl">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2"><span className="text-xs font-bold text-indigo-800">자동 백업 설정</span><Btn onClick={() => setShowBackupHelp(true)} className="text-indigo-400 hover:text-indigo-600"><Icon d={PATHS.help} size={16}/></Btn></div>
-                                                <div onClick={toggleAutoBackup} className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${autoBackupEnabled ? 'bg-indigo-500' : 'bg-slate-300'}`}><div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoBackupEnabled ? 'translate-x-4' : ''}`}></div></div>
-                                            </div>
-                                            {autoBackupEnabled && (
-                                                <div className="mt-2 pt-2 border-t border-slate-100 animate-fade-in">
-                                                    <div className="flex flex-wrap gap-2 mb-2">{backupTimes.map(t => (<div key={t} className="flex items-center bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg text-xs font-bold text-indigo-700">{t} <button onClick={()=>removeBackupTime(t)} className="ml-2 text-indigo-300 hover:text-rose-500">×</button></div>))}</div>
-                                                    {backupTimes.length < 4 && (<div className="flex gap-2 items-center"><div className="flex border rounded-lg overflow-hidden bg-slate-50"><select value={ampm} onChange={e=>setAmpm(e.target.value)} className="p-1.5 text-xs bg-transparent outline-none"><option value="AM">오전</option><option value="PM">오후</option></select><div className="border-l border-slate-200"></div><select value={hour} onChange={e=>setHour(e.target.value)} className="p-1.5 text-xs bg-transparent outline-none">{Array.from({length: 12}, (_, i) => i + 1).map(h => (<option key={h} value={h}>{h}시</option>))}</select><div className="border-l border-slate-200"></div><select value={minute} onChange={e=>setMinute(e.target.value)} className="p-1.5 text-xs bg-transparent outline-none">{Array.from({length: 12}, (_, i) => i * 5).map(m => (<option key={m} value={String(m).padStart(2, '0')}>{String(m).padStart(2, '0')}분</option>))}</select></div><button onClick={addBackupTime} className="bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-600">추가</button></div>)}
-                                                    <div className="text-[10px] text-slate-400 mt-1">* 최대 4개 시간 설정 가능</div>
+
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
+                                            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">📊</span> 데이터 용량 상세 분석</h4>
+                                            <div className="p-4 rounded-xl border transition-colors shadow-sm bg-white border-slate-200">
+                                                <div className="flex gap-3">
+                                                    <div className={`w-3 h-3 rounded-full shadow-sm mt-1.5 flex-shrink-0 ${isLocalMode ? 'bg-slate-400' : 'bg-green-500 animate-pulse'}`}></div>
+                                                    <div className="flex-1 flex flex-col">
+                                                        <div className="flex justify-between items-center">
+                                                            <div className="flex items-center gap-1 cursor-pointer hover:opacity-80" onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }}>
+                                                                <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
+                                                                <Icon d={showStorageHelp ? PATHS.down : PATHS.right} size={24} className="text-slate-400 hover:text-indigo-500 transition-colors" />
+                                                            </div>
+                                                            {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("연결 해제?", () => { localStorage.removeItem('checklist_config'); window.location.reload(); }) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">해제</Btn>}
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 mt-2">
+                                                            <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isLocalMode ? 'bg-slate-200' : 'bg-green-200/50'}`}>
+                                                                <div className={`h-full rounded-full transition-all duration-500 ${dataUsage.isCritical ? 'bg-rose-500' : dataUsage.isWarning ? 'bg-orange-500' : (isLocalMode ? 'bg-slate-500' : 'bg-green-500')}`} style={{ width: `${Math.min(dataUsage.percent, 100)}%` }}></div>
+                                                            </div>
+                                                            <span className={`text-[10px] font-mono ${dataUsage.isCritical ? 'text-rose-600 font-bold' : (isLocalMode ? 'text-slate-500' : 'text-green-600 font-bold')}`}>{dataUsage.percent}% ({dataUsage.kb}KB)</span>
+                                                        </div>
+                                                        
+                                                        {showStorageHelp && (
+                                                            <div className="mt-3 p-3 bg-slate-100 rounded-lg border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
+                                                                <div className="flex flex-col gap-3">
+                                                                    <div>
+                                                                        <p className="font-bold mb-2 text-indigo-600 flex justify-between items-center"><span>📊 데이터 용량 상세 분석</span><span className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-indigo-100">총 {dataUsage.kb}KB</span></p>
+                                                                        <div className="space-y-1.5 mb-2">
+                                                                            {dataUsage.details.map((d, i) => (
+                                                                                <div key={i} className="flex items-center justify-between gap-2">
+                                                                                    <span className="text-slate-500 w-14 shrink-0 truncate">{d.label}</span>
+                                                                                    <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-400" style={{ width: `${d.percent}%` }}></div></div>
+                                                                                    <span className="font-mono w-12 text-right text-slate-700">{d.kb}KB</span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="border-t border-slate-200 pt-3">
+                                                                        {isLocalMode ? (
+                                                                            <div className="text-center py-2">
+                                                                                <p className="font-bold mb-1 text-slate-700">💾 로컬 저장소 모드</p>
+                                                                                <p className="text-slate-500">현재 브라우저에만 저장 중입니다. 데이터 유실 방지를 위해 주기적으로 백업해주세요.</p>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="text-center py-2">
+                                                                                <p className="font-bold mb-1 text-slate-700">☁️ 클라우드 동기화 모드</p>
+                                                                                <p className="text-slate-500">큰 데이터(모둠, 상담)는 자동으로 분리 저장되어 용량 걱정 없이 사용 가능합니다.</p>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            )}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {isAdminMode && (
-                                        <div 
-                                            className="bg-slate-800 rounded-xl border border-slate-700 shadow-sm mb-4 animate-fade-in overflow-hidden"
-                                        >
-                                            <div 
-                                                className="flex justify-between items-center py-2 px-3 cursor-pointer hover:bg-slate-700 transition-colors select-none"
-                                                onClick={() => setShowCodeUpdater(!showCodeUpdater)}
-                                            >
-                                                <h3 className="text-sm font-bold text-white flex items-center gap-2">🛠️ 코드 업데이트</h3>
-                                                <Icon d={showCodeUpdater ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
+                                    {/* [2단] 백업/복원 및 정리/초기화 */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full flex flex-col justify-between">
+                                            <div>
+                                                <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">💾</span> 데이터 백업 및 복원</h4>
+                                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                                    <Btn onClick={handleExportJson} className="py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                        <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center"><Icon d={PATHS.upload} size={18} className="text-blue-500" /></div>
+                                                        <span className="text-xs font-bold text-slate-600">데이터 백업</span>
+                                                    </Btn>
+                                                    <Btn onClick={()=>jsonFileRef.current.click()} className="py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                        <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center"><Icon d={PATHS.download} size={18} className="text-green-500" /></div>
+                                                        <span className="text-xs font-bold text-slate-600">데이터 복원</span>
+                                                    </Btn>
+                                                    <input type="file" ref={jsonFileRef} onChange={handleImportJson} className="hidden" accept=".json" />
+                                                </div>
                                             </div>
-                                            
-                                            {showCodeUpdater && (
-                                                <div className="p-4 pt-0 animate-fade-in space-y-3 border-t border-slate-700">
-                                                    <p className="text-xs text-slate-400 mt-3">수정된 전체 코드를 아래에 붙여넣으세요.</p>
-                                                    <textarea 
-                                                        value={updateCodeInput} 
-                                                        onChange={(e) => setUpdateCodeInput(e.target.value)} 
-                                                        className="w-full h-32 p-3 rounded-xl bg-slate-900 text-slate-200 text-xs font-mono border border-slate-700 focus:border-indigo-500 outline-none custom-scroll" 
-                                                        placeholder="<!DOCTYPE html>..."
-                                                    />
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        <Btn onClick={handleApplyCode} className="py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg text-xs">즉시 실행 (미리보기)</Btn>
-                                                        <Btn onClick={handleSaveCodeFile} className="py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg text-xs">파일로 저장 (권장)</Btn>
-                                                    </div>
-                                                    <p className="text-[10px] text-slate-500 text-center">* 즉시 실행 시 데이터 안전을 위해 자동 백업이 권장됩니다.</p>
+                                            <div className="flex flex-col gap-2 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2"><span className="text-xs font-bold text-indigo-800">자동 백업 설정</span><Btn onClick={() => setShowBackupHelp(!showBackupHelp)} className="text-indigo-400 hover:text-indigo-600"><Icon d={PATHS.help} size={16}/></Btn></div>
+                                                    <div onClick={toggleAutoBackup} className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${autoBackupEnabled ? 'bg-indigo-500' : 'bg-slate-300'}`}><div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoBackupEnabled ? 'translate-x-4' : ''}`}></div></div>
                                                 </div>
-                                            )}
+                                                {autoBackupEnabled && (
+                                                    <div className="mt-2 pt-2 border-t border-slate-100 animate-fade-in">
+                                                        <div className="flex flex-wrap gap-2 mb-2">{backupTimes.map(t => (<div key={t} className="flex items-center bg-white border border-indigo-100 px-2 py-1 rounded-lg text-xs font-bold text-indigo-700 shadow-sm">{t} <button onClick={()=>removeBackupTime(t)} className="ml-2 text-indigo-300 hover:text-rose-500">×</button></div>))}</div>
+                                                        {backupTimes.length < 4 && (<div className="flex gap-2 items-center"><div className="flex border border-slate-300 rounded-lg overflow-hidden bg-white"><select value={ampm} onChange={e=>setAmpm(e.target.value)} className="p-1.5 text-xs bg-transparent outline-none font-bold text-slate-600"><option value="AM">오전</option><option value="PM">오후</option></select><div className="border-l border-slate-200"></div><select value={hour} onChange={e=>setHour(e.target.value)} className="p-1.5 text-xs bg-transparent outline-none font-bold text-slate-600">{Array.from({length: 12}, (_, i) => i + 1).map(h => (<option key={h} value={h}>{h}시</option>))}</select><div className="border-l border-slate-200"></div><select value={minute} onChange={e=>setMinute(e.target.value)} className="p-1.5 text-xs bg-transparent outline-none font-bold text-slate-600">{Array.from({length: 12}, (_, i) => i * 5).map(m => (<option key={m} value={String(m).padStart(2, '0')}>{String(m).padStart(2, '0')}분</option>))}</select></div><button onClick={addBackupTime} className="bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-600 shadow-sm">추가</button></div>)}
+                                                    </div>
+                                                )}
+                                                {showBackupHelp && <div className="text-[10px] text-slate-500 mt-1 leading-relaxed bg-white p-2 rounded-lg border border-slate-100 animate-fade-in">지정된 시간에 브라우저를 열어두면 자동으로 백업 파일(json)을 다운로드합니다. (최대 4개 설정 가능)</div>}
+                                            </div>
                                         </div>
-                                    )}
 
-                                    <div className={`p-4 rounded-xl border transition-colors shadow-sm ${isLocalMode ? 'bg-slate-50 border-slate-200' : 'bg-green-50 border-green-200'}`}>
-                                        <div className="flex gap-3">
-                                            <div className={`w-3 h-3 rounded-full shadow-sm mt-1.5 flex-shrink-0 ${isLocalMode ? 'bg-slate-400' : 'bg-green-500 animate-pulse'}`}></div>
-                                            <div className="flex-1 flex flex-col">
-                                                <div className="flex justify-between items-center">
-                                                    <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
-                                                    {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("연결 해제?", () => { localStorage.removeItem('checklist_config'); window.location.reload(); }) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">해제</Btn>}
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full flex flex-col justify-between">
+                                            <div>
+                                                <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">🧹</span> 데이터 관리 및 초기화</h4>
+                                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                                    <Btn onClick={() => setShowCleanupModal(true)} className="py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                        <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center"><Icon d={PATHS.trash} size={18} className="text-rose-500" /></div>
+                                                        <span className="text-xs font-bold text-slate-600">데이터 정리</span>
+                                                    </Btn>
+                                                    <Btn onClick={() => setShowManualModal(true)} className="py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                        <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center"><Icon d={PATHS.book} size={18} className="text-orange-500" /></div>
+                                                        <span className="text-xs font-bold text-slate-600">사용 설명서</span>
+                                                    </Btn>
                                                 </div>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <div className={`w-20 h-1.5 rounded-full overflow-hidden ${isLocalMode ? 'bg-slate-200' : 'bg-green-200/50'}`}>
-                                                        <div className={`h-full rounded-full transition-all duration-500 ${dataUsage.isCritical ? 'bg-rose-500' : dataUsage.isWarning ? 'bg-orange-500' : (isLocalMode ? 'bg-slate-500' : 'bg-green-500')}`} style={{ width: `${Math.min(dataUsage.percent, 100)}%` }}></div>
-                                                    </div>
-                                                    <span className={`text-[9px] font-mono ${dataUsage.isCritical ? 'text-rose-600 font-bold' : (isLocalMode ? 'text-slate-500' : 'text-green-600 opacity-80')}`}>{dataUsage.percent}% ({dataUsage.kb}KB)</span>
-                                                    <button onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }} className="text-slate-400 hover:text-indigo-500 ml-1 p-1 rounded hover:bg-slate-100 transition-colors">
-                                                        <Icon d={showStorageHelp ? PATHS.down : PATHS.right} size={12} />
-                                                    </button>
+                                            </div>
+                                            <Btn onClick={() => setShowResetOptions(true)} className="w-full py-3 bg-white border-2 border-rose-100 text-rose-500 rounded-xl font-bold hover:bg-rose-50 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><Icon d={PATHS.trash} size={18} /> 데이터 초기화</Btn>
+                                        </div>
+                                    </div>
+
+                                    {/* [3단] 관리자 메뉴 */}
+                                    {isAdminMode && (
+                                        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-fade-in mt-2">
+                                            <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm"><span className="text-lg">👑</span> 관리자 메뉴</h4>
+                                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                                <Btn onClick={handleDownloadHtml} className="py-3 h-auto bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                    <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center"><Icon d={PATHS.download} size={16} className="text-indigo-500" /></div>
+                                                    <span className="text-xs font-bold text-slate-600">파일로 저장</span>
+                                                </Btn>
+                                                <Btn onClick={handleCopyCode} className="py-3 h-auto bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
+                                                    <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center"><Icon d={PATHS.code} size={16} className="text-slate-500" /></div>
+                                                    <span className="text-xs font-bold text-slate-600">코드 복사</span>
+                                                </Btn>
+                                            </div>
+                                            <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-inner">
+                                                <div className="flex justify-between items-center py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors select-none" onClick={() => setShowCodeUpdater(!showCodeUpdater)}>
+                                                    <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">🛠️ 코드 업데이트 시스템</h3>
+                                                    <Icon d={showCodeUpdater ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
                                                 </div>
-                                                {showStorageHelp && (
-                                                    <div className="mt-2 p-3 bg-slate-100 rounded-lg border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
-                                                        <div className="flex flex-col md:flex-row gap-4">
-                                                            <div className="flex-1">
-                                                                <p className="font-bold mb-2 text-indigo-600 flex justify-between items-center">
-                                                                    <span>📊 데이터 용량 상세 분석</span>
-                                                                    <span className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-indigo-100">총 {dataUsage.kb}KB</span>
-                                                                </p>
-                                                                <div className="space-y-1.5 mb-3">
-                                                                    {dataUsage.details.map((d, i) => (
-                                                                        <div key={i} className="flex items-center justify-between gap-2">
-                                                                            <span className="text-slate-500 w-14 shrink-0 truncate">{d.label}</span>
-                                                                            <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                                                                <div className="h-full bg-indigo-400" style={{ width: `${d.percent}%` }}></div>
-                                                                            </div>
-                                                                            <span className="font-mono w-12 text-right text-slate-700">{d.kb}KB</span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            <div className="flex-1 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-3">
-                                                                {isLocalMode ? (
-                                                                    <div className="text-center py-4">
-                                                                        <p className="font-bold mb-2 text-slate-700">💾 로컬 저장소 모드</p>
-                                                                        <p className="text-slate-500 leading-relaxed">
-                                                                            현재 데이터는 브라우저에만 저장됩니다.<br/>
-                                                                            (최대 약 5MB까지 저장 가능)<br/><br/>
-                                                                            기기를 변경하거나 브라우저를 지우면<br/>
-                                                                            데이터가 사라질 수 있으니<br/>
-                                                                            <strong>주기적으로 백업</strong>해주세요.
-                                                                        </p>
-                                                                    </div>
-                                                                ) : (
-                                                                    <>
-                                                                        <p className="font-bold mb-2 text-slate-700 text-[10px] flex items-center justify-center gap-1">
-                                                                            <span>🏗️</span> 데이터 관리 구조도
-                                                                        </p>
-                                                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                                                                            <div className="bg-white border-2 border-orange-200 rounded-lg p-2 mb-2 relative shadow-sm">
-                                                                                <div className="absolute -top-2 left-2 bg-orange-100 text-orange-700 text-[9px] px-1.5 rounded font-bold">메인 데이터</div>
-                                                                                <div className="flex justify-between items-center mt-1">
-                                                                                <span className="text-slate-600 font-bold">설정, 명단, 과제</span>
-                                                                                    <span className="text-[9px] text-rose-500 font-bold bg-rose-50 px-1 rounded">1MB 제한 ⚠️</span>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div className="flex justify-center my-1 relative z-10"><Icon d={PATHS.down} size={16} className="text-slate-300 bg-slate-50 rounded-full p-0.5" /></div>
-                                                                           <div className="grid grid-cols-3 gap-1.5 mt-2">
-                                                                                <div className="bg-white border-2 border-blue-200 rounded-lg p-1.5 pt-2.5 relative shadow-sm">
-                                                                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-100 text-blue-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">모둠</div>
-                                                                                    <div className="text-center text-slate-500 leading-tight text-[9px]">날짜별<br/>편성</div>
-                                                                                    <div className="text-[7px] text-blue-400 text-center mt-0.5 font-bold">무제한</div>
-                                                                                </div>
-                                                                                <div className="bg-white border-2 border-purple-200 rounded-lg p-1.5 pt-2.5 relative shadow-sm">
-                                                                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-purple-100 text-purple-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">활동</div>
-                                                                                    <div className="text-center text-slate-500 leading-tight text-[9px]">날짜별<br/>체크표</div>
-                                                                                    <div className="text-[7px] text-purple-400 text-center mt-0.5 font-bold">무제한</div>
-                                                                                </div>
-                                                                                <div className="bg-white border-2 border-green-200 rounded-lg p-1.5 pt-2.5 relative shadow-sm">
-                                                                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-100 text-green-700 text-[8px] px-1 rounded font-bold whitespace-nowrap">개별</div>
-                                                                                    <div className="text-center text-slate-500 leading-tight text-[9px]">상담일지<br/>생기부</div>
-                                                                                    <div className="text-[7px] text-green-400 text-center mt-0.5 font-bold">무제한</div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        <p className="text-slate-400 mt-2 text-center leading-relaxed">
-                                                                            * 용량이 큰 데이터(모둠, 상담)는 자동으로<br/>
-                                                                            <strong>분리 저장</strong>되어 용량 걱정 없이 쓸 수 있습니다.
-                                                                        </p>
-                                                                    </>
-                                                                )}
-                                                            </div>
+                                                
+                                                {showCodeUpdater && (
+                                                    <div className="p-4 pt-2 animate-fade-in space-y-3 border-t border-slate-200 bg-white">
+                                                        <p className="text-xs text-slate-500 mt-2 font-bold flex items-center gap-1"><Icon d={PATHS.document} size={12}/> 수정된 전체 코드를 붙여넣으세요.</p>
+                                                        <textarea value={updateCodeInput} onChange={(e) => setUpdateCodeInput(e.target.value)} className="w-full h-32 p-3 rounded-xl bg-slate-50 text-slate-700 text-xs font-mono border border-slate-300 focus:border-indigo-500 outline-none custom-scroll shadow-inner" placeholder="<!DOCTYPE html>..."/>
+                                                        <div className="grid grid-cols-2 gap-3 mt-2">
+                                                            <Btn onClick={handleApplyCode} className="py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md text-xs transition-colors">즉시 실행 (미리보기)</Btn>
+                                                            <Btn onClick={handleSaveCodeFile} className="py-2.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-md text-xs transition-colors">파일로 저장 (권장)</Btn>
                                                         </div>
+                                                        <p className="text-[10px] text-orange-500 text-center font-bold bg-orange-50 p-2 rounded-lg mt-2">* 즉시 실행 시 데이터 안전을 위해 가급적 자동 백업 설정 후 진행하세요.</p>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
-                                    <Btn onClick={() => setShowResetOptions(true)} className="w-full py-4 border-2 border-rose-100 text-rose-500 rounded-xl font-bold hover:bg-rose-50 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><Icon d={PATHS.trash} size={18} /> 초기화</Btn>
+                                    )}
                                 </div>
-                                )}
-                            </section>
+                            )}
                             <DataCleanupModal isOpen={showCleanupModal} onClose={() => setShowCleanupModal(false)} groupsByDate={groupsByDate} records={records} setGroupsByDate={setGroupsByDate} setRecords={setRecords} saveData={saveData} isLocalMode={isLocalMode} showToast={showToast} onBackup={handleExportJson} />
                         </div>
                     </div>
@@ -3900,6 +3882,65 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.8.23", 
+                date: "2026-02-13",
+                list: [
+                    "빠른 기록 플로팅 버튼 숨김 모드 시 반원 형태로 표시되도록 개선",
+                    "플로팅 버튼 위치에 따라 텍스트 표시 방향 자동 조절 (왼쪽/오른쪽)"
+                ]
+            },
+            { 
+                version: "v3.8.22", 
+                date: "2026-02-13",
+                list: [
+                    "빠른 기록 모달 위치 변경 (항상 화면 중앙에 표시)"
+                ]
+            },
+            { 
+                version: "v3.8.21", 
+                date: "2026-02-13",
+                list: [
+                    "빠른 기록 플로팅 버튼 자동 숨김 기능 추가 (가장자리에서 반원 형태로 숨김)"
+                ]
+            },
+            { 
+                version: "v3.8.20", 
+                date: "2026-02-13",
+                list: [
+                    "빠른 기록 플로팅 버튼 자동 자석 붙기 기능 추가 (화면 가장자리로 자동 이동)"
+                ]
+            },
+            { 
+                version: "v3.8.19", 
+                date: "2026-02-13",
+                list: [
+                    "빠른 기록 플로팅 버튼 드래그 이동 반응성 개선 (부드러운 이동)"
+                ]
+            },
+            { 
+                version: "v3.8.18", 
+                date: "2026-02-13",
+                list: [
+                    "빠른 기록 모달 '칭찬하기' 폭죽 효과 추가",
+                    "빠른 기록 입력창 내용에 따라 높이 자동 조절",
+                    "빠른 기록 버튼 대기 모드(반투명) 추가"
+                ]
+            },
+            { 
+                version: "v3.8.17", 
+                date: "2026-02-13",
+                list: [
+                    "빠른 기록 모달 열림 애니메이션 개선 (버튼에서 부드럽게 펼쳐지는 효과 적용)"
+                ]
+            },
+            { 
+                version: "v3.8.16", 
+                list: [
+                    "모든 화면에서 쓸 수 있는 '빠른 기록' 플로팅 버튼 추가",
+                    "플로팅 버튼 드래그 이동 기능 지원"
+                ]
+            },
             { 
                 version: "v3.8.15", 
                 list: [
@@ -5667,7 +5708,7 @@
                 <BaseModal isOpen={isOpen} onClose={onClose} title="⛅️ Firebase 연결 설정" icon={null}><div className="flex flex-col gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200"><div className="text-xs font-bold text-slate-500 mb-1">Firebase 인증 (이메일/비밀번호)</div><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일 (ID)" value={authId} onChange={e => setAuthId(e.target.value)} /><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} /></div><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder='설정 코드 붙여넣기 (예: const firebaseConfig = ...)' value={inputConfig} onChange={e => setInputConfig(e.target.value)} /><div className="flex items-center gap-2 mt-2 px-1"><label className="flex items-center gap-2 cursor-pointer select-none group"><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-slate-300 group-hover:border-indigo-400'}`}>{rememberMe && <Icon d={PATHS.check} size={14} className="text-white" />}</div><input type="checkbox" className="hidden" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} /><span className="text-sm font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">로그인 정보 저장</span></label></div><div className="flex gap-3 mt-5"><Btn onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">취소</Btn><Btn onClick={handleConnect} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">연결하기</Btn></div></BaseModal>
             );
         };
-        const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast }) => {
+        const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos }) => {
     if (!isOpen) return null;
     const [isPortfolioMode, setIsPortfolioMode] = React.useState(() => localStorage.getItem('cls_portfolio_mode') === 'true');
     const [searchText, setSearchText] = React.useState("");
@@ -5677,6 +5718,15 @@
     const [notionContent, setNotionContent] = React.useState('');
     const [keepContent, setKeepContent] = React.useState(false);
     const [notionStatus, setNotionStatus] = React.useState('idle');
+    const modalRef = React.useRef(null);
+    const textareaRef = React.useRef(null);
+
+    React.useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+        }
+    }, [notionContent]);
 
     const handleToggleMode = () => {
         const newMode = !isPortfolioMode;
@@ -5712,7 +5762,10 @@
         
         setStudents(updatedStudents);
         if (!isLocalMode) saveData('cls_students', updatedStudents);
-        if (category === '칭찬' && navigator.vibrate) navigator.vibrate(50);
+        if (category === '칭찬') {
+            if (navigator.vibrate) navigator.vibrate(50);
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 3000 });
+        }
 
         try {
             const rawKey = localStorage.getItem('cls_notion_key') || "";
@@ -5748,8 +5801,8 @@
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-[2000] p-4 backdrop-blur-sm animate-fade-in flex items-center justify-center" onClick={onClose}>
+            <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-expand-from" onClick={e => e.stopPropagation()}>
                 <div className="bg-slate-50 p-5 border-b border-slate-200 flex justify-between items-center">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2"><Icon d={PATHS.document} size={18} className="text-indigo-500"/> 빠른 기록</h3>
                     <div className="flex items-center gap-3">
@@ -5784,7 +5837,7 @@
                         </div>
                     </div>
                     <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none" />
-                    <textarea value={notionContent} onChange={(e) => setNotionContent(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm resize-none h-28 outline-none" placeholder="관찰 내용이나 칭찬할 내용을 입력하세요..." />
+                    <textarea ref={textareaRef} value={notionContent} onChange={(e) => setNotionContent(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm resize-none min-h-[7rem] max-h-[40vh] outline-none overflow-y-auto custom-scroll" placeholder="관찰 내용이나 칭찬할 내용을 입력하세요..." rows={1} />
                     <div className="flex justify-end -mt-2">
                         <label className="flex items-center gap-1.5 cursor-pointer">
                             <input type="checkbox" checked={keepContent} onChange={e => setKeepContent(e.target.checked)} className="w-3.5 h-3.5" />
@@ -5806,7 +5859,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 8,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 15   // Patch: 기존 기능의 버그 수정
+                patch: 23   // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -5956,6 +6009,110 @@
             const [isStandalone, setIsStandalone] = useState(false);
             const [showInstallGuide, setShowInstallGuide] = useState(false);
             const [showGlobalRecord, setShowGlobalRecord] = React.useState(false);
+
+            // [New] Floating Button Drag Logic
+            const [buttonPos, setButtonPos] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 80 });
+            const [isDraggingButton, setIsDraggingButton] = useState(false);
+            const dragOffset = useRef({ x: 0, y: 0 });
+            const isDragGesture = useRef(false);
+            const [isButtonIdle, setIsButtonIdle] = useState(false);
+            const buttonIdleTimer = useRef(null);
+            const [isHidden, setIsHidden] = useState(false);
+            const hideTimer = useRef(null);
+
+            const resetButtonIdleTimer = () => {
+                setIsButtonIdle(false);
+                if (buttonIdleTimer.current) clearTimeout(buttonIdleTimer.current);
+                buttonIdleTimer.current = setTimeout(() => setIsButtonIdle(true), 5000);
+            };
+
+            useEffect(() => {
+                resetButtonIdleTimer();
+                return () => clearTimeout(buttonIdleTimer.current);
+            }, []);
+
+            useEffect(() => {
+                setIsHidden(false);
+                if (hideTimer.current) clearTimeout(hideTimer.current);
+
+                const screenWidth = window.innerWidth;
+                const isLeft = buttonPos.x < 40;
+                const isRight = buttonPos.x > screenWidth - 96;
+
+                if (isLeft || isRight) {
+                    hideTimer.current = setTimeout(() => {
+                        setIsHidden(true);
+                    }, 3000);
+                }
+            }, [buttonPos]);
+
+            const handleButtonDragStart = (e) => {
+                resetButtonIdleTimer();
+                setIsHidden(false);
+                if (hideTimer.current) clearTimeout(hideTimer.current);
+
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                dragOffset.current = { x: clientX - buttonPos.x, y: clientY - buttonPos.y };
+                isDragGesture.current = false;
+                const startX = clientX;
+                const startY = clientY;
+                
+                // [New] Track current position for snap logic
+                let currentX = buttonPos.x;
+                let currentY = buttonPos.y;
+
+                const handleMove = (moveEvent) => {
+                    const moveX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+                    const moveY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+                    
+                    if (!isDragGesture.current) {
+                        const dist = Math.hypot(moveX - startX, moveY - startY);
+                        if (dist > 5) {
+                            isDragGesture.current = true;
+                            setIsDraggingButton(true);
+                        }
+                    }
+
+                    if (isDragGesture.current) {
+                        if (moveEvent.cancelable) moveEvent.preventDefault();
+                        let newX = moveX - dragOffset.current.x;
+                        let newY = moveY - dragOffset.current.y;
+                        newX = Math.max(10, Math.min(window.innerWidth - 70, newX));
+                        newY = Math.max(10, Math.min(window.innerHeight - 70, newY));
+                        currentX = newX;
+                        currentY = newY;
+                        setButtonPos({ x: newX, y: newY });
+                    }
+                };
+
+                const handleUp = () => {
+                    window.removeEventListener('mousemove', handleMove);
+                    window.removeEventListener('mouseup', handleUp);
+                    window.removeEventListener('touchmove', handleMove);
+                    window.removeEventListener('touchend', handleUp);
+                    setIsDraggingButton(false);
+                    
+                    if (isDragGesture.current) {
+                        // Snap to nearest edge
+                        const screenWidth = window.innerWidth;
+                        const btnCenter = currentX + 28; // 56/2
+                        const snapMargin = 24;
+                        let finalX = currentX;
+                        
+                        if (btnCenter < screenWidth / 2) finalX = snapMargin;
+                        else finalX = screenWidth - 56 - snapMargin;
+                        
+                        setButtonPos({ x: finalX, y: currentY });
+                    }
+                };
+
+                window.addEventListener('mousemove', handleMove);
+                window.addEventListener('mouseup', handleUp);
+                window.addEventListener('touchmove', handleMove, { passive: false });
+                window.addEventListener('touchend', handleUp);
+            };
 
             // [Fix] onSnapshot 내부에서 최신 students 상태를 참조하기 위한 Ref
             const studentsRef = useRef(students);
@@ -8246,11 +8403,23 @@
                     </BaseModal>
                     <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => setShowUpdateNotes(false)} showToast={setToastMessage} />
                     {showGlobalRecord && (
-                        <GlobalRecordModal isOpen={showGlobalRecord} onClose={() => setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} />
+                        <GlobalRecordModal isOpen={showGlobalRecord} onClose={() => setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} />
                     )}
-                    <button onClick={() => setShowGlobalRecord(true)} className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl hover:bg-indigo-700 hover:scale-105 transition-all flex items-center justify-center z-[1500] group" title="빠른 관찰 기록">
+                    <button 
+                        onMouseEnter={() => { setIsHidden(false); if(hideTimer.current) clearTimeout(hideTimer.current); }}
+                        onMouseDown={handleButtonDragStart}
+                        onTouchStart={handleButtonDragStart}
+                        onClick={() => { if (!isDragGesture.current) { setShowGlobalRecord(true); resetButtonIdleTimer(); } }}
+                        style={{ 
+                            left: buttonPos.x, 
+                            top: buttonPos.y,
+                            transform: isHidden ? (buttonPos.x < window.innerWidth / 2 ? 'translateX(-50px)' : 'translateX(50px)') : 'none'
+                        }}
+                        className={`fixed z-[1500] w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center group ${isDraggingButton ? '' : 'transition-all duration-300 hover:bg-indigo-700 hover:scale-105'} ${isHidden ? 'opacity-50' : (isButtonIdle ? 'opacity-30 hover:opacity-100' : 'opacity-100')}`}
+                        title="빠른 관찰 기록"
+                    >
                         <Icon d={PATHS.edit} size={24} />
-                        <span className="absolute right-full mr-3 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">빠른 기록</span>
+                        <span className={`absolute bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none ${buttonPos.x < window.innerWidth / 2 ? 'left-full ml-3' : 'right-full mr-3'}`}>빠른 기록</span>
                     </button>
                 </div>
             );
