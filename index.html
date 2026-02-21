@@ -228,14 +228,8 @@
             <button onClick={onClick} className={`transition-colors duration-100 active:opacity-70 flex items-center justify-center rounded hover:bg-notion-bg-hover ${className}`} {...props}>{children}</button>
         );
         const BaseModal = ({ isOpen, onClose, title, icon, children, footer, maxWidth = "max-w-2xl", zIndex = "z-50", onTitleClick }) => {
-            const [translateY, setTranslateY] = useState(0);
-            const [isDragging, setIsDragging] = useState(false);
-            const startY = useRef(0);
-            const contentRef = useRef(null);
-
             useEffect(() => {
                 if (!isOpen) return;
-                setTranslateY(0); setIsDragging(false);
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
                 document.body.style.overflow = 'hidden';
@@ -245,36 +239,18 @@
                 };
             }, [isOpen, onClose]);
 
-            const handleTouchStart = (e) => {
-                if (contentRef.current && contentRef.current.contains(e.target) && contentRef.current.scrollTop > 0) return;
-                setIsDragging(true); startY.current = e.touches[0].clientY;
-            };
-            const handleTouchMove = (e) => {
-                if (!isDragging) return;
-                const delta = e.touches[0].clientY - startY.current;
-                if (delta > 0) setTranslateY(delta);
-            };
-            const handleTouchEnd = () => {
-                if (!isDragging) return;
-                setIsDragging(false);
-                if (translateY > 120) onClose(); else setTranslateY(0);
-            };
-
             if (!isOpen) return null;
             return (
                 <div className={`fixed inset-0 bg-black/40 ${zIndex} flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in`} onClick={onClose}>
                     <div 
                         className={`bg-white w-full ${maxWidth} rounded-xl shadow-xl border border-notion-border p-6 h-auto max-h-[85vh] flex flex-col animate-modal-enter`} 
                         onClick={e => e.stopPropagation()}
-                        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
-                        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}
                     >
-                        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 md:hidden flex-shrink-0" />
                         <div className="flex justify-between items-center mb-6 flex-shrink-0">
                             <h3 className={`text-lg font-bold flex items-center gap-2 text-notion-text ${onTitleClick ? 'cursor-pointer select-none' : ''}`} onClick={onTitleClick}>{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light"><Icon d={PATHS.x} /></button>
                         </div>
-                        <div ref={contentRef} className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6 overscroll-contain">{children}</div>
+                        <div className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6 overscroll-contain">{children}</div>
                         {footer && <div className="pt-4 border-t mt-4 flex-shrink-0">{footer}</div>}
                     </div>
                 </div>
@@ -288,31 +264,20 @@
             return <div className="fixed top-10 left-1/2 transform -translate-x-1/2 z-[3000] animate-pop-up pointer-events-none"><div className="bg-[#37352F] text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 backdrop-blur-md min-w-[200px] justify-center"><Icon d={PATHS.check} size={16} className="text-white" /><span className="font-medium text-sm text-center">{message}</span></div></div>;
         };
         const ConfirmModal = ({ isOpen, message, onConfirm, onCancel }) => {
-            const [translateY, setTranslateY] = useState(0);
-            const [isDragging, setIsDragging] = useState(false);
-            const startY = useRef(0);
-
             useEffect(() => {
-                if (isOpen) { document.body.style.overflow = 'hidden'; setTranslateY(0); setIsDragging(false); }
+                if (isOpen) { document.body.style.overflow = 'hidden'; }
                 return () => { document.body.style.overflow = ''; };
             }, [isOpen]);
-
-            const handleTouchStart = (e) => { setIsDragging(true); startY.current = e.touches[0].clientY; };
-            const handleTouchMove = (e) => { if (!isDragging) return; const delta = e.touches[0].clientY - startY.current; if (delta > 0) setTranslateY(delta); };
-            const handleTouchEnd = () => { if (!isDragging) return; setIsDragging(false); if (translateY > 100) onCancel(); else setTranslateY(0); };
 
             if (!isOpen) return null;
             return (
                 <div className="fixed inset-0 bg-black/40 z-[2500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
                     <div 
                         className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm animate-modal-enter relative"
-                        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
-                        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}
                     >
                         <button onClick={onCancel} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
                             <Icon d={PATHS.x} size={18} />
                         </button>
-                        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4 md:hidden" />
                         <div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-white text-slate-600 rounded border border-slate-200 font-medium hover:bg-slate-100 hover:border-slate-300 transition-colors">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:bg-red-600 shadow-sm transition-colors">확인</Btn></div></div></div>
             );
         };
@@ -490,9 +455,6 @@
 
         const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode }) => {
             if (!isOpen || !student || !student.history) return null;
-            const [translateY, setTranslateY] = useState(0);
-            const [isDragging, setIsDragging] = useState(false);
-            const startY = useRef(0);
             useEffect(() => {
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
@@ -502,17 +464,6 @@
                     document.body.style.overflow = '';
                 };
             }, [onClose]);
-            useEffect(() => {
-                if(isOpen) { setTranslateY(0); setIsDragging(false); }
-            }, [isOpen]);
-            const handleTouchStart = (e) => {
-                if (modalRef.current && modalRef.current.scrollTop > 0) return;
-                setIsDragging(true); startY.current = e.touches[0].clientY;
-            };
-            const handleTouchMove = (e) => { if (!isDragging) return; const delta = e.touches[0].clientY - startY.current;
-                if (delta > 0) setTranslateY(delta); };
-            const handleTouchEnd = () => { if (!isDragging) return; setIsDragging(false);
-                if (translateY > 150) onClose(); else setTranslateY(0); };
 
             const [notes, setNotes] = useState([]);
             const [stickerCount, setStickerCount] = useState(student.stickers || 0);
@@ -659,7 +610,7 @@
                 if(delta > 0) {
                     setStickerEffect(true);
                     setTimeout(() => setStickerEffect(false), 200);
-                    if (navigator.vibrate) navigator.vibrate(50);
+                    if (navigator.vibrate) navigator.vibrate(15);
                     if (newCount % 5 === 0) { 
                         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 });
                         playLevelUpSound();
@@ -739,7 +690,7 @@
                         
                         setStickerEffect(true);
                         setTimeout(() => setStickerEffect(false), 200);
-                        if (navigator.vibrate) navigator.vibrate(50);
+                        if (navigator.vibrate) navigator.vibrate(15);
                         const newCount = stickerCount + 1;
                         if (newCount % 5 === 0) { 
                             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 });
@@ -1069,9 +1020,7 @@
             return (
                 <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
                     {/* [수정됨] max-w-5xl, max-h-[85vh] 로 크기 축소 */}
-                    <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col overscroll-contain" onClick={e => e.stopPropagation()} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined, transition: isDragging ? 'none' : 'transform 0.3s ease-out' }}>
-                        <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mb-4 md:hidden flex-shrink-0" />
-                        
+                    <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col overscroll-contain" onClick={e => e.stopPropagation()}>
                         {/* Header Container */}
                         <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0">
                             <div className="flex justify-between items-center flex-wrap gap-4">
@@ -2859,6 +2808,17 @@
             const [showResetOptions, setShowResetOptions] = useState(false);
             const [isStudentListOpen, setIsStudentListOpen] = useState(true);
             const [activeTab, setActiveTab] = useState('app');
+            const prevTabRef = useRef(activeTab);
+
+            const getTabAnimationClass = () => {
+                if (appConfig.tabAnimationEnabled === false) return '';
+                const tabs = ['student', 'app', 'data'];
+                const prevIdx = tabs.indexOf(prevTabRef.current);
+                const currIdx = tabs.indexOf(activeTab);
+                if (prevIdx === -1 || currIdx === -1 || prevIdx === currIdx) return 'animate-fade-in';
+                return currIdx > prevIdx ? 'animate-slide-in-right' : 'animate-slide-in-left';
+            };
+            useEffect(() => { prevTabRef.current = activeTab; }, [activeTab]);
             
             const isNotionConnected = !!(localStorage.getItem('cls_notion_key') && localStorage.getItem('cls_notion_db_id'));
             const isAiConnected = !!apiKey;
@@ -3238,13 +3198,13 @@
                     )}
 
                     <div className="flex flex-col md:flex-row h-[65vh] gap-6">
-                        <div className="w-full md:w-40 flex-shrink-0 flex flex-row md:flex-col gap-2 bg-slate-50 md:bg-transparent p-2 md:p-0 rounded-xl">
-                            <button onClick={() => setActiveTab('student')} className={`px-4 py-2.5 text-sm font-bold rounded-xl text-left transition-all ${activeTab === 'student' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>👤 학생 관리</button>
-                            <button onClick={() => setActiveTab('app')} className={`px-4 py-2.5 text-sm font-bold rounded-xl text-left transition-all ${activeTab === 'app' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>📱 앱 설정</button>
-                            <button onClick={() => setActiveTab('data')} className={`px-4 py-2.5 text-sm font-bold rounded-xl text-left transition-all ${activeTab === 'data' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>💾 데이터 관리</button>
+                        <div className="w-full md:w-40 flex-shrink-0 flex flex-row md:flex-col gap-1 md:gap-2 bg-slate-50 md:bg-transparent p-1 md:p-0 rounded-xl">
+                            <button onClick={() => setActiveTab('student')} className={`flex-1 md:flex-none px-1 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-bold rounded-lg md:rounded-xl text-center md:text-left whitespace-nowrap transition-all ${activeTab === 'student' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>👤 학생 관리</button>
+                            <button onClick={() => setActiveTab('app')} className={`flex-1 md:flex-none px-1 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-bold rounded-lg md:rounded-xl text-center md:text-left whitespace-nowrap transition-all ${activeTab === 'app' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>📱 앱 설정</button>
+                            <button onClick={() => setActiveTab('data')} className={`flex-1 md:flex-none px-1 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-bold rounded-lg md:rounded-xl text-center md:text-left whitespace-nowrap transition-all ${activeTab === 'data' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>💾 데이터 관리</button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scroll pr-2 space-y-6 pb-10 animate-fade-in">
+                        <div className={`flex-1 overflow-y-auto custom-scroll pr-2 space-y-6 pb-10 ${getTabAnimationClass()}`} key={activeTab}>
                             {activeTab === 'student' && (
                                 <div className="space-y-6 animate-fade-in">
                                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -3496,7 +3456,7 @@
                                                 </>
                                             )}
                                         </div>
-                                            <div className="grid grid-cols-2 gap-2">
+                                            <div className="grid grid-cols-3 gap-2">
                                             <div 
                                                 className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.soundEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
                                                 onClick={() => updateAppConfig({ soundEnabled: !(appConfig.soundEnabled !== false) })}
@@ -3527,7 +3487,56 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            <div 
+                                                className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.tabAnimationEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                                onClick={() => updateAppConfig({ tabAnimationEnabled: !(appConfig.tabAnimationEnabled !== false) })}
+                                            >
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icon d={PATHS.right} size={16} className={appConfig.tabAnimationEnabled !== false ? "text-indigo-500" : "text-slate-400"}/>
+                                                    <span className={`text-xs font-bold ${appConfig.tabAnimationEnabled !== false ? "text-indigo-700" : "text-slate-500"}`}>탭 효과</span>
+                                                </div>
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <span className={`text-[10px] font-bold ${appConfig.tabAnimationEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.tabAnimationEnabled !== false ? "ON" : "OFF"}</span>
+                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${appConfig.tabAnimationEnabled !== false ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}>
+                                                        {appConfig.tabAnimationEnabled !== false && <Icon d={PATHS.check} size={14} className="text-white" strokeWidth={3} />}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
+                                        {appConfig.soundEnabled !== false && (
+                                            <div className="col-span-2 mt-1 bg-white border border-slate-200 rounded-xl p-3 shadow-sm space-y-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 block mb-2">터치 효과음 종류</label>
+                                                    <div className="grid grid-cols-4 gap-2">
+                                                        {[
+                                                            { id: 'tick', label: '틱(기본)' },
+                                                            { id: 'click', label: '클릭' },
+                                                            { id: 'toc', label: '톡' },
+                                                            { id: 'pop', label: '팝' }
+                                                        ].map(sound => (
+                                                            <button key={sound.id} onClick={() => { updateAppConfig({ hapticSoundType: sound.id }); playHapticSound(true, sound.id, appConfig.soundVolume || 1); }} className={`py-2 rounded-lg text-xs font-bold transition-all ${appConfig.hapticSoundType === sound.id ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>
+                                                                {sound.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <div className="mt-2 text-[10px] text-slate-400 text-center bg-slate-50 p-1.5 rounded-lg">
+                                                        {
+                                                            appConfig.hapticSoundType === 'click' ? '🖱️ 명확하고 또렷한 마우스 클릭음' :
+                                                            appConfig.hapticSoundType === 'toc' ? '🪵 부드럽고 낮은 나무 두드리는 소리' :
+                                                            appConfig.hapticSoundType === 'pop' ? '💧 통통 튀는 경쾌한 물방울 소리' :
+                                                            '⌨️ 가볍고 짧은 기계식 키보드 소리 (기본)'
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <label className="text-[10px] font-bold text-slate-400">음량 조절</label>
+                                                        <span className="text-[10px] font-bold text-indigo-600">{Math.round((appConfig.soundVolume || 1) * 100)}%</span>
+                                                    </div>
+                                                    <input type="range" min="0" max="2" step="0.1" value={appConfig.soundVolume !== undefined ? appConfig.soundVolume : 1} onChange={(e) => { const vol = parseFloat(e.target.value); updateAppConfig({ soundVolume: vol }); playHapticSound(true, appConfig.hapticSoundType, vol); }} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     </div>
 
@@ -3868,6 +3877,54 @@
             </div>
         );
         
+        const playHapticSound = (soundEnabled, type = 'tick', volume = 1.0) => {
+            if (soundEnabled === false) return;
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                const now = ctx.currentTime;
+                const vol = Math.max(0, Math.min(2, volume)); // 볼륨 범위 안전장치
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(800, now);
+                    gain.gain.setValueAtTime(0.05 * vol, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'toc') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(100, now);
+                    gain.gain.setValueAtTime(0.15 * vol, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'pop') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+                    gain.gain.setValueAtTime(0.05 * vol, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else { // 'tick' (default)
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(200, now);
+                    gain.gain.setValueAtTime(0.1 * vol, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
+                    osc.start(now);
+                    osc.stop(now + 0.03);
+                }
+                setTimeout(() => ctx.close(), 100);
+            } catch (e) {}
+        };
+
         const RecordView = ({ students, records, dailyTasks, date, toggleCheck, appConfig, stats, onLongPress }) => {
             const getStreakBadge = (studentId) => {
                 const s = stats.students.find(st => st.id === studentId);
@@ -3885,7 +3942,8 @@
                 isLongPress.current = false;
                 longPressTimer.current = setTimeout(() => {
                     isLongPress.current = true;
-                    if (navigator.vibrate) navigator.vibrate(50);
+                    if (navigator.vibrate) navigator.vibrate(15);
+                    playHapticSound(appConfig.soundEnabled, appConfig.hapticSoundType, appConfig.soundVolume);
                     onLongPress(id);
                 }, 1000);
             };
@@ -3983,6 +4041,36 @@
         
 
           const UPDATE_NOTES = [
+            { 
+                version: "v3.9.4", 
+                date: "2026-02-13",
+                list: [
+                    "설정 메뉴 탭 전환 시 부드러운 슬라이드 애니메이션 효과 추가",
+                    "설정 > 앱 설정에 '탭 전환 효과' ON/OFF 옵션 추가"
+                ]
+            },
+            { 
+                version: "v3.9.3", 
+                date: "2026-02-13",
+                list: [
+                    "모바일 설정 메뉴 탭 디자인 개선 (한 줄 보기 및 간격 최적화)"
+                ]
+            },
+            { 
+                version: "v3.9.2", 
+                date: "2026-02-13",
+                list: [
+                    "모바일 팝업창 상단 핸들(회색 바) 제거 (스와이프 닫기 기능 삭제에 따른 UI 정리)"
+                ]
+            },
+            { 
+                version: "v3.9.1", 
+                date: "2026-02-13",
+                list: [
+                    "iOS 햅틱 피드백 개선: 진동 대신 짧고 낮은 효과음으로 타건감 구현",
+                    "버전 관리 규칙에 따른 패치 업데이트"
+                ]
+            },
             { 
                 version: "v3.9.0", 
                 date: "2026-02-13",
@@ -5817,7 +5905,7 @@
                 <BaseModal isOpen={isOpen} onClose={onClose} title="⛅️ Firebase 연결 설정" icon={null}><div className="flex flex-col gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200"><div className="text-xs font-bold text-slate-500 mb-1">Firebase 인증 (이메일/비밀번호)</div><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일 (ID)" value={authId} onChange={e => setAuthId(e.target.value)} /><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} /></div><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder='설정 코드 붙여넣기 (예: const firebaseConfig = ...)' value={inputConfig} onChange={e => setInputConfig(e.target.value)} /><div className="flex items-center gap-2 mt-2 px-1"><label className="flex items-center gap-2 cursor-pointer select-none group"><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-slate-300 group-hover:border-indigo-400'}`}>{rememberMe && <Icon d={PATHS.check} size={14} className="text-white" />}</div><input type="checkbox" className="hidden" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} /><span className="text-sm font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">로그인 정보 저장</span></label></div><div className="flex gap-3 mt-5"><Btn onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">취소</Btn><Btn onClick={handleConnect} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">연결하기</Btn></div></BaseModal>
             );
         };
-        const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos }) => {
+        const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos, appConfig }) => {
     if (!isOpen) return null;
     const [isPortfolioMode, setIsPortfolioMode] = React.useState(() => localStorage.getItem('cls_portfolio_mode') === 'true');
     const [searchText, setSearchText] = React.useState("");
@@ -5872,7 +5960,8 @@
         setStudents(updatedStudents);
         if (!isLocalMode) saveData('cls_students', updatedStudents);
         if (category === '칭찬') {
-            if (navigator.vibrate) navigator.vibrate(50);
+            if (navigator.vibrate) navigator.vibrate(15);
+            playHapticSound(appConfig?.soundEnabled, appConfig?.hapticSoundType, appConfig?.soundVolume);
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 3000 });
         }
 
@@ -5968,7 +6057,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 9,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 0    // Patch: 기존 기능의 버그 수정
+                patch: 4    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -6079,7 +6168,7 @@
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null }); const [toastMessage, setToastMessage] = useState(null);
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
             const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
-            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true });
+            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, hapticSoundType: 'tick', soundVolume: 1.0 });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const lastBackupTime = useRef("");
@@ -6993,7 +7082,8 @@
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_config', seatConfig); }, [seatConfig]);
 
             const toggleCheck = (id, taskIndex = null) => { 
-                if (navigator.vibrate) navigator.vibrate(50);
+                if (navigator.vibrate) navigator.vibrate(15);
+                playHapticSound(appConfig.soundEnabled, appConfig.hapticSoundType, appConfig.soundVolume);
 
                 if (mode === 'simple') { const newDone = !simpleChecks[id];
             setSimpleChecks({ ...simpleChecks, [id]: newDone }); if (newDone) confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#6366f1', '#8b5cf6'] });
@@ -8572,7 +8662,7 @@
                     </BaseModal>
                     <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => setShowUpdateNotes(false)} showToast={setToastMessage} />
                     {showGlobalRecord && (
-                        <GlobalRecordModal isOpen={showGlobalRecord} onClose={() => setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} />
+                        <GlobalRecordModal isOpen={showGlobalRecord} onClose={() => setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} appConfig={appConfig} />
                     )}
                     <button 
                         onMouseEnter={() => { setIsHidden(false); if(hideTimer.current) clearTimeout(hideTimer.current); }}
