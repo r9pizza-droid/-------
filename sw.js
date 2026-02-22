@@ -1,59 +1,42 @@
-// 캐시 이름 (버전 업데이트 시 이 이름을 변경하면 브라우저가 새로운 버전으로 인식합니다)
-const CACHE_NAME = 'checklist-app-v3.11.1-release';
-const URLS_TO_CACHE = [
-  './',
-  './index.html',
-  // 필요한 경우 아이콘이나 다른 로컬 에셋 경로를 추가하세요.
-];
+const CACHE_NAME = 'class-app-cache-v3.11.1'; // 버전이 올라갈 때 자동 갱신됨
 
-// 1. 설치 (Install): 서비스 워커가 처음 설치될 때 실행됩니다.
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('캐시 저장 중...');
-        return cache.addAll(URLS_TO_CACHE);
-      })
-  );
+    self.skipWaiting(); // 새 워커가 즉시 대기열을 건너뛰고 설치되게 함
 });
 
-// 2. 활성화 (Activate): 서비스 워커가 활성화될 때 실행됩니다. (구버전 캐시 정리)
 self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          // 현재 버전의 캐시가 아니면 삭제합니다.
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    // 현재 이름과 다른 옛날 캐시 창고는 모조리 삭제!
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
         })
-      );
-    })
-  );
+    );
+    self.clients.claim(); // 즉시 모든 화면을 새 워커가 제어하게 함
 });
 
-// 3. 요청 (Fetch): 네트워크 요청을 가로채서 캐시된 내용을 반환하거나 네트워크로 요청합니다.
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // 캐시에 있으면 반환, 없으면 네트워크 요청
-        return response || fetch(event.request);
-      })
-  );
+    // update.json 파일은 절대 캐시(저장)하지 않고 무조건 인터넷에서 새로 가져옴!
+    if (event.request.url.includes('update.json')) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+    
+    // 나머지는 캐시를 먼저 확인하고 없으면 인터넷에서 가져옴
+    event.respondWith(
+        caches.match(event.request).then((response) => {
+            return response || fetch(event.request);
+        }).catch(() => fetch(event.request))
+    );
 });
 
-// 4. 메시지 (Message): 클라이언트에서 'SKIP_WAITING' 메시지를 보내면 대기 중인 워커를 즉시 활성화합니다.
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-// 사용자가 업데이트 알림에서 [확인]을 누르면 발생하는 메세지를 수신
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting(); // 즉시 새로운 서비스 워커 활성화
-  }
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });
