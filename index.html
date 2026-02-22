@@ -6176,7 +6176,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 11,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 0    // Patch: 기존 기능의 버그 수정
+                patch: 1    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -6191,12 +6191,20 @@
         setNewVersionAvailable(false);
     };
 
-    const handleUpdateApp = () => { 
+    const handleUpdateApp = async () => { 
         if (UPDATE_NOTES[0] && UPDATE_NOTES[0].version) {
             localStorage.setItem('cls_last_version', UPDATE_NOTES[0].version);
         }
+
+        if ('caches' in window) {
+            try {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+            } catch (e) { console.error("캐시 삭제 실패:", e); }
+        }
+
         if (waitingWorker) waitingWorker.postMessage({ type: 'SKIP_WAITING' }); 
-        else window.location.reload(); 
+        else window.location.href = window.location.href.split('?')[0] + '?clear=' + new Date().getTime(); 
         setNewVersionAvailable(false); 
     };
 
@@ -6326,7 +6334,7 @@
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
             const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
             const [isGoogleSheetSetupOpen, setIsGoogleSheetSetupOpen] = useState(false);
-            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'modal' });
+            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast' });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const lastBackupTime = useRef("");
