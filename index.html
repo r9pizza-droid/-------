@@ -184,6 +184,25 @@
             }
         };
 
+        // [New] 구글 시트 전송용 함수
+        const saveToGoogleSheet = async (studentName, category, recordContent) => {
+            const url = localStorage.getItem('cls_google_sheet_url');
+            if (!url) {
+                alert("설정 > 데이터 관리 > 외부 서비스 연동에서 구글 스프레드시트 URL을 먼저 입력해주세요.");
+                return false;
+            }
+            try {
+                await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: studentName, category: category, content: recordContent })
+                });
+                return true;
+            } catch (e) {
+                console.error(e); alert("구글 시트 전송 실패: " + e.message); return false;
+            }
+        };
+
         const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
         const getToday = () => dayjs().format('YYYY-MM-DD');
@@ -589,6 +608,7 @@
             const [keepContent, setKeepContent] = useState(false);
             const [isExpanded, setIsExpanded] = useState(false);
             const [isGrassExpanded, setIsGrassExpanded] = useState(false); // [추가됨] 활동 잔디 접고 펴기 상태
+            const [saveTarget, setSaveTarget] = useState(isPortfolioMode ? 'notion_portfolio' : 'notion_record'); // [New] 저장 대상 선택 상태
             
             const [notionDate, setNotionDate] = useState(dayjs().format('YYYY-MM-DD'));
             const [notionContent, setNotionContent] = useState('');
@@ -707,6 +727,21 @@
                 const content = notionContent.trim();
                 const date = notionDate || dayjs().format('YYYY-MM-DD');
 
+                // [New] 구글 시트 저장 분기
+                if (saveTarget === 'google_sheet') {
+                    if (!content) return showToast("내용을 입력해주세요.");
+                    setNotionStatus('saving');
+                    let successCount = 0;
+                    for (const s of selectedStudents) {
+                        const success = await saveToGoogleSheet(s.name, category, content);
+                        if (success) successCount++;
+                    }
+                    if (successCount > 0) {
+                        setNotionStatus('success'); if (!keepContent) setNotionContent(''); setTimeout(() => setNotionStatus('idle'), 3000); showToast("구글 시트에 저장되었습니다!");
+                    } else { setNotionStatus('idle'); }
+                    return;
+                }
+
                 if (!content) return showToast("내용을 입력해주세요.");
                 
                 setNotionStatus('saving');
@@ -750,7 +785,7 @@
                 try {
                     const rawKey = localStorage.getItem('cls_notion_key') || "";
                     const personalKey = rawKey.replace(/["']/g, '').trim();
-                    const rawDbId = isPortfolioMode ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
+                    const rawDbId = (saveTarget === 'notion_portfolio') ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
                     const targetDbId = rawDbId.replace(/["']/g, '').trim();
                     
                     if (!personalKey || !targetDbId) {
@@ -765,7 +800,7 @@
                         personalDbId: targetDbId
                     };
                     
-                    if (isPortfolioMode) {
+                    if (saveTarget === 'notion_portfolio') {
                         const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
                         const ids = [];
                         selectedStudents.forEach(s => {
@@ -1201,7 +1236,7 @@
 
                                     {/* Unified Input Form */}
                                     <div className="flex flex-col gap-3 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
-                                        {isPortfolioMode && (
+                                        {saveTarget === 'notion_portfolio' && (
                                             <div className="flex flex-wrap gap-1.5 mb-1 relative">
                                                 {selectedStudents.map(s => (
                                                     <span key={s.id} className="text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 border bg-indigo-50 text-indigo-700 border-indigo-200 font-bold shadow-sm">
@@ -1212,8 +1247,15 @@
                                             </div>
                                         )}
 
+                                        {/* [New] 저장소 선택 탭 UI */}
+                                        <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                                            <button onClick={() => setSaveTarget('notion_record')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_record' ? 'bg-indigo-50 text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>
+                                            <button onClick={() => setSaveTarget('notion_portfolio')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_portfolio' ? 'bg-amber-50 text-amber-600 shadow-sm ring-1 ring-amber-100' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>
+                                            <button onClick={() => setSaveTarget('google_sheet')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'google_sheet' ? 'bg-green-50 text-green-600 shadow-sm ring-1 ring-green-100' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>
+                                        </div>
+
                                         <div className="flex items-center gap-2 relative z-20">
-                                            {isPortfolioMode && (
+                                            {saveTarget === 'notion_portfolio' && (
                                                 <div className="flex-1 relative">
                                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                         <Icon d={PATHS.search} size={14} className="text-slate-400" />
@@ -2500,6 +2542,91 @@
             );
         };
 
+        const GoogleSheetSetupModal = ({ isOpen, onClose, showToast, saveData, isLocalMode }) => {
+            const [url, setUrl] = useState("");
+            const [isTesting, setIsTesting] = useState(false);
+            const [showManual, setShowManual] = useState(false);
+
+            useEffect(() => {
+                if (isOpen) {
+                    setUrl(localStorage.getItem('cls_google_sheet_url') || "");
+                }
+            }, [isOpen]);
+
+            const handleTest = async () => {
+                if (!url) return showToast("URL을 입력해주세요.");
+                setIsTesting(true);
+                try {
+                    await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: "테스트", category: "연동 테스트", content: "Google 시트 연동 성공!" })
+                    });
+                    showToast("✅ 전송 성공! 시트를 확인하세요.");
+                } catch (e) {
+                    showToast("❌ 전송 실패: " + e.message);
+                } finally {
+                    setIsTesting(false);
+                }
+            };
+
+            const handleSave = () => {
+                const cleanUrl = url.trim();
+                localStorage.setItem('cls_google_sheet_url', cleanUrl);
+                if (!isLocalMode && saveData) saveData('cls_google_sheet_url', cleanUrl);
+                showToast("설정이 저장되었습니다.");
+                onClose();
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="📊 구글 시트 연동" icon={null}>
+                    <div className="space-y-4">
+                        <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-sm text-green-800">
+                            <p className="font-bold mb-1">📊 구글 스프레드시트 연동</p>
+                            <p>기록된 데이터를 구글 시트에 자동으로 한 줄씩 추가합니다.</p>
+                        </div>
+                        <div className="flex justify-end">
+                            <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
+                                <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                            </button>
+                        </div>
+                        {showManual && (
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-2 animate-fade-in">
+                                <ol className="list-decimal pl-4 space-y-1">
+                                    <li>구글 스프레드시트 생성 &gt; <strong>확장 프로그램 &gt; Apps Script</strong></li>
+                                    <li>아래 코드 붙여넣기 &gt; 저장
+                                        <div className="bg-white p-2 border rounded mt-1 font-mono text-[10px] select-all cursor-pointer" onClick={(e) => { navigator.clipboard.writeText(e.target.innerText); showToast("코드 복사됨"); }}>
+{`function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  sheet.appendRow([data.date, data.name, data.category, data.content]);
+  return ContentService.createTextOutput("Success");
+}`}
+                                        </div>
+                                    </li>
+                                    <li><strong>배포 &gt; 새 배포</strong> &gt; 유형: <strong>웹 앱</strong></li>
+                                    <li>액세스 권한: <strong>모든 사용자</strong> (필수) &gt; 배포</li>
+                                    <li>생성된 <strong>웹 앱 URL</strong>을 아래에 입력하세요.</li>
+                                </ol>
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500">Web App URL</label>
+                            <input type="text" value={url} onChange={e => setUrl(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-green-500 font-mono" placeholder="https://script.google.com/macros/s/..." />
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                            <Btn onClick={handleTest} disabled={isTesting} className="flex-1 py-3 bg-white border border-green-200 text-green-600 rounded-xl font-bold hover:bg-green-50 transition-colors">
+                                {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>전송 중...</> : '🔌 전송 테스트'}
+                            </Btn>
+                            <Btn onClick={handleSave} className="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-md transition-colors">설정 저장하기</Btn>
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        };
+
         const ApiKeySetupModal = ({ isOpen, onClose, apiKey, setApiKey, saveData, isLocalMode, showToast, validateApiKey }) => {
             const [isChecking, setIsChecking] = useState(false);
             const [isSaved, setIsSaved] = useState(!!localStorage.getItem('cls_ai_key'));
@@ -2825,7 +2952,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate }) => {
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -2853,6 +2980,7 @@
             const [isStudentListOpen, setIsStudentListOpen] = useState(true);
             const [activeTab, setActiveTab] = useState('app');
             const prevTabRef = useRef(activeTab);
+            const isGoogleSheetConnected = !!localStorage.getItem('cls_google_sheet_url');
 
             const getTabAnimationClass = () => {
                 if (appConfig.tabAnimationEnabled === false) return '';
@@ -3603,8 +3731,8 @@
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
                                             <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">🔗</span> 외부 서비스 연동</h4>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <Btn onClick={onOpenNotionSetup} className={`py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isNotionConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <Btn onClick={onOpenNotionSetup} className={`py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isNotionConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`} title="노션 연동">
                                                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><span className="text-lg">N</span></div>
                                                     <span className="text-xs font-bold text-slate-600">노션 연동</span>
                                                     {isNotionConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
@@ -3613,6 +3741,11 @@
                                                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.bot} size={18} className="text-slate-500" /></div>
                                                     <span className="text-xs font-bold text-slate-600">AI 설정</span>
                                                     {isAiConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
+                                                </Btn>
+                                                <Btn onClick={onOpenGoogleSheetSetup} className={`py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isGoogleSheetConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`} title="구글 시트 연동">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><span className="text-lg">📊</span></div>
+                                                    <span className="text-xs font-bold text-slate-600">구글 시트</span>
+                                                    {isGoogleSheetConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
                                             </div>
                                         </div>
@@ -5887,7 +6020,7 @@
         };
         const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos, appConfig }) => {
     if (!isOpen) return null;
-    const [isPortfolioMode, setIsPortfolioMode] = React.useState(() => localStorage.getItem('cls_portfolio_mode') === 'true');
+    const [saveTarget, setSaveTarget] = React.useState(() => localStorage.getItem('cls_portfolio_mode') === 'true' ? 'notion_portfolio' : 'notion_record'); // [New] 저장 대상 상태
     const [searchText, setSearchText] = React.useState("");
     const [selectedStudents, setSelectedStudents] = React.useState([]);
     const [showStudentDropdown, setShowStudentDropdown] = React.useState(false);
@@ -5904,12 +6037,6 @@
             textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
         }
     }, [notionContent]);
-
-    const handleToggleMode = () => {
-        const newMode = !isPortfolioMode;
-        setIsPortfolioMode(newMode);
-        localStorage.setItem('cls_portfolio_mode', newMode);
-    };
 
     const handleStudentSelect = (name) => {
         const s = students.find(st => st.name === name);
@@ -5944,10 +6071,22 @@
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 3000 });
         }
 
+        // [New] 구글 시트 저장 분기
+        if (saveTarget === 'google_sheet') {
+            for (const s of selectedStudents) {
+                await saveToGoogleSheet(s.name, category, content);
+            }
+            setNotionStatus('success');
+            if (!keepContent) { setNotionContent(''); setSelectedStudents([]); }
+            setTimeout(() => { setNotionStatus('idle'); if(!keepContent) onClose(); }, 1500);
+            showToast("구글 시트에 저장되었습니다!");
+            return;
+        }
+
         try {
             const rawKey = localStorage.getItem('cls_notion_key') || "";
             const personalKey = rawKey.replace(/["']/g, '').trim();
-            const rawDbId = isPortfolioMode ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
+            const rawDbId = (saveTarget === 'notion_portfolio') ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
             const targetDbId = rawDbId.replace(/["']/g, '').trim();
             
             if (!personalKey || !targetDbId) {
@@ -5957,7 +6096,7 @@
             }
 
             const bodyData = { category, content, personalKey, personalDbId: targetDbId };
-            if (isPortfolioMode) {
+            if (saveTarget === 'notion_portfolio') {
                 const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
                 bodyData.mode = 'relation';
                 bodyData.studentIds = selectedStudents.map(s => map[s.name]).filter(id => id);
@@ -5982,17 +6121,18 @@
             <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-expand-from" onClick={e => e.stopPropagation()}>
                 <div className="bg-slate-50 p-5 border-b border-slate-200 flex justify-between items-center">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2"><Icon d={PATHS.document} size={18} className="text-indigo-500"/> 빠른 기록</h3>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={handleToggleMode}>
-                            <span className={`text-[10px] font-bold ${!isPortfolioMode ? 'text-slate-700' : 'text-slate-400'}`}>일반 기록</span>
-                            <div className={`w-10 h-6 rounded-full p-1 transition-colors duration-300 ${isPortfolioMode ? 'bg-amber-400' : 'bg-slate-300'}`}>
-                                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${isPortfolioMode ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                            </div>
-                            <span className={`text-[10px] font-bold ${isPortfolioMode ? 'text-amber-600' : 'text-slate-400'}`}>포트폴리오</span>
-                        </div>
-                        <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-400"><Icon d={PATHS.x} /></button>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-400"><Icon d={PATHS.x} /></button>
+                </div>
+                
+                {/* [New] 저장소 선택 탭 UI */}
+                <div className="px-5 pt-4">
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button onClick={() => setSaveTarget('notion_record')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_record' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>
+                        <button onClick={() => setSaveTarget('notion_portfolio')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_portfolio' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>
+                        <button onClick={() => setSaveTarget('google_sheet')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'google_sheet' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>
                     </div>
                 </div>
+
                 <div className="p-5 flex flex-col gap-4">
                     <div className="flex flex-wrap gap-1.5 relative">
                         {selectedStudents.map(s => (
@@ -6035,8 +6175,8 @@
         const App = () => {
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
-                minor: 10,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 1    // Patch: 기존 기능의 버그 수정
+                minor: 11,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
+                patch: 0    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -6185,6 +6325,7 @@
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null }); const [toastMessage, setToastMessage] = useState(null);
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
             const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
+            const [isGoogleSheetSetupOpen, setIsGoogleSheetSetupOpen] = useState(false);
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'modal' });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
@@ -8437,6 +8578,7 @@
                         handleResetAllData={handleResetAllData} 
                         onOpenSetup={() => setIsSetupOpen(true)}
                         onOpenNotionSetup={() => setIsNotionSetupOpen(true)}
+                        onOpenGoogleSheetSetup={() => setIsGoogleSheetSetupOpen(true)}
                         onOpenApiKeySetup={() => setIsApiKeySetupOpen(true)}
                         records={records} 
                         groupsByDate={groupsByDate} 
@@ -8472,6 +8614,7 @@
                         onTestUpdate={() => setNewVersionAvailable(true)}
                     />
                     <NotionSetupModal isOpen={isNotionSetupOpen} onClose={() => setIsNotionSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} isPortfolioMode={isPortfolioMode} setIsPortfolioMode={setIsPortfolioMode} studentMap={studentMap} setStudentMap={setStudentMap} portfolioDbId={portfolioDbId} setPortfolioDbId={setPortfolioDbId} />
+                    <GoogleSheetSetupModal isOpen={isGoogleSheetSetupOpen} onClose={() => setIsGoogleSheetSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} />
                     <ApiKeySetupModal isOpen={isApiKeySetupOpen} onClose={() => setIsApiKeySetupOpen(false)} apiKey={apiKey} setApiKey={setApiKey} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} validateApiKey={validateApiKey} />
                     <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} onInstall={confirmInstall} isIOS={isIOS} />
                     <TaskModal isOpen={isTaskModalOpen} onClose={()=>setIsTaskModalOpen(false)} date={date} dailyTasks={dailyTasks} setDailyTasks={setDailyTasks} weeklyTasks={weeklyTasks} setWeeklyTasks={setWeeklyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} tags={tags} setTags={setTags} openConfirm={openConfirm} />
