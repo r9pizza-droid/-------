@@ -199,17 +199,19 @@
         };
 
         // [New] 구글 시트 전송용 함수
-        const saveToGoogleSheet = async (studentName, category, recordContent) => {
+        const saveToGoogleSheet = async (studentName, category, recordContent, recordDate) => {
             const url = localStorage.getItem('cls_google_sheet_url');
             if (!url) {
                 alert("설정 > 데이터 관리 > 외부 서비스 연동에서 구글 스프레드시트 URL을 먼저 입력해주세요.");
                 return false;
             }
             try {
+                // 선택한 날짜가 있으면 그 날짜를 사용하고, 시간은 현재 시간을 붙임
+                const dateStr = recordDate ? dayjs(recordDate).format('YYYY-MM-DD') + ' ' + dayjs().format('HH:mm:ss') : dayjs().format('YYYY-MM-DD HH:mm:ss');
                 await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: studentName, category: category, content: recordContent })
+                    body: JSON.stringify({ date: dateStr, name: studentName, category: category, content: recordContent })
                 });
                 return true;
             } catch (e) {
@@ -809,7 +811,7 @@
                 if (saveTarget === 'google_sheet') {
                     let successCount = 0;
                     for (const s of selectedStudents) {
-                        const success = await saveToGoogleSheet(s.name, category, content);
+                        const success = await saveToGoogleSheet(s.name, category, content, date);
                         if (success) successCount++;
                     }
                     if (successCount > 0) {
@@ -2689,8 +2691,8 @@
 }`}
                                         </div>
                                     </li>
-                                    <li><strong>배포 &gt; 새 배포</strong> &gt; 유형: <strong>웹 앱</strong></li>
-                                    <li>액세스 권한: <strong>모든 사용자</strong> (필수) &gt; 배포</li>
+                                    <li><strong>배포 &gt; 새 배포</strong> (코드를 수정했다면 반드시 '새 버전'으로 배포해야 적용됩니다!)</li>
+                                    <li>유형: <strong>웹 앱</strong> &gt; 액세스 권한: <strong>모든 사용자</strong> (필수)</li>
                                     <li>생성된 <strong>웹 앱 URL</strong>을 아래에 입력하세요.</li>
                                 </ol>
                             </div>
@@ -4981,7 +4983,7 @@
         // [New] 구글 시트 저장 분기
         if (saveTarget === 'google_sheet') {
             for (const s of selectedStudents) {
-                await saveToGoogleSheet(s.name, category, content);
+                await saveToGoogleSheet(s.name, category, content, date);
             }
             setNotionStatus('success');
             if (!keepContent) { setNotionContent(''); setSelectedStudents([]); }
