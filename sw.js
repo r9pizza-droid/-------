@@ -51,3 +51,9 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+// 사용자가 업데이트 알림에서 [확인]을 누르면 발생하는 메세지를 수신
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting(); // 즉시 새로운 서비스 워커 활성화
+  }
+});

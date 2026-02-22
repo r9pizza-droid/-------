@@ -284,6 +284,11 @@
         };
         const UpdateNotificationModal = ({ isOpen, onUpdate, onClose }) => {
             if (!isOpen) return null;
+            
+            // 🌟 최신 업데이트 정보 가져오기
+            const latestUpdate = UPDATE_NOTES[0];
+            const changes = latestUpdate.list || latestUpdate.changes || [];
+
             return (
                 <div className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center animate-bounce-in relative overflow-hidden border border-white/50">
@@ -291,16 +296,36 @@
                             <Icon d={PATHS.x} size={20} />
                         </button>
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-                        <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner ring-4 ring-indigo-50/50">
-                            <span className="text-5xl animate-pulse drop-shadow-sm select-none">🚀</span>
+                        
+                        <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner ring-4 ring-indigo-50/50">
+                            <span className="text-4xl animate-pulse drop-shadow-sm select-none">🚀</span>
                         </div>
-                        <h3 className="text-xl font-extrabold text-slate-800 mb-2">새로운 버전 출시!</h3>
-                        <p className="text-sm text-slate-500 mb-8 leading-relaxed">
-                            더 편리하고 강력해진 기능을 만나보세요.<br/>
-                            지금 바로 업데이트하시겠습니까?
-                        </p>
-                        <div className="flex flex-col gap-3">
-                            <button onClick={onUpdate} className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-violet-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <h3 className="text-xl font-extrabold text-slate-800 mb-1">새로운 버전 출시!</h3>
+                        <p className="text-xs text-slate-500 mb-4">원활한 사용을 위해 앱을 업데이트해 주세요.</p>
+                        
+                        {/* 🌟 여기에 최신 업데이트 상세 내용이 표시됩니다 */}
+                        <div className="text-left bg-slate-50 p-4 rounded-xl border border-slate-100 mb-5">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-0.5 rounded-md">
+                                    {latestUpdate.version}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">{latestUpdate.date || "최신 업데이트"}</span>
+                            </div>
+                            <ul className="text-[11px] text-slate-600 space-y-1.5">
+                                {changes.slice(0, 3).map((item, index) => (
+                                    <li key={index} className="flex items-start gap-1.5">
+                                        <span className="text-indigo-400 mt-0.5">•</span>
+                                        <span className="leading-tight">{item}</span>
+                                    </li>
+                                ))}
+                                {changes.length > 3 && (
+                                    <li className="text-slate-400 pl-3 pt-1 font-medium">...외 {changes.length - 3}건</li>
+                                )}
+                            </ul>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <button onClick={onUpdate} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-violet-700 active:scale-95 transition-all flex items-center justify-center gap-2">
                                 <span>✨ 지금 업데이트 (새로고침)</span>
                             </button>
                             <button onClick={onClose} className="w-full py-3 text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors bg-slate-50 rounded-xl hover:bg-slate-100">
@@ -313,31 +338,65 @@
         };
         const UpdateNotificationToast = ({ isOpen, onUpdate, onClose }) => {
             const timerRef = useRef(null);
+            
             useEffect(() => {
                 if (isOpen) {
-                    timerRef.current = setTimeout(onClose, 3500);
+                    timerRef.current = setTimeout(onClose, 8000); // 텍스트를 읽을 수 있도록 8초 유지
                 }
                 return () => clearTimeout(timerRef.current);
             }, [isOpen, onClose]);
-
+            
             const handleMouseEnter = () => clearTimeout(timerRef.current);
-            const handleMouseLeave = () => { if (isOpen) timerRef.current = setTimeout(onClose, 6000); };
-
+            const handleMouseLeave = () => { 
+                if (isOpen) timerRef.current = setTimeout(onClose, 8000); 
+            };
+            
             if (!isOpen) return null;
+
+            // 🌟 핵심: 여러 버전의 기록이 있어도 무조건 [0]번째(가장 최신) 데이터만 가져옵니다!
+            const latestUpdate = UPDATE_NOTES[0] || {};
+            const changes = latestUpdate.list || latestUpdate.changes || [];
+
             return (
-                <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[3000] w-full max-w-sm px-4 animate-[slideInDown_0.5s_cubic-bezier(0.16,1,0.3,1)]" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onTouchStart={handleMouseEnter} onTouchEnd={handleMouseLeave}>
-                    <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-4 border border-indigo-100 flex items-center gap-3 ring-1 ring-black/5">
-                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                            <span className="text-lg animate-pulse">🚀</span>
+                <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[3000] w-full max-w-sm px-4 animate-[slideInDown_0.5s_cubic-bezier(0.16,1,0.3,1)]" 
+                     onMouseEnter={handleMouseEnter} 
+                     onMouseLeave={handleMouseLeave} 
+                     onTouchStart={handleMouseEnter} 
+                     onTouchEnd={handleMouseLeave}>
+                    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-4 border border-indigo-100 flex flex-col gap-3 ring-1 ring-black/5">
+                        
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">
+                                <span className="text-lg animate-pulse">🚀</span>
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2 mb-2">
+                                    새로운 버전 출시! 
+                                    <span className="bg-indigo-100 text-indigo-600 text-[10px] px-1.5 py-0.5 rounded font-bold">{latestUpdate.version}</span>
+                                </h4>
+                                
+                                {/* 🌟 최신 업데이트 내용 전체 리스트 렌더링 */}
+                                <ul className="text-[11px] text-slate-600 space-y-1.5 max-h-[150px] overflow-y-auto custom-scroll pr-2">
+                                    {changes.map((item, index) => (
+                                        <li key={index} className="flex items-start gap-1.5">
+                                            <span className="text-indigo-400 mt-0.5">•</span>
+                                            <span className="leading-tight break-keep">{item}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-slate-800 text-sm">새로운 버전 출시!</h4>
-                            <p className="text-[10px] text-slate-500 truncate">최신 기능으로 업데이트하세요.</p>
+
+                        <div className="flex gap-2 mt-1 pt-3 border-t border-slate-100">
+                            <button onClick={onClose} className="flex-1 py-2 text-slate-500 text-[11px] font-bold bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">
+                                나중에
+                            </button>
+                            <button onClick={onUpdate} className="flex-1 py-2 bg-indigo-600 text-white text-[11px] font-bold rounded-xl hover:bg-indigo-700 shadow-sm active:scale-95 transition-all">
+                                ✨ 지금 업데이트
+                            </button>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={onUpdate} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 whitespace-nowrap shadow-sm transition-transform active:scale-95">업데이트</button>
-                            <button onClick={onClose} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"><Icon d={PATHS.x} size={14}/></button>
-                        </div>
+                        
                     </div>
                 </div>
             );
@@ -6123,42 +6182,80 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 10,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 0    // Patch: 기존 기능의 버그 수정
+                patch: 1    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
 
-            // [Service Worker Update Logic]
-            const [newVersionAvailable, setNewVersionAvailable] = useState(false);
-            const [waitingWorker, setWaitingWorker] = useState(null);
+            // [Service Worker Update Logic] 
+    const [newVersionAvailable, setNewVersionAvailable] = useState(false); 
+    const [waitingWorker, setWaitingWorker] = useState(null);
 
-            useEffect(() => {
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('./sw.js').then(registration => {
-                        if (registration.waiting) { setWaitingWorker(registration.waiting); setNewVersionAvailable(true); }
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    setWaitingWorker(newWorker);
-                                    setNewVersionAvailable(true);
-                                }
-                            });
-                        });
-                    });
-                    let refreshing = false;
-                    navigator.serviceWorker.addEventListener('controllerchange', () => {
-                        // [Fix] 입력 중 데이터 유실 방지를 위해 자동 새로고침 비활성화
-                        // if (!refreshing) { window.location.reload(); refreshing = true; }
-                    });
-                }
-            }, []);
+    const handleCloseUpdate = () => {
+        const snoozeUntil = new Date().getTime() + 600000;
+        localStorage.setItem('cls_update_snooze', snoozeUntil.toString());
+        setNewVersionAvailable(false);
+    };
 
-            const handleUpdateApp = () => {
-                if (waitingWorker) waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-                else window.location.reload();
-                setNewVersionAvailable(false);
-            };
+    const handleUpdateApp = () => { 
+        if (UPDATE_NOTES[0] && UPDATE_NOTES[0].version) {
+            localStorage.setItem('cls_last_version', UPDATE_NOTES[0].version);
+        }
+        if (waitingWorker) waitingWorker.postMessage({ type: 'SKIP_WAITING' }); 
+        else window.location.reload(); 
+        setNewVersionAvailable(false); 
+    };
+
+    useEffect(() => { 
+        const checkUpdateFile = () => {
+            fetch(`/update.json?t=${new Date().getTime()}`)
+                .then(res => res.json())
+                .then(data => {
+                    UPDATE_NOTES[0] = { version: data.version, date: data.date, changes: data.changes, list: data.changes };
+                    const lastVersion = localStorage.getItem('cls_last_version');
+                    if (lastVersion === data.version) return; 
+
+                    const snoozeTime = localStorage.getItem('cls_update_snooze');
+                    const now = new Date().getTime();
+                    if (snoozeTime && now < parseInt(snoozeTime, 10)) return; 
+
+                    setNewVersionAvailable(true);
+                })
+                .catch(err => console.log("업데이트 파일 확인 불가:", err));
+        };
+
+        checkUpdateFile();
+
+        if ('serviceWorker' in navigator) { 
+            navigator.serviceWorker.register('./sw.js').then(registration => { 
+                if (registration.waiting) { 
+                    setWaitingWorker(registration.waiting); 
+                    setNewVersionAvailable(true); 
+                } 
+                registration.addEventListener('updatefound', () => { 
+                    const newWorker = registration.installing; 
+                    newWorker.addEventListener('statechange', () => { 
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) { 
+                            setWaitingWorker(newWorker); 
+                            setNewVersionAvailable(true); 
+                        } 
+                    }); 
+                }); 
+                setInterval(() => {
+                    registration.update(); 
+                    checkUpdateFile();     
+                }, 600000);
+            }); 
+
+            let refreshing = false; 
+            navigator.serviceWorker.addEventListener('controllerchange', () => { 
+                if (!refreshing) { 
+                    window.location.reload(); 
+                    refreshing = true; 
+                } 
+            }); 
+        } 
+    }, []);
 
             const [mode, setMode] = useState("record");
             const [date, setDate] = useState(getToday());
@@ -8441,13 +8538,13 @@
                         <UpdateNotificationToast
                             isOpen={newVersionAvailable}
                             onUpdate={handleUpdateApp}
-                            onClose={() => setNewVersionAvailable(false)}
+                            onClose={handleCloseUpdate}
                         />
                     ) : (
                         <UpdateNotificationModal
                             isOpen={newVersionAvailable}
                             onUpdate={handleUpdateApp}
-                            onClose={() => setNewVersionAvailable(false)}
+                            onClose={handleCloseUpdate}
                         />
                     )}
                     <Toast message={toastMessage} onClose={()=>setToastMessage(null)} />
