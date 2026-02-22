@@ -165,6 +165,16 @@
             // F12(개발자 도구) > Console 탭에서 학생 이름이 [STUDENT_TOKEN]으로 바뀌었는지 확인하세요.
             console.log("🚀 [Gemini 전송 프롬프트 확인]", prompt);
 
+            // [New] 개발자 모드 또는 보안 확인 모드일 경우 전송 내용 미리보기 (사용자 확인용)
+            if (localStorage.getItem('cls_ai_safety_check') === 'true') {
+                if (window.triggerAiSecurityCheck) {
+                    await window.triggerAiSecurityCheck(prompt);
+                } else {
+                    const msg = `[🔒 보안 확인: AI 전송 데이터]\n\n${prompt.substring(0, 300)}...\n\n(이름이 [STUDENT_TOKEN] 또는 '급우' 등으로 변경되었는지 확인하세요.)\n\n전송하시겠습니까?`;
+                    if (!confirm(msg)) throw new Error("전송이 취소되었습니다.");
+                }
+            }
+
             if (!apiKey) throw new Error("API 키가 필요합니다.");
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL_NAME}:generateContent?key=${apiKey.trim()}`;
             try {
@@ -3016,6 +3026,64 @@
             );
         };
 
+        const AiSafetyHelpModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="AI 데이터 보안 모드란?" icon={PATHS.help}>
+                    <div className="space-y-4 text-sm text-slate-600 leading-relaxed">
+                        <p>학생들의 소중한 개인정보를 보호하기 위해, AI에게 데이터를 보내기 전 <strong>이름을 자동으로 가명 처리(마스킹)</strong>하는 기능입니다.</p>
+                        
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <h4 className="font-bold text-slate-700 mb-2">👀 작동 예시</h4>
+                            <div className="space-y-3">
+                                <div>
+                                    <div className="text-xs font-bold text-rose-500 mb-1">원본 데이터 (선생님 화면)</div>
+                                    <div className="bg-white p-2 rounded border border-rose-100 text-xs text-slate-500">
+                                        "<strong>김철수</strong> 학생은 <strong>이영희</strong> 학생과 다투었으나..."
+                                    </div>
+                                </div>
+                                <div className="flex justify-center"><Icon d={PATHS.down} size={16} className="text-slate-300"/></div>
+                                <div>
+                                    <div className="text-xs font-bold text-indigo-600 mb-1">전송 데이터 (AI가 보는 화면)</div>
+                                    <div className="bg-white p-2 rounded border border-indigo-100 text-xs text-slate-500">
+                                        "<strong>[STUDENT_TOKEN]</strong> 학생은 <strong>급우</strong>와 다투었으나..."
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-indigo-800 text-xs">
+                            <p className="font-bold mb-1">✨ 기능이 켜져 있으면?</p>
+                            <p>AI 기능을 사용할 때마다 <strong>전송 전 확인 창</strong>이 뜹니다. 데이터가 안전하게 변환되었는지 눈으로 직접 확인하고 전송할 수 있습니다.</p>
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        };
+
+        const AiSecurityCheckModal = ({ isOpen, onClose, prompt, onConfirm }) => {
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="🔒 AI 전송 데이터 보안 확인" icon={PATHS.lock} zIndex="z-[3000]">
+                    <div className="space-y-4">
+                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-800">
+                            <p className="font-bold mb-1">🛡️ 개인정보 보호 필터 작동 중</p>
+                            <p className="text-xs opacity-80">AI에게 전송되기 직전의 데이터입니다.<br/>학생 이름이 <strong>[STUDENT_TOKEN]</strong> 또는 <strong>급우</strong>로 변경되었는지 확인하세요.</p>
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 max-h-[40vh] overflow-y-auto custom-scroll">
+                            <p className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed">{prompt}</p>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Btn onClick={onClose} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">전송 취소</Btn>
+                            <Btn onClick={onConfirm} className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md flex items-center gap-2">
+                                <Icon d={PATHS.send} size={16} /> 전송하기
+                            </Btn>
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        };
+
         const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
@@ -3045,6 +3113,15 @@
             const [activeTab, setActiveTab] = useState('app');
             const prevTabRef = useRef(activeTab);
             const isGoogleSheetConnected = !!localStorage.getItem('cls_google_sheet_url');
+            const [aiSafetyCheck, setAiSafetyCheck] = useState(() => localStorage.getItem('cls_ai_safety_check') === 'true');
+            const [showAiSafetyHelp, setShowAiSafetyHelp] = useState(false);
+
+            const toggleAiSafetyCheck = () => {
+                const newVal = !aiSafetyCheck;
+                setAiSafetyCheck(newVal);
+                localStorage.setItem('cls_ai_safety_check', newVal);
+                showToast(newVal ? "AI 전송 시 보안 확인 창이 표시됩니다." : "AI 전송 보안 확인이 해제되었습니다.");
+            };
 
             const getTabAnimationClass = () => {
                 if (appConfig.tabAnimationEnabled === false) return '';
@@ -3812,6 +3889,17 @@
                                                     {isGoogleSheetConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
                                             </div>
+                                            {isDevMode && (
+                                                <div className="mt-3 pt-3 border-t border-slate-200 animate-fade-in">
+                                                    <div className="flex gap-2">
+                                                        <Btn onClick={toggleAiSafetyCheck} className={`flex-1 py-2.5 border rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${aiSafetyCheck ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                                                            <Icon d={aiSafetyCheck ? PATHS.check : PATHS.lock} size={14} />
+                                                            AI 전송 데이터 확인 {aiSafetyCheck ? 'ON' : 'OFF'}
+                                                        </Btn>
+                                                        <Btn onClick={() => setShowAiSafetyHelp(true)} className="px-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200" title="도움말"><Icon d={PATHS.help} size={16} /></Btn>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
@@ -3991,6 +4079,7 @@
                             <DataCleanupModal isOpen={showCleanupModal} onClose={() => setShowCleanupModal(false)} groupsByDate={groupsByDate} records={records} setGroupsByDate={setGroupsByDate} setRecords={setRecords} saveData={saveData} isLocalMode={isLocalMode} showToast={showToast} onBackup={handleExportJson} />
                         </div>
                     </div>
+                    <AiSafetyHelpModal isOpen={showAiSafetyHelp} onClose={() => setShowAiSafetyHelp(false)} />
                     <ResetOptionsModal isOpen={showResetOptions} onClose={() => setShowResetOptions(false)} onReset={handleResetAllData} />
                 </BaseModal>
             );
@@ -4132,6 +4221,7 @@
                                 onTouchStart={() => handleTouchStart(s.id)} 
                                 onTouchEnd={handleTouchEnd}
                                 onClick={() => { if (!isLongPress.current) toggleCheck(s.id); }}
+                                onDoubleClick={(e) => { e.preventDefault(); onLongPress(s.id); }}
                                 className={`group relative flex flex-col bg-white rounded-md border transition-all duration-200 cursor-pointer overflow-hidden hover:bg-notion-bg-hover ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm hover:shadow-md"}`}>
                                 {showPhoto ? (
                                     <div className="w-full aspect-[4/3] bg-gray-50 relative border-b border-notion-border">
@@ -4182,13 +4272,13 @@
             );
         };
 
-        const SimpleView = ({ students, simpleChecks, toggleCheck }) => {
+        const SimpleView = ({ students, simpleChecks, toggleCheck, onLongPress }) => {
             return (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 md:gap-4 animate-fade-in pb-10">
                     {students.map(s => {
                         const isDone = simpleChecks[s.id];
                         return (
-                            <div key={s.id} onClick={() => toggleCheck(s.id)} className={`group relative flex flex-col items-center justify-center p-6 bg-white rounded-md border transition-all duration-200 cursor-pointer hover:bg-notion-bg-hover ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm hover:shadow-md"}`}>
+                            <div key={s.id} onClick={() => toggleCheck(s.id)} onDoubleClick={(e) => { if(onLongPress) { e.preventDefault(); onLongPress(s.id); } }} className={`group relative flex flex-col items-center justify-center p-6 bg-white rounded-md border transition-all duration-200 cursor-pointer hover:bg-notion-bg-hover ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm hover:shadow-md"}`}>
                                 <div className={`text-xl font-bold mb-1 ${isDone ? 'text-notion-blue' : 'text-notion-text'}`}>{s.name}</div>
                                 <div className="text-xs text-notion-text-light">{s.order}번</div>
                                 {isDone && <div className="absolute top-2 right-2 text-notion-blue"><Icon d={PATHS.check} size={16} /></div>}
@@ -5134,7 +5224,7 @@
             const [seatAssignments, setSeatAssignments] = useState({});
             const [seatConfig, setSeatConfig] = useState({ rows: 5, cols: 5, disabledSeats: ['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4'] });
             const [groupDuration, setGroupDuration] = useState(1);
-            const [isDevMode, setIsDevMode] = useState(false);
+            const [isDevMode, setIsDevMode] = useState(() => localStorage.getItem('cls_dev_mode') === 'true');
             const [gearClickCount, setGearClickCount] = useState(0);
             const gearClickTimer = useRef(null);
             
@@ -5210,6 +5300,25 @@
             const [isStandalone, setIsStandalone] = useState(false);
             const [showInstallGuide, setShowInstallGuide] = useState(false);
             const [showGlobalRecord, setShowGlobalRecord] = React.useState(false);
+            const [aiCheckState, setAiCheckState] = useState({ isOpen: false, prompt: "", resolve: null, reject: null });
+
+            useEffect(() => {
+                window.triggerAiSecurityCheck = (prompt) => {
+                    return new Promise((resolve, reject) => {
+                        setAiCheckState({ isOpen: true, prompt, resolve, reject });
+                    });
+                };
+            }, []);
+
+            const handleAiCheckConfirm = () => {
+                if (aiCheckState.resolve) aiCheckState.resolve(true);
+                setAiCheckState({ isOpen: false, prompt: "", resolve: null, reject: null });
+            };
+
+            const handleAiCheckCancel = () => {
+                if (aiCheckState.reject) aiCheckState.reject(new Error("사용자에 의해 전송이 취소되었습니다."));
+                setAiCheckState({ isOpen: false, prompt: "", resolve: null, reject: null });
+            };
 
             // [New] Floating Button Drag Logic
             const [buttonPos, setButtonPos] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 80 });
@@ -5376,7 +5485,8 @@
                 if (newCount >= 3) {
                     const newMode = !isDevMode;
                     setIsDevMode(newMode);
-                    setToastMessage(newMode ? "개발자 모드가 활성화되었습니다." : "개발자 모드가 해제되었습니다.");
+                    localStorage.setItem('cls_dev_mode', newMode);
+                    setToastMessage(newMode ? "개발자 모드 ON: AI 전송 내용을 미리 확인할 수 있습니다." : "개발자 모드가 해제되었습니다.");
                     setGearClickCount(0);
                 } else {
                     gearClickTimer.current = setTimeout(() => setGearClickCount(0), 500);
@@ -7073,7 +7183,7 @@
                                     <RecordView students={students} records={records} dailyTasks={dailyTasks} date={date} toggleCheck={toggleCheck} appConfig={appConfig} stats={stats} onLongPress={(id) => setGrassStudentId(id)} />
                                 </>
                             )}
-                            {mode === 'simple' && <SimpleView students={students} simpleChecks={simpleChecks} toggleCheck={toggleCheck} />}
+                            {mode === 'simple' && <SimpleView students={students} simpleChecks={simpleChecks} toggleCheck={toggleCheck} onLongPress={(id) => setGrassStudentId(id)} />}
                             {mode === 'group' && (
                                 <div className="w-full md:h-full h-auto flex flex-col md:flex-row gap-6 pb-4 md:overflow-hidden">
                                     <div className={`md:w-1/3 lg:w-1/4 space-y-4 md:h-full h-auto md:overflow-y-auto custom-scroll transition-all duration-300 ${isGroupPanelOpen ? 'block' : 'hidden'}`}>
@@ -7699,6 +7809,7 @@
                     {showGlobalRecord && (
                         <GlobalRecordModal isOpen={showGlobalRecord} onClose={() => setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} appConfig={appConfig} />
                     )}
+                    <AiSecurityCheckModal isOpen={aiCheckState.isOpen} onClose={handleAiCheckCancel} prompt={aiCheckState.prompt} onConfirm={handleAiCheckConfirm} />
                     <button 
                         onMouseEnter={() => { setIsHidden(false); if(hideTimer.current) clearTimeout(hideTimer.current); }}
                         onMouseDown={handleButtonDragStart}
