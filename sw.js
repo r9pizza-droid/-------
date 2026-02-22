@@ -1,4 +1,4 @@
-const CACHE_NAME = 'class-app-cache-v3.11.1'; // 버전이 올라갈 때 자동 갱신됨
+const CACHE_NAME = 'class-app-cache-v3.11.3'; // 버전이 올라갈 때 자동 갱신됨
 
 self.addEventListener('install', (event) => {
     self.skipWaiting(); // 새 워커가 즉시 대기열을 건너뛰고 설치되게 함

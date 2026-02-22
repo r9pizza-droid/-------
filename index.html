@@ -161,6 +161,10 @@
         const GEMINI_MODEL_NAME = "gemini-2.5-flash-lite";
         // [New] Gemini 호출 함수 (리포트 생성용)
         const callGemini = async (apiKey, prompt, temperature = 0.7) => {
+            // 🔒 [보안 점검] 실제 AI에게 전송되는 내용을 콘솔창에 출력합니다.
+            // F12(개발자 도구) > Console 탭에서 학생 이름이 [STUDENT_TOKEN]으로 바뀌었는지 확인하세요.
+            console.log("🚀 [Gemini 전송 프롬프트 확인]", prompt);
+
             if (!apiKey) throw new Error("API 키가 필요합니다.");
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL_NAME}:generateContent?key=${apiKey.trim()}`;
             try {
@@ -935,9 +939,18 @@
                         
                         // [보안] 데이터 익명화 처리
                         const safeName = "[STUDENT_TOKEN]";
-                        const safeNotes = pNotes.map(n => `[${n.date}] ${anonymizeText(n.content, student.name)}`).join('\n');
                         
-                        const prompt = `[보안 규칙: 당신은 철저한 익명성을 유지해야 합니다. 응답 내용에 사람의 이름이나 실명을 유추할 수 있는 단어를 절대 포함하지 마세요. 대명사가 필요할 때는 반드시 '해당 학생'이라고만 지칭하세요.]\n\n당신은 초등교육 전문가로서 학생을 세심하게 관찰하고 학생에게 도움을 줄 수 있는 내용으로 성장 리포트를 작성합니다. [학생 정보] - 이름: ${safeName}, 분석 기간: ${reportStart} ~ ${reportEnd}, 성실도 지표 (과제 수행률): ${pRate}%, 부족한 과목: ${weakSubjectsStr}, 칭찬 스티커: ${stickerCount}개. [교사 관찰 기록] ${pNotes.length > 0 ? safeNotes : '특이 기록 없음'} ${isInsufficientData ? '[경고] 현재 이 학생에 대한 관찰 기록이 매우 부족합니다. 짧고 간결하게 작성하세요.' : ''}`;
+                        // [보안 강화] 대상 학생 외에 다른 학생들의 이름도 모두 익명화
+                        let safeNotesStr = pNotes.map(n => `[${n.date}] ${n.content}`).join('\n');
+                        safeNotesStr = anonymizeText(safeNotesStr, student.name);
+                        students.forEach(s => {
+                            if (s.id !== student.id) {
+                                safeNotesStr = safeNotesStr.replaceAll(s.name, "급우");
+                                if (s.name.length >= 3) safeNotesStr = safeNotesStr.replaceAll(s.name.substring(1), "급우");
+                            }
+                        });
+                        
+                        const prompt = `[보안 규칙: 당신은 철저한 익명성을 유지해야 합니다. 응답 내용에 사람의 이름이나 실명을 유추할 수 있는 단어를 절대 포함하지 마세요. 대명사가 필요할 때는 반드시 '해당 학생'이라고만 지칭하세요.]\n\n당신은 초등교육 전문가로서 학생을 세심하게 관찰하고 학생에게 도움을 줄 수 있는 내용으로 성장 리포트를 작성합니다. [학생 정보] - 이름: ${safeName}, 분석 기간: ${reportStart} ~ ${reportEnd}, 성실도 지표 (과제 수행률): ${pRate}%, 부족한 과목: ${weakSubjectsStr}, 칭찬 스티커: ${stickerCount}개. [교사 관찰 기록] ${pNotes.length > 0 ? safeNotesStr : '특이 기록 없음'} ${isInsufficientData ? '[경고] 현재 이 학생에 대한 관찰 기록이 매우 부족합니다. 짧고 간결하게 작성하세요.' : ''}`;
                         
                         const aiText = await callGemini(apiKey, prompt, 0.2);
                         
@@ -1485,7 +1498,7 @@
                         )}
 
                         {showStudentRecordAI && (
-                            <StudentRecordAIModal isOpen={showStudentRecordAI} onClose={() => setShowStudentRecordAI(false)} student={student} apiKey={apiKey} showToast={showToast} notes={notes} dailyTasks={dailyTasks} records={records} appConfig={appConfig} onSaveDraft={onSaveRecordDraft} />
+                            <StudentRecordAIModal isOpen={showStudentRecordAI} onClose={() => setShowStudentRecordAI(false)} student={student} students={students} apiKey={apiKey} showToast={showToast} notes={notes} dailyTasks={dailyTasks} records={records} appConfig={appConfig} onSaveDraft={onSaveRecordDraft} />
                         )}
 
                         {showReportEdit && (
@@ -1571,7 +1584,7 @@
                 </div>
             );
         };
-        const StudentRecordAIModal = ({ isOpen, onClose, student, apiKey, showToast, notes, dailyTasks, records, appConfig, onSaveDraft }) => {
+        const StudentRecordAIModal = ({ isOpen, onClose, student, students, apiKey, showToast, notes, dailyTasks, records, appConfig, onSaveDraft }) => {
             const [draft, setDraft] = useState("");
             const [isGenerating, setIsGenerating] = useState(false);
             const [keywords, setKeywords] = useState("");
@@ -1644,7 +1657,16 @@
 
                     // [보안] 데이터 익명화
                     const safeName = "[STUDENT_TOKEN]";
-                    const safeNotes = validNotes.length > 0 ? validNotes.map(n => `- [${n.date}] ${anonymizeText(n.content, student.name)}`).join('\n') : '기록 없음';
+                    let safeNotesStr = validNotes.length > 0 ? validNotes.map(n => `- [${n.date}] ${n.content}`).join('\n') : '기록 없음';
+                    safeNotesStr = anonymizeText(safeNotesStr, student.name);
+                    if (students) {
+                        students.forEach(s => {
+                            if (s.id !== student.id) {
+                                safeNotesStr = safeNotesStr.replaceAll(s.name, "급우");
+                                if (s.name.length >= 3) safeNotesStr = safeNotesStr.replaceAll(s.name.substring(1), "급우");
+                            }
+                        });
+                    }
                     const safeKeywords = anonymizeText(keywords || '없음', student.name);
 
                     let lengthConstraint = "";
@@ -1689,7 +1711,7 @@
                             - 키워드: ${safeKeywords}
                             
                             [교사 관찰 기록 (기초 자료)]
-                            ${safeNotes}
+                            ${safeNotesStr}
 
                             ${isInsufficient ? "주의: 기록이 매우 부족합니다. 위 원칙에 따라 '관찰 기록이 부족하여...' 메시지를 출력하거나, 수행률 데이터만으로 아주 간략하게 사실만 기술하세요." : "위 원칙과 순서에 맞춰 작성하세요."}
                         `;
@@ -1706,7 +1728,7 @@
                             3. **데이터 부족 시**: "특이 사항 없음" 또는 과제 수행률만 언급하고 마무리하라.
 
                             [교사 관찰 기록]
-                            ${safeNotes}
+                            ${safeNotesStr}
                             
                             위 기록을 바탕으로 국어, 수학, 사회, 과학, 영어 등 교과 관련 내용을 작성하세요. 기록이 없는 과목은 언급하지 마세요.
                         `;
@@ -4181,6 +4203,15 @@
 
           const UPDATE_NOTES = [
             { 
+                version: "v3.11.3", 
+                date: "2026-02-22",
+                list: [
+                    "AI 기능 보안 강화: 학생 실명 익명화 로직 전면 적용",
+                    "성장 리포트/총평: 대상 학생 및 급우 이름 가명 처리",
+                    "AI 모둠 편성: 학생 이름을 식별 불가능한 토큰으로 변환하여 전송"
+                ]
+            },
+            { 
                 version: "v3.11.2", 
                 date: "2026-02-22",
                 list: [
@@ -6225,7 +6256,7 @@
             const VERSION_CONFIG = {
                 major: 3,   // Major: 기존과 호환되지 않는 대규모 변경
                 minor: 11,   // Minor: 기존 기능과 호환되는 새로운 기능 추가
-                patch: 2    // Patch: 기존 기능의 버그 수정
+                patch: 3    // Patch: 기존 기능의 버그 수정
             };
             const CURRENT_VERSION = `v${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}`;
             const updateDate = UPDATE_NOTES.find(n => n.version === CURRENT_VERSION)?.date || "";
@@ -7408,16 +7439,35 @@
                     try {
                         const targetGroupCount = groupMethod === 'count' ? groupNumber : Math.ceil(students.length / groupNumber);
                         
-                        // [AI 강화] 프롬프트 구체화: 학생 특성 및 관계 정보 자동 포함
-                        const studentListStr = students.map(s => {
+                        // [보안] 학생 명단 익명화 (학생1, 학생2...)
+                        const anonymizedMap = {};
+                        const studentListStr = students.map((s, i) => {
+                            const anonName = `학생${i+1}`;
+                            anonymizedMap[anonName] = s;
                             const info = [`${s.gender === 'M' ? '남' : '여'}`, `실력${['하','중','상'][s.skill-1]}`];
                             if (s.leader) info.push('리더');
-                            return `${s.name}(${info.join(', ')})`;
+                            return `${anonName}(${info.join(', ')})`;
                         }).join(', ');
 
                         const constraints = [];
-                        if (avoidancePairs.length > 0) constraints.push(`- 기피 관계(같은 모둠 금지): ${avoidancePairs.map(p => `${p.p1}와 ${p.p2}`).join(', ')}`);
-                        if (mustPairs.length > 0) constraints.push(`- 필수 짝꿍(같은 모둠 필수): ${mustPairs.map(p => `${p.p1}와 ${p.p2}`).join(', ')}`);
+                        if (avoidancePairs.length > 0) {
+                            const avoidStr = avoidancePairs.map(p => {
+                                const idx1 = students.findIndex(s => s.name === p.p1);
+                                const idx2 = students.findIndex(s => s.name === p.p2);
+                                if (idx1 >= 0 && idx2 >= 0) return `학생${idx1+1}와 학생${idx2+1}`;
+                                return null;
+                            }).filter(x => x).join(', ');
+                            if (avoidStr) constraints.push(`- 기피 관계(같은 모둠 금지): ${avoidStr}`);
+                        }
+                        if (mustPairs.length > 0) {
+                            const mustStr = mustPairs.map(p => {
+                                const idx1 = students.findIndex(s => s.name === p.p1);
+                                const idx2 = students.findIndex(s => s.name === p.p2);
+                                if (idx1 >= 0 && idx2 >= 0) return `학생${idx1+1}와 학생${idx2+1}`;
+                                return null;
+                            }).filter(x => x).join(', ');
+                            if (mustStr) constraints.push(`- 필수 짝꿍(같은 모둠 필수): ${mustStr}`);
+                        }
                         
                         // [New] useHistory 옵션 적용
                         if (useHistory) {
@@ -7425,7 +7475,10 @@
                             if (recentDates.length > 0) {
                                 const historyStr = recentDates.map(d => {
                                     const grps = groupsByDate[d] || [];
-                                    return `- ${d}: ${grps.map(g => `[${g.map(s=>s.name).join(',')}]`).join(', ')}`;
+                                    return `- ${d}: ${grps.map(g => `[${g.map(s => {
+                                        const idx = students.findIndex(st => st.id === s.id);
+                                        return idx >= 0 ? `학생${idx+1}` : "미확인";
+                                    }).join(',')}]`).join(', ')}`;
                                 }).join('\n');
                                 constraints.push(`- 이전 모둠 구성과 최대한 겹치지 않게 편성해주세요 (최근 기록 참고):\n${historyStr}`);
                             }
@@ -7471,8 +7524,8 @@
 
                         const mappedGroups = aiGroups.map(g => g.map(n => { 
                             const clean = n.split('(')[0].trim();
-                            const s = students.find(st => st.name === clean);
-                            return s ? sanitizeStudent(s) : { id: Math.random(), name: clean, gender: 'M', skill: 1, order: 0 };
+                            const s = anonymizedMap[clean];
+                            return s ? sanitizeStudent(s) : { id: Math.random(), name: "미확인", gender: 'M', skill: 1, order: 0 };
                         }));
 
                         logSystemEvent('AI 모둠 편성 성공');
