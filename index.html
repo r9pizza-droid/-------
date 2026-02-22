@@ -380,9 +380,10 @@
                             <button onClick={onUpdate} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-violet-700 active:scale-95 transition-all flex items-center justify-center gap-2">
                                 <span>✨ 지금 업데이트 (새로고침)</span>
                             </button>
-                            <button onClick={onClose} className="w-full py-3 text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors bg-slate-50 rounded-xl hover:bg-slate-100">
-                                나중에 할게요
-                            </button>
+                            <div className="flex gap-2">
+                                <button onClick={() => onClose('today')} className="flex-1 py-3 text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors bg-slate-50 rounded-xl hover:bg-slate-100">오늘 하루 보지 않기</button>
+                                <button onClick={() => onClose()} className="flex-1 py-3 text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors bg-slate-50 rounded-xl hover:bg-slate-100">닫기</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -415,8 +416,12 @@
                      onMouseLeave={handleMouseLeave} 
                      onTouchStart={handleMouseEnter} 
                      onTouchEnd={handleMouseLeave}>
-                    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-4 border border-indigo-100 flex flex-col gap-3 ring-1 ring-black/5">
+                    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-4 border border-indigo-100 flex flex-col gap-3 ring-1 ring-black/5 relative">
                         
+                        <button onClick={() => onClose()} className="absolute top-2 right-2 p-1 text-slate-300 hover:text-slate-500 rounded-full hover:bg-slate-100 transition-colors z-10">
+                            <Icon d={PATHS.x} size={14} />
+                        </button>
+
                         <div className="flex items-start gap-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">
                                 <span className="text-lg animate-pulse">🚀</span>
@@ -441,8 +446,8 @@
                         </div>
 
                         <div className="flex gap-2 mt-1 pt-3 border-t border-slate-100">
-                            <button onClick={onClose} className="flex-1 py-2 text-slate-500 text-[11px] font-bold bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">
-                                나중에
+                            <button onClick={() => onClose('today')} className="flex-1 py-2 text-slate-500 text-[11px] font-bold bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">
+                                오늘 하루 숨김
                             </button>
                             <button onClick={onUpdate} className="flex-1 py-2 bg-indigo-600 text-white text-[11px] font-bold rounded-xl hover:bg-indigo-700 shadow-sm active:scale-95 transition-all">
                                 ✨ 지금 업데이트
@@ -760,21 +765,6 @@
                 const content = notionContent.trim();
                 const date = notionDate || dayjs().format('YYYY-MM-DD');
 
-                // [New] 구글 시트 저장 분기
-                if (saveTarget === 'google_sheet') {
-                    if (!content) return showToast("내용을 입력해주세요.");
-                    setNotionStatus('saving');
-                    let successCount = 0;
-                    for (const s of selectedStudents) {
-                        const success = await saveToGoogleSheet(s.name, category, content);
-                        if (success) successCount++;
-                    }
-                    if (successCount > 0) {
-                        setNotionStatus('success'); if (!keepContent) setNotionContent(''); setTimeout(() => setNotionStatus('idle'), 3000); showToast("구글 시트에 저장되었습니다!");
-                    } else { setNotionStatus('idle'); }
-                    return;
-                }
-
                 if (!content) return showToast("내용을 입력해주세요.");
                 
                 setNotionStatus('saving');
@@ -813,6 +803,25 @@
                             confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 });
                         }
                     }
+                }
+
+                // [New] 구글 시트 저장 분기 (로컬 저장 후 실행)
+                if (saveTarget === 'google_sheet') {
+                    let successCount = 0;
+                    for (const s of selectedStudents) {
+                        const success = await saveToGoogleSheet(s.name, category, content);
+                        if (success) successCount++;
+                    }
+                    if (successCount > 0) {
+                        setNotionStatus('success'); 
+                        if (!keepContent) setNotionContent(''); 
+                        setTimeout(() => setNotionStatus('idle'), 3000); 
+                        showToast("기록 저장 및 구글 시트 전송 완료!");
+                    } else { 
+                        setNotionStatus('idle'); 
+                        showToast("기록은 저장되었으나 구글 시트 전송에 실패했습니다.");
+                    }
+                    return;
                 }
 
                 try {
@@ -5079,8 +5088,17 @@
     const [newVersionAvailable, setNewVersionAvailable] = useState(false); 
     const [waitingWorker, setWaitingWorker] = useState(null);
 
-    const handleCloseUpdate = () => {
-        const snoozeUntil = new Date().getTime() + 600000;
+    const handleCloseUpdate = (type) => {
+        let snoozeUntil;
+        if (type === 'today') {
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+            snoozeUntil = tomorrow.getTime();
+        } else {
+            snoozeUntil = new Date().getTime() + 600000;
+        }
         localStorage.setItem('cls_update_snooze', snoozeUntil.toString());
         setNewVersionAvailable(false);
     };
@@ -5264,6 +5282,9 @@
 
             // [New] 버전 변경 시 업데이트 노트 자동 표시
             useEffect(() => {
+                // [Fix] 초기 로딩 상태("로딩 중...")일 때는 버전을 덮어쓰지 않도록 방어 코드 추가
+                if (CURRENT_VERSION === "로딩 중...") return;
+
                 const lastVersion = localStorage.getItem('cls_last_version');
                 if (lastVersion !== CURRENT_VERSION) {
                     //setShowUpdateNotes(true);
