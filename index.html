@@ -4995,42 +4995,63 @@
         setNewVersionAvailable(false);
     };
 
-    const handleUpdateApp = async () => { 
-        if (UPDATE_NOTES[0] && UPDATE_NOTES[0].version) {
-            localStorage.setItem('cls_last_version', UPDATE_NOTES[0].version);
-        }
+    const handleUpdateApp = async () => {
+            // 🌟 1. "나 이 버전 업데이트 완료했어!"라고 폰에 영구 도장 찍기 (배너 안 뜨게 하는 핵심!)
+            const latestVersion = Array.isArray(UPDATE_NOTES) ? UPDATE_NOTES[0].version : UPDATE_NOTES.version;
+            localStorage.setItem('cls_last_version', latestVersion);
 
-        if ('caches' in window) {
-            try {
-                const cacheNames = await caches.keys();
-                await Promise.all(cacheNames.map(name => caches.delete(name)));
-            } catch (e) { console.error("캐시 삭제 실패:", e); }
-        }
+            // 🌟 2. 브라우저 캐시(옛날 찌꺼기 파일들) 완벽하게 폭파
+            if ('caches' in window) {
+                try {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(cacheNames.map(name => caches.delete(name)));
+                } catch (e) { console.error("캐시 삭제 실패:", e); }
+            }
 
-        if (waitingWorker) waitingWorker.postMessage({ type: 'SKIP_WAITING' }); 
-        else window.location.href = window.location.href.split('?')[0] + '?clear=' + new Date().getTime(); 
-        setNewVersionAvailable(false); 
-    };
+            // 🌟 3. 고집부리는 옛날 서비스 워커(앱 관리자) 강제 해고! (가장 확실한 실제 업데이트 방법)
+            if (navigator.serviceWorker) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister(); 
+                    }
+                } catch (e) { console.error("SW 삭제 실패:", e); }
+            }
+
+            // 🌟 4. 찌꺼기 하나 없는 아주 깨끗한 주소로 강제 새로고침
+            window.location.href = window.location.pathname + '?clear=' + new Date().getTime();
+        };
 
     useEffect(() => { 
         const checkUpdateFile = () => {
-        fetch(`/update.json?t=${new Date().getTime()}`)
-            .then(res => res.json())
-            .then(data => {
-                // 1. 가져온 데이터로 안전망 덮어쓰기!
-                UPDATE_NOTES = Array.isArray(data) ? data : [data]; 
-            
-                // 2. 데이터 들어왔으니 화면 다시 그려! (하얀 화면 해결)
-                setForceRender(prev => prev + 1); 
+            fetch(`/update.json?t=${new Date().getTime()}`)
+                .then(res => res.json())
+                .then(data => {
+                    // 데이터 안전하게 배열로 만들기
+                    let fetchedNotes = Array.isArray(data) ? data : [data];
+                    UPDATE_NOTES = fetchedNotes;
+                    
+                    // 화면 렌더링 스위치 (둘 중 하나라도 작동하도록 방어)
+                    if (typeof setForceRender === 'function') setForceRender(prev => prev + 1);
+                    if (typeof setIsLoaded === 'function') setIsLoaded(true);
 
-                // 3. 새 버전 알림 띄울지 검사
-                const lastVersion = localStorage.getItem('cls_last_version');
-                if (lastVersion === UPDATE_NOTES[0].version) return;
+                    // 🌟 무한 알림 방지의 핵심!
+                    const latestVersion = fetchedNotes[0].version;
+                    const lastVersion = localStorage.getItem('cls_last_version');
+                    
+                    // 핸드폰에 찍힌 도장(lastVersion)과 json의 최신 버전(latestVersion)이 같으면 그냥 종료! (배너 안 뜸)
+                    if (lastVersion === latestVersion) return;
 
-            setNewVersionAvailable(true);
-        })
-        .catch(err => console.log("업데이트 파일 확인 불가:", err));
-};
+                    // 스누즈(나중에 보기) 기능 확인
+                    const snoozeTime = localStorage.getItem('cls_update_snooze');
+                    const now = new Date().getTime();
+                    if (snoozeTime && now < parseInt(snoozeTime, 10)) return;
+
+                    // 도장도 다르고, 스누즈도 아니면 비로소 배너 띄움
+                    setNewVersionAvailable(true);
+                })
+                .catch(err => console.log("업데이트 파일 확인 불가:", err));
+        };
 
         checkUpdateFile();
 
