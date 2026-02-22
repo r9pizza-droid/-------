@@ -651,49 +651,6 @@
 
             const level = Math.floor(stickerCount / 5) + 1;
             
-            const playLevelUpSound = () => {
-                if (appConfig.soundEnabled === false) return;
-                try {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    if (!AudioContext) return;
-                    const ctx = new AudioContext();
-                    const now = ctx.currentTime;
-                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.type = 'sine';
-                        osc.frequency.value = freq;
-                        gain.gain.setValueAtTime(0.05, now + i * 0.1);
-                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.2);
-                        osc.start(now + i * 0.1);
-                        osc.stop(now + i * 0.1 + 0.2);
-                    });
-                    setTimeout(() => ctx.close(), 1000);
-                } catch (e) {}
-            };
-            
-            const playStickerSound = () => {
-                if (appConfig.soundEnabled === false) return;
-                try {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    if (!AudioContext) return;
-                    const ctx = new AudioContext();
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(880, ctx.currentTime);
-                    gain.gain.setValueAtTime(0.03, ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-                    osc.start(ctx.currentTime);
-                    osc.stop(ctx.currentTime + 0.1);
-                    setTimeout(() => ctx.close(), 200);
-                } catch (e) {}
-            };
-            
             const handleSticker = (delta) => { 
                 const newCount = Math.max(0, stickerCount + delta);
                 setStickerCount(newCount); 
@@ -704,12 +661,10 @@
                     if (navigator.vibrate) navigator.vibrate(15);
                     if (newCount % 5 === 0) { 
                         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 });
-                        playLevelUpSound();
                         if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`);
                     }
                     else { 
                         confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 });
-                        playStickerSound();
                     }
                 }
             };
@@ -785,11 +740,9 @@
                         const newCount = stickerCount + 1;
                         if (newCount % 5 === 0) { 
                             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 });
-                            playLevelUpSound();
                             if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`);
                         } else { 
                             confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 });
-                            playStickerSound();
                         }
                     }
                 }
@@ -3565,22 +3518,7 @@
                                                 </>
                                             )}
                                         </div>
-                                            <div className="grid grid-cols-3 gap-2">
-                                            <div 
-                                                className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.soundEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-                                                onClick={() => updateAppConfig({ soundEnabled: !(appConfig.soundEnabled !== false) })}
-                                            >
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <Icon d={appConfig.soundEnabled !== false ? PATHS.speaker : PATHS.mute} size={16} className={appConfig.soundEnabled !== false ? "text-indigo-500" : "text-slate-400"}/>
-                                                    <span className={`text-xs font-bold ${appConfig.soundEnabled !== false ? "text-indigo-700" : "text-slate-500"}`}>효과음</span>
-                                                </div>
-                                                <div className="flex justify-end items-center gap-2">
-                                                    <span className={`text-[10px] font-bold ${appConfig.soundEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.soundEnabled !== false ? "ON" : "OFF"}</span>
-                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${appConfig.soundEnabled !== false ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}>
-                                                        {appConfig.soundEnabled !== false && <Icon d={PATHS.check} size={14} className="text-white" strokeWidth={3} />}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
                                             <div 
                                                 className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.animationEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
                                                 onClick={() => updateAppConfig({ animationEnabled: !(appConfig.animationEnabled !== false) })}
@@ -3612,40 +3550,6 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        {appConfig.soundEnabled !== false && (
-                                            <div className="col-span-2 mt-1 bg-white border border-slate-200 rounded-xl p-3 shadow-sm space-y-3">
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-slate-400 block mb-2">터치 효과음 종류</label>
-                                                    <div className="grid grid-cols-4 gap-2">
-                                                        {[
-                                                            { id: 'tick', label: '틱(기본)' },
-                                                            { id: 'click', label: '클릭' },
-                                                            { id: 'toc', label: '톡' },
-                                                            { id: 'pop', label: '팝' }
-                                                        ].map(sound => (
-                                                            <button key={sound.id} onClick={() => { updateAppConfig({ hapticSoundType: sound.id }); playHapticSound(true, sound.id, appConfig.soundVolume || 1); }} className={`py-2 rounded-lg text-xs font-bold transition-all ${appConfig.hapticSoundType === sound.id ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>
-                                                                {sound.label}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                    <div className="mt-2 text-[10px] text-slate-400 text-center bg-slate-50 p-1.5 rounded-lg">
-                                                        {
-                                                            appConfig.hapticSoundType === 'click' ? '🖱️ 명확하고 또렷한 마우스 클릭음' :
-                                                            appConfig.hapticSoundType === 'toc' ? '🪵 부드럽고 낮은 나무 두드리는 소리' :
-                                                            appConfig.hapticSoundType === 'pop' ? '💧 통통 튀는 경쾌한 물방울 소리' :
-                                                            '⌨️ 가볍고 짧은 기계식 키보드 소리 (기본)'
-                                                        }
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <label className="text-[10px] font-bold text-slate-400">음량 조절</label>
-                                                        <span className="text-[10px] font-bold text-indigo-600">{Math.round((appConfig.soundVolume || 1) * 100)}%</span>
-                                                    </div>
-                                                    <input type="range" min="0" max="2" step="0.1" value={appConfig.soundVolume !== undefined ? appConfig.soundVolume : 1} onChange={(e) => { const vol = parseFloat(e.target.value); updateAppConfig({ soundVolume: vol }); playHapticSound(true, appConfig.hapticSoundType, vol); }} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                     </div>
 
@@ -3986,54 +3890,6 @@
             </div>
         );
         
-        const playHapticSound = (soundEnabled, type = 'tick', volume = 1.0) => {
-            if (soundEnabled === false) return;
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                
-                const now = ctx.currentTime;
-                const vol = Math.max(0, Math.min(2, volume)); // 볼륨 범위 안전장치
-
-                if (type === 'click') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(800, now);
-                    gain.gain.setValueAtTime(0.05 * vol, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-                    osc.start(now);
-                    osc.stop(now + 0.05);
-                } else if (type === 'toc') {
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(100, now);
-                    gain.gain.setValueAtTime(0.15 * vol, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-                    osc.start(now);
-                    osc.stop(now + 0.05);
-                } else if (type === 'pop') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(400, now);
-                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
-                    gain.gain.setValueAtTime(0.05 * vol, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-                    osc.start(now);
-                    osc.stop(now + 0.05);
-                } else { // 'tick' (default)
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(200, now);
-                    gain.gain.setValueAtTime(0.1 * vol, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
-                    osc.start(now);
-                    osc.stop(now + 0.03);
-                }
-                setTimeout(() => ctx.close(), 100);
-            } catch (e) {}
-        };
-
         const RecordView = ({ students, records, dailyTasks, date, toggleCheck, appConfig, stats, onLongPress }) => {
             const getStreakBadge = (studentId) => {
                 const s = stats.students.find(st => st.id === studentId);
@@ -4052,7 +3908,6 @@
                 longPressTimer.current = setTimeout(() => {
                     isLongPress.current = true;
                     if (navigator.vibrate) navigator.vibrate(15);
-                    playHapticSound(appConfig.soundEnabled, appConfig.hapticSoundType, appConfig.soundVolume);
                     onLongPress(id);
                 }, 1000);
             };
@@ -6086,7 +5941,6 @@
         if (!isLocalMode) saveData('cls_students', updatedStudents);
         if (category === '칭찬') {
             if (navigator.vibrate) navigator.vibrate(15);
-            playHapticSound(appConfig?.soundEnabled, appConfig?.hapticSoundType, appConfig?.soundVolume);
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 3000 });
         }
 
@@ -6331,7 +6185,7 @@
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null }); const [toastMessage, setToastMessage] = useState(null);
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
             const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
-            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, hapticSoundType: 'tick', soundVolume: 1.0, updateNotificationType: 'modal' });
+            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'modal' });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const lastBackupTime = useRef("");
@@ -7256,7 +7110,6 @@
 
             const toggleCheck = (id, taskIndex = null) => { 
                 if (navigator.vibrate) navigator.vibrate(15);
-                playHapticSound(appConfig.soundEnabled, appConfig.hapticSoundType, appConfig.soundVolume);
 
                 if (mode === 'simple') { const newDone = !simpleChecks[id];
             setSimpleChecks({ ...simpleChecks, [id]: newDone }); if (newDone) confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#6366f1', '#8b5cf6'] });
