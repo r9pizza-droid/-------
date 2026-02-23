@@ -199,6 +199,7 @@
         };
 
         // [New] 구글 시트 전송용 함수
+        // 🌟 따옴표 중복 방지 및 전송 최적화 버전
         const saveToGoogleSheet = async (studentName, category, recordContent, recordDate) => {
             const url = localStorage.getItem('cls_google_sheet_url');
             if (!url) {
@@ -206,12 +207,24 @@
                 return false;
             }
             try {
-                // 선택한 날짜가 있으면 그 날짜를 사용하고, 시간은 현재 시간을 붙임
                 const dateStr = recordDate ? dayjs(recordDate).format('YYYY-MM-DD') + ' ' + dayjs().format('HH:mm:ss') : dayjs().format('YYYY-MM-DD HH:mm:ss');
+                
+                // 1. 혹시 데이터에 포함되어 있을지 모를 따옴표(") 찌꺼기를 가위로 잘라냅니다.
+                const clean = (val) => String(val || "").replace(/^"|"$/g, '');
+
+                const payload = {
+                    date: clean(dateStr),
+                    name: clean(studentName),
+                    category: clean(category),
+                    content: clean(recordContent)
+                };
+
+                // 2. 구글 시트로 깨끗하게 닦인 데이터를 쏩니다.
                 await fetch(url, {
                     method: "POST",
+                    mode: 'no-cors', // 🌟 전송 성공률을 높여주는 핵심 설정
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ date: dateStr, name: studentName, category: category, content: recordContent })
+                    body: JSON.stringify(payload)
                 });
                 return true;
             } catch (e) {
@@ -2644,6 +2657,7 @@
                 try {
                     await fetch(url, {
                         method: "POST",
+                        mode: 'no-cors',
                         headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: "테스트", category: "연동 테스트", content: "Google 시트 연동 성공!" })
                     });
