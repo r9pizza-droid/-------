@@ -200,8 +200,12 @@
 
         // [New] 구글 시트 전송용 함수
         // 🌟 따옴표 중복 방지 및 전송 최적화 버전
+        // [New] 구글 시트 전송용 함수
         const saveToGoogleSheet = async (studentName, category, recordContent, recordDate) => {
-            const url = localStorage.getItem('cls_google_sheet_url');
+            let url = localStorage.getItem('cls_google_sheet_url');
+            // 🌟 핵심: 찌꺼기로 들어간 큰따옴표, 작은따옴표를 여기서 강제로 뜯어냅니다!
+            if (url) url = url.trim().replace(/^"|'|"$|'$/g, '');
+            
             if (!url) {
                 alert("설정 > 데이터 관리 > 외부 서비스 연동에서 구글 스프레드시트 URL을 먼저 입력해주세요.");
                 return false;
@@ -209,7 +213,6 @@
             try {
                 const dateStr = recordDate ? dayjs(recordDate).format('YYYY-MM-DD') + ' ' + dayjs().format('HH:mm:ss') : dayjs().format('YYYY-MM-DD HH:mm:ss');
                 
-                // 1. 혹시 데이터에 포함되어 있을지 모를 따옴표(") 찌꺼기를 가위로 잘라냅니다.
                 const clean = (val) => String(val || "").replace(/^"|"$/g, '');
 
                 const payload = {
@@ -219,10 +222,9 @@
                     content: clean(recordContent)
                 };
 
-                // 2. 구글 시트로 깨끗하게 닦인 데이터를 쏩니다.
                 await fetch(url, {
                     method: "POST",
-                    mode: 'no-cors', // 🌟 전송 성공률을 높여주는 핵심 설정
+                    mode: 'no-cors',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
@@ -2647,15 +2649,20 @@
 
             useEffect(() => {
                 if (isOpen) {
-                    setUrl(localStorage.getItem('cls_google_sheet_url') || "");
+                    let savedUrl = localStorage.getItem('cls_google_sheet_url') || "";
+                    // 🌟 불러올 때 따옴표 찌꺼기 1차 제거
+                    savedUrl = savedUrl.trim().replace(/^"|'|"$|'$/g, '');
+                    setUrl(savedUrl);
                 }
             }, [isOpen]);
 
             const handleTest = async () => {
-                if (!url) return showToast("URL을 입력해주세요.");
+                // 🌟 테스트할 때도 안전하게 따옴표 제거 후 전송
+                const cleanUrl = url.trim().replace(/^"|'|"$|'$/g, '');
+                if (!cleanUrl) return showToast("URL을 입력해주세요.");
                 setIsTesting(true);
                 try {
-                    await fetch(url, {
+                    await fetch(cleanUrl, {
                         method: "POST",
                         mode: 'no-cors',
                         headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -2670,7 +2677,8 @@
             };
 
             const handleSave = () => {
-                const cleanUrl = url.trim();
+                // 🌟 영구 저장할 때 완벽하게 따옴표 제거 후 저장
+                const cleanUrl = url.trim().replace(/^"|'|"$|'$/g, '');
                 localStorage.setItem('cls_google_sheet_url', cleanUrl);
                 if (!isLocalMode && saveData) saveData('cls_google_sheet_url', cleanUrl);
                 showToast("설정이 저장되었습니다.");
