@@ -666,7 +666,24 @@
             const [keepContent, setKeepContent] = useState(false);
             const [isExpanded, setIsExpanded] = useState(false);
             const [isGrassExpanded, setIsGrassExpanded] = useState(false); // [추가됨] 활동 잔디 접고 펴기 상태
-            const [saveTarget, setSaveTarget] = useState(isPortfolioMode ? 'notion_portfolio' : 'notion_record'); // [New] 저장 대상 선택 상태
+            
+            // [New] 연동 상태 확인 및 기본값 설정 (초기화)
+            const [hasNotionRecord, setHasNotionRecord] = useState(false);
+            const [hasNotionPortfolio, setHasNotionPortfolio] = useState(false);
+            const [hasGoogleSheet, setHasGoogleSheet] = useState(false);
+
+            const [saveTarget, setSaveTarget] = useState(() => {
+                const key = localStorage.getItem('cls_notion_key');
+                const dbId = localStorage.getItem('cls_notion_db_id');
+                const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
+                const sheetUrl = localStorage.getItem('cls_google_sheet_url');
+
+                if (isPortfolioMode && key && portDbId) return 'notion_portfolio';
+                if (key && dbId) return 'notion_record';
+                if (key && portDbId) return 'notion_portfolio';
+                if (sheetUrl) return 'google_sheet';
+                return null;
+            });
             
             const [notionDate, setNotionDate] = useState(dayjs().format('YYYY-MM-DD'));
             const [notionContent, setNotionContent] = useState('');
@@ -677,14 +694,41 @@
             const [showStudentDropdown, setShowStudentDropdown] = useState(false);
             const [notionStatus, setNotionStatus] = useState('idle');
             const [hasNotionConfig, setHasNotionConfig] = useState(false);
+            const [hasGoogleSheetConfig, setHasGoogleSheetConfig] = useState(false);
             
             useEffect(() => {
                 if (isOpen) {
                     const key = localStorage.getItem('cls_notion_key');
                     const dbId = localStorage.getItem('cls_notion_db_id');
-                    setHasNotionConfig(!!(key && dbId));
+                    const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
+                    const sheetUrl = localStorage.getItem('cls_google_sheet_url');
+
+                    const rec = !!(key && dbId);
+                    const port = !!(key && portDbId);
+                    const sheet = !!sheetUrl;
+
+                    setHasNotionRecord(rec);
+                    setHasNotionPortfolio(port);
+                    setHasGoogleSheet(sheet);
+                    
+                    // 배지용 상태 업데이트 (호환성 유지)
+                    setHasNotionConfig(rec || port);
+                    setHasGoogleSheetConfig(sheet);
+
+                    // [New] 현재 선택된 타겟이 유효하지 않으면 사용 가능한 첫 번째 옵션으로 변경
+                    setSaveTarget(prev => {
+                        if (prev === 'notion_record' && rec) return prev;
+                        if (prev === 'notion_portfolio' && port) return prev;
+                        if (prev === 'google_sheet' && sheet) return prev;
+                        
+                        if (isPortfolioMode && port) return 'notion_portfolio';
+                        if (rec) return 'notion_record';
+                        if (port) return 'notion_portfolio';
+                        if (sheet) return 'google_sheet';
+                        return null;
+                    });
                 }
-            }, [isOpen]);
+            }, [isOpen, isPortfolioMode]);
 
             useEffect(() => {
                 if (isOpen && isPortfolioMode && student) {
@@ -1327,7 +1371,8 @@
                                     <div className="flex justify-between items-center mb-4">
                                         <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
                                             <Icon d={PATHS.document} size={16} className="text-green-500"/> 교사 관찰 및 칭찬 기록
-                                            {hasNotionConfig && <span className="text-[10px] text-green-600 font-bold ml-1 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">노션 연동됨</span>}
+                                            {hasNotionConfig && <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5"><Icon d={PATHS.check} size={10} strokeWidth={3} />노션 연동</span>}
+                                            {hasGoogleSheetConfig && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5"><Icon d={PATHS.check} size={10} strokeWidth={3} />구글 연동</span>}
                                         </h4>
                                     </div>
 
@@ -1345,11 +1390,15 @@
                                         )}
 
                                         {/* [New] 저장소 선택 탭 UI */}
-                                        <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-200">
-                                            <button onClick={() => setSaveTarget('notion_record')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_record' ? 'bg-indigo-50 text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>
-                                            <button onClick={() => setSaveTarget('notion_portfolio')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_portfolio' ? 'bg-amber-50 text-amber-600 shadow-sm ring-1 ring-amber-100' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>
-                                            <button onClick={() => setSaveTarget('google_sheet')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'google_sheet' ? 'bg-green-50 text-green-600 shadow-sm ring-1 ring-green-100' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>
-                                        </div>
+                                        {(hasNotionRecord || hasNotionPortfolio || hasGoogleSheet) ? (
+                                            <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                                                {hasNotionRecord && <button onClick={() => setSaveTarget('notion_record')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_record' ? 'bg-indigo-50 text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>}
+                                                {hasNotionPortfolio && <button onClick={() => setSaveTarget('notion_portfolio')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_portfolio' ? 'bg-amber-50 text-amber-600 shadow-sm ring-1 ring-amber-100' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>}
+                                                {hasGoogleSheet && <button onClick={() => setSaveTarget('google_sheet')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'google_sheet' ? 'bg-green-50 text-green-600 shadow-sm ring-1 ring-green-100' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center text-xs text-slate-400 py-2 bg-slate-50 rounded-xl border border-slate-200 border-dashed">연동된 외부 서비스가 없습니다 (로컬에만 저장됩니다)</div>
+                                        )}
 
                                         <div className="flex items-center gap-2 relative z-20">
                                             {saveTarget === 'notion_portfolio' && (
@@ -5043,7 +5092,26 @@
         };
         const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos, appConfig }) => {
     if (!isOpen) return null;
-    const [saveTarget, setSaveTarget] = React.useState(() => localStorage.getItem('cls_portfolio_mode') === 'true' ? 'notion_portfolio' : 'notion_record'); // [New] 저장 대상 상태
+    
+    // [New] 연동 상태 확인 및 기본값 설정
+    const [hasNotionRecord, setHasNotionRecord] = React.useState(false);
+    const [hasNotionPortfolio, setHasNotionPortfolio] = React.useState(false);
+    const [hasGoogleSheet, setHasGoogleSheet] = React.useState(false);
+
+    const [saveTarget, setSaveTarget] = React.useState(() => {
+        const key = localStorage.getItem('cls_notion_key');
+        const dbId = localStorage.getItem('cls_notion_db_id');
+        const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
+        const sheetUrl = localStorage.getItem('cls_google_sheet_url');
+        const isPortMode = localStorage.getItem('cls_portfolio_mode') === 'true';
+
+        if (isPortMode && key && portDbId) return 'notion_portfolio';
+        if (key && dbId) return 'notion_record';
+        if (key && portDbId) return 'notion_portfolio';
+        if (sheetUrl) return 'google_sheet';
+        return null;
+    });
+
     const [searchText, setSearchText] = React.useState("");
     const [selectedStudents, setSelectedStudents] = React.useState([]);
     const [showStudentDropdown, setShowStudentDropdown] = React.useState(false);
@@ -5051,8 +5119,41 @@
     const [notionContent, setNotionContent] = React.useState('');
     const [keepContent, setKeepContent] = React.useState(false);
     const [notionStatus, setNotionStatus] = React.useState('idle');
+    const [hasNotionConfig, setHasNotionConfig] = React.useState(false);
+    const [hasGoogleSheetConfig, setHasGoogleSheetConfig] = React.useState(false);
     const modalRef = React.useRef(null);
     const textareaRef = React.useRef(null);
+
+    React.useEffect(() => {
+        if (isOpen) {
+            const key = localStorage.getItem('cls_notion_key');
+            const dbId = localStorage.getItem('cls_notion_db_id');
+            const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
+            const sheetUrl = localStorage.getItem('cls_google_sheet_url');
+            
+            const rec = !!(key && dbId);
+            const port = !!(key && portDbId);
+            const sheet = !!sheetUrl;
+
+            setHasNotionRecord(rec);
+            setHasNotionPortfolio(port);
+            setHasGoogleSheet(sheet);
+            setHasNotionConfig(rec || port);
+            setHasGoogleSheetConfig(sheet);
+
+            setSaveTarget(prev => {
+                if (prev === 'notion_record' && rec) return prev;
+                if (prev === 'notion_portfolio' && port) return prev;
+                if (prev === 'google_sheet' && sheet) return prev;
+                
+                if (localStorage.getItem('cls_portfolio_mode') === 'true' && port) return 'notion_portfolio';
+                if (rec) return 'notion_record';
+                if (port) return 'notion_portfolio';
+                if (sheet) return 'google_sheet';
+                return null;
+            });
+        }
+    }, [isOpen]);
 
     React.useEffect(() => {
         if (textareaRef.current) {
@@ -5154,17 +5255,25 @@
         <div className="fixed inset-0 bg-black/50 z-[2000] p-4 backdrop-blur-sm animate-fade-in flex items-center justify-center" onClick={onClose}>
             <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-expand-from" onClick={e => e.stopPropagation()}>
                 <div className="bg-slate-50 p-5 border-b border-slate-200 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2"><Icon d={PATHS.document} size={18} className="text-indigo-500"/> 빠른 기록</h3>
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                        <Icon d={PATHS.document} size={18} className="text-indigo-500"/> 빠른 기록
+                        {hasNotionConfig && <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5"><Icon d={PATHS.check} size={10} strokeWidth={3} />노션 연동</span>}
+                        {hasGoogleSheetConfig && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5"><Icon d={PATHS.check} size={10} strokeWidth={3} />구글 연동</span>}
+                    </h3>
                     <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-400"><Icon d={PATHS.x} /></button>
                 </div>
                 
                 {/* [New] 저장소 선택 탭 UI */}
                 <div className="px-5 pt-4">
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                        <button onClick={() => setSaveTarget('notion_record')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_record' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>
-                        <button onClick={() => setSaveTarget('notion_portfolio')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_portfolio' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>
-                        <button onClick={() => setSaveTarget('google_sheet')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'google_sheet' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>
-                    </div>
+                    {(hasNotionRecord || hasNotionPortfolio || hasGoogleSheet) ? (
+                        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                            {hasNotionRecord && <button onClick={() => setSaveTarget('notion_record')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_record' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>}
+                            {hasNotionPortfolio && <button onClick={() => setSaveTarget('notion_portfolio')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_portfolio' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>}
+                            {hasGoogleSheet && <button onClick={() => setSaveTarget('google_sheet')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'google_sheet' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>}
+                        </div>
+                    ) : (
+                        <div className="text-center text-xs text-slate-400 py-2 bg-slate-50 rounded-xl border border-slate-200 border-dashed">연동된 외부 서비스가 없습니다 (로컬에만 저장됩니다)</div>
+                    )}
                 </div>
 
                 <div className="p-5 flex flex-col gap-4">
