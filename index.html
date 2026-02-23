@@ -833,16 +833,11 @@
                 
                 setNotionStatus('saving');
                 
-                // 🌟 노션과 구글 시트 연동 여부를 각각 확인해서 배지를 전부 챙깁니다!
+                // 🌟 선택된 저장 위치에 따라 배지를 생성합니다.
                 let tags = [];
-                if (typeof saveTarget !== 'undefined') {
-                    if (saveTarget === 'notion_record') tags.push("노션(기록)");
-                    if (saveTarget === 'notion_portfolio') tags.push("노션(포폴)");
-                }
-                // 구글 시트 주소가 저장되어 있다면 구글 시트 배지도 추가!
-                if (localStorage.getItem('cls_google_sheet_url')) {
-                    tags.push("구글 시트");
-                }
+                if (saveTarget === 'notion_record') tags.push("노션(기록)");
+                else if (saveTarget === 'notion_portfolio') tags.push("노션(포폴)");
+                else if (saveTarget === 'google_sheet') tags.push("구글 시트");
 
                 // destTag(단일) 대신 destTags(배열)로 저장합니다.
                 const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
@@ -1046,7 +1041,7 @@
                             }
                         });
                         
-                        const prompt = `[보안 규칙: 당신은 철저한 익명성을 유지해야 합니다. 응답 내용에 사람의 이름이나 실명을 유추할 수 있는 단어를 절대 포함하지 마세요. 대명사가 필요할 때는 반드시 '해당 학생'이라고만 지칭하세요.]\n\n당신은 초등교육 전문가로서 학생을 세심하게 관찰하고 학생에게 도움을 줄 수 있는 내용으로 성장 리포트를 작성합니다. [학생 정보] - 이름: ${safeName}, 분석 기간: ${reportStart} ~ ${reportEnd}, 성실도 지표 (과제 수행률): ${pRate}%, 부족한 과목: ${weakSubjectsStr}, 칭찬 스티커: ${stickerCount}개. [교사 관찰 기록] ${pNotes.length > 0 ? safeNotesStr : '특이 기록 없음'} ${isInsufficientData ? '[경고] 현재 이 학생에 대한 관찰 기록이 매우 부족합니다. 짧고 간결하게 작성하세요.' : ''}`;
+                        const prompt = `[보안 규칙:당신은 철저한 익명성을 유지해야 합니다. 응답 내용에 사람의 이름이나 실명을 유추할 수 있는 단어를 절대 포함하지 마세요. 대명사가 필요할 때는 반드시 '해당 학생'이라고만 지칭하세요.]\n\n당신은 초등교육 전문가로서 학생을 세심하게 관찰하고 학생에게 도움을 줄 수 있는 내용으로 성장 리포트를 작성합니다. [학생 정보] - 이름: ${safeName}, 분석 기간: ${reportStart} ~ ${reportEnd}, 성실도 지표 (과제 수행률): ${pRate}%, 부족한 과목: ${weakSubjectsStr}, 칭찬 스티커: ${stickerCount}개. [교사 관찰 기록] ${pNotes.length > 0 ? safeNotesStr : '특이 기록 없음'} ${isInsufficientData ? '[경고] 현재 이 학생에 대한 관찰 기록이 매우 부족합니다. 짧고 간결하게 작성하세요.' : ''}`;
                         
                         const aiText = await callGemini(apiKey, prompt, 0.2);
                         
@@ -5176,15 +5171,11 @@
         setNotionStatus('saving');
             const date = notionDate || dayjs().format('YYYY-MM-DD');
             
-            // 🌟 플로팅 버튼에서도 똑같이 여러 개의 배지를 확인합니다.
+            // 🌟 선택된 저장 위치에 따라 배지를 생성합니다.
             let tags = [];
-            if (typeof saveTarget !== 'undefined') {
-                if (saveTarget === 'notion_record') tags.push("노션(기록)");
-                if (saveTarget === 'notion_portfolio') tags.push("노션(포폴)");
-            }
-            if (localStorage.getItem('cls_google_sheet_url')) {
-                tags.push("구글 시트");
-            }
+            if (saveTarget === 'notion_record') tags.push("노션(기록)");
+            else if (saveTarget === 'notion_portfolio') tags.push("노션(포폴)");
+            else if (saveTarget === 'google_sheet') tags.push("구글 시트");
 
             const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
             const targetIds = selectedStudents.map(s => s.id);
