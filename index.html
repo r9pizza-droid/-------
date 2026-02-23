@@ -789,14 +789,19 @@
                 
                 setNotionStatus('saving');
                 
-                // 🌟 1. 어떤 저장소를 선택했는지에 따라 태그 이름 결정
-                let destTag = "";
-                if (saveTarget === 'notion_record') destTag = "노션(기록)";
-                else if (saveTarget === 'notion_portfolio') destTag = "노션(포폴)";
-                else if (saveTarget === 'google_sheet') destTag = "구글 시트";
+                // 🌟 노션과 구글 시트 연동 여부를 각각 확인해서 배지를 전부 챙깁니다!
+                let tags = [];
+                if (typeof saveTarget !== 'undefined') {
+                    if (saveTarget === 'notion_record') tags.push("노션(기록)");
+                    if (saveTarget === 'notion_portfolio') tags.push("노션(포폴)");
+                }
+                // 구글 시트 주소가 저장되어 있다면 구글 시트 배지도 추가!
+                if (localStorage.getItem('cls_google_sheet_url')) {
+                    tags.push("구글 시트");
+                }
 
-                // 🌟 2. 기록 데이터에 태그 정보(destTag) 추가
-                const newNote = { id: Date.now(), date: date, content: content, destTag: destTag };
+                // destTag(단일) 대신 destTags(배열)로 저장합니다.
+                const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
                 const targetIds = selectedStudents.map(s => s.id);
                 
                 const updatedStudents = students.map(s => {
@@ -1488,17 +1493,22 @@
                                                 ) : (
                                                     <>
                                                         <div className="flex justify-between items-start mb-2">
-                                                            <div className="flex items-center gap-1.5">
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
                                                                 <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-md">{n.date}</span>
-                                                                {n.destTag && (
-                                                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-sm ${
-                                                                        n.destTag === '노션(기록)' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                                                                        n.destTag === '노션(포폴)' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                                        'bg-green-50 text-green-600 border-green-100'
-                                                                    }`}>
+                                                                
+                                                                {/* 1. 예전 기록 호환용 (단일 배지) */}
+                                                                {n.destTag && !n.destTags && (
+                                                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-sm ${n.destTag.includes('노션') ? (n.destTag.includes('포폴') ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100') : 'bg-green-50 text-green-600 border-green-100'}`}>
                                                                         {n.destTag}
                                                                     </span>
                                                                 )}
+
+                                                                {/* 2. 새로운 기록용 (여러 개의 배지를 나란히 표시) */}
+                                                                {n.destTags && n.destTags.map((tag, idx) => (
+                                                                    <span key={idx} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-sm ${tag.includes('노션') ? (tag.includes('포폴') ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100') : 'bg-green-50 text-green-600 border-green-100'}`}>
+                                                                        {tag}
+                                                                    </span>
+                                                                ))}
                                                             </div>
                                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <button onClick={() => startEditing(n)} className="text-slate-400 hover:text-indigo-600 p-1 bg-slate-50 hover:bg-indigo-50 rounded"><Icon d={PATHS.edit} size={14}/></button>
@@ -5065,13 +5075,17 @@
         setNotionStatus('saving');
             const date = notionDate || dayjs().format('YYYY-MM-DD');
             
-            // 🌟 4. 빠른 기록 플로팅 버튼에도 태그 정보 추가
-            let destTag = "";
-            if (saveTarget === 'notion_record') destTag = "노션(기록)";
-            else if (saveTarget === 'notion_portfolio') destTag = "노션(포폴)";
-            else if (saveTarget === 'google_sheet') destTag = "구글 시트";
+            // 🌟 플로팅 버튼에서도 똑같이 여러 개의 배지를 확인합니다.
+            let tags = [];
+            if (typeof saveTarget !== 'undefined') {
+                if (saveTarget === 'notion_record') tags.push("노션(기록)");
+                if (saveTarget === 'notion_portfolio') tags.push("노션(포폴)");
+            }
+            if (localStorage.getItem('cls_google_sheet_url')) {
+                tags.push("구글 시트");
+            }
 
-            const newNote = { id: Date.now(), date: date, content: content, destTag: destTag };
+            const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
             const targetIds = selectedStudents.map(s => s.id);
         
         const updatedStudents = students.map(s => {
