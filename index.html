@@ -1489,14 +1489,16 @@
 
                                         {/* 4. 미니 팝업 달력 */}
                                         {showSearchCal && (
-                                            <div className="absolute top-12 right-0 mt-1 bg-white border border-slate-200 shadow-2xl rounded-xl p-4 z-50 w-64 animate-fade-in">
-                                                <div className="flex justify-between items-center mb-3">
-                                                    <button onClick={() => setCalMonth(calMonth.subtract(1, 'month'))} className="p-1 hover:bg-slate-100 rounded-lg text-slate-500">&lt;</button>
-                                                    <span className="font-bold text-sm text-slate-700">{calMonth.format('YYYY년 MM월')}</span>
-                                                    <button onClick={() => setCalMonth(calMonth.add(1, 'month'))} className="p-1 hover:bg-slate-100 rounded-lg text-slate-500">&gt;</button>
+                                            <div className="absolute top-12 right-0 mt-1 bg-white border border-slate-100 shadow-2xl shadow-indigo-100/50 rounded-3xl p-4 z-50 w-72 animate-fade-in">
+                                                <div className="flex justify-between items-center mb-4 px-1">
+                                                    <button onClick={() => setCalMonth(calMonth.subtract(1, 'month'))} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><Icon d={PATHS.left} size={16} /></button>
+                                                    <span className="font-extrabold text-sm text-slate-800">{calMonth.format('YYYY년 M월')}</span>
+                                                    <button onClick={() => setCalMonth(calMonth.add(1, 'month'))} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><Icon d={PATHS.right} size={16} /></button>
                                                 </div>
-                                                <div className="grid grid-cols-7 gap-1 text-center text-[11px] mb-2 font-bold text-slate-400">
-                                                    <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+                                                <div className="grid grid-cols-7 mb-2 text-center">
+                                                    {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+                                                        <div key={d} className={`text-[10px] font-bold pb-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>{d}</div>
+                                                    ))}
                                                 </div>
                                                 <div className="grid grid-cols-7 gap-1 text-center text-xs">
                                                     {Array.from({ length: calMonth.startOf('month').day() }).map((_, i) => <div key={`empty-${i}`} />)}
@@ -1504,6 +1506,13 @@
                                                         const dateStr = calMonth.date(i + 1).format('YYYY-MM-DD');
                                                         const hasRecord = recordDates.includes(dateStr); 
                                                         const isSelected = searchTerm === dateStr;
+                                                        const isToday = dateStr === dayjs().format('YYYY-MM-DD');
+                                                        
+                                                        let cellClass = "aspect-square flex flex-col items-center justify-center rounded-full text-xs font-medium cursor-pointer transition-all duration-200 relative group";
+                                                        if (isSelected) cellClass += " bg-indigo-600 text-white shadow-md shadow-indigo-200 font-bold transform scale-105 z-10";
+                                                        else if (isToday) cellClass += " text-indigo-600 font-bold bg-indigo-50 hover:bg-indigo-100";
+                                                        else cellClass += " text-slate-600 hover:bg-slate-100";
+
                                                         return (
                                                             <button
                                                                 key={i}
@@ -1511,10 +1520,13 @@
                                                                     setSearchTerm(dateStr); 
                                                                     setShowSearchCal(false); 
                                                                 }}
-                                                                className={`relative p-1.5 rounded-lg hover:bg-indigo-50 transition-colors ${isSelected ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-600'}`}
+                                                                className={cellClass}
                                                             >
                                                                 <span>{i + 1}</span>
-                                                                {hasRecord && <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-500 rounded-full"></div>}
+                                                                {hasRecord && !isSelected && <div className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${isToday ? 'bg-indigo-400' : 'bg-blue-400'}`}></div>}
+                                                                {isSelected && (
+                                                                    <div className="absolute -top-0.5 -right-0.5 bg-white text-indigo-600 rounded-full p-[1px] shadow-sm animate-bounce-in z-20"><Icon d={PATHS.check} size={8} strokeWidth={4} /></div>
+                                                                )}
                                                             </button>
                                                         );
                                                     })}
@@ -2080,6 +2092,7 @@
         const CalendarModal = ({ isOpen, onClose, currentDate, onSelectDate, records, appConfig, groupsByDate, mode, selectionMode = 'single', onSelectRange }) => {
             const [viewDate, setViewDate] = useState(dayjs(currentDate));
             const [range, setRange] = useState({ start: null, end: null });
+            const [blinkDate, setBlinkDate] = useState(null);
 
             useEffect(() => { 
                 if (isOpen) {
@@ -2098,7 +2111,9 @@
                 const day = dayjs(dateStr).day();
                 const isWeekend = day === 0 || day === 6;
                 const isHoliday = !!HOLIDAYS[dateStr];
-                if (!isWeekend && !isHoliday) {
+                const isVacation = (appConfig.vacations || []).some(v => dateStr >= v.start && dateStr <= v.end) || (appConfig.vacationStart && appConfig.vacationEnd && dateStr >= appConfig.vacationStart && dateStr <= appConfig.vacationEnd);
+                
+                if (!isWeekend && !isHoliday && !isVacation) {
                     if (selectionMode === 'single') {
                         onSelectDate(dateStr);
                         onClose();
@@ -2118,28 +2133,34 @@
             };
 
             return (
-                <div className="fixed inset-0 bg-black/50 z-[1500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 bg-black/40 z-[1500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl shadow-indigo-100/50 p-6 transform transition-all" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                <Icon d={PATHS.calendar} className="text-indigo-500" /> 
+                            <h3 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                                <span className="text-2xl">📅</span> 
                                 {selectionMode === 'range' ? '기간 선택 (시작일 → 종료일)' : '날짜 선택'}
                             </h3>
                             <div className="flex items-center gap-2">
-                                {selectionMode === 'single' && <Btn onClick={() => { onSelectDate(getToday()); onClose(); }} className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-200">오늘</Btn>}
-                                {selectionMode === 'range' && <Btn onClick={() => { if(onSelectRange) onSelectRange(currentDate, currentDate); onClose(); }} className="text-xs bg-rose-50 text-rose-500 px-3 py-1.5 rounded-full font-bold hover:bg-rose-100">기간 초기화 (1일)</Btn>}
-                                <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><Icon d={PATHS.x} size={20} /></button>
+                                {selectionMode === 'single' && <button onClick={() => { 
+                                    const today = getToday();
+                                    setViewDate(dayjs(today));
+                                    onSelectDate(today);
+                                    setBlinkDate(today);
+                                    setTimeout(() => setBlinkDate(null), 1500);
+                                }} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-100 transition-colors">오늘</button>}
+                                {selectionMode === 'range' && <button onClick={() => { if(onSelectRange) onSelectRange(currentDate, currentDate); onClose(); }} className="text-xs bg-rose-50 text-rose-500 px-3 py-1.5 rounded-full font-bold hover:bg-rose-100 transition-colors">초기화</button>}
+                                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><Icon d={PATHS.x} size={20} /></button>
                             </div>
                         </div>
-                        <div className="flex justify-between items-center mb-4 px-2">
-                            <Btn onClick={() => setViewDate(viewDate.subtract(1, 'month'))} className="p-2 hover:bg-slate-100 rounded-full"><Icon d={PATHS.left} size={18} /></Btn>
-                            <span className="font-bold text-lg text-slate-700">{viewDate.format('YY.MM')}</span>
-                            <Btn onClick={() => setViewDate(viewDate.add(1, 'month'))} className="p-2 hover:bg-slate-100 rounded-full"><Icon d={PATHS.right} size={18} /></Btn>
+                        <div className="flex justify-between items-center mb-6 px-2">
+                            <button onClick={() => setViewDate(viewDate.subtract(1, 'month'))} className="p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"><Icon d={PATHS.left} size={20} /></button>
+                            <span className="text-lg font-extrabold text-slate-800 tracking-tight">{viewDate.format('YYYY년 M월')}</span>
+                            <button onClick={() => setViewDate(viewDate.add(1, 'month'))} className="p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"><Icon d={PATHS.right} size={20} /></button>
                         </div>
                         <div className="grid grid-cols-7 mb-2 text-center">
-                            {DAYS.map((d, i) => <div key={d} className={`text-xs font-bold py-1 ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-blue-500' : 'text-slate-400'}`}>{d}</div>)}
+                            {DAYS.map((d, i) => <div key={d} className={`text-xs font-bold pb-2 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>{d}</div>)}
                         </div>
-                        <div className="grid grid-cols-7 gap-1">
+                        <div className="grid grid-cols-7 gap-2">
                             {calendarDays.map((dateObj, idx) => { 
                                 if (!dateObj) return <div key={idx} className="aspect-square"></div>; 
                                 const dateStr = dateObj.format('YYYY-MM-DD'); 
@@ -2163,27 +2184,26 @@
                                     if (range.start && range.end && dateStr > range.start && dateStr < range.end) isInRange = true;
                                 }
 
-                                let bgClass = 'hover:bg-slate-100 text-slate-700'; 
-                                if (isSelected) bgClass = 'bg-indigo-600 text-white shadow-md scale-105'; 
-                                else if (isInRange) bgClass = 'bg-indigo-100 text-indigo-700';
-                                else if (isVacation || isWeekend || isHoliday) bgClass = 'bg-slate-200 cursor-not-allowed'; 
-                                else bgClass = 'hover:bg-indigo-50 cursor-pointer'; 
+                                const isDisabled = isVacation || isWeekend || isHoliday;
+                                const isBlinking = blinkDate === dateStr;
+                                let cellClass = "aspect-square flex flex-col items-center justify-center rounded-full text-sm font-medium cursor-pointer transition-all duration-300 relative group";
                                 
-                                let textClass = ''; 
-                                if (isSelected) textClass = 'text-white'; 
-                                else if (isInRange) textClass = 'text-indigo-700 font-bold';
-                                else if (isVacation) textClass = 'text-slate-400'; 
-                                else { 
-                                    if (isHoliday || dayOfWeek === 0) textClass = 'text-rose-500'; 
-                                    else if (dayOfWeek === 6) textClass = 'text-blue-500'; 
-                                    else textClass = 'text-slate-700'; 
-                                } 
+                                if (isSelected) cellClass += " bg-indigo-600 text-white shadow-lg shadow-indigo-200 font-bold transform scale-110 z-10";
+                                else if (isInRange) cellClass += " bg-indigo-50 text-indigo-700 font-bold";
+                                else if (isDisabled) cellClass += " text-slate-300 cursor-not-allowed bg-slate-50/50";
+                                else if (isToday) cellClass += " text-indigo-600 font-bold bg-indigo-50 hover:bg-indigo-100";
+                                else cellClass += " text-slate-700 hover:bg-slate-100 active:scale-95";
+                                
+                                if (isBlinking) cellClass += " ring-4 ring-indigo-300 ring-offset-2 animate-pulse";
                                 
                                 return (
-                                    <button key={idx} disabled={isVacation || isWeekend || isHoliday} onClick={() => handleDateClick(dateStr)} className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all ${bgClass} ${isToday && !isSelected && !isInRange ? 'border-2 border-indigo-200' : ''}`}>
-                                        <span className={`text-sm font-bold ${textClass}`}>{dateObj.date()}</span>
-                                        {showDot && !isWeekend && !isHoliday && !isVacation && !isInRange && !isSelected && (<div className={`w-1.5 h-1.5 rounded-full mt-1 ${isSelected ? 'bg-white/70' : 'bg-blue-500'}`}></div>)}
-                                        {isHoliday && !isVacation && <div className="text-[8px] leading-none mt-0.5 truncate max-w-full px-0.5 text-rose-500">{holidayName}</div>}
+                                    <button key={idx} disabled={isDisabled} onClick={() => handleDateClick(dateStr)} className={cellClass}>
+                                        <span>{dateObj.date()}</span>
+                                        {isSelected && (
+                                            <div className="absolute -top-1 -right-1 bg-white text-indigo-600 rounded-full p-[2px] shadow-sm animate-bounce-in z-20"><Icon d={PATHS.check} size={10} strokeWidth={4} /></div>
+                                        )}
+                                        {showDot && !isDisabled && !isSelected && !isInRange && (<div className={`w-1 h-1 rounded-full mt-0.5 ${isToday ? 'bg-indigo-400' : 'bg-blue-400'}`}></div>)}
+                                        {isHoliday && !isVacation && <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 text-[8px] leading-none text-rose-400 font-bold whitespace-nowrap w-full text-center truncate px-1">{holidayName}</div>}
                                     </button>
                                 ) 
                             })}
@@ -2222,9 +2242,40 @@
         };
         const TaskModal = ({ isOpen, onClose, date, dailyTasks, setDailyTasks, weeklyTasks, setWeeklyTasks, saveData, isLocalMode, showToast, tags, setTags, openConfirm }) => {
             const [tasks, setTempTasks] = useState([]); const [newTask, setNewTask] = useState(""); const [selectedTag, setSelectedTag] = useState("국어"); const [wTasks, setWTasks] = useState({}); const [wSelectedDays, setWSelectedDays] = useState([]); const [wNewTask, setWNewTask] = useState(""); const [wSelectedTag, setWSelectedTag] = useState("국어");
-            useEffect(() => { if (isOpen) { setTempTasks((dailyTasks[date] || []).map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t)); const loadedWeekly = {}; Object.keys(weeklyTasks).forEach(k => loadedWeekly[k] = weeklyTasks[k].map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t)); setWTasks(loadedWeekly); } }, [isOpen, dailyTasks, weeklyTasks, date]);
+            const [dueDate, setDueDate] = useState(date); // 🌟 제출일 상태 추가
+            
+            useEffect(() => { if (isOpen) { setTempTasks((dailyTasks[date] || []).map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t)); const loadedWeekly = {}; Object.keys(weeklyTasks).forEach(k => loadedWeekly[k] = weeklyTasks[k].map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t)); setWTasks(loadedWeekly); setDueDate(date); /* 🌟 열릴 때마다 현재 날짜로 초기화 */ } }, [isOpen, dailyTasks, weeklyTasks, date]);
             const updateTags = (newTag) => { if (newTag && !tags.includes(newTag)) { const newTags = [...tags, newTag]; setTags(newTags); if (!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); } };
-            const addTask = () => { if (newTask && tasks.length < 5) { setTempTasks([...tasks, { title: newTask, tag: selectedTag }]); updateTags(selectedTag); setNewTask(""); } };
+            const addTask = () => { 
+                if (newTask && newTask.trim() !== "") { 
+                    updateTags(selectedTag);
+                    
+                    // 1. 달력 날짜가 오늘(현재 화면)과 같을 때 (기존 방식)
+                    if (dueDate === date) {
+                        if (tasks.length < 5) {
+                            setTempTasks([...tasks, { title: newTask, tag: selectedTag }]); 
+                            setNewTask(""); 
+                        } else { showToast("오늘 과제는 최대 5개까지 가능합니다."); }
+                    } 
+                    // 2. 다른 날짜를 선택했을 때 (미래로 보내기!)
+                    else {
+                        const targetTasks = dailyTasks[dueDate] || [];
+                        if (targetTasks.length < 5) {
+                            const updatedTasks = [...targetTasks, { title: newTask, tag: selectedTag }];
+                            const newDaily = { ...dailyTasks, [dueDate]: updatedTasks };
+                            setDailyTasks(newDaily);
+                            
+                            // 안전하게 저장하기
+                            localStorage.setItem('cls_daily_tasks', JSON.stringify(newDaily));
+                            try { if (!isLocalMode) saveData('cls_daily_tasks', newDaily); } catch(e) {}
+                            
+                            showToast(`${dayjs(dueDate).format('MM/DD')} 숙제가 등록 되었습니다.`);
+                            setNewTask("");
+                            setDueDate(date); // 추가 후 다시 원래 날짜로 복귀
+                        } else { showToast("선택하신 날짜에 이미 과제가 5개 꽉 찼습니다."); }
+                    }
+                } 
+            };
             const removeTask = (idx) => setTempTasks(tasks.filter((_, i) => i !== idx));
             const saveAll = () => { 
                 const newDaily = { ...dailyTasks, [date]: tasks }; 
@@ -2291,7 +2342,31 @@
             };
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="과제 설정" icon={PATHS.edit} footer={<Btn onClick={handleSaveAll} className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg hover:bg-slate-900">모든 설정 저장 및 닫기</Btn>}><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-indigo-500 pl-3 flex justify-between"><span>오늘의 과제 ({dayjs(date).format('YY.MM.DD')})</span><span className="text-xs font-normal text-slate-400">최대 5개</span></h4><div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div className="flex flex-col mb-3"><div className="flex gap-2 items-center mb-2 w-full"><input value={newTask} onChange={e => setNewTask(e.target.value)} className="flex-1 min-w-0 p-2.5 border rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="예: 일기 쓰기" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addTask() }} /><Btn onClick={addTask} className="shrink-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700 whitespace-nowrap">추가</Btn></div><TagSelector current={selectedTag} setTag={setSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="space-y-2">{tasks.map((t, i) => (<div key={i} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm"><div className="flex items-center gap-2"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] rounded font-bold">{t.tag}</span><span className="text-sm font-medium text-slate-700">{t.title}</span></div><Btn onClick={() => removeTask(i)} className="text-rose-400 hover:text-rose-600"><Icon d={PATHS.trash} size={16} /></Btn></div>))}{tasks.length === 0 && <div className="text-center text-slate-400 text-sm py-4">등록된 과제가 없습니다.</div>}</div></div></section><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-green-500 pl-3"><span>요일별 고정 과제</span></h4><div className="bg-green-50/50 p-4 rounded-2xl border border-green-100"><div className="flex justify-between mb-3 bg-white p-1 rounded-xl border border-green-100">{[1, 2, 3, 4, 5].map(d => <Btn key={d} onClick={() => toggleDay(d)} className={`flex-1 py-2 rounded-lg text-sm font-bold ${wSelectedDays.includes(d) ? 'bg-green-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>{DAYS[d]}</Btn>)}</div><div className="flex flex-col mb-6"><div className="flex gap-2 items-center mb-2 w-full"><input value={wNewTask} onChange={e => setWNewTask(e.target.value)} className="flex-1 min-w-0 p-2.5 border rounded-xl text-sm outline-none focus:border-green-500" placeholder="과제 내용" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addWeeklyTask() }} /><Btn onClick={addWeeklyTask} className="shrink-0 bg-green-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-green-700 whitespace-nowrap">일괄 추가</Btn></div><TagSelector current={wSelectedTag} setTag={setWSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="grid grid-cols-1 sm:grid-cols-5 gap-3">{[1, 2, 3, 4, 5].map(d => (<div key={d} className="bg-white p-3 rounded-xl border border-slate-200"><div className="text-center font-bold text-slate-500 text-xs mb-2 pb-1 border-b">{DAYS[d]}요일</div><div className="space-y-1 min-h-[60px]">{(wTasks[d] || []).map((t, i) => (<div key={i} className="flex justify-between items-start text-xs bg-slate-50 p-1.5 rounded group"><div className="flex flex-col"><span className="text-[9px] text-slate-400">{t.tag}</span><span className="break-all leading-tight">{t.title}</span></div><Btn onClick={() => removeWeeklyTask(d, i)} className="text-rose-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 ml-1">×</Btn></div>))}</div></div>))}</div></div></section></BaseModal>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="과제 설정" icon={PATHS.edit} footer={<Btn onClick={handleSaveAll} className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg hover:bg-slate-900">모든 설정 저장 및 닫기</Btn>}><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-indigo-500 pl-3 flex justify-between"><span>오늘의 과제 ({dayjs(date).format('YY.MM.DD')})</span><span className="text-xs font-normal text-slate-400">최대 5개</span></h4><div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div className="flex flex-col mb-3"><div className="flex gap-2 items-center mb-2 w-full">
+    <div className="flex items-center gap-1.5 shrink-0 bg-slate-100 px-3 py-2.5 rounded-xl border border-slate-200">
+        <span className="text-xs font-extrabold text-slate-500 whitespace-nowrap">제출일</span>
+        <input 
+            type="date" 
+            value={dueDate} 
+            onChange={e => setDueDate(e.target.value)} 
+            className="text-sm font-bold text-slate-700 bg-transparent outline-none cursor-pointer" 
+            title="과제 제출일 변경" 
+        />
+    </div>
+    <input 
+        value={newTask} 
+        onChange={e => setNewTask(e.target.value)} 
+        className="flex-1 min-w-0 p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:border-indigo-500 shadow-sm" 
+        placeholder="예: 수학 익힘책 풀어오기" 
+        onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addTask() }} 
+    />
+    <Btn 
+        onClick={addTask} 
+        className="shrink-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-indigo-700 whitespace-nowrap"
+    >
+        추가
+    </Btn>
+</div><TagSelector current={selectedTag} setTag={setSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="space-y-2">{tasks.map((t, i) => (<div key={i} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm"><div className="flex items-center gap-2"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] rounded font-bold">{t.tag}</span><span className="text-sm font-medium text-slate-700">{t.title}</span></div><Btn onClick={() => removeTask(i)} className="text-rose-400 hover:text-rose-600"><Icon d={PATHS.trash} size={16} /></Btn></div>))}{tasks.length === 0 && <div className="text-center text-slate-400 text-sm py-4">등록된 과제가 없습니다.</div>}</div></div></section><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-green-500 pl-3"><span>요일별 고정 과제</span></h4><div className="bg-green-50/50 p-4 rounded-2xl border border-green-100"><div className="flex justify-between mb-3 bg-white p-1 rounded-xl border border-green-100">{[1, 2, 3, 4, 5].map(d => <Btn key={d} onClick={() => toggleDay(d)} className={`flex-1 py-2 rounded-lg text-sm font-bold ${wSelectedDays.includes(d) ? 'bg-green-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>{DAYS[d]}</Btn>)}</div><div className="flex flex-col mb-6"><div className="flex gap-2 items-center mb-2 w-full"><input value={wNewTask} onChange={e => setWNewTask(e.target.value)} className="flex-1 min-w-0 p-2.5 border rounded-xl text-sm outline-none focus:border-green-500" placeholder="과제 내용" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addWeeklyTask() }} /><Btn onClick={addWeeklyTask} className="shrink-0 bg-green-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-green-700 whitespace-nowrap">일괄 추가</Btn></div><TagSelector current={wSelectedTag} setTag={setWSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="grid grid-cols-1 sm:grid-cols-5 gap-3">{[1, 2, 3, 4, 5].map(d => (<div key={d} className="bg-white p-3 rounded-xl border border-slate-200"><div className="text-center font-bold text-slate-500 text-xs mb-2 pb-1 border-b">{DAYS[d]}요일</div><div className="space-y-1 min-h-[60px]">{(wTasks[d] || []).map((t, i) => (<div key={i} className="flex justify-between items-start text-xs bg-slate-50 p-1.5 rounded group"><div className="flex flex-col"><span className="text-[9px] text-slate-400">{t.tag}</span><span className="break-all leading-tight">{t.title}</span></div><Btn onClick={() => removeWeeklyTask(d, i)} className="text-rose-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 ml-1">×</Btn></div>))}</div></div>))}</div></div></section></BaseModal>
             );
         };
         
