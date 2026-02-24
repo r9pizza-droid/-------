@@ -1404,10 +1404,12 @@
                                 {/* Records Area (Logs + Input) */}
                                 <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm flex flex-col flex-1">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                            <Icon d={PATHS.document} size={16} className="text-green-500"/> 교사 관찰 및 칭찬 기록
-                                            {hasNotionConfig && <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5"><Icon d={PATHS.check} size={10} strokeWidth={3} />노션 연동</span>}
-                                            {hasGoogleSheetConfig && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5"><Icon d={PATHS.check} size={10} strokeWidth={3} />구글 연동</span>}
+                                        <h4 className="text-sm font-bold text-slate-700 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 items-start">
+                                            <span className="flex items-center gap-2 whitespace-nowrap"><Icon d={PATHS.document} size={16} className="text-green-500"/> 교사 관찰 및 칭찬 기록</span>
+                                            <div className="flex flex-col sm:flex-row gap-1">
+                                                {hasNotionConfig && <span className="w-fit text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5 whitespace-nowrap"><Icon d={PATHS.check} size={10} strokeWidth={3} />노션 연동</span>}
+                                                {hasGoogleSheetConfig && <span className="w-fit text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5 whitespace-nowrap"><Icon d={PATHS.check} size={10} strokeWidth={3} />구글 연동</span>}
+                                            </div>
                                         </h4>
                                     </div>
 
@@ -1427,9 +1429,9 @@
                                         {/* [New] 저장소 선택 탭 UI */}
                                         {(hasNotionRecord || hasNotionPortfolio || hasGoogleSheet) ? (
                                             <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-200">
-                                                {hasNotionRecord && <button onClick={() => { const next = new Set(saveTargets); if(next.has('notion_record')) next.delete('notion_record'); else next.add('notion_record'); setSaveTargets(next); }} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTargets.has('notion_record') ? 'bg-indigo-50 text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>}
-                                                {hasNotionPortfolio && <button onClick={() => { const next = new Set(saveTargets); if(next.has('notion_portfolio')) next.delete('notion_portfolio'); else next.add('notion_portfolio'); setSaveTargets(next); }} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTargets.has('notion_portfolio') ? 'bg-amber-50 text-amber-600 shadow-sm ring-1 ring-amber-100' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>}
-                                                {hasGoogleSheet && <button onClick={() => { const next = new Set(saveTargets); if(next.has('google_sheet')) next.delete('google_sheet'); else next.add('google_sheet'); setSaveTargets(next); }} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTargets.has('google_sheet') ? 'bg-green-50 text-green-600 shadow-sm ring-1 ring-green-100' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>}
+                                                {hasNotionRecord && <button onClick={() => { const next = new Set(saveTargets); if(next.has('notion_record')) next.delete('notion_record'); else next.add('notion_record'); setSaveTargets(next); }} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${saveTargets.has('notion_record') ? 'bg-indigo-50 text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>}
+                                                {hasNotionPortfolio && <button onClick={() => { const next = new Set(saveTargets); if(next.has('notion_portfolio')) next.delete('notion_portfolio'); else next.add('notion_portfolio'); setSaveTargets(next); }} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${saveTargets.has('notion_portfolio') ? 'bg-amber-50 text-amber-600 shadow-sm ring-1 ring-amber-100' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>}
+                                                {hasGoogleSheet && <button onClick={() => { const next = new Set(saveTargets); if(next.has('google_sheet')) next.delete('google_sheet'); else next.add('google_sheet'); setSaveTargets(next); }} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${saveTargets.has('google_sheet') ? 'bg-green-50 text-green-600 shadow-sm ring-1 ring-green-100' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>}
                                             </div>
                                         ) : (
                                             <div className="text-center text-xs text-slate-400 py-2 bg-slate-50 rounded-xl border border-slate-200 border-dashed">연동된 외부 서비스가 없습니다 (로컬에만 저장됩니다)</div>
@@ -1484,10 +1486,10 @@
                                         </div>
                                         
                                         <div className="flex gap-2.5">
-                                            <button onClick={() => handleIntegratedSave('칭찬')} disabled={notionStatus === 'saving'} className={`relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md ${notionStatus === 'saving' ? 'bg-rose-300' : 'bg-rose-500 hover:bg-rose-600 active:scale-95'}`}>
+                                            <button onClick={() => handleIntegratedSave('칭찬')} disabled={notionStatus === 'saving'} className={`relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap ${notionStatus === 'saving' ? 'bg-rose-300' : 'bg-rose-500 hover:bg-rose-600 active:scale-95'}`}>
                                                 칭찬하기 +1
                                             </button>
-                                            <button onClick={() => handleIntegratedSave('관찰')} disabled={notionStatus === 'saving'} className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md ${notionStatus === 'saving' ? 'bg-indigo-300' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'}`}>
+                                            <button onClick={() => handleIntegratedSave('관찰')} disabled={notionStatus === 'saving'} className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap ${notionStatus === 'saving' ? 'bg-indigo-300' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'}`}>
                                                 관찰 기록 저장
                                             </button>
                                         </div>
@@ -1642,14 +1644,13 @@
                                                 return (
                                                     <>
                                                         <div className="flex items-center justify-between mb-6">
-                                                            <button onClick={() => setIsDetailViewOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors flex items-center gap-1 text-xs font-bold bg-slate-50 border border-slate-200">
+                                                            <button onClick={() => setIsDetailViewOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors flex items-center gap-1 text-xs font-bold bg-slate-50 border border-slate-200 whitespace-nowrap">
                                                                 <Icon d={PATHS.left} size={14} /> 목록으로
                                                             </button>
                                                             <div className="flex items-center gap-2">
                                                                 <div className="w-8 h-8 rounded-full shadow-inner flex items-center justify-center relative overflow-hidden bg-slate-100" style={getPieStyle(grassHistory.find(h => h.date === detailDate)?.ratio || 0)}></div>
-                                                                <span className="text-base font-extrabold text-slate-800">{dayjs(detailDate).format('M월 D일 (ddd)')}</span>
+                                                                <span className="text-base font-extrabold text-slate-800 whitespace-nowrap">{dayjs(detailDate).format('M월 D일 (ddd)')}</span>
                                                             </div>
-                                                            <div className="w-20"></div>
                                                         </div>
                                                         
                                                         <div className="space-y-6">
@@ -1698,10 +1699,10 @@
 
                                         {/* 2. 목록 뷰 (List View) - 왼쪽으로 나감 */}
                                         <div className={`col-start-1 row-start-1 w-full transition-all duration-300 ease-in-out transform ${isDetailViewOpen ? '-translate-x-full opacity-0 invisible pointer-events-none' : 'translate-x-0 opacity-100 visible'}`}>
-                                            <div className="flex justify-between items-center mb-4">
-                                                <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 sm:gap-0">
+                                                <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2 whitespace-nowrap">
                                                     <Icon d={PATHS.calendar} size={16} className="text-orange-500"/> 활동 잔디 
-                                                    <span className="text-indigo-600 font-extrabold text-xs bg-indigo-50 px-2 py-0.5 rounded-md">{dayjs(grassStart).format('YYYY년 M월')}</span>
+                                                    <span className="text-indigo-600 font-extrabold text-xs bg-indigo-50 px-2 py-0.5 rounded-md whitespace-nowrap">{dayjs(grassStart).format('YYYY년 M월')}</span>
                                                     <div className="relative ml-1 flex items-center">
                                                         <button onClick={(e) => { e.stopPropagation(); setShowThemePicker(!showThemePicker); }} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors" title="강조 색상 변경">
                                                             <div className={`w-4 h-4 rounded-full ${GRASS_THEMES[grassTheme].bg} border-2 ${GRASS_THEMES[grassTheme].border}`}></div>
@@ -1715,14 +1716,14 @@
                                                         )}
                                                     </div>
                                                 </h4>
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                                                <div className="flex flex-col items-end sm:items-center gap-1 w-full sm:w-auto">
+                                                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-full sm:w-auto justify-center sm:justify-start">
                                                         <button onClick={() => { const prev = dayjs(grassStart).subtract(1, 'month'); setGrassStart(prev.startOf('month').format('YYYY-MM-DD')); setGrassEnd(prev.endOf('month').format('YYYY-MM-DD')); setIsGrassExpanded(true); }} className="p-1 hover:bg-white rounded-md text-slate-500 shadow-sm transition-all"><Icon d={PATHS.left} size={12}/></button>
-                                                        <button onClick={() => { const now = dayjs(); setGrassStart(now.startOf('month').format('YYYY-MM-DD')); setGrassEnd(now.endOf('month').format('YYYY-MM-DD')); setIsGrassExpanded(false); setDateRangeAnim(true); setTimeout(() => setDateRangeAnim(false), 500); }} className="text-[10px] px-2.5 py-1 rounded-md font-bold text-slate-600 hover:bg-white shadow-sm transition-all">이번 달</button>
+                                                        <button onClick={() => { const now = dayjs(); setGrassStart(now.startOf('month').format('YYYY-MM-DD')); setGrassEnd(now.endOf('month').format('YYYY-MM-DD')); setIsGrassExpanded(false); setDateRangeAnim(true); setTimeout(() => setDateRangeAnim(false), 500); }} className="text-[10px] px-2.5 py-1 rounded-md font-bold text-slate-600 hover:bg-white shadow-sm transition-all whitespace-nowrap">이번 달</button>
                                                         <button onClick={() => { const next = dayjs(grassStart).add(1, 'month'); setGrassStart(next.startOf('month').format('YYYY-MM-DD')); setGrassEnd(next.endOf('month').format('YYYY-MM-DD')); setIsGrassExpanded(true); }} className="p-1 hover:bg-white rounded-md text-slate-500 shadow-sm transition-all"><Icon d={PATHS.right} size={12}/></button>
                                                         <button onClick={() => setIsCalendarOpen(true)} className="p-1 hover:bg-white rounded-md text-slate-500 shadow-sm transition-all ml-1" title="기간 선택"><Icon d={PATHS.calendar} size={12}/></button>
                                                     </div>
-                                                    <span className={`text-[10px] text-slate-400 font-medium transition-all duration-300 ${dateRangeAnim ? 'text-indigo-600 font-bold scale-110' : ''}`}>{dayjs(grassStart).format('YY.MM.DD')} ~ {dayjs(grassEnd).format('YY.MM.DD')}</span>
+                                                    <span className={`text-[10px] text-slate-400 font-medium transition-all duration-300 whitespace-nowrap ${dateRangeAnim ? 'text-indigo-600 font-bold scale-110' : ''}`}>{dayjs(grassStart).format('YY.MM.DD')} ~ {dayjs(grassEnd).format('YY.MM.DD')}</span>
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-5 gap-y-6 gap-x-2 justify-items-center py-4 mt-2">
@@ -1737,7 +1738,7 @@
                                                     else if (colIndex === 4) { tooltipPos = "right-0"; arrowPos = "right-6"; }
 
                                                     return (
-                                                    <div key={i} onClick={() => { setSelectedGrassDate(h.date); setIsDetailViewOpen(true); }} className={`flex flex-col items-center gap-2 group relative cursor-pointer p-2 rounded-2xl transition-all duration-300 ${selectedGrassDate === h.date ? 'bg-white border-2 border-slate-600 scale-105 shadow-md z-20' : (isToday ? `${theme.bg} border-2 border-transparent shadow-sm scale-110 z-10` : 'hover:bg-slate-50 border-2 border-transparent hover:border-slate-100')}`}>
+                                                    <div key={i} onClick={() => { setSelectedGrassDate(h.date); setIsDetailViewOpen(true); }} className={`flex flex-col items-center gap-2 group relative cursor-pointer p-2 rounded-2xl transition-all duration-300 ${selectedGrassDate === h.date ? 'bg-white border-2 border-transparent scale-105 shadow-md z-20' : (isToday ? `${theme.bg} border-2 border-transparent shadow-sm scale-110 z-10` : 'hover:bg-slate-50 border-2 border-transparent hover:border-slate-100')}`}>
                                                         <div className={`w-12 h-12 rounded-full shadow-inner flex items-center justify-center relative overflow-hidden bg-slate-100 ${isToday ? `ring-4 ${theme.ring} ring-offset-2` : ''}`} style={getPieStyle(h.ratio)}></div>
                                                         <span className={`text-xs ${isToday ? `${theme.text} font-black` : selectedGrassDate === h.date ? 'text-slate-800 font-bold' : 'text-slate-500 font-medium'}`}>{dayjs(h.date).format('MM/DD')}</span>
                                                         <div className={`absolute bottom-full mb-2 z-50 w-max bg-slate-900 text-white rounded-xl px-3 py-2 shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-1 group-hover:translate-y-0 pointer-events-none flex items-center gap-3 ${tooltipPos}`}>
@@ -5308,18 +5309,18 @@
     const [hasNotionPortfolio, setHasNotionPortfolio] = React.useState(false);
     const [hasGoogleSheet, setHasGoogleSheet] = React.useState(false);
 
-    const [saveTarget, setSaveTarget] = React.useState(() => {
+    const [saveTargets, setSaveTargets] = React.useState(() => {
         const key = localStorage.getItem('cls_notion_key');
         const dbId = localStorage.getItem('cls_notion_db_id');
         const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
         const sheetUrl = localStorage.getItem('cls_google_sheet_url');
         const isPortMode = localStorage.getItem('cls_portfolio_mode') === 'true';
 
-        if (isPortMode && key && portDbId) return 'notion_portfolio';
-        if (key && dbId) return 'notion_record';
-        if (key && portDbId) return 'notion_portfolio';
-        if (sheetUrl) return 'google_sheet';
-        return null;
+        const targets = new Set();
+        if (isPortMode && key && portDbId) targets.add('notion_portfolio');
+        else if (key && dbId) targets.add('notion_record');
+        if (sheetUrl) targets.add('google_sheet');
+        return targets;
     });
 
     const [searchText, setSearchText] = React.useState("");
@@ -5350,18 +5351,6 @@
             setHasGoogleSheet(sheet);
             setHasNotionConfig(rec || port);
             setHasGoogleSheetConfig(sheet);
-
-            setSaveTarget(prev => {
-                if (prev === 'notion_record' && rec) return prev;
-                if (prev === 'notion_portfolio' && port) return prev;
-                if (prev === 'google_sheet' && sheet) return prev;
-                
-                if (localStorage.getItem('cls_portfolio_mode') === 'true' && port) return 'notion_portfolio';
-                if (rec) return 'notion_record';
-                if (port) return 'notion_portfolio';
-                if (sheet) return 'google_sheet';
-                return null;
-            });
         }
     }, [isOpen]);
 
@@ -5388,9 +5377,9 @@
             
             // 🌟 선택된 저장 위치에 따라 배지를 생성합니다.
             let tags = [];
-            if (saveTarget === 'notion_record') tags.push("노션(기록)");
-            else if (saveTarget === 'notion_portfolio') tags.push("노션(포폴)");
-            else if (saveTarget === 'google_sheet') tags.push("구글 시트");
+            if (saveTargets.has('notion_record')) tags.push("노션(기록)");
+            if (saveTargets.has('notion_portfolio')) tags.push("노션(포폴)");
+            if (saveTargets.has('google_sheet')) tags.push("구글 시트");
 
             const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
             const targetIds = selectedStudents.map(s => s.id);
@@ -5413,58 +5402,69 @@
         }
 
         // [New] 구글 시트 저장 분기
-        if (saveTarget === 'google_sheet') {
+        if (saveTargets.has('google_sheet')) {
             for (const s of selectedStudents) {
                 await saveToGoogleSheet(s.name, category, content, date);
             }
-            setNotionStatus('success');
-            if (!keepContent) { setNotionContent(''); setSelectedStudents([]); }
-            setTimeout(() => { setNotionStatus('idle'); if(!keepContent) onClose(); }, 1500);
-            showToast("구글 시트에 저장되었습니다!");
-            return;
         }
 
-        try {
-            const rawKey = localStorage.getItem('cls_notion_key') || "";
-            const personalKey = rawKey.replace(/["']/g, '').trim();
-            const rawDbId = (saveTarget === 'notion_portfolio') ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
-            const targetDbId = rawDbId.replace(/["']/g, '').trim();
-            
-            if (!personalKey || !targetDbId) {
-                setNotionStatus('success');
-                setTimeout(() => { setNotionStatus('idle'); if(!keepContent) onClose(); }, 1500);
-                return; 
-            }
+        // Notion Saving
+        const notionTargets = [];
+        if (saveTargets.has('notion_record')) notionTargets.push('notion_record');
+        if (saveTargets.has('notion_portfolio')) notionTargets.push('notion_portfolio');
 
-            const bodyData = { category, content, personalKey, personalDbId: targetDbId };
-            if (saveTarget === 'notion_portfolio') {
-                const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
-                bodyData.mode = 'relation';
-                bodyData.studentIds = selectedStudents.map(s => map[s.name]).filter(id => id);
-            } else {
-                bodyData.mode = 'normal';
-                bodyData.studentName = selectedStudents[0].name;
-                bodyData.date = date;
-            }
+        if (notionTargets.length > 0) {
+            try {
+                const rawKey = localStorage.getItem('cls_notion_key') || "";
+                const personalKey = rawKey.replace(/["']/g, '').trim();
+                
+                for (const target of notionTargets) {
+                    const rawDbId = (target === 'notion_portfolio') ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
+                    const targetDbId = rawDbId.replace(/["']/g, '').trim();
+                    
+                    if (!personalKey || !targetDbId) continue;
 
-            await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
-            setNotionStatus('success');
-            if (!keepContent) { setNotionContent(''); setSelectedStudents([]); }
-            setTimeout(() => { setNotionStatus('idle'); if(!keepContent) onClose(); }, 1500);
-        } catch (e) {
-            setNotionStatus('error');
-            setTimeout(() => setNotionStatus('idle'), 3000);
+                    const bodyData = { category, content, personalKey, personalDbId: targetDbId };
+                    
+                    if (target === 'notion_portfolio') {
+                        const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
+                        bodyData.mode = 'relation';
+                        bodyData.studentIds = selectedStudents.map(s => map[s.name]).filter(id => id);
+                        await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
+                    } else {
+                        // Normal mode - iterate for each student
+                        for (const s of selectedStudents) {
+                            const studentBodyData = { ...bodyData };
+                            studentBodyData.mode = 'normal';
+                            studentBodyData.studentName = s.name;
+                            studentBodyData.date = date;
+                            await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(studentBodyData) });
+                        }
+                    }
+                }
+            } catch (e) {
+                setNotionStatus('error');
+                setTimeout(() => setNotionStatus('idle'), 3000);
+                return;
+            }
         }
+
+        setNotionStatus('success');
+        if (!keepContent) { setNotionContent(''); setSelectedStudents([]); }
+        setTimeout(() => { setNotionStatus('idle'); if(!keepContent) onClose(); }, 1500);
+        if (saveTargets.size > 0) showToast("저장되었습니다!");
     };
 
     return (
         <div className="fixed inset-0 bg-black/50 z-[2000] p-4 backdrop-blur-sm animate-fade-in flex items-center justify-center" onClick={onClose}>
             <div ref={modalRef} className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-expand-from" onClick={e => e.stopPropagation()}>
                 <div className="bg-slate-50 p-5 border-b border-slate-200 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                        <Icon d={PATHS.document} size={18} className="text-indigo-500"/> 빠른 기록
-                        {hasNotionConfig && <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5"><Icon d={PATHS.check} size={10} strokeWidth={3} />노션 연동</span>}
-                        {hasGoogleSheetConfig && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5"><Icon d={PATHS.check} size={10} strokeWidth={3} />구글 연동</span>}
+                    <h3 className="font-bold text-slate-800 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 items-start">
+                        <span className="flex items-center gap-2 whitespace-nowrap"><Icon d={PATHS.document} size={18} className="text-indigo-500"/> 빠른 기록</span>
+                        <div className="flex flex-col sm:flex-row gap-1">
+                            {hasNotionConfig && <span className="w-fit text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5 whitespace-nowrap"><Icon d={PATHS.check} size={10} strokeWidth={3} />노션 연동</span>}
+                            {hasGoogleSheetConfig && <span className="w-fit text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5 whitespace-nowrap"><Icon d={PATHS.check} size={10} strokeWidth={3} />구글 연동</span>}
+                        </div>
                     </h3>
                     <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-400"><Icon d={PATHS.x} /></button>
                 </div>
@@ -5473,9 +5473,9 @@
                 <div className="px-5 pt-4">
                     {(hasNotionRecord || hasNotionPortfolio || hasGoogleSheet) ? (
                         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                            {hasNotionRecord && <button onClick={() => setSaveTarget('notion_record')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_record' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>}
-                            {hasNotionPortfolio && <button onClick={() => setSaveTarget('notion_portfolio')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'notion_portfolio' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>}
-                            {hasGoogleSheet && <button onClick={() => setSaveTarget('google_sheet')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${saveTarget === 'google_sheet' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>}
+                            {hasNotionRecord && <button onClick={() => { const next = new Set(saveTargets); if(next.has('notion_record')) next.delete('notion_record'); else next.add('notion_record'); setSaveTargets(next); }} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${saveTargets.has('notion_record') ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📝 노션(기록)</button>}
+                            {hasNotionPortfolio && <button onClick={() => { const next = new Set(saveTargets); if(next.has('notion_portfolio')) next.delete('notion_portfolio'); else next.add('notion_portfolio'); setSaveTargets(next); }} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${saveTargets.has('notion_portfolio') ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📁 노션(포폴)</button>}
+                            {hasGoogleSheet && <button onClick={() => { const next = new Set(saveTargets); if(next.has('google_sheet')) next.delete('google_sheet'); else next.add('google_sheet'); setSaveTargets(next); }} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${saveTargets.has('google_sheet') ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}`}>📊 구글 시트</button>}
                         </div>
                     ) : (
                         <div className="text-center text-xs text-slate-400 py-2 bg-slate-50 rounded-xl border border-slate-200 border-dashed">연동된 외부 서비스가 없습니다 (로컬에만 저장됩니다)</div>
@@ -5511,8 +5511,8 @@
                         </label>
                     </div>
                     <div className="flex gap-2.5">
-                        <button onClick={() => handleIntegratedSave('칭찬')} disabled={notionStatus === 'saving'} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-rose-500 hover:bg-rose-600 shadow-md">칭찬하기 +1</button>
-                        <button onClick={() => handleIntegratedSave('관찰')} disabled={notionStatus === 'saving'} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md">관찰 기록 저장</button>
+                        <button onClick={() => handleIntegratedSave('칭찬')} disabled={notionStatus === 'saving'} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-rose-500 hover:bg-rose-600 shadow-md whitespace-nowrap">칭찬하기 +1</button>
+                        <button onClick={() => handleIntegratedSave('관찰')} disabled={notionStatus === 'saving'} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md whitespace-nowrap">관찰 기록 저장</button>
                     </div>
                     {notionStatus === 'success' && <div className="text-center text-xs text-green-600 font-bold bg-green-50 py-1.5 rounded-lg">✅ 저장되었습니다!</div>}
                 </div>
