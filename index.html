@@ -2834,6 +2834,7 @@
                     });
                     if (setStudentMap) setStudentMap(newMap);
                     localStorage.setItem('cls_student_map', JSON.stringify(newMap));
+                    if (!isLocalMode && saveData) saveData('cls_student_map', newMap);
                     showToast(`${count}명의 데이터가 등록되었습니다.`);
                 };
                 reader.readAsText(file);
@@ -2856,6 +2857,7 @@
                 });
                 if (setStudentMap) setStudentMap(newMap);
                 localStorage.setItem('cls_student_map', JSON.stringify(newMap));
+                if (!isLocalMode && saveData) saveData('cls_student_map', newMap);
                 setManualInput("");
                 showToast(`${count}명이 추가되었습니다.`);
             };
@@ -2865,6 +2867,7 @@
                 delete newMap[name];
                 if (setStudentMap) setStudentMap(newMap);
                 localStorage.setItem('cls_student_map', JSON.stringify(newMap));
+                if (!isLocalMode && saveData) saveData('cls_student_map', newMap);
             };
 
             if (!isOpen) return null;
@@ -6474,6 +6477,7 @@
                                         if (d.notion_key) localStorage.setItem('cls_notion_key', d.notion_key);
                                         if (d.notion_db_id) localStorage.setItem('cls_notion_db_id', d.notion_db_id);
                                         if (d.notion_portfolio_db_id) { localStorage.setItem('cls_notion_portfolio_db_id', d.notion_portfolio_db_id); setPortfolioDbId(d.notion_portfolio_db_id); }
+                                        if (d.studentMap) { setStudentMap(d.studentMap); localStorage.setItem('cls_student_map', JSON.stringify(d.studentMap)); }
                                         if (d.portfolio_mode !== undefined) { 
                                             setIsPortfolioMode(d.portfolio_mode); 
                                             localStorage.setItem('cls_portfolio_mode', d.portfolio_mode); 
@@ -6592,6 +6596,7 @@
                             if (k === 'cls_daily_tasks') { saveTasksToFirestore({ dailyTasks: v }); continue; } // [New] 과제 데이터 분리
                             if (k === 'cls_weekly_tasks') { saveTasksToFirestore({ weeklyTasks: v }); continue; }
                             if (k === 'cls_tags') { saveTasksToFirestore({ tags: v }); continue; }
+                            if (k === 'cls_student_map') { payload['studentMap'] = JSON.parse(JSON.stringify(v)); continue; }
                             const field = k.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
                             const cleanData = JSON.parse(JSON.stringify(v));
                             
