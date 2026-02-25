@@ -2378,13 +2378,40 @@
             const isVacation = (appConfig.vacations || []).some(v => date >= v.start && date <= v.end) || (appConfig.vacationStart && appConfig.vacationEnd && date >= appConfig.vacationStart && date <= appConfig.vacationEnd);
             const isHoliday = !!HOLIDAYS[date];
             const holidayName = HOLIDAYS[date];
+            
+            // [New] D-Day Logic
+            const today = dayjs().format('YYYY-MM-DD');
+            let dDayLabel = null;
+            
+            // Check if today is already vacation
+            const isTodayVacation = (appConfig.vacations || []).some(v => today >= v.start && today <= v.end) || (appConfig.vacationStart && appConfig.vacationEnd && today >= appConfig.vacationStart && today <= appConfig.vacationEnd);
+
+            if (appConfig.dDayEnabled !== false && !isTodayVacation) {
+                const allVacations = [...(appConfig.vacations || [])];
+                if (appConfig.vacationStart && appConfig.vacationEnd) {
+                    allVacations.push({ start: appConfig.vacationStart, end: appConfig.vacationEnd });
+                }
+                
+                const nextVacation = allVacations
+                    .filter(v => v.start > today)
+                    .sort((a, b) => a.start.localeCompare(b.start))[0];
+                
+                if (nextVacation) {
+                    const diff = dayjs(nextVacation.start).diff(dayjs(today), 'day');
+                    if (diff > 0) {
+                        dDayLabel = `방학까지 D-${diff}`;
+                    }
+                }
+            }
+
             const moveDate = (direction) => { let nextDate = dayjs(date).add(direction, 'day'); let count = 0; while (count < 365) { const dStr = nextDate.format('YYYY-MM-DD'); const day = nextDate.day(); const isWknd = day === 0 || day === 6; const isHol = !!HOLIDAYS[dStr]; if (!isWknd && !isHol) break; nextDate = nextDate.add(direction, 'day'); count++; } setDate(nextDate.format('YYYY-MM-DD')); };
             return (
                 <div className="flex flex-col items-center">
-                    {(isVacation || isHoliday) && (
+                    {(isVacation || isHoliday || dDayLabel) && (
                         <div className="flex gap-2 mb-2">
                             {isVacation && <div className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1 rounded">🏖️ 방학 기간입니다</div>}
                             {isHoliday && <div className="bg-rose-100 text-rose-600 text-xs font-bold px-3 py-1 rounded">🎉 {holidayName}</div>}
+                            {dDayLabel && !isVacation && <div className="bg-blue-100 text-blue-600 text-xs font-bold px-3 py-1 rounded flex items-center gap-1"><span>⏳</span> {dDayLabel}</div>}
                         </div>
                     )}
                     <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border w-fit mx-auto justify-center">{onAdd && <><Btn onClick={onAdd} className="text-notion-text p-1.5 rounded hover:bg-notion-bg-hover flex items-center justify-center"><Icon d={PATHS.plus} size={18} /></Btn><div className="w-px h-4 bg-notion-border"></div></>}<Btn onClick={() => moveDate(-1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18} /></Btn><div className="flex flex-col items-center cursor-pointer hover:bg-notion-bg-hover rounded px-3 py-1 transition-colors" onClick={onCalendar}><div className="text-base font-bold text-notion-text tracking-tight">{dayjs(date).format('YY.MM.DD')}</div><div className={`text-[10px] font-bold ${isHoliday || dayjs(date).day()===0 ? 'text-notion-red' : dayjs(date).day()===6 ? 'text-notion-blue' : 'text-notion-text-light'}`}>{dayjs(date).format('dddd')}</div></div><Btn onClick={() => moveDate(1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18} /></Btn>{onReset && <><div className="w-px h-4 bg-notion-border"></div><Btn onClick={(e) => { e.stopPropagation(); onReset(); }} className="p-1.5 text-notion-text-light hover:text-notion-red hover:bg-notion-bg-hover rounded"><Icon d={PATHS.trash} size={16} /></Btn></>}</div>
@@ -4152,7 +4179,7 @@
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
-                                        <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">🎨</span> 화면 및 소리 설정</h4>
+                                        <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">🎨</span> 화면 설정</h4>
                                         <div className="flex flex-col gap-5">
                                             <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors relative">
                                             <div className="flex items-center gap-2 mb-2">
@@ -4227,6 +4254,21 @@
                                                     <span className={`text-[10px] font-bold ${appConfig.tabAnimationEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.tabAnimationEnabled !== false ? "ON" : "OFF"}</span>
                                                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${appConfig.tabAnimationEnabled !== false ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}>
                                                         {appConfig.tabAnimationEnabled !== false && <Icon d={PATHS.check} size={14} className="text-white" strokeWidth={3} />}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div 
+                                                className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.dDayEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                                onClick={() => updateAppConfig({ dDayEnabled: !(appConfig.dDayEnabled !== false) })}
+                                            >
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icon d={PATHS.calendar} size={16} className={appConfig.dDayEnabled !== false ? "text-indigo-500" : "text-slate-400"}/>
+                                                    <span className={`text-xs font-bold ${appConfig.dDayEnabled !== false ? "text-indigo-700" : "text-slate-500"}`}>D-Day 표시</span>
+                                                </div>
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <span className={`text-[10px] font-bold ${appConfig.dDayEnabled !== false ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.dDayEnabled !== false ? "ON" : "OFF"}</span>
+                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${appConfig.dDayEnabled !== false ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}>
+                                                        {appConfig.dDayEnabled !== false && <Icon d={PATHS.check} size={14} className="text-white" strokeWidth={3} />}
                                                     </div>
                                                 </div>
                                             </div>
@@ -7730,33 +7772,35 @@
                     });
                     const rate = total > 0 ? Math.round(done/total*100) : 0;
                     
-                    let genrePrompt = "명랑 만화 같은 즐거운 학교 생활 이야기";
-                    let rolePrompt = "개구쟁이 학생들";
-                    if (storyGenre === 'adventure') { genrePrompt = "보물을 찾아 떠나는 신나는 모험 이야기"; rolePrompt = "용감한 탐험가"; }
-                    else if (storyGenre === 'fairytale') { genrePrompt = "따뜻하고 교훈적인 동화"; rolePrompt = "숲속 동물 친구들"; }
-                    else if (storyGenre === 'detective') { genrePrompt = "사건을 해결하는 꼬마 탐정단 이야기"; rolePrompt = "명탐정"; }
-                    else if (storyGenre === 'hero') { genrePrompt = "위기에 빠진 세상을 구하는 히어로 이야기"; rolePrompt = "슈퍼 히어로"; }
+                    let genrePrompt = "오늘 하루 우리 반의 소소한 일상을 담은 따뜻한 학급 일기";
+                    let rolePrompt = "순수하고 밝은 초등학생들";
+                    
+                    if (storyGenre === 'growth') { genrePrompt = "어려움을 이겨내고 한 뼘 더 성장하는 감동적인 이야기"; rolePrompt = "노력하는 멋진 학생들"; }
+                    else if (storyGenre === 'friendship') { genrePrompt = "친구를 배려하고 서로 돕는 아름다운 우정 이야기"; rolePrompt = "마음씨 착한 친구들"; }
+                    else if (storyGenre === 'funny') { genrePrompt = "읽으면 웃음이 나오는 유쾌하고 재치 있는 이야기"; rolePrompt = "개구쟁이 친구들"; }
+                    else if (storyGenre === 'lesson') { genrePrompt = "오늘의 활동을 통해 삶의 지혜를 배우는 교훈적인 이야기"; rolePrompt = "지혜로운 학생들"; }
 
                     const prompt = `
-                        오늘 우리 반의 하루 활동 데이터를 바탕으로, 아이들이 주인공이 되는 몰입감 넘치는 ${genrePrompt}를 창작해주세요.
+                        오늘 우리 반의 하루 활동 데이터를 바탕으로, 초등학생들에게 유익하고 재미있는 ${genrePrompt}를 창작해주세요.
 
                         [오늘의 활동 데이터]
                         - 날짜: ${date}
-                        - 퀘스트 달성률(과제 수행률): ${rate}% (이 수치가 이야기 속 '성공 확률'이나 '위기 상황'을 결정합니다)
-                        - 획득한 보물(스티커): 오늘 전체 지급된 스티커 수 (추정)
+                        - 과제 수행률: ${rate}% (이 수치는 오늘 하루 아이들이 얼마나 성실했는지를 나타냅니다)
+                        - 칭찬 스티커: 오늘 전체 지급된 스티커 수 (아이들의 노력에 대한 보상)
 
                         [스토리텔링 가이드]
-                        1. **세계관 설정**: ${genrePrompt}에 걸맞은 독창적인 배경과 용어(예: 연필→마법 지팡이, 과제→몬스터)를 사용해주세요.
-                        2. **전개**: '발단(평화로운 아침) - 전개(미션 발생) - 위기(과제 수행의 어려움) - 절정(협동과 노력) - 결말(성취와 보상)'의 구조를 갖춰주세요.
-                        3. **캐릭터**: 학생들을 ${rolePrompt}로 묘사하되, 익명성을 유지하면서도 아이들이 자신을 투영할 수 있게 해주세요.
-                        4. **메시지**: 수행률이 높다면 '협동의 승리'를, 낮다면 '포기하지 않는 용기'를 강조하며 내일의 기대를 심어주세요.
-                        5. **분량**: 600자 내외로 흥미진진하게 작성해주세요.
+                        1. **분위기**: 자극적이거나 비현실적인 판타지 요소(마법, 몬스터 등)는 배제하고, 현실적인 학교 생활을 배경으로 따뜻하고 긍정적인 분위기를 연출해주세요.
+                        2. **전개**: '아침의 시작 - 과제(미션) 수행 과정에서의 에피소드 - 서로 돕는 모습 - 하루의 보람찬 마무리'의 흐름으로 작성해주세요.
+                        3. **캐릭터**: 학생들을 ${rolePrompt}로 묘사하되, 실명 대신 '우리 반 친구들', '몇몇 아이들' 등으로 지칭하여 누구나 공감할 수 있게 해주세요.
+                        4. **메시지**: 결과보다는 과정을 칭찬하고, 친구들과 함께하는 즐거움을 강조하며 내일 학교 오는 것이 기대되도록 희망적인 메시지를 담아주세요.
+                        5. **문체**: 초등학생이 읽기 편한 친절하고 부드러운 문체(해요체)를 사용해주세요.
+                        6. **분량**: 500자 내외로 작성해주세요.
                     `;
                     
                     const text = await callGemini(apiKey, prompt);
                     setAiContent(text);
                 } catch (e) {
-                    logSystemEvent(`학급 스토리 생성 실패: ${e.message}`, 'error');
+                    logSystemEvent(`학급 이야기 생성 실패: ${e.message}`, 'error');
                     setToastMessage("스토리 생성 실패: " + e.message);
                 } finally {
                     setIsGenerating(false);
@@ -7824,7 +7868,7 @@
                                 <>
                                     <div className="flex justify-end mb-4 items-center gap-2">
                                         <Btn onClick={() => { if(!apiKey) return setToastMessage("설정에서 API 키를 먼저 입력해주세요."); setAiContent(""); setShowClassStory(true); }} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-colors ${apiKey ? 'bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50' : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                                            <Icon d={PATHS.book} size={16} /> 오늘의 학급 스토리 보기
+                                            <Icon d={PATHS.book} size={16} /> 오늘의 학급 이야기 보기
                                         </Btn>
                                         <button onClick={() => setShowStoryHelp(true)} className="text-notion-text-light hover:text-notion-text p-1 rounded hover:bg-notion-bg-hover transition-colors" title="도움말"><Icon d={PATHS.help} size={18} /></button>
                                     </div>
@@ -8341,7 +8385,7 @@
                     </BaseModal>
 
                     {/* Class Story Modal */}
-                    <BaseModal isOpen={showClassStory} onClose={() => setShowClassStory(false)} title="🏰 학급 세계관 스토리" icon={PATHS.book} zIndex="z-[2000]">
+                    <BaseModal isOpen={showClassStory} onClose={() => setShowClassStory(false)} title="📖 오늘의 학급 이야기" icon={PATHS.book} zIndex="z-[2000]">
                         <div className="space-y-4">
                             {!isGenerating && !aiContent && (
                                 <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 space-y-3">
@@ -8350,10 +8394,10 @@
                                         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                                             {[
                                                 {id:'school', emoji:'🏫', label:'학교'},
-                                                {id:'adventure', emoji:'🗺️', label:'모험'},
-                                                {id:'fairytale', emoji:'🐻', label:'동화'},
-                                                {id:'detective', emoji:'🕵️', label:'탐정'},
-                                                {id:'hero', emoji:'🦸', label:'히어로'}
+                                                {id:'growth', emoji:'🌱', label:'성장'},
+                                                {id:'friendship', emoji:'🤝', label:'우정'},
+                                                {id:'funny', emoji:'😄', label:'유머'},
+                                                {id:'lesson', emoji:'💡', label:'교훈'}
                                             ].map(g => (
                                                 <button key={g.id} onClick={()=>setStoryGenre(g.id)} className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${storyGenre===g.id?'bg-purple-50 border-purple-500 text-purple-700 shadow-md scale-105':'bg-white border-transparent hover:bg-purple-50 hover:border-purple-200 text-slate-500'}`}>
                                                     <span className="text-2xl mb-1">{g.emoji}</span>
@@ -8371,7 +8415,7 @@
                             {isGenerating ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-3">
                                     <Icon d={PATHS.spinner} size={32} className="animate-spin text-purple-500"/>
-                                    <span>오늘의 모험 이야기를 쓰고 있습니다...</span>
+                                    <span>오늘의 이야기를 쓰고 있습니다...</span>
                                 </div>
                             ) : aiContent && (
                                 <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100 leading-relaxed whitespace-pre-wrap text-slate-800 font-serif">
@@ -8418,9 +8462,9 @@
                     </BaseModal>
                     
                     {/* Story Help Modal */}
-                    <BaseModal isOpen={showStoryHelp} onClose={() => setShowStoryHelp(false)} title="학급 세계관 스토리란?" icon={PATHS.help}>
+                    <BaseModal isOpen={showStoryHelp} onClose={() => setShowStoryHelp(false)} title="오늘의 학급 이야기란?" icon={PATHS.help}>
                         <div className="space-y-4 text-sm text-slate-600 leading-relaxed">
-                            <p>오늘 하루 우리 반의 활동 데이터(과제 수행률, 스티커 등)를 바탕으로 AI가 <strong>판타지 모험 이야기</strong>를 만들어주는 기능입니다.</p>
+                            <p>오늘 하루 우리 반의 활동 데이터(과제 수행률, 스티커 등)를 바탕으로 AI가 <strong>따뜻한 학급 이야기</strong>를 만들어주는 기능입니다.</p>
                             
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                                 <h4 className="font-bold text-slate-700 mb-2">💡 사용 방법</h4>
@@ -8435,15 +8479,15 @@
                                 <h4 className="font-bold text-purple-700 mb-2">✨ 활용 팁</h4>
                                 <ul className="list-disc pl-5 space-y-1">
                                     <li>하교 시간에 아이들과 함께 읽으며 하루를 마무리해요.</li>
-                                    <li>과제 수행률이 높으면 '승리한 이야기'가, 낮으면 '위기의 이야기'가 나옵니다.</li>
-                                    <li>아이들이 '용사'가 되어 학급 활동에 더 몰입하게 도와줍니다.</li>
+                                    <li>과제 수행률이 높으면 '성취감 있는 이야기'가, 낮으면 '격려의 이야기'가 나옵니다.</li>
+                                    <li>아이들이 하루를 되돌아보고 내일을 기대하게 도와줍니다.</li>
                                 </ul>
                             </div>
 
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                                 <h4 className="font-bold text-slate-700 mb-2">📜 이야기 예시</h4>
                                 <p className="italic text-slate-500 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed">
-                                    "오늘 우리 3학년 2반 모험가들은 '수학 익힘책'이라는 거대한 몬스터를 마주했습니다. 초반에는 몇몇 용사들이 연산의 늪에 빠져 허우적댔지만, 곧 서로를 돕는 협동 스킬을 발휘하여 95%의 퀘스트 달성률을 기록했습니다! 오늘 획득한 전리품(칭찬 스티커)은 총 15개! 모험가들은 승리의 기쁨을 만끽하며 내일 있을 '받아쓰기' 던전을 준비하기 위해 각자의 안식처로 귀환했습니다."
+                                    "오늘 우리 3학년 2반 친구들은 '수학 익힘책'이라는 작은 도전을 마주했습니다. 처음에는 어려워하는 친구들도 있었지만, 서로 돕고 격려하며 95%의 과제 달성률을 기록했답니다! 오늘 우리가 함께 모은 칭찬 스티커는 총 15개! 친구들은 뿌듯한 마음을 안고, 내일 또 만날 즐거운 학교 생활을 기대하며 집으로 향했습니다."
                                 </p>
                             </div>
                         </div>
