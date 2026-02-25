@@ -103,6 +103,9 @@
         /* 🌟 이 한 줄이 화면 밑의 모든 유령 여백을 강제로 잘라냅니다! */
         #root > div { padding-bottom: 20px !important; margin-bottom: 0 !important; }
         
+        /* 🌟 못 찾으셨다면 이 줄을 추가하세요! (main 태그의 하단 여백 강제 축소) */
+        main { padding-bottom: 60px !important; }
+        
         .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
@@ -4994,7 +4997,7 @@
 
             return (
                 <BaseModal isOpen={isOpen} onClose={onClose} title="업데이트 노트" icon={PATHS.list} footer={
-                    <div onClick={handleCopyEmail} className="block w-full py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-center text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer hover:bg-indigo-100 transition-colors select-none active:scale-95">
+                    <div onClick={handleCopyEmail} className="block w-full py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-center text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer hover:bg-indigo-100 transition-colors select-none active:scale-95">
                         <div className="flex items-center gap-2"><span>💡</span> 새로운 기능 제안하기 <span className="text-indigo-300 hidden sm:inline">|</span></div>
                         <div className="flex items-center gap-1"><span className="underline decoration-indigo-300 underline-offset-4">spk@smca.or.kr</span><span className="text-xs font-normal text-indigo-400 no-underline">(클릭하여 복사)</span></div>
                     </div>
@@ -8002,8 +8005,7 @@
                     </div>
                     </div>{(mode === 'record' || mode === 'group') && (<div className="bg-white border-b border-notion-border pt-2 pb-2 flex justify-center"><div className="w-full max-w-2xl px-4 flex flex-col gap-2">{mode === 'record' ? <><DateHeader date={date} setDate={setDate} onAdd={()=>setIsTaskModalOpen(true)} onReset={resetDateRecord} onCalendar={()=>setIsCalendarOpen(true)} appConfig={appConfig}/> <ProgressBar progress={progress} appConfig={appConfig} /></> : <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border mx-auto w-fit justify-center cursor-pointer"
 ><Btn onClick={()=>setDate(dayjs(date).subtract(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18}/></Btn><div className="flex flex-col items-center px-3" onClick={()=>setIsCalendarOpen(true)}><div className="text-base font-bold text-notion-text">{dayjs(date).format('YY.MM.DD')}</div><div className="text-[10px] font-bold text-notion-text-light">{dayjs(date).format('dddd')}</div></div><Btn onClick={()=>setDate(dayjs(date).add(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18}/></Btn></div>}</div></div>)}</header>
-                    <main 
-                        className="flex-1 p-4 md:p-6 pb-24 md:pb-6 bg-white"
+                    <main className="flex-1 flex flex-col p-4 md:p-6 pb-20 md:pb-6 bg-white"
                     >
                         <div key={date} className="flex-1">
                             {mode === 'record' && (
