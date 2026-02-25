@@ -5832,14 +5832,26 @@
             useEffect(() => {
                 const scale = appConfig.uiScale || 100;
                 const scaleFactor = scale / 100;
-                document.body.style.zoom = scale + '%';
-                document.body.style.setProperty('--ui-scale', scaleFactor);
                 
-                // [Fix] 화면 배율 확대 시 뷰포트 높이 보정 (전체 스크롤 방지)
-                const root = document.getElementById('root');
-                if (root) {
-                    const adjustedHeight = 100 / scaleFactor;
-                    root.style.height = `${adjustedHeight}vh`;
+                // [Fix] Firefox 등 zoom 미지원 브라우저 대응 및 높이 보정 로직 개선
+                const isZoomSupported = 'zoom' in document.documentElement.style;
+                
+                if (isZoomSupported) {
+                    document.body.style.zoom = scale + '%';
+                    document.body.style.setProperty('--ui-scale', scaleFactor);
+                    
+                    // 화면 배율 확대 시 뷰포트 높이 보정 (전체 스크롤 방지)
+                    const root = document.getElementById('root');
+                    if (root) {
+                        const adjustedHeight = 100 / scaleFactor;
+                        root.style.height = `${adjustedHeight}vh`;
+                    }
+                } else {
+                    // zoom 미지원 시 배율 설정 무시 (레이아웃 깨짐 방지)
+                    document.body.style.zoom = '';
+                    document.body.style.removeProperty('--ui-scale');
+                    const root = document.getElementById('root');
+                    if (root) root.style.height = '';
                 }
 
                 // [Fix] 화면 배율 변경 시 플로팅 버튼 위치 재조정 (화면 밖으로 나가는 현상 방지)
