@@ -237,7 +237,7 @@
             try {
                 const dateStr = recordDate ? dayjs(recordDate).format('YYYY-MM-DD') + ' ' + dayjs().format('HH:mm:ss') : dayjs().format('YYYY-MM-DD HH:mm:ss');
                 
-                const clean = (val) => String(val || "").replace(/^"|"$/g, '');
+                const clean = (val) => String(val || "").trim().replace(/^"|"$/g, '');
 
                 const payload = {
                     date: clean(dateStr),
@@ -726,7 +726,7 @@
                 const sheetUrl = localStorage.getItem('cls_google_sheet_url');
                 const targets = new Set();
                 if (isPortfolioMode && key && portDbId) targets.add('notion_portfolio');
-                else if (key && dbId) targets.add('notion_record');
+                if (key && dbId) targets.add('notion_record');
                 if (sheetUrl) targets.add('google_sheet');
                 return targets;
             });
@@ -889,76 +889,83 @@
                 const date = notionDate || dayjs().format('YYYY-MM-DD');
 
                 if (!content) return showToast("내용을 입력해주세요.");
-                
                 setNotionStatus('saving');
                 
-                // 🌟 선택된 저장 위치에 따라 배지를 생성합니다.
                 let tags = [];
                 if (saveTargets.has('notion_record')) tags.push("노션(기록)");
                 if (saveTargets.has('notion_portfolio')) tags.push("노션(포폴)");
                 if (saveTargets.has('google_sheet')) tags.push("구글 시트");
 
-                // destTag(단일) 대신 destTags(배열)로 저장합니다.
                 const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
                 const targetIds = selectedStudents.map(s => s.id);
                 
-                const updatedStudents = students.map(s => {
-                    if (targetIds.includes(s.id)) {
-                        const prevNotes = s.counseling || [];
-                        const updatedNotes = [newNote, ...prevNotes];
-                        let updatedStickers = s.stickers || 0;
-                        if (category === '칭찬') updatedStickers += 1;
-                        return { ...s, counseling: updatedNotes, stickers: updatedStickers };
+                let updatedStudentsList = [...students];
+
+                for (const targetId of targetIds) {
+                    const studentObj = students.find(s => s.id === targetId);
+                    if (!studentObj) continue;
+
+                    let prevNotes = [];
+                    // 🌟 클라우드 모드: 보이지 않는 하위 금고(studentData)에서 옛날 기록을 먼저 꺼내옵니다.
+                    if (!isLocalMode && db && appId) {
+                        try {
+                            const doc = await db.collection('classes').doc(appId).collection('studentData').doc(String(targetId)).get();
+                            if (doc.exists && doc.data().counseling) {
+                                prevNotes = doc.data().counseling;
+                            }
+                        } catch (e) { console.error("과거 기록 불러오기 실패:", e); }
+                    } else {
+                        prevNotes = studentObj.counseling || [];
                     }
-                    return s;
-                });
-                
-                setStudents(updatedStudents);
-                if (!isLocalMode) saveData('cls_students', updatedStudents);
+
+                    const updatedNotes = [newNote, ...prevNotes];
+                    let updatedStickers = studentObj.stickers || 0;
+                    if (category === '칭찬') updatedStickers += 1;
+
+                    // 🌟 클라우드 모드: 옛날 기록과 새 기록을 합쳐서 다시 금고에 안전하게 넣습니다!
+                    if (!isLocalMode && db && appId) {
+                        await db.collection('classes').doc(appId).collection('studentData').doc(String(targetId)).set({ counseling: updatedNotes }, { merge: true });
+                        updatedStudentsList = updatedStudentsList.map(s => s.id === targetId ? { ...s, stickers: updatedStickers } : s);
+                    } else {
+                        updatedStudentsList = updatedStudentsList.map(s => s.id === targetId ? { ...s, counseling: updatedNotes, stickers: updatedStickers } : s);
+                    }
+                }
+
+                setStudents(updatedStudentsList);
+                if (!isLocalMode) saveData('cls_students', updatedStudentsList);
+                else localStorage.setItem('cls_students', JSON.stringify(updatedStudentsList));
 
                 if (targetIds.includes(student.id)) {
                     setNotes(prev => [newNote, ...prev]);
                     if (category === '칭찬') {
                         setStickerCount(prev => prev + 1);
-                        setShowButtonEffect(true);
-                        setTimeout(() => setShowButtonEffect(false), 800);
-                        
-                        setStickerEffect(true);
-                        setTimeout(() => setStickerEffect(false), 200);
+                        setShowButtonEffect(true); setTimeout(() => setShowButtonEffect(false), 800);
+                        setStickerEffect(true); setTimeout(() => setStickerEffect(false), 200);
                         if (navigator.vibrate) navigator.vibrate(15);
-                        const newCount = stickerCount + 1;
-                        if (newCount % 5 === 0) { 
+                        if ((stickerCount + 1) % 5 === 0) { 
                             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 });
-                            if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`);
+                            if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor((stickerCount + 1) / 5) + 1} 달성!`);
                         } else { 
                             confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 });
                         }
                     }
                 }
 
-                // [New] 구글 시트 저장 분기 (로컬 저장 후 실행)
                 if (saveTargets.has('google_sheet')) {
                     let successCount = 0;
                     for (const s of selectedStudents) {
-                        const success = await saveToGoogleSheet(s.name, category, content, date);
-                        if (success) successCount++;
+                        if (await saveToGoogleSheet(s.name, category, content, date)) successCount++;
                     }
                     if (successCount > 0) {
                         setNotionStatus('success'); 
                         if (!keepContent) setNotionContent(''); 
                         setTimeout(() => setNotionStatus('idle'), 3000); 
-                    } else { 
-                        // 구글 시트 실패해도 노션 저장은 계속 진행
-                        console.error("구글 시트 전송 실패");
                     }
                 }
 
                 try {
                     const rawKey = localStorage.getItem('cls_notion_key') || "";
                     const personalKey = rawKey.replace(/["']/g, '').trim();
-                    const rawDbId = (saveTarget === 'notion_portfolio') ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
-                    const targetDbId = rawDbId.replace(/["']/g, '').trim();
-
                     const targets = [];
                     if (saveTargets.has('notion_record')) targets.push('notion_record');
                     if (saveTargets.has('notion_portfolio')) targets.push('notion_portfolio');
@@ -966,46 +973,31 @@
                     for (const target of targets) {
                         const rawDbId = (target === 'notion_portfolio') ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
                         const targetDbId = rawDbId.replace(/["']/g, '').trim();
-                        
                         if (!personalKey || !targetDbId) continue;
 
-                        const bodyData = {
-                            category: category,
-                            content: content,
-                            personalKey: personalKey,
-                            personalDbId: targetDbId
-                        };
+                        const bodyData = { category: category, content: content, personalKey: personalKey, personalDbId: targetDbId };
                         
                         if (target === 'notion_portfolio') {
                             const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
-                            const ids = [];
-                            selectedStudents.forEach(s => {
-                                const notionId = map[s.name];
-                                if (notionId) ids.push(notionId);
-                            });
-                            bodyData.mode = 'relation';
-                            bodyData.studentIds = ids;
+                            const ids = []; selectedStudents.forEach(s => { if (map[s.name]) ids.push(map[s.name]); });
+                            bodyData.mode = 'relation'; bodyData.studentIds = ids;
+                            await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
                         } else {
-                            bodyData.mode = 'normal';
-                            bodyData.studentName = student.name || "이름 없음";
-                            bodyData.date = dayjs(date).format('YYYY-MM-DD');
+                            // [Fix] 노션(기록) 모드일 때 선택된 모든 학생에 대해 개별 저장
+                            for (const s of selectedStudents) {
+                                const individualBody = { 
+                                    ...bodyData, 
+                                    mode: 'normal', 
+                                    studentName: s.name, 
+                                    date: dayjs(date).format('YYYY-MM-DD') 
+                                };
+                                await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(individualBody) });
+                            }
                         }
-
-                        await fetch('/api/save-notion', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(bodyData)
-                        });
                     }
-
-                    
-                    setNotionStatus('success');
-                    if (!keepContent) setNotionContent('');
-                    setTimeout(() => setNotionStatus('idle'), 3000);
+                    setNotionStatus('success'); if (!keepContent) setNotionContent(''); setTimeout(() => setNotionStatus('idle'), 3000);
                 } catch (e) {
-                    console.error(e);
-                    setNotionStatus('error');
-                    setTimeout(() => setNotionStatus('idle'), 3000);
+                    console.error(e); setNotionStatus('error'); setTimeout(() => setNotionStatus('idle'), 3000);
                 }
             };
             
@@ -4295,7 +4287,7 @@
                                             </div>
                                             <div className="flex bg-slate-100 p-1 rounded-lg">
                                                 {['small', 'medium', 'large', 'xlarge'].map(size => (
-                                                    <button key={size} onClick={() => updateAppConfig({ floatingButtonSize: size })} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${appConfig.floatingButtonSize === size ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                                                    <button key={size} onClick={() => updateAppConfig({ floatingButtonSize: size })} className={`flex-1 whitespace-nowrap px-1 py-1 text-[10px] font-bold rounded-md transition-all ${appConfig.floatingButtonSize === size ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
                                                         {size === 'small' ? '작게' : size === 'medium' ? '보통' : size === 'large' ? '크게' : '더 크게'}
                                                     </button>
                                                 ))}
@@ -5433,7 +5425,7 @@
                 <BaseModal isOpen={isOpen} onClose={onClose} title="⛅️ Firebase 연결 설정" icon={null}><div className="flex flex-col gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200"><div className="text-xs font-bold text-slate-500 mb-1">Firebase 인증 (이메일/비밀번호)</div><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일 (ID)" value={authId} onChange={e => setAuthId(e.target.value)} /><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} /></div><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder='설정 코드 붙여넣기 (예: const firebaseConfig = ...)' value={inputConfig} onChange={e => setInputConfig(e.target.value)} /><div className="flex items-center gap-2 mt-2 px-1"><label className="flex items-center gap-2 cursor-pointer select-none group"><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-slate-300 group-hover:border-indigo-400'}`}>{rememberMe && <Icon d={PATHS.check} size={14} className="text-white" />}</div><input type="checkbox" className="hidden" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} /><span className="text-sm font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">로그인 정보 저장</span></label></div><div className="flex gap-3 mt-5"><Btn onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">취소</Btn><Btn onClick={handleConnect} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">연결하기</Btn></div></BaseModal>
             );
         };
-        const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos, appConfig }) => {
+        const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos, appConfig, db, appId }) => {
     if (!isOpen) return null;
     
     // [New] 연동 상태 확인 및 기본값 설정
@@ -5456,7 +5448,7 @@
 
         const targets = new Set();
         if (isPortMode && key && portDbId) targets.add('notion_portfolio');
-        else if (key && dbId) targets.add('notion_record');
+        if (key && dbId) targets.add('notion_record');
         if (sheetUrl) targets.add('google_sheet');
         return targets;
     });
@@ -5520,92 +5512,104 @@
     const removeSelectedStudent = (id) => setSelectedStudents(prev => prev.filter(s => s.id !== id));
 
     const handleIntegratedSave = async (category) => {
-        if (selectedStudents.length === 0) return showToast("학생을 최소 1명 이상 선택해주세요.");
-        const content = notionContent.trim();
-        if (!content) return showToast("내용을 입력해주세요.");
-        
-        setNotionStatus('saving');
-            const date = notionDate || dayjs().format('YYYY-MM-DD');
-            
-            // 🌟 선택된 저장 위치에 따라 배지를 생성합니다.
-            let tags = [];
-            if (saveTargets.has('notion_record')) tags.push("노션(기록)");
-            if (saveTargets.has('notion_portfolio')) tags.push("노션(포폴)");
-            if (saveTargets.has('google_sheet')) tags.push("구글 시트");
-
-            const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
-            const targetIds = selectedStudents.map(s => s.id);
-        
-        const updatedStudents = students.map(s => {
-            if (targetIds.includes(s.id)) {
-                const prevNotes = s.counseling || [];
-                let updatedStickers = s.stickers || 0;
-                if (category === '칭찬') updatedStickers += 1;
-                return { ...s, counseling: [newNote, ...prevNotes], stickers: updatedStickers };
-            }
-            return s;
-        });
-        
-        setStudents(updatedStudents);
-        if (!isLocalMode) saveData('cls_students', updatedStudents);
-        if (category === '칭찬') {
-            if (navigator.vibrate) navigator.vibrate(15);
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 3000 });
-        }
-
-        // [New] 구글 시트 저장 분기
-        if (saveTargets.has('google_sheet')) {
-            for (const s of selectedStudents) {
-                await saveToGoogleSheet(s.name, category, content, date);
-            }
-        }
-
-        // Notion Saving
-        const notionTargets = [];
-        if (saveTargets.has('notion_record')) notionTargets.push('notion_record');
-        if (saveTargets.has('notion_portfolio')) notionTargets.push('notion_portfolio');
-
-        if (notionTargets.length > 0) {
-            try {
-                const rawKey = localStorage.getItem('cls_notion_key') || "";
-                const personalKey = rawKey.replace(/["']/g, '').trim();
+                if (selectedStudents.length === 0) return showToast("학생을 최소 1명 이상 선택해주세요.");
+                const content = notionContent.trim();
+                if (!content) return showToast("내용을 입력해주세요.");
                 
-                for (const target of notionTargets) {
-                    const rawDbId = (target === 'notion_portfolio') ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
-                    const targetDbId = rawDbId.replace(/["']/g, '').trim();
-                    
-                    if (!personalKey || !targetDbId) continue;
+                setNotionStatus('saving');
+                const date = notionDate || dayjs().format('YYYY-MM-DD');
+                
+                let tags = [];
+                if (saveTargets.has('notion_record')) tags.push("노션(기록)");
+                if (saveTargets.has('notion_portfolio')) tags.push("노션(포폴)");
+                if (saveTargets.has('google_sheet')) tags.push("구글 시트");
 
-                    const bodyData = { category, content, personalKey, personalDbId: targetDbId };
-                    
-                    if (target === 'notion_portfolio') {
-                        const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
-                        bodyData.mode = 'relation';
-                        bodyData.studentIds = selectedStudents.map(s => map[s.name]).filter(id => id);
-                        await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
+                const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
+                const targetIds = selectedStudents.map(s => s.id);
+                
+                let updatedStudentsList = [...students];
+
+                for (const targetId of targetIds) {
+                    const studentObj = students.find(s => s.id === targetId);
+                    if (!studentObj) continue;
+
+                    let prevNotes = [];
+                    // 🌟 클라우드 모드: 여기서도 과거 기록을 꺼내옵니다!
+                    if (!isLocalMode && db && appId) {
+                        try {
+                            const doc = await db.collection('classes').doc(appId).collection('studentData').doc(String(targetId)).get();
+                            if (doc.exists && doc.data().counseling) {
+                                prevNotes = doc.data().counseling;
+                            }
+                        } catch (e) { console.error("과거 기록 불러오기 실패:", e); }
                     } else {
-                        // Normal mode - iterate for each student
-                        for (const s of selectedStudents) {
-                            const studentBodyData = { ...bodyData };
-                            studentBodyData.mode = 'normal';
-                            studentBodyData.studentName = s.name;
-                            studentBodyData.date = date;
-                            await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(studentBodyData) });
-                        }
+                        prevNotes = studentObj.counseling || [];
+                    }
+
+                    const updatedNotes = [newNote, ...prevNotes];
+                    let updatedStickers = studentObj.stickers || 0;
+                    if (category === '칭찬') updatedStickers += 1;
+
+                    if (!isLocalMode && db && appId) {
+                        await db.collection('classes').doc(appId).collection('studentData').doc(String(targetId)).set({ counseling: updatedNotes }, { merge: true });
+                        updatedStudentsList = updatedStudentsList.map(s => s.id === targetId ? { ...s, stickers: updatedStickers } : s);
+                    } else {
+                        updatedStudentsList = updatedStudentsList.map(s => s.id === targetId ? { ...s, counseling: updatedNotes, stickers: updatedStickers } : s);
                     }
                 }
-            } catch (e) {
-                setNotionStatus('error');
-                setTimeout(() => setNotionStatus('idle'), 3000);
-                return;
-            }
-        }
 
-        setNotionStatus('success');
-        if (!keepContent) { setNotionContent(''); setSelectedStudents([]); }
-        setTimeout(() => { setNotionStatus('idle'); if(!keepContent) onClose(); }, 1500);
-        if (saveTargets.size > 0) showToast("저장되었습니다!");
-    };
+                setStudents(updatedStudentsList);
+                if (!isLocalMode) saveData('cls_students', updatedStudentsList);
+                else localStorage.setItem('cls_students', JSON.stringify(updatedStudentsList));
+
+                if (saveTargets.has('google_sheet')) {
+                    let successCount = 0;
+                    for (const s of selectedStudents) {
+                        if (await saveToGoogleSheet(s.name, category, content, date)) successCount++;
+                    }
+                    if (successCount > 0) {
+                        setNotionStatus('success'); if (!keepContent) setNotionContent(''); 
+                        setTimeout(() => setNotionStatus('idle'), 3000); 
+                    }
+                }
+
+                try {
+                    const rawKey = localStorage.getItem('cls_notion_key') || "";
+                    const personalKey = rawKey.replace(/["']/g, '').trim();
+                    const targets = [];
+                    if (saveTargets.has('notion_record')) targets.push('notion_record');
+                    if (saveTargets.has('notion_portfolio')) targets.push('notion_portfolio');
+
+                    for (const target of targets) {
+                        const rawDbId = (target === 'notion_portfolio') ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
+                        const targetDbId = rawDbId.replace(/["']/g, '').trim();
+                        if (!personalKey || !targetDbId) continue;
+
+                        const bodyData = { category: category, content: content, personalKey: personalKey, personalDbId: targetDbId };
+                        
+                        if (target === 'notion_portfolio') {
+                            const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
+                            const ids = []; selectedStudents.forEach(s => { if (map[s.name]) ids.push(map[s.name]); });
+                            bodyData.mode = 'relation'; bodyData.studentIds = ids;
+                            await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
+                        } else {
+                            // [Fix] 노션(기록) 모드일 때 선택된 모든 학생에 대해 개별 저장
+                            for (const s of selectedStudents) {
+                                const individualBody = { 
+                                    ...bodyData, 
+                                    mode: 'normal', 
+                                    studentName: s.name, 
+                                    date: dayjs(date).format('YYYY-MM-DD') 
+                                };
+                                await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(individualBody) });
+                            }
+                        }
+                    }
+                    setNotionStatus('success'); if (!keepContent) setNotionContent(''); setTimeout(() => setNotionStatus('idle'), 3000);
+                } catch (e) {
+                    console.error(e); setNotionStatus('error'); setTimeout(() => setNotionStatus('idle'), 3000);
+                }
+            };
 
     return (
         <div className="fixed inset-0 bg-black/50 z-[2000] p-4 backdrop-blur-sm animate-fade-in flex items-center justify-center" onClick={onClose}>
@@ -7861,7 +7865,7 @@
                     </div>{(mode === 'record' || mode === 'group') && (<div className="bg-white border-b border-notion-border pt-2 pb-2 flex justify-center"><div className="w-full max-w-2xl px-4 flex flex-col gap-2">{mode === 'record' ? <><DateHeader date={date} setDate={setDate} onAdd={()=>setIsTaskModalOpen(true)} onReset={resetDateRecord} onCalendar={()=>setIsCalendarOpen(true)} appConfig={appConfig}/> <ProgressBar progress={progress} appConfig={appConfig} /></> : <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border mx-auto w-fit justify-center cursor-pointer"
 ><Btn onClick={()=>setDate(dayjs(date).subtract(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18}/></Btn><div className="flex flex-col items-center px-3" onClick={()=>setIsCalendarOpen(true)}><div className="text-base font-bold text-notion-text">{dayjs(date).format('YY.MM.DD')}</div><div className="text-[10px] font-bold text-notion-text-light">{dayjs(date).format('dddd')}</div></div><Btn onClick={()=>setDate(dayjs(date).add(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18}/></Btn></div>}</div></div>)}</header>
                     <main 
-                        className="flex-1 overflow-y-auto p-4 md:p-6 custom-scroll pb-20 md:pb-6 bg-white"
+                        className="flex-1 overflow-y-auto p-4 md:p-6 custom-scroll pb-8 md:pb-6 bg-white"
                     >
                         <div key={date} className="flex-1">
                             {mode === 'record' && (
@@ -8178,7 +8182,7 @@
                                 </div>
                             </div>
                         )}
-                        <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | spk </footer>
+                        <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden text-center py-3 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors bg-slate-50 border-t border-slate-200 -mx-4 mt-4">{CURRENT_VERSION} | spk </footer>
                     </main>
                     <footer onClick={() => setShowUpdateNotes(true)} className="hidden md:block text-center py-2 text-xs text-slate-400 bg-slate-50 hover:bg-slate-100 border-t border-slate-200 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visual Studio Code With Gemini</footer>
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe">
@@ -8513,7 +8517,7 @@
                     </BaseModal>
                     <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => setShowUpdateNotes(false)} showToast={setToastMessage} notes={UPDATE_NOTES} />
                     {showGlobalRecord && (
-                        <GlobalRecordModal isOpen={showGlobalRecord} onClose={() => setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} appConfig={appConfig} />
+                        <GlobalRecordModal isOpen={isGlobalRecordOpen} onClose={()=>setIsGlobalRecordOpen(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={globalButtonPos} appConfig={appConfig} db={db} appId={appId} />
                     )}
                     <AiSecurityCheckModal isOpen={aiCheckState.isOpen} onClose={handleAiCheckCancel} prompt={aiCheckState.prompt} onConfirm={handleAiCheckConfirm} />
                     <button 
