@@ -225,9 +225,9 @@
         // [New] 구글 시트 전송용 함수
         // 🌟 따옴표 중복 방지 및 전송 최적화 버전
         // [New] 구글 시트 전송용 함수
+        // [New] 구글 시트 전송용 함수
         const saveToGoogleSheet = async (studentName, category, recordContent, recordDate) => {
             let url = localStorage.getItem('cls_google_sheet_url');
-            // 🌟 핵심: 찌꺼기로 들어간 큰따옴표, 작은따옴표를 여기서 강제로 뜯어냅니다!
             if (url) url = url.trim().replace(/^"|'|"$|'$/g, '');
             
             if (!url) {
@@ -236,14 +236,16 @@
             }
             try {
                 const dateStr = recordDate ? dayjs(recordDate).format('YYYY-MM-DD') + ' ' + dayjs().format('HH:mm:ss') : dayjs().format('YYYY-MM-DD HH:mm:ss');
-                
                 const clean = (val) => String(val || "").trim().replace(/^"|"$/g, '');
 
                 const payload = {
                     date: clean(dateStr),
                     name: clean(studentName),
                     category: clean(category),
-                    content: clean(recordContent)
+                    // 🌟 구글 시트가 어떤 이름표를 원할지 몰라서 3가지로 다 보냅니다!
+                    content: clean(recordContent), 
+                    memo: clean(recordContent),
+                    text: clean(recordContent)
                 };
 
                 await fetch(url, {
@@ -254,7 +256,7 @@
                 });
                 return true;
             } catch (e) {
-                console.error(e); alert("구글 시트 전송 실패: " + e.message); return false;
+                console.error(e); return false;
             }
         };
 
