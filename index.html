@@ -4075,12 +4075,13 @@
                                 </div>
                                     </div>
                             
-                                    <div className="flex flex-col h-[500px]">
-                                        <div className="flex justify-between items-center mb-3 flex-shrink-0">
+                                    <div className={`flex flex-col transition-all duration-300 ${isStudentListOpen ? 'h-[500px]' : 'h-auto'}`}>
+                                        <div className="flex justify-between items-center mb-3 flex-shrink-0 cursor-pointer select-none" onClick={() => setIsStudentListOpen(!isStudentListOpen)}>
                                             <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm">
                                                 <span className="text-lg">📋</span> 등록된 학생 ({students.length}명)
+                                                <Icon d={isStudentListOpen ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
                                             </h4>
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                                                 <Btn onClick={addTestData} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-indigo-100 transition-colors whitespace-nowrap">테스트 명단</Btn>
                                                 {isDeleteLocked ? (
                                                     <Btn onClick={() => setIsDeleteLocked(false)} className="text-xs bg-slate-100 text-slate-400 p-1.5 rounded-lg font-bold flex items-center justify-center hover:bg-slate-200 transition-colors" title="잠금 해제"><Icon d={PATHS.lock} size={14} /></Btn>
@@ -4092,7 +4093,8 @@
                                             </div>
                                         </div>
                             
-                                        <div id="student-list" className="flex-1 overflow-y-auto custom-scroll bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-inner space-y-1">
+                                        {isStudentListOpen && (
+                                            <div id="student-list" className="flex-1 overflow-y-auto custom-scroll bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-inner space-y-1 animate-fade-in">
                                             {students.map(s => (
                                     <div key={s.id} className="flex justify-between items-center p-2.5 bg-white rounded-lg border border-slate-100 text-sm group min-h-[46px]">
                                         {editingId === s.id ? (
@@ -4121,7 +4123,8 @@
                                         )}
                                     </div>
                                 ))}
-                                    </div>
+                                            </div>
+                                        )}
                                     </div>
                                     </div>
                                 </div>
