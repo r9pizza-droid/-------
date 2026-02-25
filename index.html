@@ -5871,6 +5871,9 @@
                     setIsDraggingButton(false);
                     
                     if (isDragGesture.current) {
+                        // [Mod] 데스크탑(768px 이상)에서는 자유 배치 허용 (자석 효과 해제)
+                        if (window.innerWidth >= 768) return;
+
                         // Snap to nearest edge
                         const screenWidth = window.innerWidth;
                         const btnCenter = currentX + 28; // 56/2
