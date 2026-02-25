@@ -103,9 +103,9 @@
         /* 🌟 이 한 줄이 화면 밑의 모든 유령 여백을 강제로 잘라냅니다! */
         #root > div { padding-bottom: 20px !important; margin-bottom: 0 !important; }
         
-        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
         .custom-scroll:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         .dragging { opacity: 0.5; transform: scale(0.98); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
@@ -145,8 +145,8 @@
         }
     </style>
 </head>
-<body class="bg-white text-[#37352F] select-none">
-    <div id="root" class="h-screen flex flex-col overflow-hidden"></div>
+<body class="bg-white text-[#37352F] select-none overscroll-y-none md:overscroll-y-auto">
+    <div id="root" class="min-h-screen flex flex-col"></div>
 
     <script type="text/babel" data-app-script="true">
         const safeLocalStorage = {
@@ -328,10 +328,8 @@
                 if (!isOpen) return;
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
-                document.body.style.overflow = 'hidden';
                 return () => {
                     window.removeEventListener('keydown', handleEsc);
-                    document.body.style.overflow = '';
                 };
             }, [isOpen, onClose]);
 
@@ -347,7 +345,7 @@
                             <h3 className={`text-lg font-bold flex items-center gap-2 text-notion-text ${onTitleClick ? 'cursor-pointer select-none' : ''}`} onClick={onTitleClick}>{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light"><Icon d={PATHS.x} /></button>
                         </div>
-                        <div className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6 overscroll-contain">{children}</div>
+                        <div className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6">{children}</div>
                         {footer && <div className="pt-4 border-t mt-4 flex-shrink-0">{footer}</div>}
                     </div>
                 </div>
@@ -361,10 +359,6 @@
             return <div className="fixed top-10 left-1/2 transform -translate-x-1/2 z-[3000] animate-pop-up pointer-events-none"><div className="bg-[#37352F] text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 backdrop-blur-md min-w-[200px] justify-center"><Icon d={PATHS.check} size={16} className="text-white" /><span className="font-medium text-sm text-center">{message}</span></div></div>;
         };
         const ConfirmModal = ({ isOpen, message, onConfirm, onCancel }) => {
-            useEffect(() => {
-                if (isOpen) { document.body.style.overflow = 'hidden'; }
-                return () => { document.body.style.overflow = ''; };
-            }, [isOpen]);
 
             if (!isOpen) return null;
             return (
@@ -660,10 +654,8 @@
             useEffect(() => {
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
-                document.body.style.overflow = 'hidden';
                 return () => {
                     window.removeEventListener('keydown', handleEsc);
-                    document.body.style.overflow = '';
                 };
             }, [onClose]);
 
@@ -1292,7 +1284,7 @@
             return (
                 <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
                     {/* [수정됨] max-w-5xl, max-h-[85vh] 로 크기 축소 */}
-                    <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col overscroll-contain" onClick={e => e.stopPropagation()}>
+                    <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col" onClick={e => e.stopPropagation()}>
                         {/* Header Container */}
                         <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0">
                             <div className="flex justify-between items-center flex-wrap gap-4">
@@ -2251,9 +2243,7 @@
                 if (isOpen) {
                     setViewDate(dayjs(currentDate)); 
                     if (selectionMode === 'range') setRange({ start: null, end: null });
-                    document.body.style.overflow = 'hidden';
                 } 
-                return () => { document.body.style.overflow = ''; };
             }, [isOpen, currentDate, selectionMode]);
 
             if (!isOpen) return null;
@@ -2726,6 +2716,7 @@
             const [saveLocally, setSaveLocally] = useState(false);
             const [showManual, setShowManual] = useState(false);
             const [isTesting, setIsTesting] = useState(false);
+            const [testSuccess, setTestSuccess] = useState(false);
             const [manualInput, setManualInput] = useState("");
             const fileInputRef = useRef(null);
 
@@ -2756,6 +2747,7 @@
                 const targetId = isPortfolioMode ? portfolioDbId : dbId;
                 if (!apiKey || !targetId) return showToast("API Key와 Database ID를 입력해주세요.");
                 setIsTesting(true);
+            setTestSuccess(false);
                 try {
                     const response = await fetch('/api/save-notion', {
                         method: 'POST',
@@ -2772,8 +2764,11 @@
                     const msg = "✅ 노션 연동에 완벽하게 성공했습니다!";
                     showToast(msg);
                     setSaveLocally(true);
+                setTestSuccess(true);
+                setTimeout(() => setTestSuccess(false), 3000);
                 } catch (e) {
                     showToast("❌ " + e.message);
+                setTestSuccess(false);
                 } finally {
                     setIsTesting(false);
                 }
@@ -2942,33 +2937,85 @@
                                 
                                 <div className="pt-3 border-t border-indigo-200">
                                     <h4 className="font-bold text-slate-700 mb-2">📋 데이터베이스 속성 설정 (필수)</h4>
-                                    <p className="mb-2 text-slate-500">노션 DB의 속성 이름과 유형을 아래와 똑같이 맞춰주세요.</p>
+                                    <p className="mb-2 text-slate-500">노션 DB의 속성 이름과 유형을 아래와 똑같이 맞춰주세요. (클릭하여 복사)</p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
                                             <h5 className="font-bold text-slate-800 mb-2 border-b pb-1">⚪ 기본 모드 (기록용)</h5>
-                                            <ul className="list-disc pl-4 space-y-1 text-slate-600">
-                                                <li><strong>이름</strong> (제목)</li>
-                                                <li><strong>날짜</strong> (날짜)</li>
-                                                <li><strong>구분</strong> (선택) : 칭찬, 관찰 등</li>
-                                                <li><strong>내용</strong> (텍스트)</li>
+                                            <ul className="space-y-1 text-slate-600">
+                                                <li className="flex items-center gap-1"><button onClick={() => { navigator.clipboard.writeText("이름"); showToast("복사됨"); }} className="hover:bg-slate-100 px-1 rounded border border-slate-200 bg-slate-50 font-bold">이름</button> (제목)</li>
+                                                <li className="flex items-center gap-1"><button onClick={() => { navigator.clipboard.writeText("날짜"); showToast("복사됨"); }} className="hover:bg-slate-100 px-1 rounded border border-slate-200 bg-slate-50 font-bold">날짜</button> (날짜)</li>
+                                                <li className="flex items-center gap-1"><button onClick={() => { navigator.clipboard.writeText("분류"); showToast("복사됨"); }} className="hover:bg-slate-100 px-1 rounded border border-slate-200 bg-slate-50 font-bold">분류</button> (선택)</li>
+                                                <li className="flex items-center gap-1"><button onClick={() => { navigator.clipboard.writeText("내용"); showToast("복사됨"); }} className="hover:bg-slate-100 px-1 rounded border border-slate-200 bg-slate-50 font-bold">내용</button> (텍스트)</li>
                                             </ul>
                                         </div>
                                         <div className="bg-white p-3 rounded-lg border border-indigo-200 shadow-sm ring-1 ring-indigo-50">
                                             <h5 className="font-bold text-indigo-600 mb-2 border-b border-indigo-100 pb-1">🔵 포트폴리오 모드</h5>
-                                            <ul className="list-disc pl-4 space-y-1 text-slate-600">
-                                                <li><strong>이름</strong> (제목) : 자동 생성됨</li>
-                                                <li><strong>생성일시</strong> (날짜) : 시간 포함</li>
-                                                <li><strong>구분</strong> (선택)</li>
-                                                <li><strong>내용</strong> (텍스트)</li>
-                                                <li><strong>학생</strong> (관계형) : 학생 DB와 연결</li>
+                                            <ul className="space-y-1 text-slate-600">
+                                                <li className="flex items-center gap-1"><button onClick={() => { navigator.clipboard.writeText("제목"); showToast("복사됨"); }} className="hover:bg-indigo-50 px-1 rounded border border-indigo-100 bg-white font-bold text-indigo-700">제목</button> (제목)</li>
+                                                <li className="flex items-center gap-1"><button onClick={() => { navigator.clipboard.writeText("생성일시"); showToast("복사됨"); }} className="hover:bg-indigo-50 px-1 rounded border border-indigo-100 bg-white font-bold text-indigo-700">생성일시</button> (날짜)</li>
+                                                <li className="flex items-center gap-1"><button onClick={() => { navigator.clipboard.writeText("분류"); showToast("복사됨"); }} className="hover:bg-indigo-50 px-1 rounded border border-indigo-100 bg-white font-bold text-indigo-700">분류</button> (선택)</li>
+                                                <li className="flex items-center gap-1"><button onClick={() => { navigator.clipboard.writeText("내용"); showToast("복사됨"); }} className="hover:bg-indigo-50 px-1 rounded border border-indigo-100 bg-white font-bold text-indigo-700">내용</button> (텍스트)</li>
+                                                <li className="flex items-center gap-1"><button onClick={() => { navigator.clipboard.writeText("학생"); showToast("복사됨"); }} className="hover:bg-indigo-50 px-1 rounded border border-indigo-100 bg-white font-bold text-indigo-700">학생</button> (관계형)</li>
                                             </ul>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="pt-3 border-t border-indigo-200">
-                                    <h4 className="font-bold text-slate-700 mb-1">🌍 개발자 참고 (Vercel)</h4>
-                                    <p className="text-slate-500">이 앱은 <code>api/save-notion.js</code>를 사용하므로 Vercel 배포 환경에서만 노션 저장이 작동합니다.</p>
+                                    <h4 className="font-bold text-slate-700 mb-1">🌍 Vercel 배포용 API 코드</h4>
+                                    <p className="text-slate-500 mb-2">직접 배포하시는 경우 <code>api/save-notion.js</code> 파일을 생성하고 아래 코드를 붙여넣으세요.</p>
+                                    <div className="relative group">
+                                        <div className="bg-slate-800 text-green-400 p-3 rounded-lg font-mono text-[10px] overflow-x-auto whitespace-pre border border-slate-700 shadow-inner selection:bg-green-900 selection:text-white max-h-40 custom-scroll">
+{`export default async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+    let { personalKey, personalDbId, studentName, date, category, content, mode, studentIds, testMode } = req.body;
+
+    const cleanKey = personalKey ? personalKey.replace(/["']/g, '').trim() : '';
+    const cleanDbId = personalDbId ? personalDbId.toString().replace(/["']/g, '').trim() : '';
+
+    if (!cleanKey || !cleanDbId) return res.status(400).json({ error: "설정 정보가 누락되었습니다." });
+
+    const titlePropertyName = (mode === 'relation') ? "제목" : "이름";
+    let properties = {};
+    const pageIcon = { type: "emoji", emoji: testMode ? "🧪" : "🍀" };
+
+    if (testMode) {
+        properties[titlePropertyName] = { "title": [{ "text": { "content": \`✅ [\${titlePropertyName}] 칸 연동 테스트 성공!\` } }] };
+    } else {
+        if (mode === 'relation') {
+            const summary = content ? (content.length > 15 ? content.substring(0, 15) + "..." : content) : "새로운 기록";
+            properties["제목"] = { "title": [{ "text": { "content": \`[\${category || "관찰"}] \${summary}\` } }] };
+            properties["분류"] = { "select": { "name": category || "관찰" } };
+            properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };
+            if (studentIds && studentIds.length > 0) properties["학생"] = { "relation": studentIds.map(id => ({ "id": id })) };
+        } else {
+            properties["이름"] = { "title": [{ "text": { "content": studentName || "학생" } }] };
+            properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };
+            properties["분류"] = { "select": { "name": category || "관찰" } };
+            properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };
+        }
+    }
+
+    try {
+        const response = await fetch('https://api.notion.com/v1/pages', {
+            method: 'POST',
+            headers: { 'Authorization': \`Bearer \${cleanKey}\`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28' },
+            body: JSON.stringify({ parent: { database_id: cleanDbId }, icon: pageIcon, properties: properties })
+        });
+        const data = await response.json();
+        if (!response.ok) return res.status(response.status).json(data);
+        res.status(200).json({ success: true });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+}`}
+                                        </div>
+                                        <button onClick={() => { 
+                                            const code = `export default async function handler(req, res) {\n    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');\n    let { personalKey, personalDbId, studentName, date, category, content, mode, studentIds, testMode } = req.body;\n\n    const cleanKey = personalKey ? personalKey.replace(/["']/g, '').trim() : '';\n    const cleanDbId = personalDbId ? personalDbId.toString().replace(/["']/g, '').trim() : '';\n\n    if (!cleanKey || !cleanDbId) return res.status(400).json({ error: "설정 정보가 누락되었습니다." });\n\n    const titlePropertyName = (mode === 'relation') ? "제목" : "이름";\n    let properties = {};\n    const pageIcon = { type: "emoji", emoji: testMode ? "🧪" : "🍀" };\n\n    if (testMode) {\n        properties[titlePropertyName] = { "title": [{ "text": { "content": \`✅ [\${titlePropertyName}] 칸 연동 테스트 성공!\` } }] };\n    } else {\n        if (mode === 'relation') {\n            const summary = content ? (content.length > 15 ? content.substring(0, 15) + "..." : content) : "새로운 기록";\n            properties["제목"] = { "title": [{ "text": { "content": \`[\${category || "관찰"}] \${summary}\` } }] };\n            properties["분류"] = { "select": { "name": category || "관찰" } };\n            properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };\n            if (studentIds && studentIds.length > 0) properties["학생"] = { "relation": studentIds.map(id => ({ "id": id })) };\n        } else {\n            properties["이름"] = { "title": [{ "text": { "content": studentName || "학생" } }] };\n            properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };\n            properties["분류"] = { "select": { "name": category || "관찰" } };\n            properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };\n        }\n    }\n\n    try {\n        const response = await fetch('https://api.notion.com/v1/pages', {\n            method: 'POST',\n            headers: { 'Authorization': \`Bearer \${cleanKey}\`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28' },\n            body: JSON.stringify({ parent: { database_id: cleanDbId }, icon: pageIcon, properties: properties })\n        });\n        const data = await response.json();\n        if (!response.ok) return res.status(response.status).json(data);\n        res.status(200).json({ success: true });\n    } catch (error) { res.status(500).json({ error: error.message }); }\n}`; 
+                                            navigator.clipboard.writeText(code); 
+                                            showToast("✅ 코드가 복사되었습니다."); 
+                                        }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                                            <Icon d={PATHS.copy} size={12} /> 코드 복사
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -2976,14 +3023,28 @@
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500">Notion API Key (Secret)</label>
                             <div className="flex gap-2">
-                                <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="secret_..." />
+                                <div className="relative flex-1">
+                                    <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} className="w-full p-3 pr-8 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="secret_..." />
+                                    {apiKey && (
+                                        <button onClick={() => setApiKey("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
+                                            <Icon d={PATHS.x} size={14} />
+                                        </button>
+                                    )}
+                                </div>
                                 <Btn onClick={handlePasteKey} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                             </div>
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500">{isPortfolioMode ? "🔵 포트폴리오용 DB ID (학생과 연결)" : "⚪ 일반 기록용 DB ID (단순 기록)"}</label>
                             <div className="flex gap-2">
-                                <input type="text" value={isPortfolioMode ? portfolioDbId : dbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); }} className="flex-1 p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID (URL 붙여넣기 가능)" />
+                                <div className="relative flex-1">
+                                    <input type="text" value={isPortfolioMode ? portfolioDbId : dbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); }} className="w-full p-3 pr-8 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID (URL 붙여넣기 가능)" />
+                                    {(isPortfolioMode ? portfolioDbId : dbId) && (
+                                        <button onClick={() => isPortfolioMode ? setPortfolioDbId("") : setDbId("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
+                                            <Icon d={PATHS.x} size={14} />
+                                        </button>
+                                    )}
+                                </div>
                                 <Btn onClick={handlePasteDbId} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                             </div>
                         </div>
@@ -3029,8 +3090,8 @@
                             <span className="text-sm text-slate-700 font-bold">이 기기에 정보 저장하기</span>
                         </label>
                         <div className="flex gap-2 pt-2">
-                            <Btn onClick={handleTestConnection} disabled={isTesting} className="flex-1 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors">
-                                {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : '🔌 연동 테스트'}
+                            <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3 rounded-xl font-bold transition-colors ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
+                                {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : testSuccess ? '✅ 연동 성공!' : '🔌 연동 테스트'}
                             </Btn>
                             <Btn onClick={handleSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-colors">설정 저장하기</Btn>
                         </div>
@@ -3043,6 +3104,7 @@
             const [url, setUrl] = useState("");
             const [isTesting, setIsTesting] = useState(false);
             const [showManual, setShowManual] = useState(false);
+            const [testSuccess, setTestSuccess] = useState(false);
 
             useEffect(() => {
                 if (isOpen) {
@@ -3053,11 +3115,12 @@
                 }
             }, [isOpen]);
 
-            const handleTest = async () => {
+            const handleTestConnection = async () => {
                 // 🌟 테스트할 때도 안전하게 따옴표 제거 후 전송
                 const cleanUrl = url.trim().replace(/^"|'|"$|'$/g, '');
                 if (!cleanUrl) return showToast("URL을 입력해주세요.");
                 setIsTesting(true);
+                setTestSuccess(false);
                 try {
                     await fetch(cleanUrl, {
                         method: "POST",
@@ -3066,8 +3129,11 @@
                         body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: "테스트", category: "연동 테스트", content: "Google 시트 연동 성공!" })
                     });
                     showToast("✅ 전송 성공! 시트를 확인하세요.");
+                    setTestSuccess(true);
+                    setTimeout(() => setTestSuccess(false), 3000);
                 } catch (e) {
                     showToast("❌ 전송 실패: " + e.message);
+                    setTestSuccess(false);
                 } finally {
                     setIsTesting(false);
                 }
@@ -3101,13 +3167,18 @@
                                 <ol className="list-decimal pl-4 space-y-1">
                                     <li>구글 스프레드시트 생성 &gt; <strong>확장 프로그램 &gt; Apps Script</strong></li>
                                     <li>아래 코드 붙여넣기 &gt; 저장
-                                        <div className="bg-white p-2 border rounded mt-1 font-mono text-[10px] select-all cursor-pointer" onClick={(e) => { navigator.clipboard.writeText(e.target.innerText); showToast("코드 복사됨"); }}>
+                                <div className="relative mt-2 mb-2 group">
+                                    <div className="bg-slate-800 text-green-400 p-3 rounded-lg font-mono text-[10px] overflow-x-auto whitespace-pre border border-slate-700 shadow-inner selection:bg-green-900 selection:text-white">
 {`function doPost(e) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var data = JSON.parse(e.postData.contents);
   sheet.appendRow([data.date, data.name, data.category, data.content]);
   return ContentService.createTextOutput("Success");
 }`}
+                                    </div>
+                                    <button onClick={() => { const code = `function doPost(e) {\n  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();\n  var data = JSON.parse(e.postData.contents);\n  sheet.appendRow([data.date, data.name, data.category, data.content]);\n  return ContentService.createTextOutput("Success");\n}`; navigator.clipboard.writeText(code); showToast("✅ 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                                        <Icon d={PATHS.copy} size={12} /> 코드 복사
+                                    </button>
                                         </div>
                                     </li>
                                     <li><strong>배포 &gt; 새 배포</strong> (코드를 수정했다면 반드시 '새 버전'으로 배포해야 적용됩니다!)</li>
@@ -3118,11 +3189,18 @@
                         )}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500">Web App URL</label>
-                            <input type="text" value={url} onChange={e => setUrl(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-green-500 font-mono" placeholder="https://script.google.com/macros/s/..." />
+                            <div className="relative">
+                                <input type="text" value={url} onChange={e => setUrl(e.target.value)} className="w-full p-3 pr-10 border rounded-xl text-sm outline-none focus:border-green-500 font-mono" placeholder="https://script.google.com/macros/s/..." />
+                                {url && (
+                                    <button onClick={() => setUrl("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
+                                        <Icon d={PATHS.x} size={16} />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         <div className="flex gap-2 pt-2">
-                            <Btn onClick={handleTest} disabled={isTesting} className="flex-1 py-3 bg-white border border-green-200 text-green-600 rounded-xl font-bold hover:bg-green-50 transition-colors">
-                                {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>전송 중...</> : '🔌 전송 테스트'}
+                            <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3 rounded-xl font-bold transition-colors ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
+                                {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : testSuccess ? '✅ 연동 성공!' : '🔌 연동 테스트'}
                             </Btn>
                             <Btn onClick={handleSave} className="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-md transition-colors">설정 저장하기</Btn>
                         </div>
@@ -3162,6 +3240,22 @@
                 }
             };
 
+            const handleSaveAndClose = () => {
+                if (isSaved) {
+                    if(!isLocalMode) {
+                        saveData('cls_ai_key', apiKey);
+                        // [Fix] saveData가 문자열에 따옴표를 추가하여 저장하는 문제 방지 (덮어쓰기)
+                        localStorage.setItem('cls_ai_key', apiKey);
+                    }
+                    else localStorage.setItem('cls_ai_key', apiKey);
+                    if(apiKey) showToast("API 키가 저장되었습니다.");
+                } else {
+                    if(!isLocalMode) saveData('cls_ai_key', "");
+                    else localStorage.removeItem('cls_ai_key');
+                }
+                onClose();
+            };
+
             if (!isOpen) return null;
             return (
                 <BaseModal isOpen={isOpen} onClose={onClose} title="🤖 AI 설정" icon={null}>
@@ -3188,7 +3282,7 @@
                             </label>
                             <div className="text-xs text-slate-400">사용량: {usage}회</div>
                         </div>
-                        <Btn onClick={onClose} className="w-full py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 mt-4">닫기</Btn>
+                        <Btn onClick={handleSaveAndClose} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 mt-4 shadow-md">저장 및 닫기</Btn>
                     </div>
                 </BaseModal>
             );
@@ -3567,39 +3661,43 @@
             const isAiConnected = !!apiKey;
 
             const dataUsage = useMemo(() => {
-                const data = {
+                const rawDetails = [
+                    { label: '학생 명단', val: students, color: '#6366f1' }, // Indigo
+                    { label: '활동 기록', val: records, color: '#ec4899' }, // Pink
+                    { label: '모둠 기록', val: groupsByDate, color: '#8b5cf6' }, // Violet
+                    { label: '과제 목록', val: dailyTasks, color: '#3b82f6' }, // Blue
+                    { label: '모둠 이름', val: groupNames, color: '#10b981' }, // Emerald
+                    { label: '모둠 역할', val: groupRoles, color: '#f59e0b' }, // Amber
+                    { label: '자리 배치', val: seatAssignments, color: '#f97316' }, // Orange
+                    { label: '관계 설정', val: { avoidancePairs, mustPairs }, color: '#ef4444' }, // Red
+                    { label: '주간/태그', val: { weeklyTasks, tags }, color: '#14b8a6' }, // Teal
+                    { label: '앱 설정', val: appConfig, color: '#64748b' }, // Slate
+                    { label: '기타', val: { rolesList, roleDescriptions, seatConfig }, color: '#94a3b8' } // Slate-400
+                ];
+
+                const totalBytes = new Blob([JSON.stringify({
                     students, records, groupsByDate, avoidancePairs, mustPairs, 
                     dailyTasks, weeklyTasks, tags, appConfig, groupNames, 
                     groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig
-                };
-                const json = JSON.stringify(data);
-                const bytes = new Blob([json]).size;
+                })]).size;
+
                 // [Mod] 로컬 모드: 5MB, 클라우드 모드: 1MB 기준
                 const MAX_SIZE = isLocalMode ? 5242880 : 1048576; 
-                const kb = (bytes / 1024).toFixed(1);
-                const percent = ((bytes / MAX_SIZE) * 100).toFixed(1);
+                const kb = (totalBytes / 1024).toFixed(1);
+                const percent = ((totalBytes / MAX_SIZE) * 100).toFixed(1);
                 
                 // 상세 분석 추가
-                const details = [
-                    { label: '학생 명단', val: students },
-                    { label: '활동 기록', val: records },
-                    { label: '모둠 기록', val: groupsByDate },
-                    { label: '과제 목록', val: dailyTasks },
-                    { label: '모둠 이름', val: groupNames },
-                    { label: '모둠 역할', val: groupRoles },
-                    { label: '자리 배치', val: seatAssignments },
-                    { label: '기타 설정', val: { avoidancePairs, mustPairs, weeklyTasks, tags, appConfig, rolesList, roleDescriptions, seatConfig } }
-                ].map(item => {
+                const details = rawDetails.map(item => {
                     const itemBytes = new Blob([JSON.stringify(item.val)]).size;
                     return {
-                        label: item.label,
+                        ...item,
                         bytes: itemBytes,
                         kb: (itemBytes / 1024).toFixed(1),
-                        percent: bytes > 0 ? ((itemBytes / bytes) * 100).toFixed(1) : 0
+                        percent: totalBytes > 0 ? ((itemBytes / totalBytes) * 100) : 0
                     };
                 }).sort((a, b) => b.bytes - a.bytes);
 
-                return { kb, percent, bytes, isWarning: percent > 80, isCritical: percent > 95, details };
+                return { kb, percent, bytes: totalBytes, isWarning: percent > 80, isCritical: percent > 95, details };
             }, [students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig, isLocalMode]);
 
             const updateAppConfig = (updates) => {
@@ -3953,9 +4051,15 @@
                         <div className={`flex-1 overflow-y-auto custom-scroll pr-2 space-y-6 pb-10 ${getTabAnimationClass()}`} key={activeTab}>
                             {activeTab === 'student' && (
                                 <div className="space-y-6 animate-fade-in">
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><span className="text-xl">🧑‍🎓</span> 학생 명단 관리</h3>
+                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group">
+                                        <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5 cursor-default select-none">
+                                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🧑‍🎓</div> 
+                                            학생 명단 관리
+                                        </h4>
+                                        
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-6">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h5 className="text-sm font-bold text-slate-700">새 학생 등록</h5>
                                             <div className="flex items-center">
                                                 <Btn onClick={() => fileRef.current.click()} className="text-xs bg-white border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 flex items-center gap-1 font-bold" title="CSV/TXT 업로드"> <Icon d={PATHS.upload} size={14} /> <span>CSV 업로드</span> </Btn>
                                                 <input type="file" ref={fileRef} onChange={handleFileUpload} className="hidden" accept=".csv,.txt" />
@@ -3971,10 +4075,10 @@
                                 </div>
                                     </div>
                             
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col h-[500px]">
+                                    <div className="flex flex-col h-[500px]">
                                         <div className="flex justify-between items-center mb-3 flex-shrink-0">
-                                            <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                                                <span className="text-lg">📋</span> 등록된 학생 명단 ({students.length}명)
+                                            <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                                                <span className="text-lg">📋</span> 등록된 학생 ({students.length}명)
                                             </h4>
                                             <div className="flex gap-2">
                                                 <Btn onClick={addTestData} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-indigo-100 transition-colors whitespace-nowrap">테스트 명단</Btn>
@@ -3988,7 +4092,7 @@
                                             </div>
                                         </div>
                             
-                                        <div id="student-list" className="flex-1 overflow-y-auto custom-scroll bg-white p-2 rounded-xl border border-slate-200 shadow-inner space-y-1">
+                                        <div id="student-list" className="flex-1 overflow-y-auto custom-scroll bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-inner space-y-1">
                                             {students.map(s => (
                                     <div key={s.id} className="flex justify-between items-center p-2.5 bg-white rounded-lg border border-slate-100 text-sm group min-h-[46px]">
                                         {editingId === s.id ? (
@@ -4019,16 +4123,22 @@
                                 ))}
                                     </div>
                                     </div>
+                                    </div>
                                 </div>
                             )}
 
                             {activeTab === 'app' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                <h3 className="text-xl font-bold text-slate-800 border-b-2 border-slate-100 pb-3 mb-5 flex items-center gap-2 cursor-default select-none">
-                                    <span className="text-2xl">📱</span> 앱 설정 {isAdminMode && <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-1">관리자 모드</span>}
-                                    {isDevMode && <span className="text-xs bg-slate-800 text-white px-2 py-0.5 rounded-full ml-1">개발자 모드</span>}
-                                </h3>
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group">
+                                        <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5 cursor-default select-none">
+                                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">📱</div> 
+                                            앱 기본 설정
+                                            <div className="flex flex-col gap-1 ml-auto">
+                                                {isAdminMode && <span className="w-fit text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">관리자</span>}
+                                                {isDevMode && <span className="w-fit text-[10px] bg-slate-800 text-white px-2 py-0.5 rounded-full">개발자</span>}
+                                            </div>
+                                        </h4>
+
                                 {(!isStandalone && (deferredPrompt || isIOS)) && (
                                     <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-5 rounded-2xl text-white shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in mb-6 relative overflow-hidden group cursor-pointer mx-1" onClick={onInstallApp}>
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/20 transition-all"></div>
@@ -4049,10 +4159,10 @@
 
                                     <div className={`grid gap-4 ${isDevMode ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                                         {isDevMode && (
-                                            <div className="space-y-4">
+                                            <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                                                 <div>
                                                     <h4 className="font-bold text-slate-700 mb-2 flex items-center gap-2 text-sm">🛠️ 개발자 설정</h4>
-                                                    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-indigo-300 transition-colors">
                                                         <div className="flex justify-between items-center">
                                                             <span className="text-xs font-bold text-slate-600">알림 방식</span>
                                                             <div className="flex bg-slate-100 p-1 rounded-lg">
@@ -4068,7 +4178,7 @@
                                                 </div>
                                                 <div>
                                                     <h4 className="font-bold text-slate-700 mb-2 flex items-center gap-2 text-sm">🎨 아이콘 설정</h4>
-                                                    <div className="grid grid-cols-3 gap-2">
+                                                    <div className="grid grid-cols-3 gap-2 bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-indigo-300 transition-colors">
                                                     <div className="bg-white border border-slate-200 rounded-xl p-2 flex flex-col items-center justify-center gap-1 shadow-sm relative">
                                                         <button onClick={(e) => { e.stopPropagation(); setShowFaviconHelp(!showFaviconHelp); }} className="absolute top-1 right-1 text-slate-300 hover:text-indigo-500 transition-colors"><Icon d={PATHS.help} size={12} /></button>
                                                         {showFaviconHelp && (
@@ -4142,8 +4252,7 @@
                                             </div>
                                         )}
 
-                                        <div className="space-y-2">
-                                            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-2"><span className="text-lg">📝</span> 앱 기본 설정</h4>
+                                        <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                                             <div className="grid grid-cols-1 gap-2">
                                         <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
                                             <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0"><Icon d={PATHS.edit} size={20}/></div>
@@ -4171,10 +4280,10 @@
                                     </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
-                                        <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">🎨</span> 화면 설정</h4>
-                                        <div className="flex flex-col gap-5">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all h-full group">
+                                        <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5"><div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🎨</div> 화면 및 소리 설정</h4>
+                                        <div className="flex flex-col gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                                             <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors relative">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Icon d={PATHS.document} size={16} className="text-slate-400"/>
@@ -4331,9 +4440,9 @@
                                     </div>
                                     </div>
 
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
-                                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:border-indigo-300 transition-colors h-full flex flex-col">
-                                        <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span className="text-xl">🏖️</span> 방학 기간 설정</label>
+                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all h-full group">
+                                        <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5"><div className="w-10 h-10 rounded-2xl bg-orange-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🏖️</div> 방학 기간 설정</h4>
+                                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:border-indigo-300 transition-colors h-full flex flex-col">
                                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3 flex-1">
                                             {currentVacations.length > 0 ? (
                                                 <div className="space-y-2 max-h-32 overflow-y-auto custom-scroll pr-1">
@@ -4375,16 +4484,16 @@
                             )}
                             
                             {activeTab === 'data' && (
-                                <div className="space-y-4 animate-fade-in">
+                                <div className="space-y-6 animate-fade-in">
                                     
                                     {/* [1단] 연동 및 용량 분석 */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
-                                            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">🔗</span> 외부 서비스 연동</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all h-full group">
+                                            <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5"><div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🔗</div> 외부 서비스 연동</h4>
                                             <div className="grid grid-cols-3 gap-2">
-                                                <Btn onClick={onOpenNotionSetup} className={`py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isNotionConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`} title="노션 연동">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><span className="text-lg">N</span></div>
-                                                    <span className="text-xs font-bold text-slate-600">노션 연동</span>
+                                                <Btn onClick={onOpenNotionSetup} className={`py-3 h-auto border border-slate-200 rounded-xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isNotionConnected ? 'bg-green-50 ring-2 ring-green-500 ring-offset-1' : 'bg-white hover:bg-slate-50'}`} title="노션 연동">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isNotionConnected ? 'bg-green-100' : 'bg-slate-100'}`}><span className="text-lg">N</span></div>
+                                                    <span className={`text-xs font-bold ${isNotionConnected ? 'text-green-700' : 'text-slate-600'}`}>노션 연동</span>
                                                     {isNotionConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
                                                 <Btn onClick={onOpenApiKeySetup} className={`py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isAiConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
@@ -4392,9 +4501,9 @@
                                                     <span className="text-xs font-bold text-slate-600">AI 설정</span>
                                                     {isAiConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
-                                                <Btn onClick={onOpenGoogleSheetSetup} className={`py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isGoogleSheetConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`} title="구글 시트 연동">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><span className="text-lg">📊</span></div>
-                                                    <span className="text-xs font-bold text-slate-600">구글 시트</span>
+                                                <Btn onClick={onOpenGoogleSheetSetup} className={`py-3 h-auto border border-slate-200 rounded-xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isGoogleSheetConnected ? 'bg-green-50 ring-2 ring-green-500 ring-offset-1' : 'bg-white hover:bg-slate-50'}`} title="구글 시트 연동">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isGoogleSheetConnected ? 'bg-green-100' : 'bg-slate-100'}`}><span className="text-lg">📊</span></div>
+                                                    <span className={`text-xs font-bold ${isGoogleSheetConnected ? 'text-green-700' : 'text-slate-600'}`}>구글 시트</span>
                                                     {isGoogleSheetConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
                                             </div>
@@ -4411,9 +4520,9 @@
                                             )}
                                         </div>
 
-                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full">
-                                            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">📊</span> 데이터 용량 상세 분석</h4>
-                                            <div className="p-4 rounded-xl border transition-colors shadow-sm bg-white border-slate-200">
+                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all h-full group">
+                                            <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5"><div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">📊</div> 데이터 용량 분석</h4>
+                                            <div className="p-4 rounded-2xl border transition-colors shadow-sm bg-slate-50 border-slate-200">
                                                 <div className="flex gap-3">
                                                     <div className={`w-3 h-3 rounded-full shadow-sm mt-1.5 flex-shrink-0 ${isLocalMode ? 'bg-slate-400' : 'bg-green-500 animate-pulse'}`}></div>
                                                     <div className="flex-1 flex flex-col">
@@ -4432,20 +4541,46 @@
                                                         </div>
                                                         
                                                         {showStorageHelp && (
-    <div className="mt-3 p-3 bg-slate-100 rounded-lg border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
-        <div className="flex flex-col gap-3">
-            <div>
-                <p className="font-bold mb-2 text-indigo-600 flex justify-between items-center"><span>📊 데이터 용량 상세 분석</span><span className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-indigo-100">총 {dataUsage.kb}KB</span></p>
-                <div className="space-y-1.5 mb-2">
-                    {dataUsage.details.map((d, i) => (
-                        <div key={i} className="flex items-center justify-between gap-2">
-                            <span className="text-slate-500 w-14 shrink-0 truncate">{d.label}</span>
-                            <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-400" style={{ width: `${d.percent}%` }}></div></div>
-                            <span className="font-mono w-12 text-right text-slate-700">{d.kb}KB</span>
-                        </div>
-                    ))}
+    <div className="mt-3 p-4 bg-slate-100 rounded-2xl border border-slate-200 text-[10px] text-slate-600 leading-relaxed animate-fade-in select-text cursor-auto" onClick={e=>e.stopPropagation()}>
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+                {/* 도넛 차트 */}
+                <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: 120, height: 120 }}>
+                    <svg width="120" height="120" viewBox="0 0 120 120" className="transform -rotate-90">
+                        {(() => {
+                            let acc = 0;
+                            const r = 45; const c = 2 * Math.PI * r;
+                            return dataUsage.details.map((d, i) => {
+                                const val = d.percent;
+                                const dash = `${(val / 100) * c} ${c}`;
+                                const off = -((acc / 100) * c);
+                                acc += val;
+                                return <circle key={i} cx="60" cy="60" r={r} fill="transparent" stroke={d.color} strokeWidth="20" strokeDasharray={dash} strokeDashoffset={off} />;
+                            });
+                        })()}
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-[9px] font-bold text-slate-400">Total</span>
+                        <span className="text-xs font-black text-slate-700">{dataUsage.kb}KB</span>
+                    </div>
+                </div>
+
+                {/* 상세 리스트 */}
+                <div className="flex-1 w-full space-y-1.5">
+                    <p className="font-bold mb-2 text-indigo-600 flex justify-between items-center"><span>📊 상세 분석</span></p>
+                    <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto custom-scroll pr-1">
+                        {dataUsage.details.map((d, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }}></div>
+                                <span className="flex-1 truncate font-medium text-slate-600">{d.label}</span>
+                                <span className="font-mono text-slate-500">{d.percent.toFixed(1)}%</span>
+                                <span className="font-mono text-slate-400 w-12 text-right">{d.kb}KB</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
+
             <div className="border-t border-slate-200 pt-3">
                 {isLocalMode ? (
                     <div className="text-center py-2">
@@ -4500,10 +4635,10 @@
                                     </div>
 
                                     {/* [2단] 백업/복원 및 정리/초기화 */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full flex flex-col justify-between">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all h-full flex flex-col justify-between group">
                                             <div>
-                                                <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">💾</span> 데이터 백업 및 복원</h4>
+                                                <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5"><div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">💾</div> 데이터 백업 및 복원</h4>
                                                 <div className="grid grid-cols-2 gap-3 mb-3">
                                                     <Btn onClick={handleExportJson} className="py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
                                                         <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center"><Icon d={PATHS.upload} size={18} className="text-blue-500" /></div>
@@ -4516,7 +4651,7 @@
                                                     <input type="file" ref={jsonFileRef} onChange={handleImportJson} className="hidden" accept=".json" />
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col gap-2 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl">
+                                            <div className="flex flex-col gap-2 p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2"><span className="text-xs font-bold text-indigo-800">자동 백업 설정</span><Btn onClick={() => setShowBackupHelp(!showBackupHelp)} className="text-indigo-400 hover:text-indigo-600"><Icon d={PATHS.help} size={16}/></Btn></div>
                                                     <div onClick={toggleAutoBackup} className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${autoBackupEnabled ? 'bg-indigo-500' : 'bg-slate-300'}`}><div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoBackupEnabled ? 'translate-x-4' : ''}`}></div></div>
@@ -4531,9 +4666,9 @@
                                             </div>
                                         </div>
 
-                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-full flex flex-col justify-between">
+                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all h-full flex flex-col justify-between group">
                                             <div>
-                                                <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3"><span className="text-lg">🧹</span> 데이터 관리 및 초기화</h4>
+                                                <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5"><div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🧹</div> 데이터 관리 및 초기화</h4>
                                                 <div className="grid grid-cols-2 gap-3 mb-3">
                                                     <Btn onClick={() => setShowCleanupModal(true)} className="py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all">
                                                         <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center"><Icon d={PATHS.trash} size={18} className="text-rose-500" /></div>
@@ -7858,8 +7993,8 @@
             }
 
             return (
-                <div className={`flex flex-col h-full bg-slate-50 text-slate-900 ${appConfig.font === 'serif' ? 'font-serif' : appConfig.font === 'hand' ? 'font-hand' : appConfig.font === 'jua' ? 'font-jua' : appConfig.font === 'nanum' ? 'font-nanum' : appConfig.font === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'}`}>
-                    <header className="bg-white border-b border-notion-border z-10 sticky top-0"><div className="px-4 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3"><div className="flex items-center gap-6"><div className="flex items-center gap-2"><div className="p-1.5 bg-notion-bg-alt text-notion-text rounded border border-notion-border"><Icon d={PATHS.list} size={18}/></div><h1 className="text-base font-bold text-notion-text">{appConfig.recordTitle}</h1>{!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}</div><div className="hidden md:flex gap-1">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (<button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>))}</div></div>
+                <div className={`flex flex-col min-h-screen bg-slate-50 text-slate-900 ${appConfig.font === 'serif' ? 'font-serif' : appConfig.font === 'hand' ? 'font-hand' : appConfig.font === 'jua' ? 'font-jua' : appConfig.font === 'nanum' ? 'font-nanum' : appConfig.font === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'}`}>
+                    <header className="bg-white border-b border-notion-border z-20 sticky top-0"><div className="px-4 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3"><div className="flex items-center gap-6"><div className="flex items-center gap-2"><div className="p-1.5 bg-notion-bg-alt text-notion-text rounded border border-notion-border"><Icon d={PATHS.list} size={18}/></div><h1 className="text-base font-bold text-notion-text">{appConfig.recordTitle}</h1>{!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}</div><div className="hidden md:flex gap-1">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (<button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>))}</div></div>
                     <div className="flex items-center gap-2 absolute right-4 top-3 md:relative md:top-auto md:right-auto">
                         <button onClick={()=>setIsToolsOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>🧰</span><span className="text-sm font-medium">도구</span></button>
                         <button onClick={()=>setIsSettingOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>⚙️</span><span className="text-sm font-medium">설정</span></button>
@@ -7867,7 +8002,7 @@
                     </div>{(mode === 'record' || mode === 'group') && (<div className="bg-white border-b border-notion-border pt-2 pb-2 flex justify-center"><div className="w-full max-w-2xl px-4 flex flex-col gap-2">{mode === 'record' ? <><DateHeader date={date} setDate={setDate} onAdd={()=>setIsTaskModalOpen(true)} onReset={resetDateRecord} onCalendar={()=>setIsCalendarOpen(true)} appConfig={appConfig}/> <ProgressBar progress={progress} appConfig={appConfig} /></> : <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border mx-auto w-fit justify-center cursor-pointer"
 ><Btn onClick={()=>setDate(dayjs(date).subtract(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18}/></Btn><div className="flex flex-col items-center px-3" onClick={()=>setIsCalendarOpen(true)}><div className="text-base font-bold text-notion-text">{dayjs(date).format('YY.MM.DD')}</div><div className="text-[10px] font-bold text-notion-text-light">{dayjs(date).format('dddd')}</div></div><Btn onClick={()=>setDate(dayjs(date).add(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18}/></Btn></div>}</div></div>)}</header>
                     <main 
-                        className="flex-1 overflow-y-auto p-4 md:p-6 custom-scroll pb-8 md:pb-6 bg-white"
+                        className="flex-1 p-4 md:p-6 pb-24 md:pb-6 bg-white"
                     >
                         <div key={date} className="flex-1">
                             {mode === 'record' && (
