@@ -3896,7 +3896,10 @@
                         </div>
                     )}
 
-                    <div className="flex flex-col md:flex-row h-[65vh] gap-6">
+                    {/* [Fix] 화면 배율에 따라 모달 높이 자동 조절 (화면 잘림 방지) */}
+                    <div className="flex flex-col md:flex-row gap-6" style={{ 
+                        height: `${Math.min(65, 65 * (100 / (appConfig.uiScale || 100)))}vh` 
+                    }}>
                         <div className="w-full md:w-40 flex-shrink-0 flex flex-row md:flex-col gap-1 md:gap-2 bg-slate-50 md:bg-transparent p-1 md:p-0 rounded-xl">
                             <button onClick={() => setActiveTab('student')} className={`flex-1 md:flex-none px-1 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-bold rounded-lg md:rounded-xl text-center md:text-left whitespace-nowrap transition-all ${activeTab === 'student' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>👤 학생 관리</button>
                             <button onClick={() => setActiveTab('app')} className={`flex-1 md:flex-none px-1 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-bold rounded-lg md:rounded-xl text-center md:text-left whitespace-nowrap transition-all ${activeTab === 'app' ? 'bg-white md:bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>📱 앱 설정</button>
@@ -4203,6 +4206,54 @@
                                                         {appConfig.tabAnimationEnabled !== false && <Icon d={PATHS.check} size={14} className="text-white" strokeWidth={3} />}
                                                     </div>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <Icon d={PATHS.edit} size={16} className="text-slate-400"/>
+                                                <span className="text-xs font-bold text-slate-500">플로팅 버튼 크기</span>
+                                            </div>
+                                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                                {['small', 'medium', 'large', 'xlarge'].map(size => (
+                                                    <button key={size} onClick={() => updateAppConfig({ floatingButtonSize: size })} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${appConfig.floatingButtonSize === size ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                                                        {size === 'small' ? '작게' : size === 'medium' ? '보통' : size === 'large' ? '크게' : '더 크게'}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <Icon d={PATHS.search} size={16} className="text-slate-400"/>
+                                                <span className="text-xs font-bold text-slate-500">화면 배율 (UI Scale)</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-indigo-600">{appConfig.uiScale || 100}%</span>
+                                                {(appConfig.uiScale !== 100) && (
+                                                    <button 
+                                                        onClick={() => updateAppConfig({ uiScale: 100 })}
+                                                        className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full hover:bg-slate-200 transition-colors font-bold"
+                                                    >초기화</button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <input type="range" min="80" max="200" step="5" value={appConfig.uiScale || 100} onChange={(e) => updateAppConfig({ uiScale: parseInt(e.target.value) })} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                                            <div className="flex justify-between gap-1">
+                                                {[100, 110, 125, 150].map(scale => (
+                                                    <button 
+                                                        key={scale} 
+                                                        onClick={() => updateAppConfig({ uiScale: scale })}
+                                                        className={`flex-1 py-1 text-[10px] font-bold rounded border transition-all ${appConfig.uiScale === scale ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-100'}`}
+                                                    >
+                                                        {scale}%
+                                                    </button>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -5313,6 +5364,12 @@
     const [hasGoogleSheet, setHasGoogleSheet] = React.useState(false);
 
     const [saveTargets, setSaveTargets] = React.useState(() => {
+        // [New] 이전에 선택한 저장소 설정이 있으면 불러오기
+        const savedPref = localStorage.getItem('cls_save_targets_pref');
+        if (savedPref) {
+            try { return new Set(JSON.parse(savedPref)); } catch(e) {}
+        }
+
         const key = localStorage.getItem('cls_notion_key');
         const dbId = localStorage.getItem('cls_notion_db_id');
         const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
@@ -5354,8 +5411,22 @@
             setHasGoogleSheet(sheet);
             setHasNotionConfig(rec || port);
             setHasGoogleSheetConfig(sheet);
+
+            // [Fix] 모달이 열릴 때 저장된 설정을 다시 불러와서 적용 (상태 초기화 방지)
+            const savedPref = localStorage.getItem('cls_save_targets_pref');
+            if (savedPref) {
+                try {
+                    const savedSet = new Set(JSON.parse(savedPref));
+                    setSaveTargets(savedSet);
+                } catch (e) {}
+            }
         }
     }, [isOpen]);
+
+    // [New] 저장소 선택 상태가 변경될 때마다 로컬 스토리지에 저장
+    React.useEffect(() => {
+        localStorage.setItem('cls_save_targets_pref', JSON.stringify([...saveTargets]));
+    }, [saveTargets]);
 
     React.useEffect(() => {
         if (textareaRef.current) {
@@ -5714,7 +5785,7 @@
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
             const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
             const [isGoogleSheetSetupOpen, setIsGoogleSheetSetupOpen] = useState(false);
-            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast' });
+            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100 });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const lastBackupTime = useRef("");
@@ -5724,6 +5795,33 @@
             const [showOfflineModal, setShowOfflineModal] = useState(false);
             const [autoCloseTimer, setAutoCloseTimer] = useState(3);
             const [showUpdateNotes, setShowUpdateNotes] = useState(false);
+
+            useEffect(() => {
+                const scale = appConfig.uiScale || 100;
+                document.body.style.zoom = scale + '%';
+                
+                // [Fix] 화면 배율 확대 시 뷰포트 높이 보정 (전체 스크롤 방지)
+                const root = document.getElementById('root');
+                if (root) {
+                    const adjustedHeight = 100 * (100 / scale);
+                    root.style.height = `${adjustedHeight}vh`;
+                }
+
+                // [Fix] 화면 배율 변경 시 플로팅 버튼 위치 재조정 (화면 밖으로 나가는 현상 방지)
+                setButtonPos(prev => {
+                    const screenW = window.innerWidth;
+                    const screenH = window.innerHeight;
+                    const btnSize = 80; // 버튼 크기 + 여유 공간
+                    
+                    let newX = prev.x;
+                    let newY = prev.y;
+                    
+                    if (newX > screenW - btnSize) newX = screenW - btnSize;
+                    if (newY > screenH - btnSize) newY = screenH - btnSize;
+                    
+                    return { x: Math.max(10, newX), y: Math.max(10, newY) };
+                });
+            }, [appConfig.uiScale]);
 
             // [New] 버전 변경 시 업데이트 노트 자동 표시
             useEffect(() => {
@@ -5871,17 +5969,27 @@
                     setIsDraggingButton(false);
                     
                     if (isDragGesture.current) {
-                        // [Mod] 데스크탑(768px 이상)에서는 자유 배치 허용 (자석 효과 해제)
-                        if (window.innerWidth >= 768) return;
-
-                        // Snap to nearest edge
                         const screenWidth = window.innerWidth;
-                        const btnCenter = currentX + 28; // 56/2
+                        const btnSize = appConfig.floatingButtonSize || 'medium';
+                        const radius = btnSize === 'small' ? 20 : btnSize === 'large' ? 32 : btnSize === 'xlarge' ? 40 : 28;
+                        const btnCenter = currentX + radius;
                         const snapMargin = 24;
                         let finalX = currentX;
                         
-                        if (btnCenter < screenWidth / 2) finalX = snapMargin;
-                        else finalX = screenWidth - 56 - snapMargin;
+                        if (window.innerWidth >= 768) {
+                            // [Mod] 데스크탑: 가장자리 근처(100px)에 갔을 때만 자석 효과 적용
+                            const snapThreshold = 100;
+                            if (currentX < snapThreshold) finalX = snapMargin;
+                            else if (currentX > screenWidth - (radius * 2) - snapThreshold) finalX = screenWidth - (radius * 2) - snapMargin;
+                            else {
+                                setButtonPos({ x: currentX, y: currentY });
+                                return; // 중간에 놓으면 자유 배치
+                            }
+                        } else {
+                            // 모바일: 항상 가장 가까운 벽으로 이동
+                            if (btnCenter < screenWidth / 2) finalX = snapMargin;
+                            else finalX = screenWidth - (radius * 2) - snapMargin;
+                        }
                         
                         setButtonPos({ x: finalX, y: currentY });
                     }
@@ -8310,16 +8418,20 @@
                         onMouseEnter={() => { setIsHidden(false); if(hideTimer.current) clearTimeout(hideTimer.current); }}
                         onMouseDown={handleButtonDragStart}
                         onTouchStart={handleButtonDragStart}
+                        onDoubleClick={() => {
+                            setButtonPos({ x: window.innerWidth - 80, y: window.innerHeight - 80 });
+                            setIsHidden(false);
+                        }}
                         onClick={() => { if (!isDragGesture.current) { setShowGlobalRecord(true); resetButtonIdleTimer(); } }}
                         style={{ 
                             left: buttonPos.x, 
                             top: buttonPos.y,
                             transform: isHidden ? (buttonPos.x < window.innerWidth / 2 ? 'translateX(-50px)' : 'translateX(50px)') : 'none'
                         }}
-                        className={`fixed z-[1500] w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center group ${isDraggingButton ? '' : 'transition-all duration-300 hover:bg-indigo-700 hover:scale-105'} ${isHidden ? 'opacity-50' : (isButtonIdle ? 'opacity-30 hover:opacity-100' : 'opacity-100')}`}
+                        className={`fixed z-[1500] ${appConfig.floatingButtonSize === 'small' ? 'w-10 h-10' : appConfig.floatingButtonSize === 'large' ? 'w-16 h-16' : appConfig.floatingButtonSize === 'xlarge' ? 'w-20 h-20' : 'w-14 h-14'} bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center group ${isDraggingButton ? '' : 'transition-all duration-300 hover:bg-indigo-700 hover:scale-105'} ${isHidden ? 'opacity-50' : (isButtonIdle ? 'opacity-30 hover:opacity-100' : 'opacity-100')}`}
                         title="빠른 관찰 기록"
                     >
-                        <Icon d={PATHS.edit} size={24} />
+                        <Icon d={PATHS.edit} size={appConfig.floatingButtonSize === 'small' ? 20 : appConfig.floatingButtonSize === 'large' ? 28 : appConfig.floatingButtonSize === 'xlarge' ? 36 : 24} />
                         <span className={`absolute bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none ${buttonPos.x < window.innerWidth / 2 ? 'left-full ml-3' : 'right-full mr-3'}`}>빠른 기록</span>
                     </button>
                 </div>
