@@ -100,6 +100,9 @@
         }
     </script>
     <style data-app-style="true">
+        /* 🌟 이 한 줄이 화면 밑의 모든 유령 여백을 강제로 잘라냅니다! */
+        #root > div { padding-bottom: 20px !important; margin-bottom: 0 !important; }
+        
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
@@ -8131,7 +8134,7 @@
                                 </div>
                             </div>
                         )}
-                        <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visual Studio Code With Gemini</footer>
+                        <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden text-center py-4 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | spk </footer>
                     </main>
                     <footer onClick={() => setShowUpdateNotes(true)} className="hidden md:block text-center py-2 text-xs text-slate-400 bg-slate-50 hover:bg-slate-100 border-t border-slate-200 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visual Studio Code With Gemini</footer>
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe">
