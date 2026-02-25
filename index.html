@@ -334,7 +334,8 @@
             return (
                 <div className={`fixed inset-0 bg-black/40 ${zIndex} flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in`} onClick={onClose}>
                     <div 
-                        className={`bg-white w-full ${maxWidth} rounded-xl shadow-xl border border-notion-border p-6 h-auto max-h-[85vh] flex flex-col animate-modal-enter`} 
+                        className={`bg-white w-full ${maxWidth} rounded-xl shadow-xl border border-notion-border p-6 h-auto flex flex-col animate-modal-enter`} 
+                        style={{ maxHeight: 'calc(85vh / var(--ui-scale, 1))' }}
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="flex justify-between items-center mb-6 flex-shrink-0">
@@ -710,6 +711,12 @@
             const [hasGoogleSheet, setHasGoogleSheet] = useState(false);
 
             const [saveTargets, setSaveTargets] = useState(() => {
+                // [Fix] 저장된 설정 우선 불러오기
+                const savedPref = localStorage.getItem('cls_save_targets_pref');
+                if (savedPref) {
+                    try { return new Set(JSON.parse(savedPref)); } catch(e) {}
+                }
+
                 const key = localStorage.getItem('cls_notion_key');
                 const dbId = localStorage.getItem('cls_notion_db_id');
                 const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
@@ -751,15 +758,28 @@
                     setHasNotionConfig(rec || port);
                     setHasGoogleSheetConfig(sheet);
                     
-                    setSaveTargets(prev => {
-                        const next = new Set(prev);
-                        if (isPortfolioMode && port) next.add('notion_portfolio');
-                        else if (rec) next.add('notion_record');
-                        if (sheet) next.add('google_sheet');
-                        return next;
-                    });
+                    // [Fix] 저장된 설정이 있으면 불러오고, 없으면 기본값 설정
+                    const savedPref = localStorage.getItem('cls_save_targets_pref');
+                    if (savedPref) {
+                        try {
+                            setSaveTargets(new Set(JSON.parse(savedPref)));
+                        } catch (e) {}
+                    } else {
+                        setSaveTargets(prev => {
+                            const next = new Set();
+                            if (isPortfolioMode && port) next.add('notion_portfolio');
+                            else if (rec) next.add('notion_record');
+                            if (sheet) next.add('google_sheet');
+                            return next;
+                        });
+                    }
                 }
             }, [isOpen, isPortfolioMode]);
+
+            // [New] 선택 상태 변경 시 저장
+            useEffect(() => {
+                localStorage.setItem('cls_save_targets_pref', JSON.stringify([...saveTargets]));
+            }, [saveTargets]);
 
             // [New] 상세 뷰 데이터 캐싱 (닫힐 때 애니메이션 유지용)
             useEffect(() => {
@@ -4213,6 +4233,19 @@
                                     <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
                                         <div className="flex justify-between items-center">
                                             <div className="flex items-center gap-2">
+                                                <Icon d={PATHS.magic} size={16} className="text-slate-400"/>
+                                                <span className="text-xs font-bold text-slate-500">플로팅 버튼 자동 숨김</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[10px] font-bold ${appConfig.floatingButtonAutoHide !== false ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.floatingButtonAutoHide !== false ? "ON" : "OFF"}</span>
+                                                <div onClick={() => updateAppConfig({ floatingButtonAutoHide: !(appConfig.floatingButtonAutoHide !== false) })} className={`w-8 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${appConfig.floatingButtonAutoHide !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}><div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${appConfig.floatingButtonAutoHide !== false ? 'translate-x-3' : ''}`}></div></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
                                                 <Icon d={PATHS.edit} size={16} className="text-slate-400"/>
                                                 <span className="text-xs font-bold text-slate-500">플로팅 버튼 크기</span>
                                             </div>
@@ -5798,12 +5831,14 @@
 
             useEffect(() => {
                 const scale = appConfig.uiScale || 100;
+                const scaleFactor = scale / 100;
                 document.body.style.zoom = scale + '%';
+                document.body.style.setProperty('--ui-scale', scaleFactor);
                 
                 // [Fix] 화면 배율 확대 시 뷰포트 높이 보정 (전체 스크롤 방지)
                 const root = document.getElementById('root');
                 if (root) {
-                    const adjustedHeight = 100 * (100 / scale);
+                    const adjustedHeight = 100 / scaleFactor;
                     root.style.height = `${adjustedHeight}vh`;
                 }
 
@@ -5813,11 +5848,15 @@
                     const screenH = window.innerHeight;
                     const btnSize = 80; // 버튼 크기 + 여유 공간
                     
+                    // Effective screen size in zoomed coordinates
+                    const effectiveW = screenW / scaleFactor;
+                    const effectiveH = screenH / scaleFactor;
+
                     let newX = prev.x;
                     let newY = prev.y;
                     
-                    if (newX > screenW - btnSize) newX = screenW - btnSize;
-                    if (newY > screenH - btnSize) newY = screenH - btnSize;
+                    if (newX > effectiveW - btnSize) newX = effectiveW - btnSize;
+                    if (newY > effectiveH - btnSize) newY = effectiveH - btnSize;
                     
                     return { x: Math.max(10, newX), y: Math.max(10, newY) };
                 });
@@ -5908,8 +5947,12 @@
             useEffect(() => {
                 setIsHidden(false);
                 if (hideTimer.current) clearTimeout(hideTimer.current);
+                
+                if (appConfig.floatingButtonAutoHide === false) return;
 
-                const screenWidth = window.innerWidth;
+                const scaleFactor = (appConfig.uiScale || 100) / 100;
+                const screenWidth = window.innerWidth / scaleFactor;
+
                 const isLeft = buttonPos.x < 40;
                 const isRight = buttonPos.x > screenWidth - 96;
 
@@ -5918,7 +5961,7 @@
                         setIsHidden(true);
                     }, 3000);
                 }
-            }, [buttonPos]);
+            }, [buttonPos, appConfig.floatingButtonAutoHide, appConfig.uiScale]);
 
             const handleButtonDragStart = (e) => {
                 resetButtonIdleTimer();
