@@ -652,12 +652,35 @@
             slate: { bg: 'bg-slate-100', border: 'border-slate-400', ring: 'ring-slate-300', text: 'text-slate-700', dot: 'bg-slate-500' },
         };
 
-        const CounselingAIModal = ({ isOpen, onClose, student, apiKey, showToast, onSave, notes }) => {
+        const CounselingAIModal = ({ isOpen, onClose, student, students, apiKey, showToast, onSave, notes }) => {
             const [advice, setAdvice] = useState("");
             const [isGenerating, setIsGenerating] = useState(false);
             const [consultationTopic, setConsultationTopic] = useState("");
+            const [showPromptSettings, setShowPromptSettings] = useState(false);
+            const [promptTemplate, setPromptTemplate] = useState("");
+
+            const DEFAULT_COUNSELING_TEMPLATE = `당신은 초등교육 전문가이자 심리 상담가입니다. 다음 학생에 대한 상담 조언을 제공해주세요.
+
+[학생 정보]
+- 이름: (익명)
+- 최근 관찰 기록:
+{{records}}
+
+[상담 주제]
+{{topic}}
+
+[요청 사항]
+1. 학생의 상황을 공감하고 이해하는 태도로 작성하세요.
+2. 교사가 학생에게 해줄 수 있는 구체적인 조언이나 지도 방법을 3가지 정도 제시하세요.
+3. 학부모님과 상담할 때 활용할 수 있는 팁도 한 문장 덧붙여주세요.
+4. 말투는 정중하고 부드럽게 해주세요.`;
 
             if (!isOpen) return null;
+
+            useEffect(() => {
+                const saved = localStorage.getItem('cls_ai_prompt_counseling');
+                setPromptTemplate(saved || DEFAULT_COUNSELING_TEMPLATE);
+            }, []);
 
             const handleGenerate = async () => {
                 if (!consultationTopic.trim()) return showToast("상담 주제를 입력해주세요.");
@@ -665,11 +688,29 @@
                 try {
                     const recentNotes = notes.slice(0, 5).map(n => `[${n.date}] ${n.content}`).join('\n');
                     let safeNotes = recentNotes;
+                    let safeTopic = consultationTopic;
+
+                    // [보안] 대상 학생 익명화
                     if (typeof anonymizeText === 'function') {
                         safeNotes = anonymizeText(safeNotes, student.name);
+                        safeTopic = anonymizeText(safeTopic, student.name);
+                    }
+
+                    // [보안] 다른 학생들 익명화 (급우)
+                    if (students && Array.isArray(students)) {
+                        students.forEach(s => {
+                            if (s.id !== student.id) {
+                                safeNotes = safeNotes.replaceAll(s.name, "급우");
+                                if (s.name.length >= 3) safeNotes = safeNotes.replaceAll(s.name.substring(1), "급우");
+                                safeTopic = safeTopic.replaceAll(s.name, "급우");
+                                if (s.name.length >= 3) safeTopic = safeTopic.replaceAll(s.name.substring(1), "급우");
+                            }
+                        });
                     }
                     
-                    const prompt = `당신은 초등교육 전문가이자 심리 상담가입니다. 다음 학생에 대한 상담 조언을 제공해주세요.\n\n[학생 정보]\n- 이름: (익명)\n- 최근 관찰 기록:\n${safeNotes || "기록 없음"}\n\n[상담 주제]\n${consultationTopic}\n\n[요청 사항]\n1. 학생의 상황을 공감하고 이해하는 태도로 작성하세요.\n2. 교사가 학생에게 해줄 수 있는 구체적인 조언이나 지도 방법을 3가지 정도 제시하세요.\n3. 학부모님과 상담할 때 활용할 수 있는 팁도 한 문장 덧붙여주세요.\n4. 말투는 정중하고 부드럽게 해주세요.`;
+                    let prompt = promptTemplate || DEFAULT_COUNSELING_TEMPLATE;
+                    prompt = prompt.replace('{{records}}', safeNotes || "기록 없음");
+                    prompt = prompt.replace('{{topic}}', safeTopic);
 
                     const response = await callGemini(apiKey, prompt);
                     setAdvice(response);
@@ -678,6 +719,18 @@
                 } finally {
                     setIsGenerating(false);
                 }
+            };
+
+            const handleSavePrompt = () => {
+                localStorage.setItem('cls_ai_prompt_counseling', promptTemplate);
+                showToast("프롬프트 설정이 저장되었습니다.");
+                setShowPromptSettings(false);
+            };
+
+            const handleResetPrompt = () => {
+                setPromptTemplate(DEFAULT_COUNSELING_TEMPLATE);
+                localStorage.removeItem('cls_ai_prompt_counseling');
+                showToast("기본값으로 초기화되었습니다.");
             };
 
             return (
@@ -691,6 +744,23 @@
                             <label className="text-xs font-bold text-slate-500">상담하고 싶은 내용 (고민)</label>
                             <textarea className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-rose-500 resize-none h-24" placeholder="예: 친구들과 자주 다투는데 어떻게 지도하면 좋을까요? / 수업 시간에 집중을 잘 못해요." value={consultationTopic} onChange={(e) => setConsultationTopic(e.target.value)} />
                         </div>
+                        
+                        <div className="border-t border-slate-100 pt-2">
+                            <button onClick={() => setShowPromptSettings(!showPromptSettings)} className="text-xs font-bold text-slate-400 flex items-center gap-1 hover:text-slate-600 transition-colors mb-2">
+                                <Icon d={PATHS.settings} size={12} /> 프롬프트 설정 {showPromptSettings ? '접기' : '열기'}
+                            </button>
+                            {showPromptSettings && (
+                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 animate-fade-in space-y-2">
+                                    <p className="text-[10px] text-slate-500">AI에게 전달할 지시사항을 수정할 수 있습니다. <code>{`{{records}}`}</code>, <code>{`{{topic}}`}</code> 부분에 데이터가 들어갑니다.</p>
+                                    <textarea value={promptTemplate} onChange={(e) => setPromptTemplate(e.target.value)} className="w-full h-40 p-2 border border-slate-300 rounded-lg text-xs font-mono outline-none focus:border-indigo-500 resize-none custom-scroll" />
+                                    <div className="flex justify-end gap-2">
+                                        <button onClick={handleResetPrompt} className="px-3 py-1.5 bg-white border border-slate-300 text-slate-500 rounded-lg text-xs font-bold hover:bg-slate-50">초기화</button>
+                                        <button onClick={handleSavePrompt} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">저장</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <Btn onClick={handleGenerate} disabled={isGenerating} className="w-full py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md flex items-center justify-center gap-2">
                             {isGenerating ? <><Icon d={PATHS.spinner} className="animate-spin"/> 고민하는 중...</> : <><Icon d={PATHS.magic}/> 조언 구하기</>}
                         </Btn>
@@ -1884,7 +1954,7 @@
                         </div>
 
                         {showCounselingAI && (
-                            <CounselingAIModal isOpen={showCounselingAI} onClose={() => setShowCounselingAI(false)} student={student} apiKey={apiKey} showToast={showToast} onSave={handleSaveAIAdvice} notes={notes} />
+                            <CounselingAIModal isOpen={showCounselingAI} onClose={() => setShowCounselingAI(false)} student={student} students={students} apiKey={apiKey} showToast={showToast} onSave={handleSaveAIAdvice} notes={notes} />
                         )}
 
                         {showStudentRecordAI && (
@@ -1987,6 +2057,66 @@
             const [phrases, setPhrases] = useState(() => { try { return JSON.parse(localStorage.getItem('cls_behavior_phrases') || '[]'); } catch { return []; } });
             const [showPhraseList, setShowPhraseList] = useState(false);
             const textareaRef = useRef(null);
+            const [showPromptSettings, setShowPromptSettings] = useState(false);
+            const [behaviorTemplate, setBehaviorTemplate] = useState("");
+            const [subjectTemplate, setSubjectTemplate] = useState("");
+
+            const DEFAULT_BEHAVIOR_TEMPLATE = `{{security_rule}}
+
+# Role
+당신은 초등교육 전문가이자 담임 교사입니다. 학생을 세심하게 관찰하고, 학생의 전인적 성장을 돕는 '행동특성 및 종합의견(총평)'을 작성합니다.
+
+# Strict Guidelines (작성 원칙)
+1. **Fact-Based**: 반드시 제공된 [교사 관찰 기록]에 있는 내용만으로 작성하세요. 기록에 없는 내용은 절대 지어내지 마세요.
+2. **Data Validation**: 관찰 기록이 부족하여 총평을 작성하기에 정보가 현저히 부족하다면, 억지로 내용을 만들지 말고 "관찰 기록이 부족하여 총평을 생성할 수 없습니다. 학생에 대한 관찰 기록을 더 입력해주세요."라고만 출력하고 작성을 중단하세요.
+3. **Subject**: 문장의 주어는 반드시 '학생'이어야 합니다. (교사의 관찰, 경험, 감정이 주어가 되지 않도록 주의)
+4. **Tone**: 공식 문서(생활기록부)이므로 지나치게 문학적인 표현은 자제하고, 명확하고 정중한 문체를 사용하세요.
+5. **Growth Focus**: 전년/전학기에 비해 영적, 인지적, 정서적, 학습적, 사회도덕적, 신체적 부분에서 어떤 성장이 이루어졌는지 드러나도록 기술하세요.
+{{length_constraint}}
+
+# Writing Structure (작성 순서)
+다음 순서와 내용을 포함하여 하나의 완성된 글로 작성하세요.
+1. **핵심 특성**: 전체 주제어가 될만한 핵심 특성을 수식어로 사용하여 학생을 소개하는 첫 문장. (예: "섬기는 것을 기뻐하는 [STUDENT_TOKEN]이는...")
+2. **영적 성장**: 코람데오 시간, 하나님을 아는 지식에서의 성장 (기록이 있을 경우).
+3. **지적 성장**: 교과 학습에서의 성장, 재능과 은사.
+4. **학습 태도**: 기술, 전략에서의 성장.
+5. **정서적 발달**: 정서적 안정성, 조절, 활용 능력.
+6. **성품 및 행동**: 배려, 리더십, 교우 관계.
+7. **제언**: 부족한 부분, 연약한 부분에 대한 아쉬움과 구체적인 교육적 제안.
+8. **기대**: 향후 하나님이 하실 부분에 대한 기대와 축복.
+
+# Input Data
+- 이름: {{name}}
+- 성실성(과제 수행률): {{task_rate}}%
+- 칭찬 스티커: {{sticker_count}}개
+- 키워드: {{keywords}}
+
+[교사 관찰 기록 (기초 자료)]
+{{records}}
+
+{{insufficient_notice}}`;
+
+            const DEFAULT_SUBJECT_TEMPLATE = `{{security_rule}}
+
+# Role Definition
+초등학교 교사로서 '교과 학습 발달 상황'을 작성하라.
+
+# Strict Guidelines
+1. **Fact Only**: 제공된 관찰 기록에 있는 내용만 서술하라.
+2. **No Hallucination**: 학생이 특정 과목을 잘했는지 못했는지 기록에 없다면 언급하지 마라.
+3. **데이터 부족 시**: "특이 사항 없음" 또는 과제 수행률만 언급하고 마무리하라.
+
+[교사 관찰 기록]
+{{records}}
+
+위 기록을 바탕으로 국어, 수학, 사회, 과학, 영어 등 교과 관련 내용을 작성하세요. 기록이 없는 과목은 언급하지 마세요.`;
+
+            useEffect(() => {
+                const savedBehavior = localStorage.getItem('cls_ai_prompt_behavior');
+                const savedSubject = localStorage.getItem('cls_ai_prompt_subject');
+                setBehaviorTemplate(savedBehavior || DEFAULT_BEHAVIOR_TEMPLATE);
+                setSubjectTemplate(savedSubject || DEFAULT_SUBJECT_TEMPLATE);
+            }, []);
 
             useEffect(() => {
                 if (isOpen && student) {
@@ -2069,59 +2199,21 @@
                     const securityRule = "[보안 규칙: 당신은 철저한 익명성을 유지해야 합니다. 응답 내용에 사람의 이름이나 실명을 유추할 수 있는 단어를 절대 포함하지 마세요. 대명사가 필요할 때는 반드시 '해당 학생'이라고만 지칭하세요.]";
 
                     let prompt = "";
+                    
                     if (recordType === 'behavior') { // 행동특성 및 종합의견 (기독교 대안학교 스타일)
-                        prompt = `
-                            ${securityRule}
-
-                            # Role
-                            당신은 초등교육 전문가이자 담임 교사입니다. 학생을 세심하게 관찰하고, 학생의 전인적 성장을 돕는 '행동특성 및 종합의견(총평)'을 작성합니다.
-
-                            # Strict Guidelines (작성 원칙)
-                            1. **Fact-Based**: 반드시 제공된 [교사 관찰 기록]에 있는 내용만으로 작성하세요. 기록에 없는 내용은 절대 지어내지 마세요.
-                            2. **Data Validation**: 관찰 기록이 부족하여 총평을 작성하기에 정보가 현저히 부족하다면, 억지로 내용을 만들지 말고 "관찰 기록이 부족하여 총평을 생성할 수 없습니다. 학생에 대한 관찰 기록을 더 입력해주세요."라고만 출력하고 작성을 중단하세요.
-                            3. **Subject**: 문장의 주어는 반드시 '학생'이어야 합니다. (교사의 관찰, 경험, 감정이 주어가 되지 않도록 주의)
-                            4. **Tone**: 공식 문서(생활기록부)이므로 지나치게 문학적인 표현은 자제하고, 명확하고 정중한 문체를 사용하세요.
-                            5. **Growth Focus**: 전년/전학기에 비해 영적, 인지적, 정서적, 학습적, 사회도덕적, 신체적 부분에서 어떤 성장이 이루어졌는지 드러나도록 기술하세요.
-
-                            # Writing Structure (작성 순서)
-                            다음 순서와 내용을 포함하여 하나의 완성된 글로 작성하세요.
-                            1. **핵심 특성**: 전체 주제어가 될만한 핵심 특성을 수식어로 사용하여 학생을 소개하는 첫 문장. (예: "섬기는 것을 기뻐하는 [STUDENT_TOKEN]이는...")
-                            2. **영적 성장**: 코람데오 시간, 하나님을 아는 지식에서의 성장 (기록이 있을 경우).
-                            3. **지적 성장**: 교과 학습에서의 성장, 재능과 은사.
-                            4. **학습 태도**: 기술, 전략에서의 성장.
-                            5. **정서적 발달**: 정서적 안정성, 조절, 활용 능력.
-                            6. **성품 및 행동**: 배려, 리더십, 교우 관계.
-                            7. **제언**: 부족한 부분, 연약한 부분에 대한 아쉬움과 구체적인 교육적 제안.
-                            8. **기대**: 향후 하나님이 하실 부분에 대한 기대와 축복.
-                            
-                            # Input Data
-                            - 이름: ${safeName}
-                            - 성실성(과제 수행률): ${taskRate}%
-                            - 칭찬 스티커: ${student.stickers}개
-                            - 키워드: ${safeKeywords}
-                            
-                            [교사 관찰 기록 (기초 자료)]
-                            ${safeNotesStr}
-
-                            ${isInsufficient ? "주의: 기록이 매우 부족합니다. 위 원칙에 따라 '관찰 기록이 부족하여...' 메시지를 출력하거나, 수행률 데이터만으로 아주 간략하게 사실만 기술하세요." : "위 원칙과 순서에 맞춰 작성하세요."}
-                        `;
+                        prompt = behaviorTemplate || DEFAULT_BEHAVIOR_TEMPLATE;
+                        prompt = prompt.replace('{{security_rule}}', securityRule);
+                        prompt = prompt.replace('{{length_constraint}}', lengthConstraint ? `6. **Length**: ${lengthConstraint}` : "");
+                        prompt = prompt.replace('{{name}}', safeName);
+                        prompt = prompt.replace('{{task_rate}}', taskRate);
+                        prompt = prompt.replace('{{sticker_count}}', student.stickers);
+                        prompt = prompt.replace('{{keywords}}', safeKeywords);
+                        prompt = prompt.replace('{{records}}', safeNotesStr);
+                        prompt = prompt.replace('{{insufficient_notice}}', isInsufficient ? "주의: 기록이 매우 부족합니다. 위 원칙에 따라 '관찰 기록이 부족하여...' 메시지를 출력하거나, 수행률 데이터만으로 아주 간략하게 사실만 기술하세요." : "위 원칙과 순서에 맞춰 작성하세요.");
                     } else {
-                        prompt = `
-                            ${securityRule}
-
-                            # Role Definition
-                            초등학교 교사로서 '교과 학습 발달 상황'을 작성하라.
-
-                            # Strict Guidelines
-                            1. **Fact Only**: 제공된 관찰 기록에 있는 내용만 서술하라.
-                            2. **No Hallucination**: 학생이 특정 과목을 잘했는지 못했는지 기록에 없다면 언급하지 마라.
-                            3. **데이터 부족 시**: "특이 사항 없음" 또는 과제 수행률만 언급하고 마무리하라.
-
-                            [교사 관찰 기록]
-                            ${safeNotesStr}
-                            
-                            위 기록을 바탕으로 국어, 수학, 사회, 과학, 영어 등 교과 관련 내용을 작성하세요. 기록이 없는 과목은 언급하지 마세요.
-                        `;
+                        prompt = subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
+                        prompt = prompt.replace('{{security_rule}}', securityRule);
+                        prompt = prompt.replace('{{records}}', safeNotesStr);
                     }
 
                     const text = await callGemini(apiKey, prompt, 0.1);
@@ -2204,6 +2296,27 @@
                 }
             };
 
+            const handleSavePrompt = () => {
+                if (recordType === 'behavior') {
+                    localStorage.setItem('cls_ai_prompt_behavior', behaviorTemplate);
+                } else {
+                    localStorage.setItem('cls_ai_prompt_subject', subjectTemplate);
+                }
+                showToast("프롬프트 설정이 저장되었습니다.");
+                setShowPromptSettings(false);
+            };
+
+            const handleResetPrompt = () => {
+                if (recordType === 'behavior') {
+                    setBehaviorTemplate(DEFAULT_BEHAVIOR_TEMPLATE);
+                    localStorage.removeItem('cls_ai_prompt_behavior');
+                } else {
+                    setSubjectTemplate(DEFAULT_SUBJECT_TEMPLATE);
+                    localStorage.removeItem('cls_ai_prompt_subject');
+                }
+                showToast("기본값으로 초기화되었습니다.");
+            };
+
             if (!isOpen) return null;
 
             return (
@@ -2241,6 +2354,29 @@
                                 <button onClick={() => setRecordType('behavior')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${recordType === 'behavior' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>행동특성 및 종합의견</button>
                                 <button onClick={() => setRecordType('subject')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${recordType === 'subject' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>교과 학습 발달</button>
                             </div>
+                        </div>
+
+                        <div className="border-t border-slate-100 pt-2">
+                            <button onClick={() => setShowPromptSettings(!showPromptSettings)} className="text-xs font-bold text-slate-400 flex items-center gap-1 hover:text-slate-600 transition-colors mb-2">
+                                <Icon d={PATHS.settings} size={12} /> 프롬프트 설정 {showPromptSettings ? '접기' : '열기'}
+                            </button>
+                            {showPromptSettings && (
+                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 animate-fade-in space-y-2">
+                                    <p className="text-[10px] text-slate-500">
+                                        {recordType === 'behavior' ? '행동특성 및 종합의견' : '교과 학습 발달'} 생성 지침을 수정합니다. 
+                                        <code>{`{{name}}`}</code>, <code>{`{{records}}`}</code> 등의 변수는 자동으로 채워집니다.
+                                    </p>
+                                    <textarea 
+                                        value={recordType === 'behavior' ? behaviorTemplate : subjectTemplate} 
+                                        onChange={(e) => recordType === 'behavior' ? setBehaviorTemplate(e.target.value) : setSubjectTemplate(e.target.value)} 
+                                        className="w-full h-40 p-2 border border-slate-300 rounded-lg text-xs font-mono outline-none focus:border-indigo-500 resize-none custom-scroll" 
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button onClick={handleResetPrompt} className="px-3 py-1.5 bg-white border border-slate-300 text-slate-500 rounded-lg text-xs font-bold hover:bg-slate-50">초기화</button>
+                                        <button onClick={handleSavePrompt} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">저장</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <Btn onClick={handleGenerate} disabled={isGenerating} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-md flex items-center justify-center gap-2">
