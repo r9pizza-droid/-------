@@ -372,9 +372,32 @@
         const Toast = ({ message, action, onClose }) => {
             const onCloseRef = useRef(onClose);
             useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-            useEffect(() => { if (!message) return; const duration = action ? 4000 : 2000; const timer = setTimeout(() => onCloseRef.current(), duration); return () => clearTimeout(timer); }, [message, action]);
+            useEffect(() => { if (!message) return; const duration = action ? 4000 : 3000; const timer = setTimeout(() => onCloseRef.current(), duration); return () => clearTimeout(timer); }, [message, action]);
             if (!message) return null;
-            return <div className="fixed top-10 left-1/2 transform -translate-x-1/2 z-[3000] animate-pop-up pointer-events-none"><div className="bg-[#37352F] text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 backdrop-blur-md min-w-[200px] justify-center pointer-events-auto"><Icon d={PATHS.check} size={16} className="text-white" /><span className="font-medium text-sm text-center">{message}</span>{action && <button onClick={action.onClick} className="ml-3 bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-xs font-bold transition-colors">{action.label}</button>}</div></div>;
+            
+            // 🌟 메시지 내용에 따라 디자인 자동 변경 (삭제/에러 vs 성공/저장)
+            const isAlert = message.includes("삭제") || message.includes("초기화") || message.includes("실패") || message.includes("오류");
+            const iconBg = isAlert ? "from-rose-400 to-rose-600" : "from-indigo-500 to-purple-500";
+            const emoji = isAlert ? "🗑️" : "✨";
+            const borderColor = isAlert ? "border-rose-100" : "border-indigo-100";
+
+            return (
+                <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[4000] w-full max-w-sm px-4 animate-[slideInDown_0.5s_cubic-bezier(0.16,1,0.3,1)] pointer-events-none">
+                    <div className={`bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-3 border ${borderColor} flex items-center gap-3 ring-1 ring-black/5 pointer-events-auto`}>
+                        <div className={`w-10 h-10 bg-gradient-to-br ${iconBg} rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                            <span className="text-lg animate-bounce">{emoji}</span>
+                        </div>
+                        <div className="flex-1 min-w-0 pr-2">
+                            <h4 className="font-bold text-slate-800 text-sm leading-tight break-keep">{message}</h4>
+                        </div>
+                        {action && (
+                            <button onClick={action.onClick} className="ml-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
+                                {action.label}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            );
         };
         const ConfirmModal = ({ isOpen, message, onConfirm, onCancel }) => {
 
