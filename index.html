@@ -5372,7 +5372,7 @@
                 if (!groups || groups.length === 0) return showToast("편성된 모둠이 없습니다.");
                 openConfirm("모둠 결과를 자리 배치에 적용하시겠습니까?\n(기존 배치는 초기화됩니다)", () => {
                     const newAssignments = {};
-                    const flatStudents = groups.flat();
+                    const flatStudents = groups.flat().filter(s => s && s.id);
                     let idx = 0;
                     for (let r = 0; r < seatConfig.rows; r++) {
                         for (let c = 0; c < seatConfig.cols; c++) {
