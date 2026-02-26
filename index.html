@@ -4278,7 +4278,7 @@
                                         <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
                                             <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 flex-shrink-0"><Icon d={PATHS.users} size={20}/></div>
                                             <div className="flex-1 min-w-0">
-                                                <label className="text-[10px] font-bold text-slate-400 block mb-0.5">모둠 회전 알림 요일</label>
+                                                <label className="text-[10px] font-bold text-slate-400 block mb-0.5">자전과 공전 알림 요일</label>
                                                 <select value={appConfig.rotationDay !== undefined ? appConfig.rotationDay : 5} onChange={e => updateAppConfig({ rotationDay: parseInt(e.target.value) })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent cursor-pointer">
                                                     <option value={1}>월요일</option>
                                                     <option value={2}>화요일</option>
@@ -5600,6 +5600,8 @@
             const [authId, setAuthId] = useState(""); 
             const [authPw, setAuthPw] = useState("");
             const [rememberMe, setRememberMe] = useState(false);
+            const [showManual, setShowManual] = useState(false);
+            const [isTesting, setIsTesting] = useState(false);
 
             useEffect(() => {
                 if (isOpen) {
@@ -5615,16 +5617,21 @@
                 }
             }, [isOpen]);
             
+            const parseConfig = (input) => {
+                if (!input) return null;
+                try {
+                    let clean = input.trim();
+                    clean = clean.replace(/\/\*[\s\S]*?\*\//g, '');
+                    clean = clean.replace(/([^\\:]|^)\/\/.*$/gm, '$1');
+                    clean = clean.replace(/(?:^|[\s\r\n]+)(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*/, '');
+                    clean = clean.replace(/;+\s*$/, '');
+                    try { return JSON.parse(clean); } catch (e) { return new Function("return " + clean)(); }
+                } catch (e) { return null; }
+            };
+
             const handleConnect = async () => { 
                 if(!authId || !authPw) { showToast("아이디와 비밀번호를 입력해주세요."); return; } 
-                let config;
-                try { 
-                    let cleanInput = inputConfig.trim();
-                    cleanInput = cleanInput.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '');
-                    cleanInput = cleanInput.replace(/^(export\s+)?(const|let|var)\s+\w+\s*=\s*/, '');
-                    cleanInput = cleanInput.replace(/;+\s*$/, '');
-                    try { config = JSON.parse(cleanInput); } catch (e) { config = new Function("return " + cleanInput)(); }
-                } catch (e) { showToast("설정 코드 형식이 올바르지 않습니다."); return; }
+                const config = parseConfig(inputConfig);
 
                 if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
 
@@ -5641,9 +5648,91 @@
                 } 
             };
 
+            const handleTest = async () => {
+                if(!authId || !authPw) { showToast("아이디와 비밀번호를 입력해주세요."); return; }
+                const config = parseConfig(inputConfig);
+
+                if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
+
+                setIsTesting(true);
+                try {
+                    if (!firebase.apps.length) firebase.initializeApp(config);
+                    await firebase.auth().signInWithEmailAndPassword(authId, authPw);
+                    showToast("✅ 연결 테스트 성공! (로그인 확인됨)");
+                } catch (e) {
+                    let errMsg = "연결 실패: " + e.message;
+                    if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
+                    showToast(errMsg);
+                } finally {
+                    setIsTesting(false);
+                }
+            };
+
+            const handlePasteConfig = async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        setInputConfig(text);
+                        showToast("설정 코드가 붙여넣어졌습니다.");
+                    }
+                } catch (err) { showToast("붙여넣기 실패 (권한 확인 필요)"); }
+            };
+
             if (!isOpen) return null;
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="⛅️ Firebase 연결 설정" icon={null}><div className="flex flex-col gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200"><div className="text-xs font-bold text-slate-500 mb-1">Firebase 인증 (이메일/비밀번호)</div><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일 (ID)" value={authId} onChange={e => setAuthId(e.target.value)} /><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} /></div><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder='설정 코드 붙여넣기 (예: const firebaseConfig = ...)' value={inputConfig} onChange={e => setInputConfig(e.target.value)} /><div className="flex items-center gap-2 mt-2 px-1"><label className="flex items-center gap-2 cursor-pointer select-none group"><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-slate-300 group-hover:border-indigo-400'}`}>{rememberMe && <Icon d={PATHS.check} size={14} className="text-white" />}</div><input type="checkbox" className="hidden" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} /><span className="text-sm font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">로그인 정보 저장</span></label></div><div className="flex gap-3 mt-5"><Btn onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">취소</Btn><Btn onClick={handleConnect} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">연결하기</Btn></div></BaseModal>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="⛅️ Firebase 연결 설정" icon={null}>
+                    <div className="flex justify-end mb-2">
+                        <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
+                            <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                        </button>
+                    </div>
+                    {showManual && (
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-4 animate-fade-in mb-4 max-h-60 overflow-y-auto custom-scroll">
+                            <div>
+                                <h4 className="font-bold text-indigo-700 mb-1">1. 프로젝트 생성 및 설정</h4>
+                                <ol className="list-decimal pl-4 space-y-1">
+                                    <li><a href="https://console.firebase.google.com/" target="_blank" className="text-blue-600 underline">Firebase Console</a> 접속 &gt; 프로젝트 추가</li>
+                                    <li>앱 추가(Web, &lt;/&gt; 아이콘) &gt; 앱 닉네임 입력 &gt; 앱 등록</li>
+                                    <li><code>const firebaseConfig = ...</code> 코드 전체 복사</li>
+                                    <li>아래 <strong>'설정 코드 붙여넣기'</strong> 칸에 붙여넣기</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-indigo-700 mb-1">2. 인증(로그인) 설정</h4>
+                                <ol className="list-decimal pl-4 space-y-1">
+                                    <li>좌측 메뉴 <strong>Build &gt; Authentication</strong> &gt; Get started</li>
+                                    <li><strong>Sign-in method</strong> &gt; <strong>Email/Password</strong> &gt; 사용 설정(Enable) &gt; 저장</li>
+                                    <li><strong>Users</strong> 탭 &gt; Add user &gt; 이메일/비밀번호 생성</li>
+                                    <li>생성한 이메일/비밀번호를 아래 입력창에 입력</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-indigo-700 mb-1">3. 데이터베이스(Firestore) 및 보안 규칙</h4>
+                                <ol className="list-decimal pl-4 space-y-1">
+                                    <li>좌측 메뉴 <strong>Build &gt; Firestore Database</strong> &gt; Create database</li>
+                                    <li><strong>Rules</strong> 탭 클릭 &gt; 아래 코드로 교체 &gt; <strong>Publish</strong></li>
+                                    <li>(주의) 코드 내 <code>'개인UID를 넣어주세요'</code> 부분은 <strong>Authentication &gt; Users</strong> 탭에서 방금 생성한 이메일의 <strong>User UID</strong> 값을 복사하여 붙여넣으세요. (UID에 마우스를 올리면 복사 아이콘이 뜹니다)</li>
+                                </ol>
+                                <div className="relative mt-2 group">
+                                    <div className="bg-slate-800 text-green-400 p-3 rounded-lg font-mono text-[10px] overflow-x-auto whitespace-pre border border-slate-700 shadow-inner selection:bg-green-900 selection:text-white">
+{`rules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // 모든 문서({document=**})에 대하여\n    match /{document=**} {\n      \n      // 1. 반드시 로그인이 되어 있어야 하며\n      // 2. 로그인한 사용자의 UID가 사용자님의 UID와 일치할 때만 모든 읽기/쓰기를 허용합니다.\n      allow read, write: if request.auth != null && request.auth.uid == '개인UID를 넣어주세요';\n      \n    }\n  }\n}`}
+                                    </div>
+                                    <button onClick={() => { const code = "rules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // 모든 문서({document=**})에 대하여\n    match /{document=**} {\n      \n      // 1. 반드시 로그인이 되어 있어야 하며\n      // 2. 로그인한 사용자의 UID가 사용자님의 UID와 일치할 때만 모든 읽기/쓰기를 허용합니다.\n      allow read, write: if request.auth != null && request.auth.uid == '개인UID를 넣어주세요';\n      \n    }\n  }\n}"; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                                        <Icon d={PATHS.copy} size={12} /> 코드 복사
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex flex-col gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200"><div className="text-xs font-bold text-slate-500 mb-1">Firebase 인증 (이메일/비밀번호)</div><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일 (ID)" value={authId} onChange={e => setAuthId(e.target.value)} /><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} /></div><div className="relative"><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder={`// Firebase 콘솔에서 복사한 설정 코드를 여기에 붙여넣으세요.
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "project-id.firebaseapp.com",
+  projectId: "project-id",
+  storageBucket: "project-id.firebasestorage.app",
+  messagingSenderId: "...",
+  appId: "..."
+};`} value={inputConfig} onChange={e => setInputConfig(e.target.value)} /><button onClick={handlePasteConfig} className="absolute top-3 right-3 bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm flex items-center gap-1">붙여넣기</button></div><div className="flex items-center gap-2 mt-2 px-1"><label className="flex items-center gap-2 cursor-pointer select-none group"><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-slate-300 group-hover:border-indigo-400'}`}>{rememberMe && <Icon d={PATHS.check} size={14} className="text-white" />}</div><input type="checkbox" className="hidden" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} /><span className="text-sm font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">로그인 정보 저장</span></label></div><div className="flex gap-2 mt-5"><Btn onClick={onClose} className="px-4 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">취소</Btn><Btn onClick={handleTest} disabled={isTesting} className="flex-1 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 flex items-center justify-center gap-2">{isTesting ? <><Icon d={PATHS.spinner} className="animate-spin" size={16}/> 확인 중...</> : '연결 테스트'}</Btn><Btn onClick={handleConnect} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">연결하기</Btn></div></BaseModal>
             );
         };
         const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos, appConfig, db, appId }) => {
