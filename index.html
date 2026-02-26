@@ -354,12 +354,12 @@
                 </div>
             );
         };
-        const Toast = ({ message, onClose }) => {
+        const Toast = ({ message, action, onClose }) => {
             const onCloseRef = useRef(onClose);
             useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-            useEffect(() => { if (!message) return; const timer = setTimeout(() => onCloseRef.current(), 2000); return () => clearTimeout(timer); }, [message]);
+            useEffect(() => { if (!message) return; const duration = action ? 4000 : 2000; const timer = setTimeout(() => onCloseRef.current(), duration); return () => clearTimeout(timer); }, [message, action]);
             if (!message) return null;
-            return <div className="fixed top-10 left-1/2 transform -translate-x-1/2 z-[3000] animate-pop-up pointer-events-none"><div className="bg-[#37352F] text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 backdrop-blur-md min-w-[200px] justify-center"><Icon d={PATHS.check} size={16} className="text-white" /><span className="font-medium text-sm text-center">{message}</span></div></div>;
+            return <div className="fixed top-10 left-1/2 transform -translate-x-1/2 z-[3000] animate-pop-up pointer-events-none"><div className="bg-[#37352F] text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 backdrop-blur-md min-w-[200px] justify-center pointer-events-auto"><Icon d={PATHS.check} size={16} className="text-white" /><span className="font-medium text-sm text-center">{message}</span>{action && <button onClick={action.onClick} className="ml-3 bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-xs font-bold transition-colors">{action.label}</button>}</div></div>;
         };
         const ConfirmModal = ({ isOpen, message, onConfirm, onCancel }) => {
 
@@ -4365,6 +4365,21 @@
                                                 </div>
                                             </div>
                                             <div 
+                                                className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.autoBatchRename ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                                onClick={() => updateAppConfig({ autoBatchRename: !appConfig.autoBatchRename })}
+                                            >
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icon d={PATHS.copy} size={16} className={appConfig.autoBatchRename ? "text-indigo-500" : "text-slate-400"}/>
+                                                    <span className={`text-xs font-bold ${appConfig.autoBatchRename ? "text-indigo-700" : "text-slate-500"}`}>모둠 이름 일괄 변경</span>
+                                                </div>
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <span className={`text-[10px] font-bold ${appConfig.autoBatchRename ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.autoBatchRename ? "확인 생략" : "항상 확인"}</span>
+                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${appConfig.autoBatchRename ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}>
+                                                        {appConfig.autoBatchRename && <Icon d={PATHS.check} size={14} className="text-white" strokeWidth={3} />}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div 
                                                 className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.dDayEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
                                                 onClick={() => updateAppConfig({ dDayEnabled: !(appConfig.dDayEnabled !== false) })}
                                             >
@@ -4760,7 +4775,10 @@
                                             <div className="space-y-4">
                                                 <div><div className="flex justify-between text-xs text-slate-500 mb-1 font-bold"><span className="text-blue-500">남 {m.length}</span><span className="text-pink-500">여 {f.length}</span></div><div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden flex"><div style={{ width: `${(m.length/g.length)*100}%` }} className="bg-blue-400 h-full"></div><div style={{ width: `${(f.length/g.length)*100}%` }} className="bg-pink-400 h-full"></div></div></div>
                                                 <div><div className="flex justify-between text-xs text-slate-500 mb-1 font-bold"><span>실력 분포 (평균 {avgSkill.toFixed(1)})</span></div><div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden flex"><div style={{ width: `${(low.length/g.length)*100}%` }} className="bg-slate-300 h-full"></div><div style={{ width: `${(mid.length/g.length)*100}%` }} className="bg-indigo-300 h-full"></div><div style={{ width: `${(high.length/g.length)*100}%` }} className="bg-indigo-500 h-full"></div></div><div className="flex justify-between text-[10px] text-slate-400 mt-1 px-0.5"><span>하 {low.length}</span><span>중 {mid.length}</span><span>상 {high.length}</span></div></div>
-                                                {leader && <div className="pt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs"><span className="text-yellow-500 text-sm">👑</span><span className="font-bold text-slate-600">리더:</span><span className="text-slate-800">{leader.name}</span></div>}
+                                                <div className="pt-3 border-t border-slate-100">
+                                                    <div className="text-xs text-slate-700 font-medium leading-relaxed break-keep mb-2">{g.map(s => s.name).join(', ')}</div>
+                                                    {leader && <div className="flex items-center gap-1.5 text-xs bg-yellow-50 px-2 py-1 rounded-lg w-fit"><span className="text-yellow-600 font-bold">👑 리더: {leader.name}</span></div>}
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -5515,6 +5533,40 @@
             );
         };
 
+        const GroupResetModal = ({ isOpen, onClose, onReset }) => {
+            const [duration, setDuration] = useState(1);
+            
+            if (!isOpen) return null;
+
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="🧹 모둠 초기화 옵션" icon={PATHS.trash} maxWidth="max-w-sm">
+                    <div className="space-y-4">
+                        <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 text-sm text-rose-800">
+                            <p className="font-bold mb-1">⚠️ 모둠 편성 결과를 삭제합니다.</p>
+                            <p className="text-xs opacity-80">삭제할 기간을 선택해주세요.<br/>(기피 관계, 필수 짝꿍 등 관계 설정은 유지됩니다)</p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500">초기화 기간 (오늘부터)</label>
+                            <div className="grid grid-cols-1 gap-2">
+                                {[1, 7, 14, 21, 28].map(d => (
+                                    <button key={d} onClick={() => setDuration(d)} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${duration === d ? 'bg-rose-50 border-rose-200 ring-1 ring-rose-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                                        <span className={`text-sm font-bold ${duration === d ? 'text-rose-700' : 'text-slate-600'}`}>{d === 1 ? '오늘 하루 (1일)' : `${d/7}주 (${d}일)`}</span>
+                                        {duration === d && <Icon d={PATHS.check} size={16} className="text-rose-500" />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 mt-4">
+                            <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">취소</Btn>
+                            <Btn onClick={() => onReset(duration)} className="flex-1 py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md">삭제하기</Btn>
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        };
+
         const SetupModal = ({ isOpen, onClose, showToast, onConnect }) => {
             const [inputConfig, setInputConfig] = useState(""); 
             const [authId, setAuthId] = useState(""); 
@@ -6004,13 +6056,14 @@
             const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
             const [isSettingOpen, setIsSettingOpen] = useState(false); const [isSetupOpen, setIsSetupOpen] = useState(false); const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
-            const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null }); const [toastMessage, setToastMessage] = useState(null);
+            const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null, onCancel: null }); const [toastMessage, setToastMessage] = useState(null); const [toastAction, setToastAction] = useState(null);
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
             const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
             const [isGoogleSheetSetupOpen, setIsGoogleSheetSetupOpen] = useState(false);
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100 });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
+            const [editingGroupName, setEditingGroupName] = useState("");
             const lastBackupTime = useRef("");
             const [isLoading, setIsLoading] = useState(true); 
             const [loadingProgress, setLoadingProgress] = useState(0);
@@ -6105,6 +6158,7 @@
             const [isStandalone, setIsStandalone] = useState(false);
             const [showInstallGuide, setShowInstallGuide] = useState(false);
             const [showGlobalRecord, setShowGlobalRecord] = React.useState(false);
+            const [showGroupResetModal, setShowGroupResetModal] = useState(false);
             const [aiCheckState, setAiCheckState] = useState({ isOpen: false, prompt: "", resolve: null, reject: null });
 
             useEffect(() => {
@@ -6440,19 +6494,23 @@
 
             // [New] Firestore 하위 컬렉션 저장 함수 (1MB 제한 회피용)
             const saveGroupsToFirestore = async (groupsMap) => {
-                if (isLocalMode || !db || !appId) return;
-                const batch = db.batch();
-                Object.entries(groupsMap).forEach(([date, groups]) => {
-                    const ref = db.collection('classes').doc(appId).collection('groupResults').doc(date);
-                    // 데이터 정제 (불필요한 정보 제거)
-                    const cleanGroups = groups.map(g => g.map(s => ({
-                        id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order
-                    })));
-                    batch.set(ref, { list: cleanGroups });
-                });
-                try { await batch.commit(); } 
-                catch (e) { console.error(e); setToastMessage("모둠 저장 실패: " + e.message); }
-            };
+            if (isLocalMode || !db || !appId) return;
+            const batch = db.batch();
+            Object.entries(groupsMap).forEach(([date, groups]) => {
+                const ref = db.collection('classes').doc(appId).collection('groupResults').doc(date);
+                // 🌟 Firestore 중첩 배열(Nested Array) 에러 방지: 안쪽 배열을 { list: [...] } 형태로 감싸줍니다!
+                const cleanGroups = groups.map(g => ({
+                    list: g.map(s => ({ id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order }))
+                }));
+                batch.set(ref, { list: cleanGroups });
+            });
+            try {
+                await batch.commit();
+            } catch (e) {
+                console.error(e);
+                setToastMessage("모둠 저장 실패: " + e.message);
+            }
+        };
             
             // [New] 과제 데이터(Daily, Weekly, Tags) 저장 함수
             const saveTasksToFirestore = async (data) => {
@@ -6737,7 +6795,7 @@
 
             const progress = students.length ? (students.filter(s => records[date]?.[s.id]?.done).length / students.length) * 100 : 0;
             const classAvgSkill = useMemo(() => students.length > 0 ? students.reduce((a, s) => a + s.skill, 0) / students.length : 0, [students]);
-            const openConfirm = (message, onConfirm) => { setConfirmModal({ isOpen: true, message: message, onConfirm: onConfirm }); };
+            const openConfirm = (message, onConfirm, onCancel = null) => { setConfirmModal({ isOpen: true, message: message, onConfirm: onConfirm, onCancel: onCancel }); };
 
            useEffect(() => {
                 const savedConfig = safeLocalStorage.getItem('checklist_config');
@@ -7165,6 +7223,17 @@
                         }
                         
                         const userRequest = aiPrompt || "성별, 실력, 리더를 골고루 섞어서 균형 있게 편성해줘.";
+                        
+                        // [보안] 사용자 프롬프트 내 실명 익명화 (학생N으로 치환)
+                        let safeUserRequest = userRequest;
+                        const sortedStudentsForMasking = [...students].sort((a, b) => b.name.length - a.name.length);
+                        sortedStudentsForMasking.forEach(s => {
+                            const originalIndex = students.findIndex(st => st.id === s.id);
+                            if (originalIndex === -1) return;
+                            const anonName = `학생${originalIndex + 1}`;
+                            safeUserRequest = safeUserRequest.replaceAll(s.name, anonName);
+                            if (s.name.length >= 3) safeUserRequest = safeUserRequest.replaceAll(s.name.substring(1), anonName);
+                        });
 
                         const prompt = `
                             당신은 학급 경영 전문가입니다. 다음 학생들을 ${targetGroupCount}개의 모둠으로 편성해주세요.
@@ -7177,7 +7246,7 @@
                             ${constraints.join('\n')}
                             
                             [사용자 요청]
-                            "${userRequest}"
+                            "${safeUserRequest}"
 
                             [응답 형식]
                             - 결과는 반드시 **JSON 객체**로 작성하세요.
@@ -7525,7 +7594,105 @@
                 syncSeatsWithGroups(newGroups);
                 setToastMessage("자전과 공전(회전)이 완료되었습니다."); 
             };
+
+            const handleGroupNameSave = (groupIndex, newName) => {
+                const oldName = groupNames[date]?.[groupIndex] || `${groupIndex+1}모둠`;
+                if (!newName || newName.trim() === "" || newName === oldName) {
+                    setEditingGroupIdx(null);
+                    return;
+                }
+
+                const currentGroupMembers = groups[groupIndex].map(s => s.id).sort().join(',');
+                const sameMemberGroups = [];
+                
+                Object.entries(groupsByDate).forEach(([d, dateGroups]) => {
+                    if (d === date) return;
+                    if (!Array.isArray(dateGroups)) return;
+                    
+                    dateGroups.forEach((g, gIdx) => {
+                        if (!Array.isArray(g)) return;
+                        const members = g.map(s => (s.id || s)).sort().join(',');
+                        if (members === currentGroupMembers) {
+                            sameMemberGroups.push({ date: d, index: gIdx });
+                        }
+                    });
+                });
+
+                const prevGroupNames = { ...groupNames }; // Undo를 위한 이전 상태 저장
+
+                const update = (applyAll) => {
+                    const newNames = { ...groupNames };
+                    if (!newNames[date]) newNames[date] = {};
+                    newNames[date][groupIndex] = newName;
+
+                    if (applyAll) {
+                        sameMemberGroups.forEach(({ date: d, index: i }) => {
+                            if (!newNames[d]) newNames[d] = { ...(groupNames[d] || {}) }; // 불변성 유지를 위해 복사
+                            else newNames[d] = { ...newNames[d] };
+                            newNames[d][i] = newName;
+                        });
+                        setToastMessage(`${sameMemberGroups.length}개의 과거 모둠 이름도 함께 변경되었습니다.`);
+                        setToastAction({
+                            label: "되돌리기",
+                            onClick: () => {
+                                setGroupNames(prevGroupNames);
+                                if (!isLocalMode) saveData('cls_group_names', prevGroupNames);
+                                setToastMessage("변경이 취소되었습니다.");
+                                setToastAction(null);
+                            }
+                        });
+                    }
+                    setGroupNames(newNames);
+                    if (!isLocalMode) saveData('cls_group_names', newNames);
+                    setEditingGroupIdx(null);
+                };
+
+                if (sameMemberGroups.length > 0) {
+                    if (appConfig.autoBatchRename) {
+                        update(true);
+                    } else {
+                        openConfirm(
+                            `과거 기록 중 동일한 구성원의 모둠이 ${sameMemberGroups.length}개 있습니다.\n이름을 일괄 변경하시겠습니까?\n(취소 시 현재 모둠만 변경됩니다)`,
+                            () => update(true),
+                            () => update(false)
+                        );
+                    }
+                } else {
+                    update(false);
+                }
+            };
             
+            const handleGroupReset = (duration) => {
+                const datesToDelete = [];
+                for (let i = 0; i < duration; i++) {
+                    datesToDelete.push(dayjs(date).add(i, 'day').format('YYYY-MM-DD'));
+                }
+
+                const newGroups = { ...groupsByDate };
+                const newRoles = { ...groupRoles };
+                
+                datesToDelete.forEach(d => {
+                    delete newGroups[d];
+                    delete newRoles[d];
+                });
+
+                setGroupsByDate(newGroups);
+                setGroupRoles(newRoles);
+                setSeatAssignments({});
+
+                const updates = { cls_groups_date: newGroups, cls_group_roles: newRoles, cls_seat_assignments: {} };
+
+                if (!isLocalMode) {
+                    saveData(updates);
+                    deleteGroupsFromFirestore(datesToDelete);
+                } else {
+                    saveData(updates);
+                }
+
+                setToastMessage(`${duration}일간의 모둠 기록이 초기화되었습니다.`);
+                setShowGroupResetModal(false);
+            };
+
             const handleDragStart = (e, studentId, fromGroupIdx) => { 
                 draggedGroupItemRef.current = { studentId, fromGroupIdx };
                 e.dataTransfer.setData("text/plain", JSON.stringify({ studentId, fromGroupIdx }));
@@ -7587,6 +7754,7 @@
                     saveData(updates);
                     saveGroupsToFirestore({ [date]: currentGroups });
                 }
+                syncSeatsWithGroups(currentGroups);
             };
 
             const handleAssignRoles = () => {
@@ -8134,7 +8302,7 @@
                                                         ) : (useAI ? 'AI 편성' : '모둠 편성')}
                                                     </Btn>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-2 mt-2"><Btn onClick={rotateCurrentGroups} className="py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-bold">자전과 공전</Btn><Btn onClick={()=>{openConfirm("모둠 기록과 자리 배치를 모두 초기화합니다.", ()=>{ const newGroups = {...groupsByDate, [date]: []}; setGroupsByDate(newGroups); if(!isLocalMode) saveData('cls_groups_date', newGroups); setSeatAssignments({}); if(!isLocalMode) saveData('cls_seat_assignments', {}); showToast("초기화되었습니다."); })}} className="py-2.5 bg-white border border-rose-200 text-rose-500 rounded-xl font-bold">초기화</Btn></div>
+                                                <div className="grid grid-cols-2 gap-2 mt-2"><Btn onClick={rotateCurrentGroups} className="py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-bold">자전과 공전</Btn><Btn onClick={() => setShowGroupResetModal(true)} className="py-2.5 bg-white border border-rose-200 text-rose-500 rounded-xl font-bold">초기화</Btn></div>
                                             </div>
                                         </div>
                                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 transition-all">
@@ -8190,35 +8358,25 @@
                                                                         <div className="flex items-center gap-1 w-full max-w-[150px]">
                                                                             <input 
                                                                                 className="font-bold text-lg text-slate-800 bg-white border border-indigo-200 rounded px-1 outline-none w-full focus:ring-2 focus:ring-indigo-200"
-                                                                                defaultValue={groupNames[date]?.[i] || `${i+1}모둠`}
+                                                                                value={editingGroupName}
+                                                                                onChange={(e) => setEditingGroupName(e.target.value)}
                                                                                 placeholder={`${i+1}모둠`}
                                                                                 autoFocus
-                                                                                onInput={(e) => {
-                                                                                    const newNames = { ...groupNames };
-                                                                                    if (!newNames[date]) newNames[date] = {};
-                                                                                    newNames[date][i] = e.target.value;
-                                                                                    setGroupNames(newNames);
-                                                                                }}
                                                                                 onKeyDown={(e) => {
                                                                                     if(e.key === 'Enter') {
-                                                                                        setEditingGroupIdx(null);
-                                                                                        if(!isLocalMode) saveData('cls_group_names', groupNames);
+                                                                                        handleGroupNameSave(i, editingGroupName);
                                                                                     }
                                                                                 }}
                                                                                 onBlur={() => {
-                                                                                    setEditingGroupIdx(null);
-                                                                                    if(!isLocalMode) saveData('cls_group_names', groupNames);
+                                                                                    handleGroupNameSave(i, editingGroupName);
                                                                                 }}
                                                                             />
-                                                                            <Btn onClick={() => {
-                                                                                setEditingGroupIdx(null);
-                                                                                if(!isLocalMode) saveData('cls_group_names', groupNames);
-                                                                            }} className="p-1 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200"><Icon d={PATHS.check} size={14} /></Btn>
+                                                                            <Btn onClick={() => handleGroupNameSave(i, editingGroupName)} className="p-1 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200"><Icon d={PATHS.check} size={14} /></Btn>
                                                                         </div>
                                                                     ) : (
                                                                         <div className="flex items-center gap-2 group/title">
                                                                             <span className="font-bold text-lg text-slate-800 truncate max-w-[120px]" title={groupNames[date]?.[i] || `${i+1}모둠`}>{groupNames[date]?.[i] || `${i+1}모둠`}</span>
-                                                                            <Btn onClick={() => setEditingGroupIdx(i)} className="opacity-0 group-hover/title:opacity-100 p-1 text-slate-400 hover:text-indigo-500 transition-opacity"><Icon d={PATHS.edit} size={14} /></Btn>
+                                                                            <Btn onClick={() => { setEditingGroupIdx(i); setEditingGroupName(groupNames[date]?.[i] || `${i+1}모둠`); }} className="p-1 text-slate-300 hover:text-indigo-500 transition-colors"><Icon d={PATHS.edit} size={14} /></Btn>
                                                                         </div>
                                                                     )}
                                                                     <div className="flex items-center gap-1">
@@ -8343,7 +8501,11 @@
                             setConfirmModal({isOpen:false, message:"", onConfirm:null}); 
                             if(action) action();
                         }} 
-                        onCancel={()=>setConfirmModal({isOpen:false, message:"", onConfirm:null})} 
+                        onCancel={() => {
+                            const action = confirmModal.onCancel;
+                            setConfirmModal({isOpen:false, message:"", onConfirm:null, onCancel:null});
+                            if(action) action();
+                        }} 
                     />
                     {appConfig.updateNotificationType === 'toast' ? (
                         <UpdateNotificationToast
@@ -8358,7 +8520,7 @@
                             onClose={handleCloseUpdate}
                         />
                     )}
-                    <Toast message={toastMessage} onClose={()=>setToastMessage(null)} />
+                    <Toast message={toastMessage} action={toastAction} onClose={()=>{ setToastMessage(null); setToastAction(null); }} />
                     <StatsGrassModal 
                         isOpen={!!grassStudentId} 
                         onClose={()=>setGrassStudentId(null)} 
@@ -8440,6 +8602,7 @@
                     <RoleHelpModal isOpen={showRoleHelp} onClose={()=>setShowRoleHelp(false)} roleDescriptions={roleDescriptions} />
                     <RoleEditModal isOpen={isRoleEditOpen} onClose={() => setIsRoleEditOpen(false)} roles={rolesList} onSave={handleSaveRoles} roleDescriptions={roleDescriptions} onSaveDescriptions={handleSaveRoleDescriptions} />
                     <PartnerAnalysisModal isOpen={showPartnerAnalysis} onClose={()=>setShowPartnerAnalysis(false)} groupsByDate={groupsByDate} />
+                    <GroupResetModal isOpen={showGroupResetModal} onClose={() => setShowGroupResetModal(false)} onReset={handleGroupReset} />
                     <ClassToolsModal isOpen={isToolsOpen} onClose={() => setIsToolsOpen(false)} students={students} />
                     <BaseModal isOpen={showAiHelp} onClose={()=>setShowAiHelp(false)} title="AI 모둠 편성 도움말" icon={PATHS.help}>
                         <div className="space-y-4 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
