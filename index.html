@@ -4054,7 +4054,7 @@
                         <div className={`flex-1 overflow-y-auto custom-scroll pr-2 space-y-6 pb-10 ${getTabAnimationClass()}`} key={activeTab}>
                             {activeTab === 'student' && (
                                 <div className="space-y-6 animate-fade-in">
-                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group">
+                                    <div className="group">
                                         <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5 cursor-default select-none">
                                             <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🧑‍🎓</div> 
                                             학생 명단 관리
@@ -4135,7 +4135,7 @@
 
                             {activeTab === 'app' && (
                                 <div className="space-y-6 animate-fade-in">
-                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group">
+                                    <div className="group">
                                         <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5 cursor-default select-none">
                                             <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">📱</div> 
                                             앱 기본 설정
@@ -4285,7 +4285,7 @@
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all h-full group">
+                                    <div className="h-full group">
                                         <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5"><div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🎨</div> 화면 및 소리 설정</h4>
                                         <div className="flex flex-col gap-4">
                                             <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors relative">
@@ -4459,7 +4459,7 @@
                                     </div>
                                     </div>
 
-                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all h-full group">
+                                    <div className="h-full group">
                                         <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5"><div className="w-10 h-10 rounded-2xl bg-orange-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🏖️</div> 방학 기간 설정</h4>
                                         <div className="h-full flex flex-col">
                                         <div className="space-y-3 flex-1">
@@ -6033,6 +6033,7 @@
             const [seatAssignments, setSeatAssignments] = useState({});
             const [seatConfig, setSeatConfig] = useState({ rows: 5, cols: 5, disabledSeats: ['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4'] });
             const [groupDuration, setGroupDuration] = useState(1);
+            const [historyDuration, setHistoryDuration] = useState(14);
             const [isDevMode, setIsDevMode] = useState(() => localStorage.getItem('cls_dev_mode') === 'true');
             const [gearClickCount, setGearClickCount] = useState(0);
             const gearClickTimer = useRef(null);
@@ -6065,6 +6066,7 @@
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const [editingGroupName, setEditingGroupName] = useState("");
             const lastBackupTime = useRef("");
+            const [editingRoleTarget, setEditingRoleTarget] = useState(null);
             const [isLoading, setIsLoading] = useState(true); 
             const [loadingProgress, setLoadingProgress] = useState(0);
             const [showLongLoading, setShowLongLoading] = useState(false);
@@ -7209,7 +7211,7 @@
                         
                         // [New] useHistory 옵션 적용
                         if (useHistory) {
-                            const recentDates = Object.keys(groupsByDate).sort().reverse().slice(0, 3);
+                            const recentDates = Object.keys(groupsByDate).sort().reverse().slice(0, historyDuration);
                             if (recentDates.length > 0) {
                                 const historyStr = recentDates.map(d => {
                                     const grps = groupsByDate[d] || [];
@@ -7346,7 +7348,7 @@
                     const historyPairs = new Map();
                     if (useHistory) {
                         // 최근 기록일수록 가중치를 높게 부여 (연속 배정 방지 강화)
-                        const sortedDates = Object.keys(currentGroupsByDate).sort().reverse().slice(0, 10);
+                        const sortedDates = Object.keys(currentGroupsByDate).sort().reverse().slice(0, historyDuration);
                         sortedDates.forEach((d, idx) => {
                             const weight = Math.max(1, 5 - Math.floor(idx / 2)); // 5, 5, 4, 4, 3, 3...
                             (currentGroupsByDate[d] || []).forEach(g => {
@@ -7661,6 +7663,19 @@
                     update(false);
                 }
             };
+
+            const handleRoleChange = (groupIdx, studentIdx, newRole) => {
+                const newRoles = { ...groupRoles };
+                if (!newRoles[date]) newRoles[date] = {};
+                if (!newRoles[date][groupIdx]) newRoles[date][groupIdx] = {};
+                
+                if (newRole) newRoles[date][groupIdx][studentIdx] = newRole;
+                else if (newRoles[date][groupIdx]) delete newRoles[date][groupIdx][studentIdx];
+                
+                setGroupRoles(newRoles);
+                if (!isLocalMode) saveData('cls_group_roles', newRoles);
+                setEditingRoleTarget(null);
+            };
             
             const handleGroupReset = (duration) => {
                 const datesToDelete = [];
@@ -7735,26 +7750,76 @@
 
                 if (fromGroupIdx === toGroupIdx) return;
                 
+                // 1. 현재 날짜 변경
                 const currentGroups = [...(groupsByDate[date] || [])]; 
                 const student = currentGroups[fromGroupIdx].find(s => s.id === studentId); 
                 if (!student) return;
+                
                 currentGroups[fromGroupIdx] = currentGroups[fromGroupIdx].filter(s => s.id !== studentId); 
                 currentGroups[toGroupIdx] = [...currentGroups[toGroupIdx], sanitizeStudent(student)]; 
+                
                 const newGroupsData = { ...groupsByDate, [date]: currentGroups }; 
+                const groupsToSave = { [date]: currentGroups };
+                const rolesToSave = {};
+
+                // 2. 이후 날짜 동기화 (Sync to future dates)
+                const futureDates = Object.keys(groupsByDate).filter(d => d > date).sort();
+                let syncCount = 0;
+
+                futureDates.forEach(fDate => {
+                    const fGroups = [...(groupsByDate[fDate] || [])];
+                    // 대상 모둠 인덱스가 존재하는지 확인
+                    if (fGroups.length <= toGroupIdx) return;
+
+                    // 해당 날짜에서 학생 찾기
+                    let fFromIdx = -1;
+                    let fStudent = null;
+                    fGroups.forEach((g, idx) => {
+                        const found = g.find(s => s.id === studentId);
+                        if (found) { fFromIdx = idx; fStudent = found; }
+                    });
+
+                    // 학생이 존재하고, 이미 목표 모둠에 있지 않다면 이동
+                    if (fStudent && fFromIdx !== -1 && fFromIdx !== toGroupIdx) {
+                        fGroups[fFromIdx] = fGroups[fFromIdx].filter(s => s.id !== studentId);
+                        fGroups[toGroupIdx] = [...fGroups[toGroupIdx], sanitizeStudent(fStudent)];
+                        
+                        newGroupsData[fDate] = fGroups;
+                        groupsToSave[fDate] = fGroups;
+                        syncCount++;
+
+                        // 역할이 활성화되어 있다면 역할도 재계산 (구성원이 바뀌었으므로)
+                        if (groupRoles[fDate] && Object.keys(groupRoles[fDate]).length > 0) {
+                             rolesToSave[fDate] = calculateRoles(fGroups);
+                        }
+                    }
+                });
+
                 setGroupsByDate(newGroupsData);
                 
-                const updates = {};
+                // 현재 날짜 역할 업데이트
                 if (groupRoles[date] && Object.keys(groupRoles[date]).length > 0) {
-                    const newRolesForDate = calculateRoles(currentGroups);
-                    const newGroupRoles = { ...groupRoles, [date]: newRolesForDate };
+                    rolesToSave[date] = calculateRoles(currentGroups);
+                }
+                
+                const updates = { cls_groups_date: newGroupsData };
+                if (Object.keys(rolesToSave).length > 0) {
+                    const newGroupRoles = { ...groupRoles, ...rolesToSave };
                     setGroupRoles(newGroupRoles);
                     updates['cls_group_roles'] = newGroupRoles;
                 }
+
                 if (!isLocalMode) {
                     saveData(updates);
-                    saveGroupsToFirestore({ [date]: currentGroups });
+                    saveGroupsToFirestore(groupsToSave);
+                } else {
+                    saveData(updates);
                 }
                 syncSeatsWithGroups(currentGroups);
+                
+                if (syncCount > 0) {
+                    setToastMessage(`이동 완료 (이후 ${syncCount}일간의 기록도 변경됨)`);
+                }
             };
 
             const handleAssignRoles = () => {
@@ -8207,6 +8272,13 @@
                                                 <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useSkill ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useSkill} onChange={e=>setUseSkill(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useSkill ? 'text-indigo-700' : 'text-slate-400'}`}>실력 균형</span></label>
                                                 <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useLeader ? 'bg-purple-50 border-purple-200 ring-1 ring-purple-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useLeader} onChange={e=>setUseLeader(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useLeader ? 'text-purple-700' : 'text-slate-400'}`}>👑 리더 분산</span></label>
                                                 <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useHistory ? 'bg-orange-50 border-orange-200 ring-1 ring-orange-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useHistory} onChange={e=>setUseHistory(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useHistory ? 'text-orange-700' : 'text-slate-400'}`}>🔄 겹침 방지</span></label>
+                                                {useHistory && (
+                                                    <div className="col-span-2 flex items-center justify-center gap-2 bg-orange-50/50 p-2 rounded-lg border border-orange-100 animate-fade-in">
+                                                        <span className="text-[10px] font-bold text-orange-600">최근</span>
+                                                        <input type="number" value={historyDuration} onChange={e=>setHistoryDuration(Math.max(1, parseInt(e.target.value) || 1))} className="w-10 p-1 text-center text-xs border border-orange-200 rounded bg-white font-bold text-orange-700 outline-none focus:ring-1 focus:ring-orange-300" />
+                                                        <span className="text-[10px] font-bold text-orange-600">일간의 기록 참고</span>
+                                                    </div>
+                                                )}
                                             </div>
                                             {isAvoidanceVisible && (
                                                 <div className="mb-6 animate-fade-in bg-slate-50 p-3 rounded-xl">
@@ -8399,7 +8471,7 @@
                                                                                     <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${s.gender==='M'?'bg-blue-200 text-blue-700':'bg-pink-200 text-pink-700'}`}>{s.order}</span>
                                                                                     <span className="text-sm font-bold text-slate-700 whitespace-nowrap">{s.name}</span>
                                                                                     {s.leader && <span className="text-xs" title="리더">👑</span>}
-                                                                                    {role && <span className="text-[10px] bg-white/80 px-1.5 py-0.5 rounded border border-slate-200 text-slate-600">{role}</span>}
+                                                                                    <span onClick={(e) => { e.stopPropagation(); setEditingRoleTarget({ gIdx: i, sIdx, currentRole: role }); }} className={`text-[10px] px-1.5 py-0.5 rounded border cursor-pointer hover:bg-indigo-50 transition-colors ${role ? 'bg-white/80 border-slate-200 text-slate-600' : 'bg-slate-50 border-dashed border-slate-300 text-slate-300 hover:text-indigo-400 hover:border-indigo-300'}`} title="역할 수정">{role || "+"}</span>
                                                                                 </div>
                                                                                 <button onClick={(e) => { e.stopPropagation(); toggleLock(s.id); }} className={`p-1 rounded-full hover:bg-white/50 transition-colors ${isLocked ? 'text-indigo-500' : 'text-slate-300 hover:text-slate-400'}`} title={isLocked ? "고정 해제" : "고정하기"}>
                                                                                     <Icon d={isLocked ? PATHS.lock : PATHS.unlock} size={12} />
@@ -8601,6 +8673,7 @@
                     <CalendarModal isOpen={isRangeCalendarOpen} onClose={()=>setIsRangeCalendarOpen(false)} currentDate={date} selectionMode="range" onSelectRange={handleRangeSelect} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
                     <RoleHelpModal isOpen={showRoleHelp} onClose={()=>setShowRoleHelp(false)} roleDescriptions={roleDescriptions} />
                     <RoleEditModal isOpen={isRoleEditOpen} onClose={() => setIsRoleEditOpen(false)} roles={rolesList} onSave={handleSaveRoles} roleDescriptions={roleDescriptions} onSaveDescriptions={handleSaveRoleDescriptions} />
+                    <RoleSelectModal isOpen={!!editingRoleTarget} onClose={() => setEditingRoleTarget(null)} roles={rolesList} currentRole={editingRoleTarget?.currentRole} onSelect={(newRole) => handleRoleChange(editingRoleTarget.gIdx, editingRoleTarget.sIdx, newRole)} />
                     <PartnerAnalysisModal isOpen={showPartnerAnalysis} onClose={()=>setShowPartnerAnalysis(false)} groupsByDate={groupsByDate} />
                     <GroupResetModal isOpen={showGroupResetModal} onClose={() => setShowGroupResetModal(false)} onReset={handleGroupReset} />
                     <ClassToolsModal isOpen={isToolsOpen} onClose={() => setIsToolsOpen(false)} students={students} />
@@ -8864,6 +8937,24 @@
                     </div>
                 </>
         );
+
+        const RoleSelectModal = ({ isOpen, onClose, roles, currentRole, onSelect }) => {
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="역할 선택" icon={PATHS.users} maxWidth="max-w-xs">
+                    <div className="grid grid-cols-1 gap-2">
+                        {roles.map((role, i) => (
+                            <button key={i} onClick={() => onSelect(role)} className={`p-3 rounded-xl border text-sm font-bold transition-all ${currentRole === role ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                {role}
+                            </button>
+                        ))}
+                        <button onClick={() => onSelect(null)} className="p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-400 hover:bg-slate-50 hover:text-rose-500 transition-colors mt-2">
+                            역할 해제
+                        </button>
+                    </div>
+                </BaseModal>
+            );
+        };
 
         const RoleEditModal = ({ isOpen, onClose, roles, onSave, roleDescriptions, onSaveDescriptions }) => {
             const [tempRoles, setTempRoles] = useState([]);
