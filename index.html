@@ -767,25 +767,49 @@
                             {showPromptSettings && (
                                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 animate-fade-in space-y-2">
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                                        <p className="text-[10px] text-slate-500 font-bold">프롬프트 변수 가이드 (자동 익명화됨)</p>
-                                        <select 
-                                            className="text-xs border border-indigo-200 rounded-lg px-2 py-1.5 bg-white text-indigo-700 font-bold focus:outline-none cursor-pointer hover:bg-indigo-50 transition-colors shadow-sm"
-                                            onChange={(e) => {
-                                                if (e.target.value === "deep") {
-                                                    setPromptTemplate("당신은 초등교육 전문가이자 심리 상담가입니다. 다음 학생에 대한 상담 조언을 제공해주세요.\n\n[학생 정보]\n- 이름: (익명)\n- 최근 관찰 기록:\n{{records}}\n\n[상담 주제]\n{{topic}}\n\n[요청 사항]\n1. 학생의 상황을 깊이 공감하고 심리적 원인을 분석하세요.\n2. 교사가 교실에서 바로 적용할 수 있는 구체적인 지도 방법을 3가지 제시하세요.\n3. 학부모 상담 시 활용할 수 있는 따뜻한 조언 멘트를 작성해주세요.");
-                                                    if(typeof showToast !== 'undefined') showToast("✨ 심층 분석 템플릿이 적용되었습니다!");
-                                                } else if (e.target.value === "simple") {
-                                                    setPromptTemplate("당신은 따뜻한 초등학교 선생님입니다. 다음 학생의 기록과 고민을 바탕으로 상담을 준비합니다.\n\n[관찰 기록]\n{{records}}\n\n[상담 주제]\n{{topic}}\n\n학부모님과 긍정적으로 나눌 수 있는 핵심 상담 포인트 3가지만 부드러운 어조로 요약해주세요.");
-                                                    if(typeof showToast !== 'undefined') showToast("📝 학부모 상담 요약 템플릿이 적용되었습니다!");
-                                                }
-                                                e.target.value = ""; 
-                                            }}
-                                        >
-                                            <option value="">💡 추천 템플릿 선택...</option>
-                                            <option value="deep">✨ 심층 분석용 (추천)</option>
-                                            <option value="simple">📝 학부모 상담 요약용</option>
-                                        </select>
-                                    </div>
+    <p className="text-[10px] text-slate-500 font-bold">프롬프트 변수 가이드 (자동 익명화됨)</p>
+    <select 
+        className="text-xs border border-indigo-200 rounded-lg px-2 py-1.5 bg-white text-indigo-700 font-bold focus:outline-none cursor-pointer hover:bg-indigo-50 transition-colors shadow-sm"
+        onChange={(e) => {
+            const val = e.target.value;
+            
+            // 🌟 1. 기본 프롬프트 복구
+            if (val === "default") {
+                setPromptTemplate("당신은 초등교육 전문가이자 심리 상담가입니다. 다음 학생에 대한 상담 조언을 제공해주세요.\n\n[학생 정보]\n- 이름: (익명)\n- 최근 관찰 기록:\n{{records}}\n\n[상담 주제]\n{{topic}}\n\n[요청 사항]\n1. 학생의 상황을 깊이 공감하고 심리적 원인을 분석하세요.\n2. 교사가 교실에서 바로 적용할 수 있는 구체적인 지도 방법을 3가지 제시하세요.\n3. 학부모 상담 시 활용할 수 있는 따뜻한 조언 멘트를 작성해주세요.");
+                if(typeof showToast !== 'undefined') showToast("🌱 기본 프롬프트로 복구되었습니다!");
+            } 
+            // 🌟 2. 행동 교정 (실사례)
+            else if (val === "behavior") {
+                setPromptTemplate("# 역할: 당신은 아동 행동 교정 전문가이자 학교 현장 사례 분석가입니다.\n\n# 임무: 다음 [관찰 기록]과 [상담 주제]를 심층 분석하여, 학생의 문제 행동 이면에 숨겨진 원인을 진단하고 실제 검증된 실천 사례를 제시해주세요.\n\n[관찰 기록]\n{{records}}\n\n[상담 주제]\n{{topic}}\n\n# 출력 요구사항:\n1. 전문가의 시선: 기록을 통해 유추할 수 있는 아이의 심리적 상태와 행동의 근본 원인\n2. 검증된 실제 사례: 국내외 교육 매체, 교육청 우수사례, 혹은 저명한 아동 심리 전문가가 다루었던 이와 유사한 문제 행동의 '실제 극복 사례' (출처나 배경 간략히 언급, 절대 가상의 사례를 지어내지 말 것)\n3. 교실 적용 실천 사례: 위 실제 사례를 바탕으로, 내일 당장 우리 반 교실에서 교사가 시도할 수 있는 구체적이고 현실적인 행동 교정 실천 방법 2가지\n4. 학부모 연계: 가정에서 부모님이 해주셔야 할 역할과 첫 전화 상담 오프닝 멘트");
+                if(typeof showToast !== 'undefined') showToast("🚨 행동 교정 템플릿 적용 완료!");
+            } 
+            // 🌟 3. 교우 관계 (실사례)
+            else if (val === "social") {
+                setPromptTemplate("# 역할: 당신은 아동 심리 상담가이자 학급 긍정 훈육(PDC) 전문가입니다.\n\n# 임무: 다음 [관찰 기록]과 [상담 주제]를 바탕으로, 학생의 교우 관계 패턴을 분석하고 실제 학급에서 실천 가능한 사회성 발달 처방전을 내려주세요.\n\n[관찰 기록]\n{{records}}\n\n[상담 주제]\n{{topic}}\n\n# 출력 요구사항:\n1. 관계 패턴 분석: 학생이 또래와 멀어지거나 갈등을 겪게 되는 결정적인 트리거(Trigger) 파악\n2. 학급 운영 실천 사례: 현직 교사들의 교육 칼럼이나 학급 운영 사례에서 효과가 검증된, 특정 학생을 티 내지 않고 무리에 자연스럽게 섞이게 하는 실제 실천 사례(예: 마니또, 역할 부여 등)\n3. 롤플레잉 대본: 교사가 학생을 따로 불렀을 때, 방어적인 태도를 허물고 마음을 열게 했던 실제 상담 기법 기반의 1:1 대화 대본\n4. 자존감 회복 멘트: 상처받은 아이의 자존감을 세워주는 구체적인 격려의 말");
+                if(typeof showToast !== 'undefined') showToast("🤝 교우 관계 템플릿 적용 완료!");
+            } 
+            // 🌟 4. 학습 무기력 (실사례)
+            else if (val === "study") {
+                setPromptTemplate("# 역할: 당신은 학습 심리 및 인지 학습 치료 전문가입니다.\n\n# 임무: 주어진 [관찰 기록]과 [상담 주제]를 분석하여 학생의 학습 무기력 및 집중력 저하 원인을 파악하고, 실제 현장에서 성공했던 실천 솔루션을 제공해주세요.\n\n[관찰 기록]\n{{records}}\n\n[상담 주제]\n{{topic}}\n\n# 출력 요구사항:\n1. 인지 및 정서 진단: 학습을 방해하는 요소가 '기초 학력 부족', '정서적 불안', '주의력 결핍' 중 어디에 해당하는지 분석\n2. 무기력 극복 실제 사례: 교육 지침서나 방송 매체 등에서 소개된 집중력 향상 및 무기력 극복의 실제 성공 사례 요약 (절대 허구로 지어내지 말 것)\n3. 스몰 스텝(Small Step) 실천법: 위 사례의 핵심을 추출하여, 이 학생이 교실에서 하루 10분씩 실천할 수 있는 '구체적인 3단계 학습 루틴' 제시\n4. 학부모 코칭: 가정에서 아이를 다그치지 않고 긍정적 변화를 이끌어내도록 돕는 실제적인 학부모 안내 멘트");
+                if(typeof showToast !== 'undefined') showToast("📚 학습/무기력 템플릿 적용 완료!");
+            } 
+            // 🌟 5. 감정 조절 (실사례)
+            else if (val === "emotion") {
+                setPromptTemplate("# 역할: 당신은 소아정신과 전문의 수준의 지식을 갖춘 감정 코칭 전문가입니다.\n\n# 임무: 다음 [관찰 기록]과 [상담 주제]를 종합하여 학생의 감정 조절 문제를 분석하고, 실제 현장과 가정에서 쓰이는 감정 안정화 실천 사례를 제시해주세요.\n\n[관찰 기록]\n{{records}}\n\n[상담 주제]\n{{topic}}\n\n# 출력 요구사항:\n1. 숨은 감정 읽기: 아이가 분노나 눈물 등의 고반응으로 진짜 표현하고 싶었던 '마음의 소리' 번역\n2. 전문가의 실천 처방 사례: 아동 심리 전문가들이 추천하는 고반응성(예민한) 아이를 위한 실제 감정 조절 성공 사례 및 솔루션\n3. 교실 내 쿨다운 실천법: 교실에서 아이가 폭발했을 때 교사가 당황하지 않고 즉각적으로 적용할 수 있는 구체적인 쿨다운 실천법\n4. 학부모 공감 및 연계: 지쳐있을 부모님을 위로하고, 가정 내 일관된 감정 코칭을 권유하는 따뜻한 메시지 초안");
+                if(typeof showToast !== 'undefined') showToast("☔ 감정 조절 템플릿 적용 완료!");
+            }
+            e.target.value = ""; 
+        }}
+    >
+        <option value="">💡 추천 템플릿 선택...</option>
+        <option value="default">🌱 기본 프롬프트 (원래대로)</option>
+        <option disabled>───────────</option>
+        <option value="behavior">🚨 행동 교정 및 습관 개선</option>
+        <option value="social">🤝 교우 관계 및 사회성 발달</option>
+        <option value="study">📚 학습 무기력 및 집중력</option>
+        <option value="emotion">☔ 감정 조절 및 고반응성</option>
+    </select>
+</div>
                                     <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 bg-white p-2 rounded border border-slate-100">
                                         <div><code>{`{{records}}`}</code> : 관찰 기록</div>
                                         <div><code>{`{{topic}}`}</code> : 상담 주제</div>
