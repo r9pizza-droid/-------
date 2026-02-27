@@ -998,6 +998,7 @@
             const [notionStatus, setNotionStatus] = useState('idle');
             const [hasNotionConfig, setHasNotionConfig] = useState(false);
             const [hasGoogleSheetConfig, setHasGoogleSheetConfig] = useState(false);
+            const [saveProgress, setSaveProgress] = useState(0);
             
             useEffect(() => {
                 if (isOpen) {
@@ -1147,6 +1148,15 @@
 
                 if (!content) return showToast("내용을 입력해주세요.");
                 setNotionStatus('saving');
+                setSaveProgress(0);
+
+                let totalOps = 0;
+                if (saveTargets.has('google_sheet')) totalOps += 1;
+                if (saveTargets.has('notion_portfolio')) totalOps += 1;
+                if (saveTargets.has('notion_record')) totalOps += selectedStudents.length;
+                if (totalOps === 0) totalOps = 1;
+                let completedOps = 0;
+                const updateProgress = () => { completedOps++; setSaveProgress(Math.min(Math.round((completedOps / totalOps) * 100), 99)); };
                 
                 let tags = [];
                 if (saveTargets.has('notion_record')) tags.push("노션(기록)");
@@ -1214,6 +1224,7 @@
                     if (await saveToGoogleSheet(selectedStudents, category, content, date)) {
                         successCount = selectedStudents.length;
                     }
+                    updateProgress();
                     if (successCount > 0) {
                         setNotionStatus('success'); 
                         if (!keepContent) setNotionContent(''); 
@@ -1249,6 +1260,7 @@
     bodyData.studentName = joinedNames; // 노션의 '제목' 또는 '이름' 칸에 한 번에 전송!
     
     await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
+    updateProgress();
 } else {
     // [Fix] 노션(기록) 모드일 때 선택된 모든 학생에 대해 개별 저장
     for (const s of selectedStudents) {
@@ -1261,10 +1273,12 @@
         await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(individualBody) });
         
         // 🌟 핵심 해결책: 노션 서버가 튕겨내지 못하게 1명 저장할 때마다 0.35초(350ms)씩 부드럽게 숨을 고릅니다!
-        await new Promise(resolve => setTimeout(resolve, 350));
+        await new Promise(resolve => setTimeout(resolve, 350)); 
+        updateProgress();
     }
 }
                     }
+                    setSaveProgress(100);
                     setNotionStatus('success'); if(typeof showToast !== 'undefined') showToast("✨ 외부 서비스 연동이 안전하게 완료되었습니다!"); if (!keepContent) setNotionContent(''); setTimeout(() => setNotionStatus('idle'), 3000);
                     showToast("✅ 기록이 저장되었습니다!");
                 } catch (e) {
@@ -1771,14 +1785,24 @@
                                             </label>
                                         </div>
                                         
-                                        <div className="flex gap-2.5">
-                                            <button onClick={() => handleIntegratedSave('칭찬')} disabled={notionStatus === 'saving'} className={`relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap ${notionStatus === 'saving' ? 'bg-rose-300' : 'bg-rose-500 hover:bg-rose-600 active:scale-95'}`}>
-                                                칭찬하기 +1
-                                            </button>
-                                            <button onClick={() => handleIntegratedSave('관찰')} disabled={notionStatus === 'saving'} className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap ${notionStatus === 'saving' ? 'bg-indigo-300' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'}`}>
-                                                관찰 기록 저장
-                                            </button>
-                                        </div>
+                                        {notionStatus === 'saving' ? (
+                                            <div className="w-full bg-slate-100 rounded-xl h-12 flex items-center justify-center relative overflow-hidden shadow-inner">
+                                                <div className="absolute left-0 top-0 h-full bg-indigo-100 transition-all duration-300 ease-out" style={{ width: `${saveProgress}%` }}></div>
+                                                <div className="relative z-10 flex items-center gap-2 text-indigo-700 font-bold text-sm">
+                                                    <Icon d={PATHS.spinner} className="animate-spin" />
+                                                    <span>저장 중... {saveProgress}%</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-2.5">
+                                                <button onClick={() => handleIntegratedSave('칭찬')} className="relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-rose-500 hover:bg-rose-600 active:scale-95">
+                                                    칭찬하기 +1
+                                                </button>
+                                                <button onClick={() => handleIntegratedSave('관찰')} className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 active:scale-95">
+                                                    관찰 기록 저장
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Logs Search & Accordion */}
@@ -6487,6 +6511,7 @@ const firebaseConfig = {
     const [hasGoogleSheetConfig, setHasGoogleSheetConfig] = React.useState(false);
     const modalRef = React.useRef(null);
     const textareaRef = React.useRef(null);
+    const [saveProgress, setSaveProgress] = React.useState(0);
 
     React.useEffect(() => {
         if (isOpen) {
@@ -6540,6 +6565,16 @@ const firebaseConfig = {
                 if (!content) return showToast("내용을 입력해주세요.");
                 
                 setNotionStatus('saving');
+                setSaveProgress(0);
+
+                let totalOps = 0;
+                if (saveTargets.has('google_sheet')) totalOps += 1;
+                if (saveTargets.has('notion_portfolio')) totalOps += 1;
+                if (saveTargets.has('notion_record')) totalOps += selectedStudents.length;
+                if (totalOps === 0) totalOps = 1;
+                let completedOps = 0;
+                const updateProgress = () => { completedOps++; setSaveProgress(Math.min(Math.round((completedOps / totalOps) * 100), 99)); };
+
                 const date = notionDate || dayjs().format('YYYY-MM-DD');
                 
                 let tags = [];
@@ -6591,6 +6626,7 @@ const firebaseConfig = {
                     if (await saveToGoogleSheet(selectedStudents, category, content, date)) {
                         successCount = selectedStudents.length;
                     }
+                    updateProgress();
                     if (successCount > 0) {
                         setNotionStatus('success'); if (!keepContent) setNotionContent(''); 
                         setTimeout(() => setNotionStatus('idle'), 3000); 
@@ -6616,6 +6652,7 @@ const firebaseConfig = {
                             const ids = []; selectedStudents.forEach(s => { if (map[s.name]) ids.push(map[s.name]); });
                             bodyData.mode = 'relation'; bodyData.studentIds = ids;
                             await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
+                            updateProgress();
                         } else {
                             // [Fix] 노션(기록) 모드일 때 선택된 모든 학생에 대해 개별 저장
                             for (const s of selectedStudents) {
@@ -6626,9 +6663,11 @@ const firebaseConfig = {
                                     date: dayjs(date).format('YYYY-MM-DD') 
                                 };
                                 await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(individualBody) });
+                                updateProgress();
                             }
                         }
                     }
+                    setSaveProgress(100);
                     setNotionStatus('success'); if (!keepContent) setNotionContent(''); setTimeout(() => setNotionStatus('idle'), 3000);
                     showToast("✅ 기록이 저장되었습니다!");
                     if (closeAfterSave) onClose();
@@ -6696,10 +6735,20 @@ const firebaseConfig = {
                             <span className="text-[10px] text-slate-500 font-bold">자동 닫기</span>
                         </label>
                     </div>
-                    <div className="flex gap-2.5">
-                        <button onClick={() => handleIntegratedSave('칭찬')} disabled={notionStatus === 'saving'} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-rose-500 hover:bg-rose-600 shadow-md whitespace-nowrap">칭찬하기 +1</button>
-                        <button onClick={() => handleIntegratedSave('관찰')} disabled={notionStatus === 'saving'} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md whitespace-nowrap">관찰 기록 저장</button>
-                    </div>
+                    {notionStatus === 'saving' ? (
+                        <div className="w-full bg-slate-100 rounded-xl h-12 flex items-center justify-center relative overflow-hidden shadow-inner">
+                            <div className="absolute left-0 top-0 h-full bg-indigo-100 transition-all duration-300 ease-out" style={{ width: `${saveProgress}%` }}></div>
+                            <div className="relative z-10 flex items-center gap-2 text-indigo-700 font-bold text-sm">
+                                <Icon d={PATHS.spinner} className="animate-spin" />
+                                <span>저장 중... {saveProgress}%</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex gap-2.5">
+                            <button onClick={() => handleIntegratedSave('칭찬')} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-rose-500 hover:bg-rose-600 shadow-md whitespace-nowrap">칭찬하기 +1</button>
+                            <button onClick={() => handleIntegratedSave('관찰')} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md whitespace-nowrap">관찰 기록 저장</button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
