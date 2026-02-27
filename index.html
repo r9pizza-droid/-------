@@ -244,7 +244,7 @@
         // 🌟 따옴표 중복 방지 및 전송 최적화 버전
         // [New] 구글 시트 전송용 함수
         // [New] 구글 시트 전송용 함수
-        const saveToGoogleSheet = async (studentName, category, recordContent, recordDate) => {
+        const saveToGoogleSheet = async (studentData, category, recordContent, recordDate) => {
             let url = localStorage.getItem('cls_google_sheet_url');
             if (url) url = url.trim().replace(/^"|'|"$|'$/g, '');
             
@@ -256,15 +256,27 @@
                 const dateStr = recordDate ? dayjs(recordDate).format('YYYY-MM-DD') + ' ' + dayjs().format('HH:mm:ss') : dayjs().format('YYYY-MM-DD HH:mm:ss');
                 const clean = (val) => String(val || "").trim().replace(/^"|"$/g, '');
 
-                const payload = {
-                    date: clean(dateStr),
-                    name: clean(studentName),
-                    category: clean(category),
-                    // 🌟 구글 시트가 어떤 이름표를 원할지 몰라서 3가지로 다 보냅니다!
-                    content: clean(recordContent), 
-                    memo: clean(recordContent),
-                    text: clean(recordContent)
-                };
+                let payload;
+                // 🌟 핵심 기술: 다수의 학생 데이터가 들어오면 '배열(Array)'로 묶어서 포장합니다!
+                if (Array.isArray(studentData)) {
+                    payload = studentData.map(s => ({
+                        date: clean(dateStr),
+                        name: clean(s.name || s),
+                        category: clean(category),
+                        content: clean(recordContent), 
+                        memo: clean(recordContent),
+                        text: clean(recordContent)
+                    }));
+                } else {
+                    payload = {
+                        date: clean(dateStr),
+                        name: clean(studentData),
+                        category: clean(category),
+                        content: clean(recordContent), 
+                        memo: clean(recordContent),
+                        text: clean(recordContent)
+                    };
+                }
 
                 await fetch(url, {
                     method: "POST",
@@ -1191,8 +1203,9 @@
 
                 if (saveTargets.has('google_sheet')) {
                     let successCount = 0;
-                    for (const s of selectedStudents) {
-                        if (await saveToGoogleSheet(s.name, category, content, date)) successCount++;
+                    // 🌟 줄 세우지 않고, 배열 통째로 전송!
+                    if (await saveToGoogleSheet(selectedStudents, category, content, date)) {
+                        successCount = selectedStudents.length;
                     }
                     if (successCount > 0) {
                         setNotionStatus('success'); 
@@ -3494,10 +3507,34 @@
                                 <div className="relative mt-2 mb-2 group">
                                     <div className="bg-slate-800 text-green-400 p-3 rounded-lg font-mono text-[10px] overflow-x-auto whitespace-pre border border-slate-700 shadow-inner selection:bg-green-900 selection:text-white">
 {`function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  var data = JSON.parse(e.postData.contents);
-  sheet.appendRow([data.date, data.name, data.category, data.content]);
-  return ContentService.createTextOutput("Success");
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = JSON.parse(e.postData.contents);
+
+    // 🌟 1. 여러 명의 데이터가 한꺼번에 '배열(박스)'로 들어온 경우 (초고속 일괄 저장)
+    if (Array.isArray(data)) {
+      var rows = [];
+      for (var i = 0; i < data.length; i++) {
+        // [주의] A열:날짜, B열:이름, C열:분류, D열:내용 순서입니다.
+        rows.push([data[i].date, data[i].name, data[i].category, data[i].content]);
+      }
+      
+      // 구글 시트의 빈 줄을 찾아서, 여러 줄을 단 0.1초 만에 한 번에 쏟아붓습니다!
+      if (rows.length > 0) {
+        sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+      }
+    } 
+    // 🌟 2. 기존처럼 1명 분량의 데이터만 들어온 경우 (안전장치)
+    else {
+      sheet.appendRow([data.date, data.name, data.category, data.content]);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({"result": "success", "message": "초고속 저장 성공!"}))
+                         .setMimeType(ContentService.MimeType.JSON);
+  } catch(error) {
+    return ContentService.createTextOutput(JSON.stringify({"result": "error", "error": error.toString()}))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
 }`}
                                     </div>
                                     <button onClick={() => { const code = `function doPost(e) {\n  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();\n  var data = JSON.parse(e.postData.contents);\n  sheet.appendRow([data.date, data.name, data.category, data.content]);\n  return ContentService.createTextOutput("Success");\n}`; navigator.clipboard.writeText(code); showToast("✅ 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
@@ -6269,8 +6306,9 @@ const firebaseConfig = {
 
                 if (saveTargets.has('google_sheet')) {
                     let successCount = 0;
-                    for (const s of selectedStudents) {
-                        if (await saveToGoogleSheet(s.name, category, content, date)) successCount++;
+                    // 🌟 줄 세우지 않고, 배열 통째로 전송!
+                    if (await saveToGoogleSheet(selectedStudents, category, content, date)) {
+                        successCount = selectedStudents.length;
                     }
                     if (successCount > 0) {
                         setNotionStatus('success'); if (!keepContent) setNotionContent(''); 
