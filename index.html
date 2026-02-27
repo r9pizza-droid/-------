@@ -3363,7 +3363,7 @@
 
     try {
         // 🌟 1. 선생님의 구글 스크립트(우체국) 주소를 입력하세요!
-        const GAS_NOTION_PROXY_URL = "https://script.google.com/macros/s/AKfycbydNgGXVbJ0NlunK8GnbBoppHJevqJz35q5sYwxJCSLnJjsCmZ_eoe9pG5AJNJJuL3_Uw/exec";
+        const GAS_NOTION_PROXY_URL = "https://script.google.com/macros/s/AKfycbyhVCL0YnHhi_d9Je-8jzah_UK5cC4MZnrccsEbfG5VCQD8v66nqPAlZ9EcWbc7gL-nag/exec";
 
         // 🌟 2. 하이패스 우체국으로 데이터 포장해서 쏘기
         const response = await fetch(GAS_NOTION_PROXY_URL, {
@@ -3372,6 +3372,7 @@
                 'Content-Type': 'text/plain;charset=utf-8' // 브라우저 보안 검사(CORS) 프리패스!
             },
             body: JSON.stringify({
+                appkey: "saysemin",                         // 비밀상자
                 apiKey: cleanKey,                           // 마스터키 포장
                 url: 'https://api.notion.com/v1/pages',     // 최종 목적지
                 method: 'POST',
@@ -3390,7 +3391,7 @@
                                         </div>
                                         <button onClick={() => { 
                                             const code = `export default async function handler(req, res) {\n    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');\n    let { personalKey, personalDbId, studentName, date, category, content, mode, studentIds, testMode } = req.body;\n\n    const cleanKey = personalKey ? personalKey.replace(/["']/g, '').trim() : '';\n    const cleanDbId = personalDbId ? personalDbId.toString().replace(/["']/g, '').trim() : '';\n\n    if (!cleanKey || !cleanDbId) return res.status(400).json({ error: "설정 정보가 누락되었습니다." });\n\n    const titlePropertyName = (mode === 'relation') ? "제목" : "이름";\n    let properties = {};\n    const pageIcon = { type: "emoji", emoji: testMode ? "🧪" : "🍀" };\n\n    if (testMode) {\n        properties[titlePropertyName] = { "title": [{ "text": { "content": \`✅ [\${titlePropertyName}] 칸 연동 테스트 성공!\` } }] };\n    } else {\n        if (mode === 'relation') {\n            const summary = content ? (content.length > 15 ? content.substring(0, 15) + "..." : content) : "새로운 기록";\n            properties["제목"] = { "title": [{ "text": { "content": \`[\${category || "관찰"}] \${summary}\` } }] };\n            properties["분류"] = { "select": { "name": category || "관찰" } };\n            properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };\n            if (studentIds && studentIds.length > 0) properties["학생"] = { "relation": studentIds.map(id => ({ "id": id })) };\n        } else {\n            properties["이름"] = { "title": [{ "text": { "content": studentName || "학생" } }] };\n            properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };\n            properties["분류"] = { "select": { "name": category || "관찰" } };\n            properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };\n        }\n    }\n\n    try {\n        // 🌟 1. 선생님의 구글 스크립트(우체국) 주소를 입력하세요!
-        const GAS_NOTION_PROXY_URL = "https://script.google.com/macros/s/AKfycbydNgGXVbJ0NlunK8GnbBoppHJevqJz35q5sYwxJCSLnJjsCmZ_eoe9pG5AJNJJuL3_Uw/exec";
+        const GAS_NOTION_PROXY_URL = "https://script.google.com/macros/s/AKfycbyhVCL0YnHhi_d9Je-8jzah_UK5cC4MZnrccsEbfG5VCQD8v66nqPAlZ9EcWbc7gL-nag/exec";
 
         // 🌟 2. 하이패스 우체국으로 데이터 포장해서 쏘기
         const response = await fetch(GAS_NOTION_PROXY_URL, {
@@ -3399,6 +3400,7 @@
                 'Content-Type': 'text/plain;charset=utf-8' // 브라우저 보안 검사(CORS) 프리패스!
             },
             body: JSON.stringify({
+                appkey: "saysemin",                         // 비밀상자
                 apiKey: cleanKey,                           // 선생님의 노션 마스터키
                 url: 'https://api.notion.com/v1/pages',     // 노션의 최종 목적지 주소
                 method: 'POST',
@@ -4168,20 +4170,26 @@
                 const googleSheetUrl = localStorage.getItem('cls_google_sheet_url');
                 const aiKey = localStorage.getItem('cls_ai_key');
                 
+                setIsTestingAll(true);
+
+                // 초기 상태 설정: 설정값 유무에 따라 pending 또는 error(미설정) 처리
+                setConnectionStatus({
+                    ai: aiKey ? { status: 'pending', message: '테스트 중...' } : { status: 'error', message: '미설정' },
+                    notion_record: (notionKey && notionDbId) ? { status: 'pending', message: '테스트 중...' } : { status: 'error', message: '미설정' },
+                    notion_portfolio: (notionKey && notionPortId) ? { status: 'pending', message: '테스트 중...' } : { status: 'error', message: '미설정' },
+                    google: googleSheetUrl ? { status: 'pending', message: '테스트 중...' } : { status: 'error', message: '미설정' }
+                });
+
                 const tests = [];
                 if (aiKey) tests.push({ type: 'ai', name: 'AI (Gemini)', key: aiKey, id: 'ai' });
-                if (notionKey && notionDbId) tests.push({ type: 'notion', name: '노션(기록)', id: notionDbId, mode: 'normal' });
+                if (notionKey && notionDbId) tests.push({ type: 'notion', name: '노션(기록)', id: 'notion_record', key: notionKey, dbId: notionDbId, mode: 'normal' });
                 if (notionKey && notionPortId) tests.push({ type: 'notion', name: '노션(포폴)', id: 'notion_portfolio', key: notionKey, dbId: notionPortId, mode: 'relation' });
                 if (googleSheetUrl) tests.push({ type: 'google', name: '구글시트', id: 'google', url: googleSheetUrl });
 
-                if (tests.length === 0) return showToast("저장된 연동 설정이 없습니다.");
-                
-                setIsTestingAll(true);
-                setConnectionStatus(prev => {
-                    const next = { ...prev };
-                    tests.forEach(t => next[t.id] = { status: 'pending', message: '테스트 중...' });
-                    return next;
-                });
+                if (tests.length === 0) {
+                    setIsTestingAll(false);
+                    return showToast("저장된 연동 설정이 없습니다.");
+                }
 
                 let hasSuccess = false;
 
