@@ -388,6 +388,7 @@
                 if (!message) return; 
                 let duration = action ? 4000 : 3000;
                 if (message.includes("연동 상태 확인 중")) duration = 600000; 
+                if (message.includes("❌")) return;
                 const timer = setTimeout(() => onCloseRef.current(), duration); 
                 return () => clearTimeout(timer); 
             }, [message, action]);
@@ -3459,100 +3460,6 @@
                             </Btn>
                             <Btn onClick={handleSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-colors">설정 저장하기</Btn>
                         </div>
-                        {/* 🌟 전체 연동 테스트 시각화 UI 시작 */}
-<div id="sync-test-panel" className="mt-8 mb-4 p-5 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
-    <div className="flex justify-between items-center mb-4">
-        <div>
-            <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                <span className="text-lg">🔄</span> 전체 연동 상태 점검
-            </h4>
-            <p className="text-xs text-slate-500 mt-1">AI, 노션, 구글 시트 설정이 올바른지 순차적으로 테스트합니다.</p>
-        </div>
-        <button
-            type="button"
-            onClick={async (e) => {
-                const btn = e.currentTarget;
-                const wrapper = document.getElementById('sync-test-panel');
-                const icons = wrapper.querySelectorAll('.sync-icon');
-                const texts = wrapper.querySelectorAll('.sync-text');
-                
-                // 1. 초기화
-                icons.forEach(el => el.innerHTML = '⏳');
-                texts.forEach(el => { el.innerHTML = '대기 중...'; el.className = 'sync-text text-[10px] sm:text-xs text-slate-400 font-bold'; });
-                
-                btn.disabled = true;
-                btn.innerHTML = '점검 중...';
-
-                const spinnerSvg = '<svg class="animate-spin w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-
-                const runTest = async (index, checkCondition) => {
-                    icons[index].innerHTML = spinnerSvg;
-                    texts[index].innerHTML = '확인 중...';
-                    texts[index].className = 'sync-text text-[10px] sm:text-xs text-indigo-500 font-bold';
-                    
-                    await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); 
-                    const isSuccess = checkCondition(); 
-                    
-                    if (isSuccess) {
-                        icons[index].innerHTML = '✅';
-                        texts[index].innerHTML = '연동 정상';
-                        texts[index].className = 'sync-text text-[10px] sm:text-xs text-emerald-600 font-bold';
-                    } else {
-                        icons[index].innerHTML = '❌';
-                        texts[index].innerHTML = '설정 필요';
-                        texts[index].className = 'sync-text text-[10px] sm:text-xs text-rose-500 font-bold';
-                    }
-                };
-
-                // 2. 항목별 순차 테스트
-                await runTest(0, () => typeof appConfig !== 'undefined' && appConfig.geminiApiKey && appConfig.geminiApiKey.length > 5);
-                await runTest(1, () => typeof appConfig !== 'undefined' && appConfig.notionApiKey && appConfig.notionApiKey.length > 5);
-                await runTest(2, () => typeof appConfig !== 'undefined' && appConfig.googleSheetUrl && appConfig.googleSheetUrl.length > 5);
-
-                btn.disabled = false;
-                btn.innerHTML = '다시 테스트';
-                if(typeof showToast !== 'undefined') showToast("✨ 연동 테스트가 완료되었습니다!");
-            }}
-            className="bg-indigo-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 whitespace-nowrap"
-        >
-            테스트 시작
-        </button>
-    </div>
-
-    <div className="space-y-2 bg-white p-2 sm:p-3 rounded-xl border border-slate-100 shadow-inner">
-        <div className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-200">
-            <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-[10px] sm:text-sm shadow-sm">AI</div>
-                <span className="text-xs sm:text-sm font-bold text-slate-700">Gemini AI API</span>
-            </div>
-            <div className="flex items-center gap-2 w-20 sm:w-24 justify-end">
-                <span className="sync-text text-[10px] sm:text-xs text-slate-400 font-bold">대기 중...</span>
-                <div className="sync-icon w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-sm sm:text-base">⏳</div>
-            </div>
-        </div>
-        <div className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-200">
-            <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-800 font-bold text-[10px] sm:text-sm shadow-sm">N</div>
-                <span className="text-xs sm:text-sm font-bold text-slate-700">노션(Notion)</span>
-            </div>
-            <div className="flex items-center gap-2 w-20 sm:w-24 justify-end">
-                <span className="sync-text text-[10px] sm:text-xs text-slate-400 font-bold">대기 중...</span>
-                <div className="sync-icon w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-sm sm:text-base">⏳</div>
-            </div>
-        </div>
-        <div className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-200">
-            <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-[10px] sm:text-sm shadow-sm">G</div>
-                <span className="text-xs sm:text-sm font-bold text-slate-700">구글 시트</span>
-            </div>
-            <div className="flex items-center gap-2 w-20 sm:w-24 justify-end">
-                <span className="sync-text text-[10px] sm:text-xs text-slate-400 font-bold">대기 중...</span>
-                <div className="sync-icon w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-sm sm:text-base">⏳</div>
-            </div>
-        </div>
-    </div>
-</div>
-{/* 🌟 전체 연동 테스트 시각화 UI 끝 */}
                     </div>
                 </BaseModal>
             );
@@ -3700,116 +3607,6 @@
                             <Btn onClick={handleSave} className="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-md transition-colors">설정 저장하기</Btn>
                         </div>
 
-                        {/* 🌟 전체 연동 테스트 시각화 UI 시작 */}
-                        <div id="sync-test-panel" className="mt-8 mb-2 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                            <div className="flex justify-between items-center mb-4">
-                                <div>
-                                    <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                                        <span className="text-lg">🔄</span> 전체 연동 점검
-                                    </h4>
-                                    <p className="text-[10px] sm:text-xs text-slate-500 mt-1">AI, 노션, 구글 시트 연결 테스트</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                        const btn = e.currentTarget;
-                                        const wrapper = document.getElementById('sync-test-panel');
-                                        const icons = wrapper.querySelectorAll('.sync-icon');
-                                        const texts = wrapper.querySelectorAll('.sync-text');
-                                        
-                                        // 🛡️ 화면 전체 투명 방어막 치기 (클릭 닫힘 방지)
-                                        const shield = document.createElement('div');
-                                        shield.id = 'sync-test-shield';
-                                        shield.className = 'fixed inset-0 z-[99999] cursor-wait';
-                                        document.body.appendChild(shield);
-                                        
-                                        // 1. 초기화
-                                        icons.forEach(el => el.innerHTML = '⏳');
-                                        texts.forEach(el => { el.innerHTML = '대기 중...'; el.className = 'sync-text text-[10px] sm:text-xs text-slate-400 font-bold'; });
-                                        
-                                        btn.disabled = true;
-                                        btn.innerHTML = '점검 중...';
-
-                                        const spinnerSvg = '<svg class="animate-spin w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-
-                                        const runTest = async (index, checkCondition) => {
-                                            icons[index].innerHTML = spinnerSvg;
-                                            texts[index].innerHTML = '확인 중...';
-                                            texts[index].className = 'sync-text text-[10px] sm:text-xs text-indigo-500 font-bold';
-                                            
-                                            await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); 
-                                            const isSuccess = checkCondition(); 
-                                            
-                                            if (isSuccess) {
-                                                icons[index].innerHTML = '✅';
-                                                texts[index].innerHTML = '연동 정상';
-                                                texts[index].className = 'sync-text text-[10px] sm:text-xs text-emerald-600 font-bold';
-                                            } else {
-                                                icons[index].innerHTML = '❌';
-                                                texts[index].innerHTML = '설정 필요';
-                                                texts[index].className = 'sync-text text-[10px] sm:text-xs text-rose-500 font-bold';
-                                            }
-                                        };
-
-                                        // 2. 항목별 순차 테스트 (앱 설정 변수명 참조)
-                                        const appCfgStr = localStorage.getItem('cls_app_config') || "{}";
-                                        const appCfg = JSON.parse(appCfgStr);
-                                        
-                                        const geminiKey = localStorage.getItem('cls_gemini_api_key') || "";
-                                        const notionKey = localStorage.getItem('cls_notion_key') || "";
-                                        const sheetUrl = localStorage.getItem('cls_google_sheet_url') || "";
-
-                                        await runTest(0, () => geminiKey.length > 5);
-                                        await runTest(1, () => notionKey.length > 5);
-                                        await runTest(2, () => sheetUrl.length > 5);
-
-                                        // 🛡️ 방어막 철거 및 완료
-                                        document.getElementById('sync-test-shield')?.remove();
-                                        btn.disabled = false;
-                                        btn.innerHTML = '다시 테스트';
-                                        if(typeof showToast !== 'undefined') showToast("✨ 전체 연동 테스트가 완료되었습니다!");
-                                    }}
-                                    className="bg-indigo-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 whitespace-nowrap"
-                                >
-                                    테스트 시작
-                                </button>
-                            </div>
-
-                            <div className="space-y-2 bg-slate-50 p-2 sm:p-3 rounded-xl border border-slate-100 shadow-inner">
-                                <div className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
-                                    <div className="flex items-center gap-2 sm:gap-3">
-                                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-[10px] sm:text-sm shadow-sm">AI</div>
-                                        <span className="text-xs sm:text-sm font-bold text-slate-700">Gemini AI API</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 w-20 sm:w-24 justify-end">
-                                        <span className="sync-text text-[10px] sm:text-xs text-slate-400 font-bold">대기 중...</span>
-                                        <div className="sync-icon w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-sm sm:text-base">⏳</div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
-                                    <div className="flex items-center gap-2 sm:gap-3">
-                                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-800 font-bold text-[10px] sm:text-sm shadow-sm">N</div>
-                                        <span className="text-xs sm:text-sm font-bold text-slate-700">노션 (Notion)</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 w-20 sm:w-24 justify-end">
-                                        <span className="sync-text text-[10px] sm:text-xs text-slate-400 font-bold">대기 중...</span>
-                                        <div className="sync-icon w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-sm sm:text-base">⏳</div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
-                                    <div className="flex items-center gap-2 sm:gap-3">
-                                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-[10px] sm:text-sm shadow-sm">G</div>
-                                        <span className="text-xs sm:text-sm font-bold text-slate-700">구글 시트</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 w-20 sm:w-24 justify-end">
-                                        <span className="sync-text text-[10px] sm:text-xs text-slate-400 font-bold">대기 중...</span>
-                                        <div className="sync-icon w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-sm sm:text-base">⏳</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {/* 🌟 전체 연동 테스트 시각화 UI 끝 */}
-                        
                     </div>
                 </BaseModal>
             );
@@ -3943,7 +3740,7 @@
                             </div>
                             <div className="flex gap-2">
                                 <div className="relative flex-1">
-                                    <input type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="w-full p-3 pr-8 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="sk-..." />
+                                    <input type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="w-full p-3 pr-8 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="API Key를 입력하세요.." />
                                     {apiKey && (
                                         <button onClick={() => setApiKey("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
                                             <Icon d={PATHS.x} size={14} />
@@ -4322,51 +4119,65 @@
             const [showAiSafetyHelp, setShowAiSafetyHelp] = useState(false);
             const [testAllSuccess, setTestAllSuccess] = useState(false);
             const [isTestingAll, setIsTestingAll] = useState(false);
+            const [connectionStatus, setConnectionStatus] = useState({
+                ai: { status: 'idle', message: '' },
+                notion_record: { status: 'idle', message: '' },
+                notion_portfolio: { status: 'idle', message: '' },
+                google: { status: 'idle', message: '' }
+            });
 
             const handleTestAllConnections = async () => {
                 const notionKey = localStorage.getItem('cls_notion_key');
                 const notionDbId = localStorage.getItem('cls_notion_db_id');
                 const notionPortId = localStorage.getItem('cls_notion_portfolio_db_id');
                 const googleSheetUrl = localStorage.getItem('cls_google_sheet_url');
+                const aiKey = localStorage.getItem('cls_ai_key');
                 
                 const tests = [];
+                if (aiKey) tests.push({ type: 'ai', name: 'AI (Gemini)', key: aiKey, id: 'ai' });
                 if (notionKey && notionDbId) tests.push({ type: 'notion', name: '노션(기록)', id: notionDbId, mode: 'normal' });
-                if (notionKey && notionPortId) tests.push({ type: 'notion', name: '노션(포폴)', id: notionPortId, mode: 'relation' });
-                if (googleSheetUrl) tests.push({ type: 'google', name: '구글시트', url: googleSheetUrl });
+                if (notionKey && notionPortId) tests.push({ type: 'notion', name: '노션(포폴)', id: 'notion_portfolio', key: notionKey, dbId: notionPortId, mode: 'relation' });
+                if (googleSheetUrl) tests.push({ type: 'google', name: '구글시트', id: 'google', url: googleSheetUrl });
 
                 if (tests.length === 0) return showToast("저장된 연동 설정이 없습니다.");
                 
                 setIsTestingAll(true);
-                let progress = tests.map(t => ({ name: t.name, status: 'pending' }));
-                
-                const renderProgress = (prog, isFinished = false) => {
-                    const title = isFinished ? "연동 테스트 완료" : "연동 상태 확인 중...";
-                    return title + "\n\n" + prog.map(p => {
-                        const icon = p.status === 'pending' ? '⏳' : p.status === 'testing' ? '🔄' : p.status === 'success' ? '✅' : '❌';
-                        return `${icon} ${p.name}`;
-                    }).join('\n');
-                };
-
-                showToast(renderProgress(progress));
+                setConnectionStatus(prev => {
+                    const next = { ...prev };
+                    tests.forEach(t => next[t.id] = { status: 'pending', message: '테스트 중...' });
+                    return next;
+                });
 
                 let hasSuccess = false;
 
                 for (let i = 0; i < tests.length; i++) {
                     const test = tests[i];
-                    progress[i].status = 'testing';
-                    showToast(renderProgress([...progress]));
-
                     let success = false;
+                    let errorMsg = '';
+
                     try {
-                        if (test.type === 'notion') {
-                            const cleanKey = notionKey.replace(/["']/g, '').trim();
-                            const cleanDbId = test.id.replace(/["']/g, '').trim();
+                        if (test.type === 'ai') {
+                            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL_NAME}:generateContent?key=${test.key}`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ contents: [{ parts: [{ text: "Hello" }] }] })
+                            });
+                            if (response.ok) success = true;
+                            else {
+                                const data = await response.json();
+                                errorMsg = data.error?.message || "API 호출 실패";
+                            }
+                        } else if (test.type === 'notion') {
+                            const cleanKey = test.key.replace(/["']/g, '').trim();
+                            const cleanDbId = test.dbId.replace(/["']/g, '').trim();
                             const res = await fetch('/api/save-notion', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ personalKey: cleanKey, personalDbId: cleanDbId, testMode: true, mode: test.mode })
                             });
+                            const data = await res.json();
                             if (res.ok) success = true;
+                            else errorMsg = data.error || "연동 실패";
                         } else if (test.type === 'google') {
                             const cleanUrl = test.url.trim().replace(/^"|'|"$|'$/g, '');
                             await fetch(cleanUrl, {
@@ -4379,15 +4190,17 @@
                         }
                     } catch (e) {
                         success = false;
+                        errorMsg = e.message;
                     }
 
-                    progress[i].status = success ? 'success' : 'error';
+                    setConnectionStatus(prev => ({
+                        ...prev,
+                        [test.id]: { status: success ? 'success' : 'error', message: success ? '연동 성공' : errorMsg }
+                    }));
                     if (success) hasSuccess = true;
-                    showToast(renderProgress([...progress]));
                 }
 
                 setIsTestingAll(false);
-                showToast(renderProgress(progress, true));
                 if (hasSuccess) {
                     setTestAllSuccess(true);
                     setTimeout(() => setTestAllSuccess(false), 3000);
@@ -5299,9 +5112,9 @@
                                                     <span className={`text-xs font-bold ${isNotionConnected ? 'text-green-700' : 'text-slate-600'}`}>노션 연동</span>
                                                     {isNotionConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
-                                                <Btn onClick={onOpenApiKeySetup} className={`py-3 h-auto bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isAiConnected ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
-                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><Icon d={PATHS.bot} size={18} className="text-slate-500" /></div>
-                                                    <span className="text-xs font-bold text-slate-600">AI 설정</span>
+                                                <Btn onClick={onOpenApiKeySetup} className={`py-3 h-auto border border-slate-200 rounded-xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isAiConnected ? 'bg-green-50 ring-2 ring-green-500 ring-offset-1' : 'bg-white hover:bg-slate-50'}`}>
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isAiConnected ? 'bg-green-100' : 'bg-slate-100'}`}><Icon d={PATHS.bot} size={18} className={isAiConnected ? "text-green-700" : "text-slate-500"} /></div>
+                                                    <span className={`text-xs font-bold ${isAiConnected ? 'text-green-700' : 'text-slate-600'}`}>AI 설정</span>
                                                     {isAiConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
                                                 <Btn onClick={onOpenGoogleSheetSetup} className={`py-3 h-auto border border-slate-200 rounded-xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isGoogleSheetConnected ? 'bg-green-50 ring-2 ring-green-500 ring-offset-1' : 'bg-white hover:bg-slate-50'}`} title="구글 시트 연동">
@@ -5310,11 +5123,60 @@
                                                     {isGoogleSheetConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
                                                 </Btn>
                                             </div>
-                                            <div className="mt-3 pt-3 border-t border-slate-200">
-                                                <Btn onClick={handleTestAllConnections} disabled={isTestingAll} className={`w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm transition-all ${testAllSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
-                                                    {isTestingAll ? <><Icon d={PATHS.spinner} className="animate-spin" size={16} /> 테스트 중...</> : testAllSuccess ? <><Icon d={PATHS.check} size={16} /> 테스트 완료!</> : <><Icon d={PATHS.check} size={16} /> 전체 연동 테스트</>}
-                                                </Btn>
+                                            
+                                            {/* 🌟 전체 연동 상태 점검 패널 (이동됨) */}
+                                            <div id="sync-test-panel" className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-700 flex items-center gap-2 text-xs">
+                                                            <span className="text-base">🔄</span> 연동 상태 점검
+                                                        </h4>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleTestAllConnections}
+                                                        disabled={isTestingAll}
+                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm whitespace-nowrap ${isTestingAll ? 'bg-slate-100 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+                                                    >
+                                                        {isTestingAll ? '점검 중...' : '전체 점검'}
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    {[
+                                                        { id: 'ai', label: 'AI (Gemini)' },
+                                                        { id: 'notion_record', label: '노션 (기록)' },
+                                                        { id: 'notion_portfolio', label: '노션 (포폴)' },
+                                                        { id: 'google', label: '구글 시트' }
+                                                    ].map(item => {
+                                                        const status = connectionStatus[item.id];
+                                                        const isError = status.status === 'error';
+                                                        const isSuccess = status.status === 'success';
+                                                        const isPending = status.status === 'pending';
+                                                        
+                                                        return (
+                                                            <div key={item.id} className={`flex flex-col p-2 rounded-lg border transition-colors ${isSuccess ? 'bg-green-50 border-green-200' : 'bg-white border-slate-100'}`}>
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-600">{item.label}</span></div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`text-[10px] font-bold ${isError ? 'text-rose-500' : isSuccess ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                                            {isPending ? '확인 중...' : isSuccess ? '연동 성공' : isError ? '연동 실패' : '대기'}
+                                                                        </span>
+                                                                        <div className="w-4 h-4 flex items-center justify-center text-xs">
+                                                                            {isPending ? '⏳' : isSuccess ? '✅' : isError ? '❌' : '⚪'}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                {isError && status.message && (
+                                                                    <div className="text-[10px] text-rose-500 mt-1 bg-rose-50 p-1.5 rounded border border-rose-100 break-all">
+                                                                        {status.message}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
+
                                             {isDevMode && (
                                                 <div className="mt-3 pt-3 border-t border-slate-200 animate-fade-in">
                                                     <div className="flex gap-2">
