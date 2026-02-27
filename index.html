@@ -5967,7 +5967,12 @@
                                             <span className="text-sm font-bold text-notion-text flex items-center gap-1">
                                                 {s.name} <span className="text-xs">{getStreakBadge(s.id)}</span>
                                             </span>
-                                            <span className="text-[10px] text-notion-text-light">{s.order}번</span>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[10px] text-notion-text-light">{s.order}번</span>
+                                                <div className="flex gap-0.5">
+                                                    {stats.students.find(st => st.id === s.id)?.history.slice(-5).map((h, i) => (<div key={i} className={`w-1.5 h-1.5 rounded-full ${h.ratio === 1 ? 'bg-green-400' : h.ratio > 0 ? 'bg-yellow-400' : 'bg-slate-200'}`} title={`${h.date}: ${Math.round(h.ratio * 100)}%`}></div>))}
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className={`transition-all duration-200 ${isDone ? 'text-notion-blue opacity-100' : 'text-notion-border opacity-0 group-hover:opacity-100'} ${showPhoto ? 'hidden' : ''}`}>
                                             <Icon d={PATHS.check} size={16} />
