@@ -913,7 +913,7 @@
             );
         };
 
-        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode }) => {
+        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent }) => {
             if (!isOpen || !student || !student.history) return null;
             useEffect(() => {
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
@@ -932,6 +932,9 @@
             const recordDates = Array.from(new Set(notes.map(n => n.date))); // 기록이 있는 날짜만 쏙쏙 뽑기
             const [editingNoteId, setEditingNoteId] = useState(null);
             const [editNoteContent, setEditNoteContent] = useState("");
+            const [editRelatedStudents, setEditRelatedStudents] = useState([]);
+            const [editSearchText, setEditSearchText] = useState("");
+            const [showEditStudentDropdown, setShowEditStudentDropdown] = useState(false);
             const [aiComment, setAiComment] = useState("");
             const [isGenerating, setIsGenerating] = useState(false);
             const [showReportEdit, setShowReportEdit] = useState(false);
@@ -1111,25 +1114,209 @@
             };
             
             const handleDeleteNote = (id) => {
-                openConfirm("이 기록을 삭제하시겠습니까?", () => {
+                const noteToDelete = notes.find(n => n.id === id);
+                if (!noteToDelete) return;
+
+                const hasRelated = noteToDelete.relatedStudents && noteToDelete.relatedStudents.length > 0;
+
+                const deleteSingle = () => {
                     const newNotes = notes.filter(n => n.id !== id);
                     setNotes(newNotes);
                     onSaveCounseling(student.id, newNotes, "기록이 삭제되었습니다.");
+                };
+
+                const deleteAll = async () => {
+                    const targetIds = [student.id, ...noteToDelete.relatedStudents.map(s => s.id)];
+                    let updatedStudentsList = [...students];
+                    
+                    if (isLocalMode) {
+                        updatedStudentsList = updatedStudentsList.map(s => {
+                            if (targetIds.includes(s.id)) {
+                                const sNotes = s.id === student.id ? notes : (s.counseling || []);
+                                const newSNotes = sNotes.filter(n => n.id !== id);
+                                return { ...s, counseling: newSNotes };
+                            }
+                            return s;
+                        });
+                        setStudents(updatedStudentsList);
+                        saveData('cls_students', updatedStudentsList);
+                        setNotes(notes.filter(n => n.id !== id));
+                        showToast("관련된 모든 학생의 기록이 삭제되었습니다.");
+                    } else if (db && appId) {
+                        try {
+                            const batch = db.batch();
+                            const promises = targetIds.map(async (tId) => {
+                                const ref = db.collection('classes').doc(appId).collection('studentData').doc(String(tId));
+                                let tNotes = [];
+                                if (tId === student.id) {
+                                    tNotes = notes;
+                                } else {
+                                    const doc = await ref.get();
+                                    if (doc.exists) tNotes = doc.data().counseling || [];
+                                }
+                                const newTNotes = tNotes.filter(n => n.id !== id);
+                                batch.set(ref, { counseling: newTNotes }, { merge: true });
+                                
+                                const sIndex = updatedStudentsList.findIndex(s => s.id === tId);
+                                if (sIndex >= 0) {
+                                    updatedStudentsList[sIndex] = { ...updatedStudentsList[sIndex], counseling: newTNotes };
+                                }
+                            });
+                            
+                            await Promise.all(promises);
+                            await batch.commit();
+                            
+                            setStudents(updatedStudentsList);
+                            saveData('cls_students', updatedStudentsList);
+                            setNotes(notes.filter(n => n.id !== id));
+                            showToast("관련된 모든 학생의 기록이 삭제되었습니다.");
+                        } catch (e) {
+                            console.error("Batch delete failed", e);
+                            showToast("삭제 중 오류가 발생했습니다: " + e.message);
+                        }
+                    }
+                };
+
+                openConfirm("이 기록을 삭제하시겠습니까?", () => {
+                    if (hasRelated) {
+                        setTimeout(() => {
+                            openConfirm(
+                                `이 기록은 ${noteToDelete.relatedStudents.length}명의 다른 학생들과 함께 저장되었습니다.\n함께 기록된 학생들의 기록도 모두 삭제하시겠습니까?\n(취소 시 현재 학생의 기록만 삭제됩니다)`,
+                                deleteAll,
+                                deleteSingle
+                            );
+                        }, 200);
+                    } else {
+                        deleteSingle();
+                    }
                 });
             };
             
             const startEditing = (note) => {
                 setEditingNoteId(note.id);
                 setEditNoteContent(note.content);
+                setEditRelatedStudents(note.relatedStudents ? note.relatedStudents.filter(s => s.id !== student.id) : []);
             };
 
-            const saveEditing = () => {
+            const saveEditing = async () => {
                 if (!editNoteContent.trim()) return;
-                const newNotes = notes.map(n => n.id === editingNoteId ? { ...n, content: editNoteContent.trim() } : n);
+                
+                const originalNote = notes.find(n => n.id === editingNoteId);
+                if (!originalNote) return;
+
+                const finalRelated = [{ id: student.id, name: student.name }, ...editRelatedStudents];
+                const updatedNote = {
+                    ...originalNote,
+                    content: editNoteContent.trim(),
+                    relatedStudents: finalRelated.length > 1 ? finalRelated : null
+                };
+
+                // 1. 현재 화면의 notes 상태 즉시 업데이트 (UI 반응성)
+                const newNotes = notes.map(n => n.id === editingNoteId ? updatedNote : n);
                 setNotes(newNotes);
-                onSaveCounseling(student.id, newNotes, "기록이 수정되었습니다.");
+
+                // 2. 동기화 대상 학생 ID 목록 계산 (현재 설정된 관련 학생들 + 본인)
+                const targetStudentIds = new Set(editRelatedStudents.map(s => s.id));
+                targetStudentIds.add(student.id);
+
+                // 3. 제외된 학생 ID 목록 계산 (원래 있었는데 빠진 학생들)
+                const originalRelatedIds = originalNote.relatedStudents ? originalNote.relatedStudents.map(s => s.id) : [];
+                const removedIds = originalRelatedIds.filter(id => !targetStudentIds.has(id));
+
+                if (isLocalMode) {
+                    let updatedStudentsList = [...students];
+
+                    // 업데이트 대상 (추가/수정)
+                    targetStudentIds.forEach(tId => {
+                        const tStudent = updatedStudentsList.find(s => s.id === tId);
+                        if (tStudent) {
+                            const tNotes = tStudent.counseling || [];
+                            const noteIndex = tNotes.findIndex(n => n.id === editingNoteId);
+                            let newTNotes;
+                            if (noteIndex >= 0) {
+                                newTNotes = [...tNotes];
+                                newTNotes[noteIndex] = updatedNote;
+                            } else {
+                                newTNotes = [updatedNote, ...tNotes];
+                            }
+                            updatedStudentsList = updatedStudentsList.map(s => s.id === tId ? { ...s, counseling: newTNotes } : s);
+                        }
+                    });
+
+                    // 삭제 대상 (제외된 학생)
+                    removedIds.forEach(rId => {
+                        const rStudent = updatedStudentsList.find(s => s.id === rId);
+                        if (rStudent) {
+                            const rNotes = rStudent.counseling || [];
+                            const newRNotes = rNotes.filter(n => n.id !== editingNoteId);
+                            updatedStudentsList = updatedStudentsList.map(s => s.id === rId ? { ...s, counseling: newRNotes } : s);
+                        }
+                    });
+
+                    setStudents(updatedStudentsList);
+                    saveData('cls_students', updatedStudentsList);
+                    showToast("기록이 수정 및 동기화되었습니다.");
+                } else if (db && appId) {
+                    try {
+                        const promises = [];
+                        targetStudentIds.forEach(tId => {
+                            promises.push(db.collection('classes').doc(appId).collection('studentData').doc(String(tId)).get().then(doc => {
+                                if (doc.exists) {
+                                    const data = doc.data();
+                                    let tNotes = data.counseling || [];
+                                    const noteIndex = tNotes.findIndex(n => n.id === editingNoteId);
+                                    if (noteIndex >= 0) tNotes[noteIndex] = updatedNote;
+                                    else tNotes = [updatedNote, ...tNotes];
+                                    return { ref: doc.ref, counseling: tNotes };
+                                }
+                                return null;
+                            }));
+                        });
+                        removedIds.forEach(rId => {
+                            promises.push(db.collection('classes').doc(appId).collection('studentData').doc(String(rId)).get().then(doc => {
+                                if (doc.exists) {
+                                    const data = doc.data();
+                                    let rNotes = data.counseling || [];
+                                    const newRNotes = rNotes.filter(n => n.id !== editingNoteId);
+                                    return { ref: doc.ref, counseling: newRNotes };
+                                }
+                                return null;
+                            }));
+                        });
+                        const results = await Promise.all(promises);
+                        const batch = db.batch();
+                        let updateCount = 0;
+                        results.forEach(res => {
+                            if (res) {
+                                batch.set(res.ref, { counseling: res.counseling }, { merge: true });
+                                updateCount++;
+                            }
+                        });
+                        if (updateCount > 0) {
+                            await batch.commit();
+                            showToast("기록이 수정 및 동기화되었습니다.");
+                        }
+                    } catch (e) {
+                        console.error("동기화 저장 실패:", e);
+                        showToast("저장 중 오류가 발생했습니다: " + e.message);
+                    }
+                }
+
                 setEditingNoteId(null);
                 setEditNoteContent("");
+                setEditRelatedStudents([]);
+            };
+
+            const handleAddEditStudent = (s) => {
+                if (!editRelatedStudents.some(rs => rs.id === s.id) && s.id !== student.id) {
+                    setEditRelatedStudents([...editRelatedStudents, { id: s.id, name: s.name }]);
+                }
+                setEditSearchText("");
+                setShowEditStudentDropdown(false);
+            };
+
+            const handleRemoveEditStudent = (id) => {
+                setEditRelatedStudents(editRelatedStudents.filter(s => s.id !== id));
             };
 
             const handleStudentSelect = (name) => {
@@ -1954,6 +2141,41 @@
                                             <div key={n.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-colors">
                                                 {editingNoteId === n.id ? (
                                                     <div className="flex flex-col gap-3">
+                                                        <div className="flex flex-col gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs font-bold text-slate-500">함께 기록된 학생</span>
+                                                                <div className="relative flex-1">
+                                                                    <input 
+                                                                        className="text-xs bg-white border border-slate-200 rounded px-2 py-1 outline-none w-full focus:border-indigo-300" 
+                                                                        placeholder="학생 검색 및 추가..." 
+                                                                        value={editSearchText}
+                                                                        onChange={(e) => { setEditSearchText(e.target.value); setShowEditStudentDropdown(true); }}
+                                                                        onFocus={() => setShowEditStudentDropdown(true)}
+                                                                        onBlur={() => setTimeout(() => setShowEditStudentDropdown(false), 200)}
+                                                                    />
+                                                                    {showEditStudentDropdown && (
+                                                                        <div className="absolute top-full left-0 w-full bg-white shadow-xl border border-slate-200 rounded-lg z-50 max-h-32 overflow-y-auto mt-1 custom-scroll">
+                                                                            {students
+                                                                                .filter(s => s.name.includes(editSearchText) && s.id !== student.id && !editRelatedStudents.some(rs => rs.id === s.id))
+                                                                                .map(s => (
+                                                                                    <div key={s.id} className="px-3 py-2 text-xs hover:bg-indigo-50 cursor-pointer font-bold text-slate-700" onMouseDown={() => handleAddEditStudent(s)}>
+                                                                                        {s.name}
+                                                                                    </div>
+                                                                                ))
+                                                                            }
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-1.5 min-h-[24px]">
+                                                                {editRelatedStudents.length > 0 ? editRelatedStudents.map(s => (
+                                                                    <span key={s.id} className="text-xs px-2 py-1 rounded-full flex items-center gap-1 border bg-white text-slate-700 border-slate-200 font-bold shadow-sm">
+                                                                        {s.name}
+                                                                        <button onClick={() => handleRemoveEditStudent(s.id)} className="text-slate-400 hover:text-rose-500 bg-slate-100 rounded-full p-0.5"><Icon d={PATHS.x} size={10}/></button>
+                                                                    </span>
+                                                                )) : <span className="text-xs text-slate-400 py-1">없음</span>}
+                                                            </div>
+                                                        </div>
                                                         <textarea value={editNoteContent} onChange={(e) => setEditNoteContent(e.target.value)} className="w-full p-3 border border-indigo-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-100 resize-none bg-indigo-50/30" rows="3" />
                                                         <div className="flex justify-end gap-2">
                                                             <Btn onClick={() => setEditingNoteId(null)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200">취소</Btn>
@@ -1987,7 +2209,7 @@
                                                                         {n.relatedStudents
                                                                             .filter(s => s.id !== student.id)
                                                                             .map(s => (
-                                                                                <span key={s.id} className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200">
+                                                                                <span key={s.id} onClick={(e) => { e.stopPropagation(); if(onSwitchStudent) onSwitchStudent(s.id); }} className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors" title={`${s.name} 학생 인사이트 보기`}>
                                                                                     {s.name}
                                                                                 </span>
                                                                             ))
@@ -9979,7 +10201,8 @@ const firebaseConfig = {
                         appId={appId}
                         isPortfolioMode={isPortfolioMode}
                         setStudents={setStudents}
-                        saveData={saveData} />
+                        saveData={saveData}
+                        onSwitchStudent={(id) => setGrassStudentId(id)} />
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)} 
