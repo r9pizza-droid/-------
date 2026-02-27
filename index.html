@@ -344,7 +344,8 @@
             key: "M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4",
             speaker: "M11 5L6 9H2v6h4l5 4V5z M19.07 4.93a10 10 0 0 1 0 14.14 M15.54 8.46a5 5 0 0 1 0 7.07",
             mute: "M11 5L6 9H2v6h4l5 4V5z M23 9l-6 6 M17 9l6 6",
-            play: "M5 3l14 9-14 9V3z"
+            play: "M5 3l14 9-14 9V3z",
+            history: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
         };
 
         const Icon = ({ d, size = 20, className = "" }) => (
@@ -5511,7 +5512,7 @@
                 <>
                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-auto transition-all duration-300">
                         <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
-                            <h4 className="font-bold text-slate-700 flex items-center gap-2"><Icon d={PATHS.chart} size={18} className="text-indigo-500" /> 모둠 분석 결과 <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">더블클릭하여 상세보기</span></h4>
+                            <h4 className="font-bold text-slate-700 flex items-center gap-2"><Icon d={PATHS.chart} size={18} className="text-indigo-500" /> 모둠 분석 결과 <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">클릭하여 상세보기</span></h4>
                             <Icon d={isExpanded ? PATHS.down : PATHS.right} size={20} className="text-slate-400" />
                         </div>
                         {isExpanded && (
@@ -5524,7 +5525,7 @@
                                     const groupName = groupNames[date]?.[i] || `${i + 1}모둠`;
                                     const leader = g.find(s => s.leader);
                                     return (
-                                        <div key={i} onDoubleClick={() => setDetailGroup({ index: i, students: g, name: groupName })} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group">
+                                        <div key={i} onClick={() => setDetailGroup({ index: i, students: g, name: groupName })} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group">
                                             <div className="flex justify-between items-center mb-3"><span className="font-bold text-slate-700 text-base truncate" title={groupName}>{groupName}</span><span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full font-bold">{g.length}명</span></div>
                                             <div className="space-y-4">
                                                 <div>
@@ -6480,12 +6481,6 @@ const firebaseConfig = {
     const [hasGoogleSheet, setHasGoogleSheet] = React.useState(false);
 
     const [saveTargets, setSaveTargets] = React.useState(() => {
-        // [New] 이전에 선택한 저장소 설정이 있으면 불러오기
-        const savedPref = localStorage.getItem('cls_save_targets_pref');
-        if (savedPref) {
-            try { return new Set(JSON.parse(savedPref)); } catch(e) {}
-        }
-
         const key = localStorage.getItem('cls_notion_key');
         const dbId = localStorage.getItem('cls_notion_db_id');
         const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
@@ -6499,9 +6494,7 @@ const firebaseConfig = {
         return targets;
     });
 
-    const [searchText, setSearchText] = React.useState("");
     const [selectedStudents, setSelectedStudents] = React.useState([]);
-    const [showStudentDropdown, setShowStudentDropdown] = React.useState(false);
     const [notionDate, setNotionDate] = React.useState(dayjs().format('YYYY-MM-DD'));
     const [notionContent, setNotionContent] = React.useState('');
     const [keepContent, setKeepContent] = React.useState(false);
@@ -6512,6 +6505,35 @@ const firebaseConfig = {
     const modalRef = React.useRef(null);
     const textareaRef = React.useRef(null);
     const [saveProgress, setSaveProgress] = React.useState(0);
+    const [viewMode, setViewMode] = React.useState('list');
+    const [searchText, setSearchText] = React.useState("");
+    const [showStudentDropdown, setShowStudentDropdown] = React.useState(false);
+
+    const handleSelectAll = () => {
+        if (selectedStudents.length === students.length) {
+            setSelectedStudents([]);
+        } else {
+            setSelectedStudents([...students]);
+        }
+    };
+
+    const handleStudentSelect = (student) => {
+        if (student && !selectedStudents.some(sel => sel.id === student.id)) {
+            setSelectedStudents(prev => [...prev, student]);
+        }
+    };
+    const removeSelectedStudent = (id) => setSelectedStudents(prev => prev.filter(s => s.id !== id));
+
+    const toggleStudentSelection = (student) => {
+        setSelectedStudents(prev => {
+            const isSelected = prev.some(s => s.id === student.id);
+            if (isSelected) {
+                return prev.filter(s => s.id !== student.id);
+            } else {
+                return [...prev, student];
+            }
+        });
+    };
 
     React.useEffect(() => {
         if (isOpen) {
@@ -6545,19 +6567,6 @@ const firebaseConfig = {
     React.useEffect(() => {
         localStorage.setItem('cls_save_targets_pref', JSON.stringify([...saveTargets]));
     }, [saveTargets]);
-
-    React.useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-        }
-    }, [notionContent]);
-
-    const handleStudentSelect = (name) => {
-        const s = students.find(st => st.name === name);
-        if (s && !selectedStudents.find(sel => sel.id === s.id)) setSelectedStudents(prev => [...prev, s]);
-    };
-    const removeSelectedStudent = (id) => setSelectedStudents(prev => prev.filter(s => s.id !== id));
 
     const handleIntegratedSave = async (category) => {
                 if (selectedStudents.length === 0) return showToast("학생을 최소 1명 이상 선택해주세요.");
@@ -6704,25 +6713,71 @@ const firebaseConfig = {
                 </div>
 
                 <div className="p-5 flex flex-col gap-4">
-                    <div className="flex flex-wrap gap-1.5 relative">
-                        {selectedStudents.map(s => (
-                            <span key={s.id} className="text-xs px-2.5 py-1.5 rounded-full flex items-center gap-1.5 border bg-indigo-50 text-indigo-700 border-indigo-200 font-bold shadow-sm">
-                                {s.name} <button onClick={() => removeSelectedStudent(s.id)} className="hover:text-rose-500"><Icon d={PATHS.x} size={10}/></button>
-                            </span>
-                        ))}
-                        <div className="flex-1 min-w-[120px] relative">
-                            <input placeholder="대상 학생 검색 (클릭)..." className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-indigo-500" value={searchText} onChange={(e) => { setSearchText(e.target.value); setShowStudentDropdown(true); }} onFocus={() => setShowStudentDropdown(true)} onBlur={() => setTimeout(() => setShowStudentDropdown(false), 200)} />
+                    <div className="flex justify-between items-center">
+                        <button onClick={handleSelectAll} className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors">
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedStudents.length === students.length ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'}`}>
+                                {selectedStudents.length === students.length && <Icon d={PATHS.check} size={10} className="text-white" strokeWidth={3}/>}
+                            </div>
+                            <span>{selectedStudents.length === students.length ? '전체 해제' : '전체 선택'} ({selectedStudents.length}/{students.length})</span>
+                        </button>
+                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                            <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="리스트 보기">
+                                <Icon d={PATHS.list} size={16} />
+                            </button>
+                            <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="바둑판 보기">
+                                <Icon d={PATHS.grid} size={16} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {viewMode === 'grid' ? (
+                        <div className="w-full overflow-y-auto max-h-[200px] custom-scroll p-1 -mx-1 grid grid-cols-4 sm:grid-cols-5 gap-2">
+                            {students.map(student => {
+                                const isSelected = selectedStudents.some(s => s.id === student.id);
+                                return (
+                                    <div
+                                        key={student.id}
+                                        onClick={() => toggleStudentSelection(student)}
+                                        className={`cursor-pointer rounded-lg border transition-all select-none ${isSelected ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200' : 'border-slate-200 bg-white hover:bg-slate-50'} flex flex-col items-center justify-center p-2 aspect-square text-center`}
+                                    >
+                                        <span className="font-bold text-sm text-slate-700">{student.name}</span>
+                                        <span className="text-xs text-slate-400">#{student.order}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="relative">
+                            <div className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap gap-1.5 items-center min-h-[42px]">
+                                {selectedStudents.map(s => (
+                                    <span key={s.id} className="text-xs px-2.5 py-1.5 rounded-full flex items-center gap-1.5 border bg-indigo-50 text-indigo-700 border-indigo-200 font-bold shadow-sm">
+                                        {s.name} <button onClick={() => removeSelectedStudent(s.id)} className="hover:text-rose-500"><Icon d={PATHS.x} size={10}/></button>
+                                    </span>
+                                ))}
+                                <input 
+                                    placeholder={selectedStudents.length > 0 ? "" : "학생 검색..."}
+                                    className="flex-1 min-w-[80px] bg-transparent text-xs font-medium outline-none py-1" 
+                                    value={searchText} 
+                                    onChange={(e) => { setSearchText(e.target.value); setShowStudentDropdown(true); }} 
+                                    onFocus={() => setShowStudentDropdown(true)} 
+                                    onBlur={() => setTimeout(() => setShowStudentDropdown(false), 200)} 
+                                />
+                            </div>
                             {showStudentDropdown && (
-                                <div className="absolute top-full left-0 w-full bg-white shadow-xl border border-slate-200 rounded-xl z-50 max-h-40 overflow-y-auto mt-1 custom-scroll">
-                                    {students.filter(s => s.name.includes(searchText)).map(s => (
-                                        <div key={s.id} className="px-3 py-2 text-xs hover:bg-indigo-50 cursor-pointer font-bold flex justify-between" onMouseDown={() => { handleStudentSelect(s.name); setSearchText(""); }}>
+                                <div className="absolute top-full left-0 w-full bg-white shadow-xl border border-slate-200 rounded-xl z-50 max-h-48 overflow-y-auto mt-1 custom-scroll py-1">
+                                    {students.filter(s => s.name.includes(searchText) && !selectedStudents.some(sel => sel.id === s.id)).map(s => (
+                                        <div key={s.id} className="px-3 py-2 text-xs hover:bg-indigo-50 cursor-pointer font-bold flex justify-between items-center" onMouseDown={() => { handleStudentSelect(s); setSearchText(""); }}>
                                             <span>{s.order}번 {s.name}</span>
                                         </div>
                                     ))}
+                                    {students.filter(s => s.name.includes(searchText) && !selectedStudents.some(sel => sel.id === s.id)).length === 0 && (
+                                        <div className="px-3 py-2 text-xs text-slate-400 text-center">검색 결과가 없습니다.</div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    </div>
+                    )}
+
                     <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none" />
                     <textarea ref={textareaRef} value={notionContent} onChange={(e) => setNotionContent(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm resize-none min-h-[7rem] max-h-[40vh] outline-none overflow-y-auto custom-scroll" placeholder="관찰 내용이나 칭찬할 내용을 입력하세요..." rows={1} />
                     <div className="flex justify-end -mt-2 gap-3">
@@ -6946,6 +7001,7 @@ const firebaseConfig = {
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
             const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
             const [isGoogleSheetSetupOpen, setIsGoogleSheetSetupOpen] = useState(false);
+            const [isLoadGroupCalendarOpen, setIsLoadGroupCalendarOpen] = useState(false);
             // 🌟 튜토리얼 상태 관리
     const [showTutorial, setShowTutorial] = useState(false);
     const [tutorialStep, setTutorialStep] = useState(0);
@@ -8796,6 +8852,49 @@ const firebaseConfig = {
                 }
             };
 
+            const loadGroupsFromDate = (targetDate) => {
+                if (groupsByDate[targetDate] && groupsByDate[targetDate].length > 0) {
+                    openConfirm(`${dayjs(targetDate).format('YYYY-MM-DD')}의 모둠 편성을 불러오시겠습니까?`, () => {
+                        const lastGroups = JSON.parse(JSON.stringify(groupsByDate[targetDate]));
+                        const newGroupsData = { ...groupsByDate, [date]: lastGroups };
+                        setGroupsByDate(newGroupsData);
+                        
+                        const updates = { cls_groups_date: newGroupsData };
+                        const groupsToSave = { [date]: lastGroups };
+                        
+                        if (groupRoles[targetDate]) {
+                            const newRoles = { ...groupRoles, [date]: JSON.parse(JSON.stringify(groupRoles[targetDate])) };
+                            setGroupRoles(newRoles);
+                            updates['cls_group_roles'] = newRoles;
+                        }
+
+                        if (!isLocalMode) {
+                            saveData(updates);
+                            saveGroupsToFirestore(groupsToSave);
+                        } else {
+                            saveData(updates);
+                        }
+                        
+                        const hydratedLastGroups = hydrateGroups({ [date]: lastGroups }, students)[date];
+                        syncSeatsWithGroups(hydratedLastGroups);
+                        setToastMessage(`${dayjs(targetDate).format('MM/DD')} 모둠을 불러왔습니다.`);
+                    });
+                } else {
+                    setToastMessage("해당 날짜에 모둠 기록이 없습니다.");
+                }
+            };
+
+            const loadLastGroups = () => {
+                const dates = Object.keys(groupsByDate).sort().reverse();
+                const lastDate = dates.find(d => d < date && groupsByDate[d] && groupsByDate[d].length > 0);
+                
+                if (lastDate) {
+                    loadGroupsFromDate(lastDate);
+                } else {
+                    setToastMessage("이전 모둠 기록이 없습니다.");
+                }
+            };
+
             const roleMap = useMemo(() => {
                 const map = {};
                 const currentGroups = groupsByDate[date] || [];
@@ -9328,6 +9427,15 @@ const firebaseConfig = {
                                                             const MAX_VISIBLE = 2;
                                                             const visibleStudents = (g.length > MAX_VISIBLE && !isExpanded) ? g.slice(0, MAX_VISIBLE) : g;
                                                             const hiddenCount = g.length - MAX_VISIBLE;
+                                                            
+                                                            // 평균 점수 시각화 계산
+                                                            const avgScore = groupAvgSkill;
+                                                            const scorePercent = ((avgScore - 1) / 2) * 100; // 1~3점 -> 0~100%
+                                                            let scoreColor = "bg-slate-400";
+                                                            if (avgScore >= 2.5) scoreColor = "bg-indigo-500";
+                                                            else if (avgScore >= 1.8) scoreColor = "bg-indigo-400";
+                                                            else scoreColor = "bg-slate-400";
+
                                                             return (
                                                             <div key={i} className={`group-card bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-4 transition-all hover:shadow-md flex flex-col w-full sm:w-auto flex-grow ${focusedGroupIdx === i ? 'ring-2 ring-rose-400 shadow-md' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, i)} onClick={() => setFocusedGroupIdx(prev => prev === i ? null : i)}>
                                                                 <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-50">
@@ -9365,6 +9473,10 @@ const firebaseConfig = {
                                                                         <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-full">{g.length}명</span>
                                                                     </div>
                                                                 </div>
+                                                                <div className="mb-3 px-1">
+                                                                    <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1"><span>평균 실력</span><span>{avgScore.toFixed(1)} / 3.0</span></div>
+                                                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden"><div className={`h-full ${scoreColor} transition-all duration-500`} style={{ width: `${Math.max(5, scorePercent)}%` }}></div></div>
+                                                                </div>
                                                                 <div className="flex flex-col gap-2 flex-1">
                                                                     {visibleStudents.map((s, sIdx) => {
                                                                         const isLocked = lockedIds.includes(s.id);
@@ -9400,7 +9512,18 @@ const firebaseConfig = {
                                                         ); })}
                                                     </div>
                                                 ) : (
-                                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4"><Icon d={PATHS.users} size={48} className="opacity-20"/><p>편성된 모둠 없음</p></div>
+                                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
+                                                        <Icon d={PATHS.users} size={48} className="opacity-20"/>
+                                                        <p>편성된 모둠 없음</p>
+                                                        <div className="flex gap-2">
+                                                            <Btn onClick={loadLastGroups} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all active:scale-95">
+                                                                <Icon d={PATHS.history} size={16}/> 지난 모둠
+                                                            </Btn>
+                                                            <Btn onClick={() => setIsLoadGroupCalendarOpen(true)} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all active:scale-95">
+                                                                <Icon d={PATHS.calendar} size={16}/> 날짜 선택
+                                                            </Btn>
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -9631,6 +9754,7 @@ const firebaseConfig = {
                     <TaskModal isOpen={isTaskModalOpen} onClose={()=>setIsTaskModalOpen(false)} date={date} dailyTasks={dailyTasks} setDailyTasks={setDailyTasks} weeklyTasks={weeklyTasks} setWeeklyTasks={setWeeklyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} tags={tags} setTags={setTags} openConfirm={openConfirm} />
                     <CalendarModal isOpen={isCalendarOpen} onClose={()=>setIsCalendarOpen(false)} currentDate={date} onSelectDate={setDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
                     <CalendarModal isOpen={isRangeCalendarOpen} onClose={()=>setIsRangeCalendarOpen(false)} currentDate={date} selectionMode="range" onSelectRange={handleRangeSelect} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
+                    <CalendarModal isOpen={isLoadGroupCalendarOpen} onClose={()=>setIsLoadGroupCalendarOpen(false)} currentDate={date} onSelectDate={loadGroupsFromDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode="group" />
                     <RoleHelpModal isOpen={showRoleHelp} onClose={()=>setShowRoleHelp(false)} roleDescriptions={roleDescriptions} />
                     <RoleEditModal isOpen={isRoleEditOpen} onClose={() => setIsRoleEditOpen(false)} roles={rolesList} onSave={handleSaveRoles} roleDescriptions={roleDescriptions} onSaveDescriptions={handleSaveRoleDescriptions} />
                     <RoleSelectModal isOpen={!!editingRoleTarget} onClose={() => setEditingRoleTarget(null)} roles={rolesList} currentRole={editingRoleTarget?.currentRole} onSelect={(newRole) => handleRoleChange(editingRoleTarget.gIdx, editingRoleTarget.sIdx, newRole)} />
