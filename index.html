@@ -4109,6 +4109,7 @@
             const isGoogleSheetConnected = !!localStorage.getItem('cls_google_sheet_url');
             const [aiSafetyCheck, setAiSafetyCheck] = useState(() => localStorage.getItem('cls_ai_safety_check') === 'true');
             const [showAiSafetyHelp, setShowAiSafetyHelp] = useState(false);
+            const [testAllSuccess, setTestAllSuccess] = useState(false);
 
             const handleTestAllConnections = async () => {
                 const notionKey = localStorage.getItem('cls_notion_key');
@@ -4120,6 +4121,7 @@
                 
                 setToastMessage("연동 상태를 확인하는 중...");
                 let results = [];
+                let hasSuccess = false;
 
                 // Notion Test
                 if (notionKey) {
@@ -4131,7 +4133,7 @@
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ personalKey: cleanKey, personalDbId: notionDbId.replace(/["']/g, '').trim(), testMode: true, mode: 'normal' })
                             });
-                            if (res.ok) results.push("✅ 노션(기록): 성공");
+                            if (res.ok) { results.push("✅ 노션(기록): 성공"); hasSuccess = true; }
                             else results.push("❌ 노션(기록): 실패");
                         } catch (e) { results.push("❌ 노션(기록): 오류"); }
                     }
@@ -4142,7 +4144,7 @@
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ personalKey: cleanKey, personalDbId: notionPortId.replace(/["']/g, '').trim(), testMode: true, mode: 'relation' })
                             });
-                            if (res.ok) results.push("✅ 노션(포폴): 성공");
+                            if (res.ok) { results.push("✅ 노션(포폴): 성공"); hasSuccess = true; }
                             else results.push("❌ 노션(포폴): 실패");
                         } catch (e) { results.push("❌ 노션(포폴): 오류"); }
                     }
@@ -4159,11 +4161,18 @@
                             body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: "테스트", category: "연동 테스트", content: "전체 연동 테스트" })
                         });
                         results.push("✅ 구글시트: 전송 성공 (확인 필요)");
+                        hasSuccess = true;
                     } catch (e) { results.push("❌ 구글시트: 실패"); }
                 }
 
                 if (results.length === 0) setToastMessage("테스트할 설정이 부족합니다.");
-                else setToastMessage(results.join('\n'));
+                else {
+                    setToastMessage(results.join('\n'));
+                    if (hasSuccess) {
+                        setTestAllSuccess(true);
+                        setTimeout(() => setTestAllSuccess(false), 3000);
+                    }
+                }
             };
 
             const toggleAiSafetyCheck = () => {
@@ -4471,11 +4480,11 @@
 
             const getManualContent = () => `
 ================================================================
-  📘 이거했어? 사용 설명서 (v${appConfig.version})
+  📘 다했나요? 사용 설명서 (v${appConfig.version})
 ================================================================
 
 안녕하세요, 선생님! 
-이거했어?는 학급 운영을 더 쉽고 스마트하게 도와드리는 도구입니다.
+'다했나요?'는 학급 운영을 더 쉽고 스마트하게 도와드리는 도구입니다.
 주요 기능과 사용 팁을 아래에 정리해 드립니다.
 
 ----------------------------------------------------------------
@@ -4492,7 +4501,8 @@
 ----------------------------------------------------------------
 - [체크]: 학생 카드를 클릭하면 과제 제출/완료 처리가 됩니다.
 - [세부 과제]: '과제 설정(+)' 버튼을 눌러 '일기', '독서록' 등 여러 과제를 등록하세요.
-- [학급 스토리]: 하루 기록이 끝나면 '오늘의 학급 스토리' 버튼을 눌러보세요. 
+- [빠른 기록]: 화면 우측 하단 플로팅 버튼(✏️)을 눌러 언제 어디서든 관찰 기록을 남기세요.
+- [학급 스토리]: 하루 기록이 끝나면 '오늘의 학급 이야기' 버튼을 눌러보세요. 
   AI가 오늘 하루를 판타지, 동화, SF 등 다양한 장르의 이야기로 만들어줍니다.
 
 ----------------------------------------------------------------
@@ -4502,7 +4512,7 @@
 - [수동 조정]: 마우스로 학생을 드래그하여 다른 모둠으로 쉽게 옮길 수 있습니다.
 - [자리 배치]: 편성된 모둠을 바탕으로 교실 자리 배치도까지 한 번에 해결하세요.
 - [역할 분담]: '모둠 도구'에서 나눔이, 이끄미 등 역할을 자동으로 배정할 수 있습니다.
-- [분석]: 모둠별 성별/실력 분포를 그래프로 한눈에 확인할 수 있습니다.
+- [자전과 공전]: 모둠 구성원은 유지한 채 자리만 회전시키는 기능도 지원합니다.
 
 ----------------------------------------------------------------
 4. 📊 통계 & 상담 (데이터 기반 지도)
@@ -4511,15 +4521,24 @@
 - [활동 잔디]: 학생별 30일간의 활동 기록을 시각적으로 확인하세요.
 - [AI 주간 브리핑]: 이번 주 우리 반 분위기가 어땠는지 AI가 요약해줍니다.
 - [학생 인사이트]: 학생 이름을 더블 클릭하면 개별 상담 기록, 성장 리포트, 
-  학급 평균 비교 그래프 등을 볼 수 있습니다. AI가 생활기록부 초안도 써줍니다!
+  학급 평균 비교 그래프 등을 볼 수 있습니다.
+- [AI 은샘상담소]: 학생 지도 고민이 있을 때 AI에게 조언을 구해보세요.
+- [총평 초안]: 1년간의 기록을 바탕으로 생활기록부(행발, 교과) 초안을 생성해줍니다.
 
 ----------------------------------------------------------------
-5. 💾 데이터 안전 & 설정
+5. 🔗 외부 연동 & 데이터 관리
 ----------------------------------------------------------------
-- [자동 저장]: 모든 데이터는 사용 중인 브라우저에 안전하게 자동 저장됩니다.
-- [백업]: 설정 > 데이터 관리 > '데이터 내보내기'로 백업 파일을 PC에 저장해두세요.
-- [AI 설정]: Google Gemini API 키를 입력하면 더 똑똑한 AI 기능을 무료로 쓸 수 있습니다.
-- [폰트 변경]: 설정 > 앱 설정에서 고딕, 명조, 손글씨 등 원하는 폰트로 변경해보세요.
+- [노션 연동]: 기록을 개인 노션 페이지에 자동으로 저장할 수 있습니다.
+  (기록 모드 / 포트폴리오 모드 지원)
+- [구글 시트]: 기록 데이터를 구글 스프레드시트로 실시간 전송합니다.
+- [자동 백업]: 설정 > 데이터 관리에서 자동 백업 시간을 설정하면 안심입니다.
+- [데이터 정리]: 오래된 기록을 정리하여 앱 속도를 최적화할 수 있습니다.
+
+----------------------------------------------------------------
+6. 🧰 학급 도구 상자
+----------------------------------------------------------------
+- [발표자 뽑기]: 무작위로 발표자를 선정할 때 사용하세요.
+- [타이머]: 수업 시간 관리에 유용한 타이머 기능이 내장되어 있습니다.
 
 ----------------------------------------------------------------
 💡 문의 및 제안: spk@smca.or.kr
@@ -5073,8 +5092,8 @@
                                                 </Btn>
                                             </div>
                                             <div className="mt-3 pt-3 border-t border-slate-200">
-                                                <Btn onClick={handleTestAllConnections} className="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 flex items-center justify-center gap-2">
-                                                    <Icon d={PATHS.check} size={16} /> 전체 연동 테스트
+                                                <Btn onClick={handleTestAllConnections} className={`w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm transition-all ${testAllSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
+                                                    {testAllSuccess ? <><Icon d={PATHS.check} size={16} /> 테스트 완료!</> : <><Icon d={PATHS.check} size={16} /> 전체 연동 테스트</>}
                                                 </Btn>
                                             </div>
                                             {isDevMode && (
@@ -6718,6 +6737,17 @@ const firebaseConfig = {
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
             const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
             const [isGoogleSheetSetupOpen, setIsGoogleSheetSetupOpen] = useState(false);
+            // 🌟 튜토리얼 상태 관리
+    const [showTutorial, setShowTutorial] = useState(false);
+    const [tutorialStep, setTutorialStep] = useState(0);
+
+    const tutorialSlides = [
+        { emoji: '👋', title: '선생님, 환영합니다!', desc: '퇴근 시간을 앞당겨 줄 스마트한 학급 경영 도구입니다. 놀라운 핵심 기능을 빠르게 알아볼까요?' },
+        { emoji: '⚡', title: '빠른 다중 기록', desc: '우측 하단의 [빠른 기록 펜] 버튼을 눌러보세요. 한 번에 여러 명의 관찰/칭찬 기록을 순식간에 남길 수 있습니다.' },
+        { emoji: '🚀', title: '초고속 외부 연동 (누락 0%)', desc: '입력한 기록은 구글 시트와 노션으로 전송됩니다. 수십 명을 선택해도 데이터를 하나의 박스(Batch)로 묶어 0.1초 만에 안전하고 빠르게 일괄 전송합니다.' },
+        { emoji: '🤖', title: '전문가 수준의 AI 상담소', desc: '학생 이름표를 더블클릭하면 인사이트 창이 열립니다. [AI 상담소]의 톱니바퀴 버튼을 누르면 ABA, PDC, 감정코칭 등 맞춤형 전문가 프롬프트를 바로 불러옵니다.' },
+        { emoji: '📊', title: '클릭 한 번에 생기부 초안 완성', desc: '기록이 쌓이면 [AI 총평 초안] 탭을 활용해 보세요. 행발, 교과 등 자동 추천 템플릿에 맞춰 학생의 종합 의견 초안을 뚝딱 만들어줍니다.' }
+    ];
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100 });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
@@ -8894,7 +8924,13 @@ const firebaseConfig = {
 
             return (
                 <div className={`flex flex-col min-h-screen bg-slate-50 text-slate-900 ${appConfig.font === 'serif' ? 'font-serif' : appConfig.font === 'hand' ? 'font-hand' : appConfig.font === 'jua' ? 'font-jua' : appConfig.font === 'nanum' ? 'font-nanum' : appConfig.font === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'}`}>
-                    <header className="bg-white border-b border-notion-border z-20 sticky top-0"><div className="px-4 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3"><div className="flex items-center gap-6"><div className="flex items-center gap-2"><div className="p-1.5 bg-notion-bg-alt text-notion-text rounded border border-notion-border"><Icon d={PATHS.list} size={18}/></div><h1 className="text-base font-bold text-notion-text">{appConfig.recordTitle}</h1>{!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}</div><div className="hidden md:flex gap-1">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (<button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>))}</div></div>
+                    <header className="bg-white border-b border-notion-border z-20 sticky top-0"><div className="px-4 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3"><div className="flex items-center gap-6"><div className="flex items-center gap-2"><div className="p-1.5 bg-notion-bg-alt text-notion-text rounded border border-notion-border"><Icon d={PATHS.list} size={18}/></div><h1 className="text-base font-bold text-notion-text">{appConfig.recordTitle}</h1><button 
+    onClick={() => { setShowTutorial(true); setTutorialStep(0); }} 
+    className="ml-2 w-7 h-7 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors shadow-sm ring-1 ring-indigo-100" 
+    title="사용 설명서 보기"
+>
+    💡
+</button>{!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}</div><div className="hidden md:flex gap-1">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (<button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>))}</div></div>
                     <div className="flex items-center gap-2 absolute right-4 top-3 md:relative md:top-auto md:right-auto">
                         <button onClick={()=>setIsToolsOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>🧰</span><span className="text-sm font-medium">도구</span></button>
                         <button onClick={()=>setIsSettingOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>⚙️</span><span className="text-sm font-medium">설정</span></button>
@@ -9252,6 +9288,61 @@ const firebaseConfig = {
                             onClose={handleCloseUpdate}
                         />
                     )}
+                    {/* 🌟 튜토리얼 모달창 */}
+            {showTutorial && (
+                <div className="fixed inset-0 bg-black/60 z-[6000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-pop-up flex flex-col">
+                        {/* 상단 프로그레스 바 */}
+                        <div className="flex gap-1 p-4 bg-slate-50 border-b border-slate-100">
+                            {tutorialSlides.map((_, idx) => (
+                                <div key={idx} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${idx <= tutorialStep ? 'bg-indigo-500' : 'bg-slate-200'}`} />
+                            ))}
+                        </div>
+                        
+                        {/* 슬라이드 내용 */}
+                        <div className="p-8 text-center flex-1 flex flex-col justify-center min-h-[250px]">
+                            <div className="text-6xl mb-4 animate-bounce">{tutorialSlides[tutorialStep].emoji}</div>
+                            <h3 className="text-xl font-black text-slate-800 mb-3 break-keep">{tutorialSlides[tutorialStep].title}</h3>
+                            <p className="text-slate-600 text-sm leading-relaxed break-keep">{tutorialSlides[tutorialStep].desc}</p>
+                        </div>
+                        
+                        {/* 하단 버튼 */}
+                        <div className="p-4 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                            <button 
+                                onClick={() => setShowTutorial(false)} 
+                                className="text-slate-400 hover:text-slate-600 text-sm font-bold px-3 py-2"
+                            >
+                                건너뛰기
+                            </button>
+                            <div className="flex gap-2">
+                                {tutorialStep > 0 && (
+                                    <button 
+                                        onClick={() => setTutorialStep(prev => prev - 1)} 
+                                        className="px-4 py-2 rounded-xl bg-white text-slate-600 font-bold border border-slate-200 hover:bg-slate-50 shadow-sm"
+                                    >
+                                        이전
+                                    </button>
+                                )}
+                                {tutorialStep < tutorialSlides.length - 1 ? (
+                                    <button 
+                                        onClick={() => setTutorialStep(prev => prev + 1)} 
+                                        className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-md transition-colors"
+                                    >
+                                        다음
+                                    </button>
+                                ) : (
+                                    <button 
+                                        onClick={() => setShowTutorial(false)} 
+                                        className="px-6 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold hover:from-indigo-700 hover:to-purple-700 shadow-md transition-all transform hover:scale-105"
+                                    >
+                                        시작하기!
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
                     <Toast message={toastMessage} action={toastAction} onClose={()=>{ setToastMessage(null); setToastAction(null); }} />
                     <StatsGrassModal 
                         isOpen={!!grassStudentId} 
