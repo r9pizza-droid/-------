@@ -3084,34 +3084,52 @@
             }, [isOpen]);
 
             const handleTestConnection = async () => {
-                const targetId = isPortfolioMode ? portfolioDbId : dbId;
-                if (!apiKey || !targetId) return showToast("API Key와 Database ID를 입력해주세요.");
+                const cleanKey = apiKey.replace(/["']/g, '').trim();
+                if (!cleanKey) return showToast("API Key를 입력해주세요.");
+
+                const cleanDbId = dbId.replace(/["']/g, '').trim();
+                const cleanPortfolioId = portfolioDbId ? portfolioDbId.replace(/["']/g, '').trim() : "";
+                
+                const tests = [];
+                if (cleanDbId) tests.push({ id: cleanDbId, mode: 'normal', label: '기록 모드' });
+                if (cleanPortfolioId) tests.push({ id: cleanPortfolioId, mode: 'relation', label: '포트폴리오 모드' });
+
+                if (tests.length === 0) return showToast("Database ID를 입력해주세요.");
+
                 setIsTesting(true);
-            setTestSuccess(false);
-                try {
-                    const response = await fetch('/api/save-notion', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            personalKey: apiKey.replace(/["']/g, '').trim(), 
-                            personalDbId: targetId.replace(/["']/g, '').trim(),
-                            testMode: true,
-                            mode: isPortfolioMode ? 'relation' : 'normal'
-                        })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || "연동 실패");
-                    const msg = "✅ 노션 연동에 완벽하게 성공했습니다!";
-                    showToast(msg);
-                    setSaveLocally(true);
-                setTestSuccess(true);
-                setTimeout(() => setTestSuccess(false), 3000);
-                } catch (e) {
-                    showToast("❌ " + e.message);
                 setTestSuccess(false);
-                } finally {
-                    setIsTesting(false);
+                
+                let successCount = 0;
+                let messages = [];
+
+                for (const test of tests) {
+                    try {
+                        const response = await fetch('/api/save-notion', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                personalKey: cleanKey, 
+                                personalDbId: test.id,
+                                testMode: true,
+                                mode: test.mode
+                            })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.message || "실패");
+                        successCount++;
+                        messages.push(`✅ ${test.label}: 성공`);
+                    } catch (e) {
+                        messages.push(`❌ ${test.label}: ${e.message}`);
+                    }
                 }
+
+                setIsTesting(false);
+                if (successCount > 0) {
+                    setSaveLocally(true);
+                    setTestSuccess(true);
+                    setTimeout(() => setTestSuccess(false), 3000);
+                }
+                showToast(messages.join('\n'));
             };
 
             const handleSave = () => {
@@ -3445,6 +3463,7 @@
             const [isTesting, setIsTesting] = useState(false);
             const [showManual, setShowManual] = useState(false);
             const [testSuccess, setTestSuccess] = useState(false);
+            const [saveLocally, setSaveLocally] = useState(false);
 
             useEffect(() => {
                 if (isOpen) {
@@ -3452,6 +3471,7 @@
                     // 🌟 불러올 때 따옴표 찌꺼기 1차 제거
                     savedUrl = savedUrl.trim().replace(/^"|'|"$|'$/g, '');
                     setUrl(savedUrl);
+                    if (savedUrl) setSaveLocally(true);
                 }
             }, [isOpen]);
 
@@ -3482,8 +3502,15 @@
             const handleSave = () => {
                 // 🌟 영구 저장할 때 완벽하게 따옴표 제거 후 저장
                 const cleanUrl = url.trim().replace(/^"|'|"$|'$/g, '');
-                localStorage.setItem('cls_google_sheet_url', cleanUrl);
-                if (!isLocalMode && saveData) saveData('cls_google_sheet_url', cleanUrl);
+                
+                if (saveLocally) {
+                    localStorage.setItem('cls_google_sheet_url', cleanUrl);
+                    if (!isLocalMode && saveData) saveData('cls_google_sheet_url', cleanUrl);
+                } else {
+                    localStorage.removeItem('cls_google_sheet_url');
+                    if (!isLocalMode && saveData) saveData('cls_google_sheet_url', "");
+                }
+                
                 showToast("설정이 저장되었습니다.");
                 onClose();
             };
@@ -3562,6 +3589,10 @@
                                 )}
                             </div>
                         </div>
+                        <label className="flex items-center gap-2 cursor-pointer select-none mt-4">
+                            <input type="checkbox" checked={saveLocally} onChange={e => setSaveLocally(e.target.checked)} className="w-4 h-4 text-green-600 rounded focus:ring-green-500" />
+                            <span className="text-sm text-slate-700 font-bold">이 기기에 정보 저장하기</span>
+                        </label>
                         <div className="flex gap-2 pt-2">
                             <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3 rounded-xl font-bold transition-colors ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
                                 {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : testSuccess ? '✅ 연동 성공!' : '🔌 연동 테스트'}
@@ -4078,6 +4109,62 @@
             const isGoogleSheetConnected = !!localStorage.getItem('cls_google_sheet_url');
             const [aiSafetyCheck, setAiSafetyCheck] = useState(() => localStorage.getItem('cls_ai_safety_check') === 'true');
             const [showAiSafetyHelp, setShowAiSafetyHelp] = useState(false);
+
+            const handleTestAllConnections = async () => {
+                const notionKey = localStorage.getItem('cls_notion_key');
+                const notionDbId = localStorage.getItem('cls_notion_db_id');
+                const notionPortId = localStorage.getItem('cls_notion_portfolio_db_id');
+                const googleSheetUrl = localStorage.getItem('cls_google_sheet_url');
+                
+                if (!notionKey && !googleSheetUrl) return showToast("저장된 연동 설정이 없습니다.");
+                
+                setToastMessage("연동 상태를 확인하는 중...");
+                let results = [];
+
+                // Notion Test
+                if (notionKey) {
+                    const cleanKey = notionKey.replace(/["']/g, '').trim();
+                    if (notionDbId) {
+                        try {
+                            const res = await fetch('/api/save-notion', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ personalKey: cleanKey, personalDbId: notionDbId.replace(/["']/g, '').trim(), testMode: true, mode: 'normal' })
+                            });
+                            if (res.ok) results.push("✅ 노션(기록): 성공");
+                            else results.push("❌ 노션(기록): 실패");
+                        } catch (e) { results.push("❌ 노션(기록): 오류"); }
+                    }
+                    if (notionPortId) {
+                        try {
+                            const res = await fetch('/api/save-notion', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ personalKey: cleanKey, personalDbId: notionPortId.replace(/["']/g, '').trim(), testMode: true, mode: 'relation' })
+                            });
+                            if (res.ok) results.push("✅ 노션(포폴): 성공");
+                            else results.push("❌ 노션(포폴): 실패");
+                        } catch (e) { results.push("❌ 노션(포폴): 오류"); }
+                    }
+                }
+
+                // Google Sheet Test
+                if (googleSheetUrl) {
+                    try {
+                        const cleanUrl = googleSheetUrl.trim().replace(/^"|'|"$|'$/g, '');
+                        await fetch(cleanUrl, {
+                            method: "POST",
+                            mode: 'no-cors',
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: "테스트", category: "연동 테스트", content: "전체 연동 테스트" })
+                        });
+                        results.push("✅ 구글시트: 전송 성공 (확인 필요)");
+                    } catch (e) { results.push("❌ 구글시트: 실패"); }
+                }
+
+                if (results.length === 0) setToastMessage("테스트할 설정이 부족합니다.");
+                else setToastMessage(results.join('\n'));
+            };
 
             const toggleAiSafetyCheck = () => {
                 const newVal = !aiSafetyCheck;
@@ -4960,7 +5047,14 @@
                                     {/* [1단] 연동 및 용량 분석 */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all h-full group">
-                                            <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5"><div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🔗</div> 외부 서비스 연동</h4>
+                                            <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5">
+                                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🔗</div> 
+                                                외부 서비스 연동
+                                                <div className="flex flex-col gap-1 ml-auto">
+                                                    {isAdminMode && <span className="w-fit text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">관리자</span>}
+                                                    {isDevMode && <span className="w-fit text-[10px] bg-slate-800 text-white px-2 py-0.5 rounded-full">개발자</span>}
+                                                </div>
+                                            </h4>
                                             <div className="grid grid-cols-3 gap-2">
                                                 <Btn onClick={onOpenNotionSetup} className={`py-3 h-auto border border-slate-200 rounded-xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all relative ${isNotionConnected ? 'bg-green-50 ring-2 ring-green-500 ring-offset-1' : 'bg-white hover:bg-slate-50'}`} title="노션 연동">
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isNotionConnected ? 'bg-green-100' : 'bg-slate-100'}`}><span className="text-lg">N</span></div>
@@ -4976,6 +5070,11 @@
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isGoogleSheetConnected ? 'bg-green-100' : 'bg-slate-100'}`}><span className="text-lg">📊</span></div>
                                                     <span className={`text-xs font-bold ${isGoogleSheetConnected ? 'text-green-700' : 'text-slate-600'}`}>구글 시트</span>
                                                     {isGoogleSheetConnected && <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm"><Icon d={PATHS.check} size={12} strokeWidth={3} /></div>}
+                                                </Btn>
+                                            </div>
+                                            <div className="mt-3 pt-3 border-t border-slate-200">
+                                                <Btn onClick={handleTestAllConnections} className="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 flex items-center justify-center gap-2">
+                                                    <Icon d={PATHS.check} size={16} /> 전체 연동 테스트
                                                 </Btn>
                                             </div>
                                             {isDevMode && (
