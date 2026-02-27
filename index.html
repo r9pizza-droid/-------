@@ -384,7 +384,13 @@
         const Toast = ({ message, action, onClose }) => {
             const onCloseRef = useRef(onClose);
             useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-            useEffect(() => { if (!message) return; const duration = action ? 4000 : 3000; const timer = setTimeout(() => onCloseRef.current(), duration); return () => clearTimeout(timer); }, [message, action]);
+            useEffect(() => { 
+                if (!message) return; 
+                let duration = action ? 4000 : 3000;
+                if (message.includes("연동 상태 확인 중")) duration = 600000; 
+                const timer = setTimeout(() => onCloseRef.current(), duration); 
+                return () => clearTimeout(timer); 
+            }, [message, action]);
             if (!message) return null;
             
             // 🌟 메시지 내용에 따라 디자인 자동 변경 (삭제/에러 vs 성공/저장)
@@ -4333,8 +4339,9 @@
                 setIsTestingAll(true);
                 let progress = tests.map(t => ({ name: t.name, status: 'pending' }));
                 
-                const renderProgress = (prog) => {
-                    return "연동 상태 확인 중...\n\n" + prog.map(p => {
+                const renderProgress = (prog, isFinished = false) => {
+                    const title = isFinished ? "연동 테스트 완료" : "연동 상태 확인 중...";
+                    return title + "\n\n" + prog.map(p => {
                         const icon = p.status === 'pending' ? '⏳' : p.status === 'testing' ? '🔄' : p.status === 'success' ? '✅' : '❌';
                         return `${icon} ${p.name}`;
                     }).join('\n');
@@ -4380,6 +4387,7 @@
                 }
 
                 setIsTestingAll(false);
+                showToast(renderProgress(progress, true));
                 if (hasSuccess) {
                     setTestAllSuccess(true);
                     setTimeout(() => setTestAllSuccess(false), 3000);
