@@ -944,6 +944,7 @@
             const [reportPurpose, setReportPurpose] = useState('regular');
             const [showCounselingAI, setShowCounselingAI] = useState(false);
             const [reportStats, setReportStats] = useState({ studentRate: 0, classRate: 0, tagStats: {} });
+            const [animatedWidths, setAnimatedWidths] = useState({ student: 0, class: 0 });
             const [showDetailStats, setShowDetailStats] = useState(false);
             const [showStudentRecordAI, setShowStudentRecordAI] = useState(false);
             const modalRef = useRef(null);
@@ -1164,7 +1165,12 @@
                 if (saveTargets.has('notion_portfolio')) tags.push("노션(포폴)");
                 if (saveTargets.has('google_sheet')) tags.push("구글 시트");
 
-                const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
+                // [New] 함께 기록된 학생 정보 저장
+                const relatedStudents = selectedStudents.length > 1 
+                    ? selectedStudents.map(s => ({ id: s.id, name: s.name })) 
+                    : null;
+
+                const newNote = { id: Date.now(), date: date, content: content, destTags: tags, relatedStudents: relatedStudents };
                 const targetIds = selectedStudents.map(s => s.id);
                 
                 let updatedStudentsList = [...students];
@@ -1343,6 +1349,16 @@
                 if (isOpen && student && students) {
                     const stats = calculateStatsForPeriod(reportStart, reportEnd);
                     setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats });
+                    
+                    // Animation logic
+                    const timer = setTimeout(() => {
+                        setAnimatedWidths({ student: stats.pRate, class: stats.classAvgRate });
+                    }, 100);
+                    
+                    return () => clearTimeout(timer);
+                } else {
+                    // Reset widths when modal closes for next open animation
+                    setAnimatedWidths({ student: 0, class: 0 });
                 }
             }, [isOpen, student, students, records, dailyTasks, reportStart, reportEnd]);
             
@@ -1465,6 +1481,9 @@
             const missedTags = useMemo(() => {
                 const counts = {};
                 dates.forEach(date => {
+                    const day = dayjs(date).day();
+                    if (day === 0 || day === 6) return;
+
                     const tasks = dailyTasks[date];
                     const rec = records[date]?.[student.id];
                     if (tasks && tasks.length > 0) {
@@ -1615,15 +1634,27 @@
                                     <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><Icon d={PATHS.chart} size={16} className="text-indigo-500"/> 자주 놓치는 과목</h4>
                                     {missedTags.length > 0 ? (
                                         <div className="space-y-3">
-                                            {missedTags.map(([tag, count], i) => (
-                                                <div key={tag} className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                                                    <span className="flex items-center gap-2">
-                                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs text-white font-bold ${i===0?'bg-rose-500':i===1?'bg-orange-400':'bg-yellow-400'}`}>{i+1}</span>
-                                                        <span className="text-slate-700 font-bold text-sm">{tag}</span>
-                                                    </span>
-                                                    <span className="text-rose-500 font-bold text-sm">{count}회 미흡</span>
-                                                </div>
-                                            ))}
+                                            {missedTags.map(([tag, count], i) => {
+                                                const maxCount = missedTags[0][1];
+                                                const width = (count / maxCount) * 100;
+                                                const rankColor = i === 0 ? 'bg-rose-500' : i === 1 ? 'bg-orange-400' : 'bg-amber-400';
+                                                const barColor = i === 0 ? 'bg-rose-400' : i === 1 ? 'bg-orange-300' : 'bg-amber-300';
+                                                const bgColor = i === 0 ? 'bg-rose-50' : i === 1 ? 'bg-orange-50' : 'bg-amber-50';
+                                                return (
+                                                    <div key={tag} className={`relative p-3 rounded-xl border border-slate-100 ${bgColor}`}>
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${rankColor}`}>{i+1}</span>
+                                                                <span className="text-sm font-bold text-slate-700">{tag}</span>
+                                                            </div>
+                                                            <span className="text-xs font-bold text-slate-500">{count}회 놓침</span>
+                                                        </div>
+                                                        <div className="h-2.5 bg-white rounded-full overflow-hidden shadow-inner border border-slate-100">
+                                                            <div className={`h-full rounded-full transition-all duration-1000 ${barColor}`} style={{ width: `${width}%` }}></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     ) : (
                                         <div className="text-center text-slate-400 text-sm py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">미흡한 과목이 없습니다! 🎉</div>
@@ -1639,14 +1670,45 @@
                                             <Icon d={showDetailStats ? PATHS.down : PATHS.right} size={14} />
                                         </div>
                                     </div>
-                                    <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                        <div>
-                                            <div className="flex justify-between text-xs mb-1.5"><span className="font-bold text-slate-600">{student.name}</span><span className={`font-black ${getLevelTextColor(level)}`}>{reportStats.studentRate}%</span></div>
-                                            <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden shadow-inner"><div className={`h-full ${getLevelColor(level)} transition-all duration-1000`} style={{ width: `${reportStats.studentRate}%` }}></div></div>
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative overflow-hidden">
+                                        <div className="flex items-center justify-between mb-4 relative z-10">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs text-slate-500 font-bold mb-1">전체 수행률 비교</span>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className={`text-2xl font-black ${getLevelTextColor(level)}`}>{reportStats.studentRate}%</span>
+                                                    <span className="text-xs text-slate-400 font-medium">vs {reportStats.classRate}% (학급)</span>
+                                                </div>
+                                            </div>
+                                            <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 ${reportStats.studentRate >= reportStats.classRate ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-rose-50 border-rose-100 text-rose-500'}`}>
+                                                <span className="text-[10px] font-bold opacity-70">GAP</span>
+                                                <span className="text-lg font-black leading-none">
+                                                    {reportStats.studentRate >= reportStats.classRate ? '+' : ''}{reportStats.studentRate - reportStats.classRate}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="flex justify-between text-xs mb-1.5"><span className="font-bold text-slate-600">학급 평균</span><span className="font-black text-slate-500">{reportStats.classRate}%</span></div>
-                                            <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden shadow-inner"><div className="h-full bg-slate-400 transition-all duration-1000" style={{ width: `${reportStats.classRate}%` }}></div></div>
+                                        
+                                        <div className="space-y-3 relative z-10">
+                                            <div className="relative">
+                                                <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1 px-1">
+                                                    <span>나 ({student.name})</span>
+                                                </div>
+                                                <div className="h-3 bg-white rounded-full overflow-hidden shadow-sm border border-slate-100">
+                                                    <div className={`h-full ${getLevelColor(level)} transition-all duration-1000 relative`} style={{ width: `${animatedWidths.student}%` }}>
+                                                        <div className="absolute top-0 right-0 bottom-0 w-1 bg-white/30"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="relative">
+                                                <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1 px-1">
+                                                    <span>학급 평균</span>
+                                                </div>
+                                                <div className="h-3 bg-white rounded-full overflow-hidden shadow-sm border border-slate-100">
+                                                    <div className="h-full bg-slate-400 transition-all duration-1000 relative" style={{ width: `${animatedWidths.class}%` }}>
+                                                        <div className="absolute top-0 right-0 bottom-0 w-1 bg-white/30"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1917,6 +1979,21 @@
                                                                         {tag}
                                                                     </span>
                                                                 ))}
+
+                                                                {/* [New] 함께 기록된 학생 태그 */}
+                                                                {n.relatedStudents && n.relatedStudents.length > 0 && (
+                                                                    <div className="flex items-center gap-1 ml-1 flex-wrap">
+                                                                        <span className="text-[9px] text-slate-400">with</span>
+                                                                        {n.relatedStudents
+                                                                            .filter(s => s.id !== student.id)
+                                                                            .map(s => (
+                                                                                <span key={s.id} className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200">
+                                                                                    {s.name}
+                                                                                </span>
+                                                                            ))
+                                                                        }
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <button onClick={() => startEditing(n)} className="text-slate-400 hover:text-indigo-600 p-1 bg-slate-50 hover:bg-indigo-50 rounded"><Icon d={PATHS.edit} size={14}/></button>
@@ -6267,11 +6344,39 @@
         };
 
         const PartnerAnalysisModal = ({ isOpen, onClose, groupsByDate }) => {
-            if (!isOpen) return null;
+                const [searchTerm, setSearchTerm] = useState("");
+                const [minCount, setMinCount] = useState(2);
+                const [startDate, setStartDate] = useState("");
+                const [endDate, setEndDate] = useState("");
+                
+                useEffect(() => {
+                    if (isOpen) {
+                        setSearchTerm("");
+                        setMinCount(2);
+                        const dates = Object.keys(groupsByDate).sort();
+                        if (dates.length > 0) {
+                            setStartDate(dates[0]);
+                            setEndDate(dates[dates.length - 1]);
+                        } else {
+                            const today = dayjs().format('YYYY-MM-DD');
+                            setStartDate(today);
+                            setEndDate(today);
+                        }
+                    }
+                }, [isOpen, groupsByDate]);
 
             const pairCounts = useMemo(() => {
                 const counts = {};
-                Object.values(groupsByDate).forEach(groups => {
+                const lastSeenIndex = {};
+                const sortedDates = Object.keys(groupsByDate).sort().filter(d => {
+                    if (startDate && d < startDate) return false;
+                    if (endDate && d > endDate) return false;
+                    return true;
+                });
+                const totalDates = sortedDates.length;
+
+                sortedDates.forEach((date, dateIdx) => {
+                    const groups = groupsByDate[date];
                     if (!Array.isArray(groups)) return;
                     groups.forEach(group => {
                         if (!Array.isArray(group)) return;
@@ -6280,19 +6385,135 @@
                                 if (!group[i] || !group[j]) continue;
                                 const names = [group[i].name, group[j].name].sort();
                                 const key = names.join(' & ');
-                                counts[key] = (counts[key] || 0) + 1;
+                                
+                                if (!counts[key]) counts[key] = { count: 0, dates: [] };
+
+                                const lastIdx = lastSeenIndex[key];
+                                // 연속되지 않은 날짜에 만났을 때만 카운트 증가 (연속된 기간은 1회로 간주)
+                                if (lastIdx === undefined || dateIdx - lastIdx > 1) {
+                                    counts[key].count += 1;
+                                }
+                                counts[key].dates.push(date);
+                                lastSeenIndex[key] = dateIdx;
                             }
                         }
                     });
                 });
-                return Object.entries(counts).filter(([_, count]) => count >= 2).sort((a, b) => b[1] - a[1]);
-            }, [groupsByDate]);
+                return Object.entries(counts)
+                    .filter(([_, data]) => data.count >= 2)
+                    .map(([key, data]) => ({ 
+                        pair: key, 
+                        count: data.count, 
+                        dates: data.dates,
+                        isRecent: lastSeenIndex[key] === totalDates - 1 
+                    }))
+                    .sort((a, b) => {
+                        if (a.isRecent !== b.isRecent) return a.isRecent ? -1 : 1;
+                        return b.count - a.count;
+                    });
+            }, [groupsByDate, startDate, endDate]);
+
+            const formatDateRanges = (dates) => {
+                if (!dates || dates.length === 0) return "";
+                const sorted = [...dates].sort();
+                const ranges = [];
+                let start = sorted[0];
+                let prev = sorted[0];
+                
+                for (let i = 1; i < sorted.length; i++) {
+                    const curr = sorted[i];
+                    const diff = dayjs(curr).diff(dayjs(prev), 'day');
+                    if (diff > 1) {
+                        const sFmt = dayjs(start).format('MM/DD');
+                        const pFmt = dayjs(prev).format('MM/DD');
+                        ranges.push(start === prev ? sFmt : `${sFmt}~${pFmt}`);
+                        start = curr;
+                    }
+                    prev = curr;
+                }
+                const sFmt = dayjs(start).format('MM/DD');
+                const pFmt = dayjs(prev).format('MM/DD');
+                ranges.push(start === prev ? sFmt : `${sFmt}~${pFmt}`);
+                
+                return ranges.join(', ');
+            };
+
+                const filteredCounts = useMemo(() => {
+                    let result = pairCounts;
+                    if (minCount > 2) result = result.filter(item => item.count >= minCount);
+                    if (searchTerm.trim()) result = result.filter(item => item.pair.includes(searchTerm));
+                    return result;
+                }, [pairCounts, searchTerm, minCount]);
+
+                if (!isOpen) return null;
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="👫 짝꿍 이력 분석" icon={PATHS.users}>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="👫 짝꿍 이력 분석">
                     <div className="space-y-4">
-                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-700"><p className="font-bold mb-1">📊 중복 짝꿍 현황</p><p>지금까지 같은 모둠을 했던 횟수를 분석합니다. (2회 이상)</p></div>
-                        <div className="max-h-[60vh] overflow-y-auto custom-scroll space-y-2">{pairCounts.length > 0 ? pairCounts.map(([pair, count], i) => (<div key={i} className="flex justify-between items-center p-3 bg-white border border-slate-200 rounded-xl"><span className="font-bold text-slate-700 text-sm">{pair}</span><span className={`px-2 py-1 rounded-lg text-xs font-bold ${count >= 4 ? 'bg-rose-100 text-rose-600' : count === 3 ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}>{count}회</span></div>)) : (<div className="text-center text-slate-400 py-8 text-sm">중복된 짝꿍 기록이 없습니다.</div>)}</div>
+                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-700">
+                            <p className="font-bold mb-1">📊 중복 짝꿍 현황</p>
+                            <p>함께 모둠 활동을 한 횟수를 분석합니다. (2회 이상)<br/><span className="text-xs opacity-80">* 연속된 기간(예: 2주간 같은 모둠)은 1회로 계산됩니다.</span></p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                             <span className="text-xs font-bold text-slate-500">분석 기간:</span>
+                             <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="text-xs p-1 border rounded bg-white outline-none focus:border-indigo-500 flex-1"/>
+                             <span className="text-xs text-slate-400">~</span>
+                             <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="text-xs p-1 border rounded bg-white outline-none focus:border-indigo-500 flex-1"/>
+                        </div>
+                            
+                            <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
+                                {[2, 3, 4].map(count => (
+                                    <button 
+                                        key={count} 
+                                        onClick={() => setMinCount(count)}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${minCount === count ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        {count}회 이상{count === 2 ? " (전체)" : ""}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="relative">
+                                <Icon d={PATHS.search} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input 
+                                    type="text" 
+                                    value={searchTerm} 
+                                    onChange={(e) => setSearchTerm(e.target.value)} 
+                                    placeholder="학생 이름 검색..." 
+                                    className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-colors"
+                                />
+                            </div>
+
+                        <div className="max-h-[60vh] overflow-y-auto custom-scroll space-y-2">
+                                {filteredCounts.length > 0 ? filteredCounts.map((item, i) => (
+                                <div key={i} className="flex flex-col p-3 bg-white border border-slate-200 rounded-xl">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1">
+                                                {item.pair.split(' & ').map((name, idx) => (
+                                                    <React.Fragment key={idx}>
+                                                        {idx > 0 && <span className="text-slate-300">&</span>}
+                                                        <span 
+                                                            className="font-bold text-slate-700 text-sm hover:text-indigo-600 hover:underline cursor-pointer transition-colors"
+                                                            onClick={() => setSearchTerm(name)}
+                                                            title={`'${name}' 학생으로 검색`}
+                                                        >
+                                                            {name}
+                                                        </span>
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                            {item.isRecent && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold">최근</span>}
+                                        </div>
+                                        <span className={`px-2 py-1 rounded-lg text-xs font-bold ${item.count >= 4 ? 'bg-rose-100 text-rose-600' : item.count === 3 ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}>{item.count}회</span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-1 pl-1">
+                                        📅 {formatDateRanges(item.dates)}
+                                    </div>
+                                </div>
+                                )) : (<div className="text-center text-slate-400 py-8 text-sm">{searchTerm ? "검색 결과가 없습니다." : "중복된 짝꿍 기록이 없습니다."}</div>)}
+                        </div>
                     </div>
                 </BaseModal>
             );
@@ -6591,7 +6812,12 @@ const firebaseConfig = {
                 if (saveTargets.has('notion_portfolio')) tags.push("노션(포폴)");
                 if (saveTargets.has('google_sheet')) tags.push("구글 시트");
 
-                const newNote = { id: Date.now(), date: date, content: content, destTags: tags };
+                // [New] 함께 기록된 학생 정보 저장
+                const relatedStudents = selectedStudents.length > 1 
+                    ? selectedStudents.map(s => ({ id: s.id, name: s.name })) 
+                    : null;
+
+                const newNote = { id: Date.now(), date: date, content: content, destTags: tags, relatedStudents: relatedStudents };
                 const targetIds = selectedStudents.map(s => s.id);
                 
                 let updatedStudentsList = [...students];
@@ -6984,6 +7210,7 @@ const firebaseConfig = {
             const [isGenerating, setIsGenerating] = useState(false); const [isAvoidanceVisible, setIsAvoidanceVisible] = useState(false);
             const [useLeader, setUseLeader] = useState(false);
             const [useHistory, setUseHistory] = useState(false); 
+            const [useRecentAvoid, setUseRecentAvoid] = useState(false);
             const [mustPairs, setMustPairs] = useState([]); 
             const [pairTab, setPairTab] = useState('avoid'); 
             const [showRoleHelp, setShowRoleHelp] = useState(false);
@@ -8181,6 +8408,7 @@ const firebaseConfig = {
                                 constraints.push(`- 이전 모둠 구성과 최대한 겹치지 않게 편성해주세요 (최근 기록 참고):\n${historyStr}`);
                             }
                         }
+                        if (useRecentAvoid) constraints.push("- 직전 모둠에서 같은 조였던 학생들은 가급적 떨어뜨려 주세요.");
                         
                         const userRequest = aiPrompt || "성별, 실력, 리더를 골고루 섞어서 균형 있게 편성해줘.";
                         
@@ -8210,7 +8438,10 @@ const firebaseConfig = {
 
                             [응답 형식]
                             - 결과는 반드시 **JSON 객체**로 작성하세요.
-                            - 형식: { "groups": [["이름1", "이름2"], ...], "reason": "편성 이유 및 전략 설명 (2~3문장)" }
+                            - 형식: { 
+                                "groups": [["이름1", "이름2"], ...], 
+                                "reason": "## 1. 핵심 편성 전략\\n(전략 설명)\\n\\n## 2. 균형 및 구성 분석\\n(성별/실력/리더 분포 등)\\n\\n## 3. 특이사항 및 기대효과\\n(반영된 제약조건 및 교육적 효과)" 
+                            }
                             - 마크다운 코드 블록(\`\`\`json)이나 부가적인 설명은 절대 포함하지 마세요.
                         `;
 
@@ -8244,11 +8475,18 @@ const firebaseConfig = {
                         const hasActiveRoles = groupRoles[date] && Object.keys(groupRoles[date]).length > 0;
                         const groupsToSave = {};
                         
-                        for(let i=0; i<groupDuration; i++) {
-                            const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
-                            newGroupsData[d] = mappedGroups;
-                            groupsToSave[d] = mappedGroups;
-                            if (hasActiveRoles) newGroupRoles[d] = calculateRoles(mappedGroups);
+                        let savedCount = 0;
+                        let dayOffset = 0;
+                        while(savedCount < groupDuration) {
+                            const targetD = dayjs(date).add(dayOffset, 'day');
+                            if (targetD.day() !== 0 && targetD.day() !== 6) {
+                                const d = targetD.format('YYYY-MM-DD');
+                                newGroupsData[d] = mappedGroups;
+                                groupsToSave[d] = mappedGroups;
+                                if (hasActiveRoles) newGroupRoles[d] = calculateRoles(mappedGroups);
+                                savedCount++;
+                            }
+                            dayOffset++;
                         }
                         
                         setGroupsByDate(newGroupsData);
@@ -8318,6 +8556,23 @@ const firebaseConfig = {
                                 }
                             });
                         });
+                    }
+                    
+                    const recentPairsSet = new Set();
+                    if (useRecentAvoid) {
+                        const sortedDates = Object.keys(currentGroupsByDate).filter(d => d < date).sort().reverse();
+                        if (sortedDates.length > 0) {
+                            const lastDate = sortedDates[0];
+                            const lastGroups = currentGroupsByDate[lastDate] || [];
+                            lastGroups.forEach(g => {
+                                if (!Array.isArray(g)) return;
+                                for(let i=0; i<g.length; i++) {
+                                    for(let j=i+1; j<g.length; j++) {
+                                        if (g[i] && g[j]) recentPairsSet.add([g[i].id, g[j].id].sort().join('-'));
+                                    }
+                                }
+                            });
+                        }
                     }
 
                     const clusters = [];
@@ -8440,6 +8695,10 @@ const firebaseConfig = {
                                         const histScore = historyPairs.get(key) || 0;
                                         score -= histScore * 30; // 가중치 점수 기반 페널티
                                     }
+                                    if(useRecentAvoid) {
+                                        const key = [g[i].id, g[j].id].sort().join('-');
+                                        if (recentPairsSet.has(key)) score -= 5000; // 강력한 페널티
+                                    }
                                 }
                             }
                         });
@@ -8458,6 +8717,7 @@ const firebaseConfig = {
                     if (useSkill) activeConditions.push("실력");
                     if (useLeader) activeConditions.push("리더");
                     if (useHistory) activeConditions.push("이전 기록");
+                    if (useRecentAvoid) activeConditions.push("최근 짝꿍 피하기");
                     if (avoidancePairs.length > 0) activeConditions.push("기피 관계");
                     if (mustPairs.length > 0) activeConditions.push("필수 짝꿍");
                     const reasonText = activeConditions.length > 0 ? `선택하신 조건(${activeConditions.join(', ')})을 종합적으로 고려하여 알고리즘이 최적의 조합을 구성했습니다.` : "특별한 조건 없이 무작위로 섞어서 편성했습니다.";
@@ -8469,11 +8729,17 @@ const firebaseConfig = {
                          
                          const newGroupsData = { ...currentGroupsByDate }; // [Fix] 최신 데이터 사용
                          const groupsToSave = {};
-                         for(let i=0; i<groupDuration; i++) {
-                             const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
-                             // [Fix] 참조 문제 방지를 위해 깊은 복사하여 할당
-                             newGroupsData[d] = plainGroups.map(g => g.map(s => ({...s}))); 
-                             groupsToSave[d] = newGroupsData[d];
+                         let savedCount = 0;
+                         let dayOffset = 0;
+                         while(savedCount < groupDuration) {
+                             const targetD = dayjs(date).add(dayOffset, 'day');
+                             if (targetD.day() !== 0 && targetD.day() !== 6) {
+                                 const d = targetD.format('YYYY-MM-DD');
+                                 newGroupsData[d] = plainGroups.map(g => g.map(s => ({...s}))); 
+                                 groupsToSave[d] = newGroupsData[d];
+                                 savedCount++;
+                             }
+                             dayOffset++;
                          }
                          setGroupsByDate(newGroupsData);
                          
@@ -8496,11 +8762,18 @@ const firebaseConfig = {
                          const hasActiveRoles = currentGroupRoles[date] && Object.keys(currentGroupRoles[date]).length > 0;
                          const groupsToSave = {};
 
-                         for(let i=0; i<groupDuration; i++) {
-                             const d = dayjs(date).add(i, 'day').format('YYYY-MM-DD');
-                             newGroupsData[d] = finalGroups.map(g => g.map(s => ({...s})));
-                             groupsToSave[d] = newGroupsData[d];
-                             if (hasActiveRoles) newGroupRoles[d] = calculateRoles(finalGroups);
+                         let savedCount = 0;
+                         let dayOffset = 0;
+                         while(savedCount < groupDuration) {
+                             const targetD = dayjs(date).add(dayOffset, 'day');
+                             if (targetD.day() !== 0 && targetD.day() !== 6) {
+                                 const d = targetD.format('YYYY-MM-DD');
+                                 newGroupsData[d] = finalGroups.map(g => g.map(s => ({...s})));
+                                 groupsToSave[d] = newGroupsData[d];
+                                 if (hasActiveRoles) newGroupRoles[d] = calculateRoles(finalGroups);
+                                 savedCount++;
+                             }
+                             dayOffset++;
                          }
 
                          setGroupsByDate(newGroupsData);
@@ -8908,7 +9181,7 @@ const firebaseConfig = {
                 return map;
             }, [groupsByDate, groupRoles, date]);
 
-            const stats = useMemo(() => { const dates = Object.keys(records).sort(); const isWithinPeriod = (dStr, period) => { const d = dayjs(dStr); const now = dayjs(); if (period === 'weekly') return d.isAfter(now.subtract(7, 'day')) && d.isBefore(now.add(1, 'day')); if (period === 'monthly') return d.isAfter(now.subtract(30, 'day')) && d.isBefore(now.add(1, 'day')); return true; }; const calcStatsForStudent = (s, period, tag) => { let doneCount = 0; let totalCount = 0; for(let i=34; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); if (!isWithinPeriod(d, period)) continue; const dayRecord = records[d]; const dayTasks = dailyTasks[d] || []; if (tag === '전체') { if (dayRecord) 
+            const stats = useMemo(() => { const dates = Object.keys(records).sort(); const isWithinPeriod = (dStr, period) => { const d = dayjs(dStr); const now = dayjs(); if (period === 'weekly') return d.isAfter(now.subtract(7, 'day')) && d.isBefore(now.add(1, 'day')); if (period === 'monthly') return d.isAfter(now.subtract(30, 'day')) && d.isBefore(now.add(1, 'day')); return true; }; const calcStatsForStudent = (s, period, tag) => { let doneCount = 0; let totalCount = 0; for(let i=34; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; if (!isWithinPeriod(d, period)) continue; const dayRecord = records[d]; const dayTasks = dailyTasks[d] || []; if (tag === '전체') { if (dayRecord) 
             { const tasksForDay = dailyTasks[d] || []; if (tasksForDay.length > 0) { totalCount += tasksForDay.length; const sRec = dayRecord[s.id]; if (sRec) { tasksForDay.forEach((_, idx) => { if (sRec.tasks && sRec.tasks[idx]) doneCount++; else if (!sRec.tasks && sRec.done) doneCount++; }); } } else { totalCount++;
             if (dayRecord[s.id]?.done) doneCount++; } } } else { const tagTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
             if (tagTasks.length > 0) { totalCount += tagTasks.length; tagTasks.forEach((t, idx) => { const originalIdx = dayTasks.indexOf(t); const isTaskDone = dayRecord?.[s.id]?.done || dayRecord?.[s.id]?.tasks?.[originalIdx]; if(isTaskDone) doneCount++; });
@@ -9192,6 +9465,14 @@ const firebaseConfig = {
                 setToastMessage("로컬 모드로 강제 전환되었습니다.");
             };
 
+            const moveDateSkipWeekend = (direction) => {
+                let nextDate = dayjs(date).add(direction, 'day');
+                while (nextDate.day() === 0 || nextDate.day() === 6) {
+                    nextDate = nextDate.add(direction, 'day');
+                }
+                setDate(nextDate.format('YYYY-MM-DD'));
+            };
+
             if (isLoading) {
                 return (
                     <div className="h-screen flex flex-col items-center justify-center bg-slate-50 space-y-6 p-8">
@@ -9244,7 +9525,7 @@ const firebaseConfig = {
                         <button onClick={()=>setIsSettingOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>⚙️</span><span className="text-sm font-medium">설정</span></button>
                     </div>
                     </div>{(mode === 'record' || mode === 'group') && (<div className="bg-white border-b border-notion-border pt-2 pb-2 flex justify-center"><div className="w-full max-w-2xl px-4 flex flex-col gap-2">{mode === 'record' ? <><DateHeader date={date} setDate={setDate} onAdd={()=>setIsTaskModalOpen(true)} onReset={resetDateRecord} onCalendar={()=>setIsCalendarOpen(true)} appConfig={appConfig}/> <ProgressBar progress={progress} appConfig={appConfig} /></> : <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border mx-auto w-fit justify-center cursor-pointer"
-><Btn onClick={()=>setDate(dayjs(date).subtract(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18}/></Btn><div className="flex flex-col items-center px-3" onClick={()=>setIsCalendarOpen(true)}><div className="text-base font-bold text-notion-text">{dayjs(date).format('YY.MM.DD')}</div><div className="text-[10px] font-bold text-notion-text-light">{dayjs(date).format('dddd')}</div></div><Btn onClick={()=>setDate(dayjs(date).add(1,'day').format('YYYY-MM-DD'))} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18}/></Btn></div>}</div></div>)}</header>
+><Btn onClick={()=>moveDateSkipWeekend(-1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18}/></Btn><div className="flex flex-col items-center px-3" onClick={()=>setIsCalendarOpen(true)}><div className="text-base font-bold text-notion-text">{dayjs(date).format('YY.MM.DD')}</div><div className="text-[10px] font-bold text-notion-text-light">{dayjs(date).format('dddd')}</div></div><Btn onClick={()=>moveDateSkipWeekend(1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18}/></Btn></div>}</div></div>)}</header>
                     <main className="flex-1 flex flex-col p-4 md:p-6 pb-20 md:pb-6 bg-white"
                     >
                         <div key={date} className="flex-1">
@@ -9280,16 +9561,17 @@ const firebaseConfig = {
                                                 <Btn onClick={()=>setIsAvoidanceVisible(!isAvoidanceVisible)} className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${isAvoidanceVisible ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}><Icon d={PATHS.users} size={14}/> <span>관계 설정</span>{(avoidancePairs.length + mustPairs.length) > 0 && <span className="bg-indigo-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-0.5">{avoidancePairs.length + mustPairs.length}</span>}</Btn>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 mb-4">
-                                                <Btn onClick={() => applyPreset('coop')} className={`py-2 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap ${useGender && useSkill && useHistory ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}>협동 학습<span className="block text-[9px] font-normal opacity-80 mt-0.5 whitespace-nowrap">실력/성별/겹침방지</span></Btn>
-                                                <Btn onClick={() => applyPreset('peer')} className={`py-2 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap ${!useGender && useSkill && !useHistory ? 'bg-green-600 text-white shadow-md' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>또래 교수<span className="block text-[9px] font-normal opacity-80 mt-0.5 whitespace-nowrap">실력(상+하) 매칭</span></Btn>
-                                                <Btn onClick={() => applyPreset('project')} className={`py-2 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap ${useLeader ? 'bg-purple-600 text-white shadow-md' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}>프로젝트<span className="block text-[9px] font-normal opacity-80 mt-0.5 whitespace-nowrap">리더 분산 배치</span></Btn>
-                                                <Btn onClick={() => applyPreset('random')} className={`py-2 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap ${!useGender && !useSkill && !useLeader ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>완전 랜덤<span className="block text-[9px] font-normal opacity-80 mt-0.5 whitespace-nowrap">조건 없이 섞기</span></Btn>
+                                                <Btn onClick={() => applyPreset('coop')} className={`flex-col py-2 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap ${useGender && useSkill && useHistory ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}>협동 학습<span className="block text-[9px] font-normal opacity-80 mt-0.5 whitespace-nowrap">실력/성별/겹침방지</span></Btn>
+                                                <Btn onClick={() => applyPreset('peer')} className={`flex-col py-2 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap ${!useGender && useSkill && !useHistory ? 'bg-green-600 text-white shadow-md' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>또래 교수<span className="block text-[9px] font-normal opacity-80 mt-0.5 whitespace-nowrap">실력(상+하) 매칭</span></Btn>
+                                                <Btn onClick={() => applyPreset('project')} className={`flex-col py-2 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap ${useLeader ? 'bg-purple-600 text-white shadow-md' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}>프로젝트<span className="block text-[9px] font-normal opacity-80 mt-0.5 whitespace-nowrap">리더 분산 배치</span></Btn>
+                                                <Btn onClick={() => applyPreset('random')} className={`flex-col py-2 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap ${!useGender && !useSkill && !useLeader ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>완전 랜덤<span className="block text-[9px] font-normal opacity-80 mt-0.5 whitespace-nowrap">조건 없이 섞기</span></Btn>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 mb-4">
                                                 <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useGender ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useGender} onChange={e=>setUseGender(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useGender ? 'text-indigo-700' : 'text-slate-400'}`}>성별 균형</span></label>
                                                 <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useSkill ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useSkill} onChange={e=>setUseSkill(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useSkill ? 'text-indigo-700' : 'text-slate-400'}`}>실력 균형</span></label>
                                                 <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useLeader ? 'bg-purple-50 border-purple-200 ring-1 ring-purple-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useLeader} onChange={e=>setUseLeader(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useLeader ? 'text-purple-700' : 'text-slate-400'}`}>👑 리더 분산</span></label>
                                                 <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useHistory ? 'bg-orange-50 border-orange-200 ring-1 ring-orange-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useHistory} onChange={e=>setUseHistory(e.target.checked)} className="hidden"/><span className={`text-xs font-bold ${useHistory ? 'text-orange-700' : 'text-slate-400'}`}>🔄 겹침 방지</span></label>
+                                                <label className={`flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${useRecentAvoid ? 'bg-rose-50 border-rose-200 ring-1 ring-rose-300' : 'bg-white border-slate-200'}`}><input type="checkbox" checked={useRecentAvoid} onChange={e=>setUseRecentAvoid(e.target.checked)} className="hidden"/><span className={`text-xs font-bold whitespace-nowrap ${useRecentAvoid ? 'text-rose-700' : 'text-slate-400'}`}>💔 최근 짝꿍 피하기</span></label>
                                                 {useHistory && (
                                                     <div className="col-span-2 flex items-center justify-center gap-2 bg-orange-50/50 p-2 rounded-lg border border-orange-100 animate-fade-in">
                                                         <span className="text-[10px] font-bold text-orange-600">최근</span>
@@ -9397,8 +9679,8 @@ const firebaseConfig = {
                                                         <input type="checkbox" checked={!!(groupRoles[date] && Object.keys(groupRoles[date]).length > 0)} onChange={(e) => { if(e.target.checked) handleAssignRoles(); else openConfirm("역할 배정을 해제하시겠습니까?", handleClearRoles); }} className="hidden" />
                                                     </label>
                                                     <div className="flex gap-2">
-                                                        <Btn onClick={() => setIsRoleEditOpen(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-sm">역할 목록 수정</Btn>
-                                                        <Btn onClick={() => setShowPartnerAnalysis(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-sm">👫 짝꿍 이력 분석</Btn>
+                                                        <Btn onClick={() => setIsRoleEditOpen(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-xs sm:text-sm whitespace-nowrap">역할 목록 수정</Btn>
+                                                        <Btn onClick={() => setShowPartnerAnalysis(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-xs sm:text-sm whitespace-nowrap">👫 짝꿍 이력 분석</Btn>
                                                     </div>
                                                 </div>
                                             )}
