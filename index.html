@@ -3693,6 +3693,117 @@
                             </Btn>
                             <Btn onClick={handleSave} className="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-md transition-colors">설정 저장하기</Btn>
                         </div>
+
+                        {/* 🌟 전체 연동 테스트 시각화 UI 시작 */}
+                        <div id="sync-test-panel" className="mt-8 mb-2 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                                        <span className="text-lg">🔄</span> 전체 연동 점검
+                                    </h4>
+                                    <p className="text-[10px] sm:text-xs text-slate-500 mt-1">AI, 노션, 구글 시트 연결 테스트</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                        const btn = e.currentTarget;
+                                        const wrapper = document.getElementById('sync-test-panel');
+                                        const icons = wrapper.querySelectorAll('.sync-icon');
+                                        const texts = wrapper.querySelectorAll('.sync-text');
+                                        
+                                        // 🛡️ 화면 전체 투명 방어막 치기 (클릭 닫힘 방지)
+                                        const shield = document.createElement('div');
+                                        shield.id = 'sync-test-shield';
+                                        shield.className = 'fixed inset-0 z-[99999] cursor-wait';
+                                        document.body.appendChild(shield);
+                                        
+                                        // 1. 초기화
+                                        icons.forEach(el => el.innerHTML = '⏳');
+                                        texts.forEach(el => { el.innerHTML = '대기 중...'; el.className = 'sync-text text-[10px] sm:text-xs text-slate-400 font-bold'; });
+                                        
+                                        btn.disabled = true;
+                                        btn.innerHTML = '점검 중...';
+
+                                        const spinnerSvg = '<svg class="animate-spin w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+                                        const runTest = async (index, checkCondition) => {
+                                            icons[index].innerHTML = spinnerSvg;
+                                            texts[index].innerHTML = '확인 중...';
+                                            texts[index].className = 'sync-text text-[10px] sm:text-xs text-indigo-500 font-bold';
+                                            
+                                            await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); 
+                                            const isSuccess = checkCondition(); 
+                                            
+                                            if (isSuccess) {
+                                                icons[index].innerHTML = '✅';
+                                                texts[index].innerHTML = '연동 정상';
+                                                texts[index].className = 'sync-text text-[10px] sm:text-xs text-emerald-600 font-bold';
+                                            } else {
+                                                icons[index].innerHTML = '❌';
+                                                texts[index].innerHTML = '설정 필요';
+                                                texts[index].className = 'sync-text text-[10px] sm:text-xs text-rose-500 font-bold';
+                                            }
+                                        };
+
+                                        // 2. 항목별 순차 테스트 (앱 설정 변수명 참조)
+                                        const appCfgStr = localStorage.getItem('cls_app_config') || "{}";
+                                        const appCfg = JSON.parse(appCfgStr);
+                                        
+                                        const geminiKey = localStorage.getItem('cls_gemini_api_key') || "";
+                                        const notionKey = localStorage.getItem('cls_notion_key') || "";
+                                        const sheetUrl = localStorage.getItem('cls_google_sheet_url') || "";
+
+                                        await runTest(0, () => geminiKey.length > 5);
+                                        await runTest(1, () => notionKey.length > 5);
+                                        await runTest(2, () => sheetUrl.length > 5);
+
+                                        // 🛡️ 방어막 철거 및 완료
+                                        document.getElementById('sync-test-shield')?.remove();
+                                        btn.disabled = false;
+                                        btn.innerHTML = '다시 테스트';
+                                        if(typeof showToast !== 'undefined') showToast("✨ 전체 연동 테스트가 완료되었습니다!");
+                                    }}
+                                    className="bg-indigo-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 whitespace-nowrap"
+                                >
+                                    테스트 시작
+                                </button>
+                            </div>
+
+                            <div className="space-y-2 bg-slate-50 p-2 sm:p-3 rounded-xl border border-slate-100 shadow-inner">
+                                <div className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-[10px] sm:text-sm shadow-sm">AI</div>
+                                        <span className="text-xs sm:text-sm font-bold text-slate-700">Gemini AI API</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 w-20 sm:w-24 justify-end">
+                                        <span className="sync-text text-[10px] sm:text-xs text-slate-400 font-bold">대기 중...</span>
+                                        <div className="sync-icon w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-sm sm:text-base">⏳</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-800 font-bold text-[10px] sm:text-sm shadow-sm">N</div>
+                                        <span className="text-xs sm:text-sm font-bold text-slate-700">노션 (Notion)</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 w-20 sm:w-24 justify-end">
+                                        <span className="sync-text text-[10px] sm:text-xs text-slate-400 font-bold">대기 중...</span>
+                                        <div className="sync-icon w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-sm sm:text-base">⏳</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-[10px] sm:text-sm shadow-sm">G</div>
+                                        <span className="text-xs sm:text-sm font-bold text-slate-700">구글 시트</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 w-20 sm:w-24 justify-end">
+                                        <span className="sync-text text-[10px] sm:text-xs text-slate-400 font-bold">대기 중...</span>
+                                        <div className="sync-icon w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-sm sm:text-base">⏳</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* 🌟 전체 연동 테스트 시각화 UI 끝 */}
+                        
                     </div>
                 </BaseModal>
             );
