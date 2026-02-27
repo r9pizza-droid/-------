@@ -3066,6 +3066,7 @@
             const [testSuccess, setTestSuccess] = useState(false);
             const [manualInput, setManualInput] = useState("");
             const fileInputRef = useRef(null);
+            const [activeTab, setActiveTab] = useState('record');
 
             useEffect(() => {
                 if (isOpen) {
@@ -3087,6 +3088,7 @@
                     
                     const savedMode = localStorage.getItem('cls_portfolio_mode') === 'true';
                     if (setIsPortfolioMode && savedMode !== isPortfolioMode) setIsPortfolioMode(savedMode);
+                    setActiveTab(savedMode ? 'portfolio' : 'record');
                 }
             }, [isOpen]);
 
@@ -3180,7 +3182,7 @@
 
             const setTargetDbId = (val) => {
                 const cleanVal = val.replace(/["']/g, '').trim();
-                if (isPortfolioMode) {
+                if (activeTab === 'portfolio') {
                     setPortfolioDbId(cleanVal);
                     localStorage.setItem('cls_notion_portfolio_db_id', cleanVal);
                 } else {
@@ -3215,7 +3217,7 @@
                 const checked = e.target.checked;
                 if (setIsPortfolioMode) setIsPortfolioMode(checked);
                 localStorage.setItem('cls_portfolio_mode', checked);
-                if (showToast) showToast(checked ? "포트폴리오 모드가 활성화 되었습니다." : "기록모드가 활성화 되었습니다.");
+                if (showToast) showToast(checked ? "포트폴리오 모드가 활성화 되었습니다." : "포트폴리오 모드가 비활성화 되었습니다.");
             };
 
             const handleFileUploadPortfolio = (e) => {
@@ -3435,35 +3437,55 @@
                                 <Btn onClick={handlePasteKey} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500">{isPortfolioMode ? "🔵 포트폴리오용 DB ID (학생과 연결)" : "⚪ 일반 기록용 DB ID (단순 기록)"}</label>
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <input type="text" value={isPortfolioMode ? portfolioDbId : dbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); }} className="w-full p-3 pr-8 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID (URL 붙여넣기 가능)" />
-                                    {(isPortfolioMode ? portfolioDbId : dbId) && (
-                                        <button onClick={() => isPortfolioMode ? setPortfolioDbId("") : setDbId("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
-                                            <Icon d={PATHS.x} size={14} />
-                                        </button>
-                                    )}
-                                </div>
-                                <Btn onClick={handlePasteDbId} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
-                            </div>
+                        
+                        <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+                            <button onClick={() => setActiveTab('record')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'record' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:bg-slate-50'}`}>⚪ 일반 기록 모드</button>
+                            <button onClick={() => setActiveTab('portfolio')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'portfolio' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:bg-slate-50'}`}>🔵 포트폴리오 모드</button>
                         </div>
                         
-                        <div className="pt-4 border-t border-slate-200">
-                            <label className="flex items-center justify-between cursor-pointer select-none">
-                                <span className="text-sm font-bold text-slate-700">{isPortfolioMode ? "포트폴리오 모드" : "기록 모드 (기본)"}</span>
-                                <div className="relative">
-                                    <input type="checkbox" className="sr-only" checked={isPortfolioMode} onChange={handlePortfolioToggle} />
-                                    <div className={`w-10 h-6 rounded-full shadow-inner transition-colors ${isPortfolioMode ? 'bg-indigo-500' : 'bg-slate-300'}`}></div>
-                                    <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isPortfolioMode ? 'translate-x-4' : ''}`}></div>
+                        {activeTab === 'record' && (
+                            <div className="space-y-2 animate-fade-in">
+                                <label className="text-xs font-bold text-slate-500">일반 기록용 DB ID (단순 기록)</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <input type="text" value={dbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); else setDbId(val); }} className="w-full p-3 pr-8 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID (URL 붙여넣기 가능)" />
+                                        {dbId && (
+                                            <button onClick={() => setDbId("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
+                                                <Icon d={PATHS.x} size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <Btn onClick={handlePasteDbId} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                                 </div>
-                            </label>
-                            <p className="text-xs text-slate-500 mt-1">학생 이름을 클릭하면 연결된 노션 페이지로 이동합니다.</p>
-                        </div>
+                                <p className="text-[10px] text-slate-400">학생의 활동을 날짜별로 단순 기록하는 데이터베이스입니다.</p>
+                            </div>
+                        )}
 
-                        {isPortfolioMode && (
-                            <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4 animate-fade-in">
+                        {activeTab === 'portfolio' && (
+                            <div className="space-y-4 animate-fade-in">
+                                <div className="flex items-center justify-between bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                                    <span className="text-xs font-bold text-indigo-700">포트폴리오 기능 활성화</span>
+                                    <div className="relative">
+                                        <input type="checkbox" className="sr-only" checked={isPortfolioMode} onChange={handlePortfolioToggle} />
+                                        <div className={`w-9 h-5 rounded-full shadow-inner transition-colors ${isPortfolioMode ? 'bg-indigo-500' : 'bg-slate-300'}`}></div>
+                                        <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full shadow transition-transform ${isPortfolioMode ? 'translate-x-4' : ''}`}></div>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-500">포트폴리오용 DB ID (학생과 연결)</label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <input type="text" value={portfolioDbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); else setPortfolioDbId(val); }} className="w-full p-3 pr-8 border rounded-xl text-sm outline-none focus:border-indigo-500 font-mono" placeholder="32자리 ID (URL 붙여넣기 가능)" />
+                                            {portfolioDbId && (
+                                                <button onClick={() => setPortfolioDbId("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
+                                                    <Icon d={PATHS.x} size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <Btn onClick={handlePasteDbId} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4 animate-fade-in">
                                 <div className="flex justify-between items-center">
                                     <h4 className="text-xs font-bold text-slate-600">명단 관리 (이름:노션ID)</h4>
                                     <Btn onClick={() => fileInputRef.current.click()} className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50">📂 엑셀(CSV) 업로드</Btn>
@@ -3483,6 +3505,7 @@
                                     <textarea value={manualInput} onChange={e => setManualInput(e.target.value)} className="flex-1 p-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 resize-none" placeholder="이름:ID (여러 명은 줄바꿈)" rows="2" />
                                     <Btn onClick={handleManualAdd} className="px-3 bg-indigo-500 text-white rounded-lg text-xs font-bold hover:bg-indigo-600">추가</Btn>
                                 </div>
+                            </div>
                             </div>
                         )}
 
