@@ -1231,29 +1231,32 @@
                         const bodyData = { category: category, content: content, personalKey: personalKey, personalDbId: targetDbId };
                         
                         if (target === 'notion_portfolio') {
-                            const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
-                            const ids = []; selectedStudents.forEach(s => { if (map[s.name]) ids.push(map[s.name]); });
-                            
-                            // 🌟 선택된 아이들의 이름을 쉼표로 모두 연결합니다. (예: "김철수, 이영희, 박지민")
-                            const joinedNames = selectedStudents.map(s => s.name).join(', ');
-                            
-                            bodyData.mode = 'relation'; 
-                            bodyData.studentIds = ids;
-                            bodyData.studentName = joinedNames; // 노션의 '제목' 또는 '이름' 칸에 한 번에 전송!
-                            
-                            await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
-                        } else {
-                            // [Fix] 노션(기록) 모드일 때 선택된 모든 학생에 대해 개별 저장
-                            for (const s of selectedStudents) {
-                                const individualBody = { 
-                                    ...bodyData, 
-                                    mode: 'normal', 
-                                    studentName: s.name, 
-                                    date: dayjs(date).format('YYYY-MM-DD') 
-                                };
-                                await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(individualBody) });
-                            }
-                        }
+    const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
+    const ids = []; selectedStudents.forEach(s => { if (map[s.name]) ids.push(map[s.name]); });
+    
+    // 🌟 선택된 아이들의 이름을 쉼표로 모두 연결합니다. (예: "김철수, 이영희, 박지민")
+    const joinedNames = selectedStudents.map(s => s.name).join(', ');
+    
+    bodyData.mode = 'relation'; 
+    bodyData.studentIds = ids;
+    bodyData.studentName = joinedNames; // 노션의 '제목' 또는 '이름' 칸에 한 번에 전송!
+    
+    await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
+} else {
+    // [Fix] 노션(기록) 모드일 때 선택된 모든 학생에 대해 개별 저장
+    for (const s of selectedStudents) {
+        const individualBody = { 
+            ...bodyData, 
+            mode: 'normal', 
+            studentName: s.name, 
+            date: dayjs(date).format('YYYY-MM-DD') 
+        };
+        await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(individualBody) });
+        
+        // 🌟 핵심 해결책: 노션 서버가 튕겨내지 못하게 1명 저장할 때마다 0.35초(350ms)씩 부드럽게 숨을 고릅니다!
+        await new Promise(resolve => setTimeout(resolve, 350));
+    }
+}
                     }
                     setNotionStatus('success'); if(typeof showToast !== 'undefined') showToast("✨ 외부 서비스 연동이 안전하게 완료되었습니다!"); if (!keepContent) setNotionContent(''); setTimeout(() => setNotionStatus('idle'), 3000);
                     showToast("✅ 기록이 저장되었습니다!");
