@@ -30,7 +30,21 @@ self.addEventListener('fetch', (event) => {
     
     // 나머지는 인터넷에서 먼저 가져오기 시도 (가장 안전한 방식)
     event.respondWith(
-        fetch(event.request).catch(() => caches.match(event.request))
+        fetch(event.request)
+            .then((response) => {
+                // 응답이 유효하고 GET 요청인 경우에만 캐시에 저장
+                if (!response || response.status !== 200 || event.request.method !== 'GET') {
+                    return response;
+                }
+
+                const responseToCache = response.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, responseToCache);
+                });
+
+                return response;
+            })
+            .catch(() => caches.match(event.request))
     );
 });
 
