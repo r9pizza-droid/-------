@@ -3372,7 +3372,7 @@
                 'Content-Type': 'text/plain;charset=utf-8' // 브라우저 보안 검사(CORS) 프리패스!
             },
             body: JSON.stringify({
-                appkey: "saysemin",                         // 비밀상자
+                appkey: "saysemin",
                 apiKey: cleanKey,                           // 마스터키 포장
                 url: 'https://api.notion.com/v1/pages',     // 최종 목적지
                 method: 'POST',
@@ -3400,7 +3400,7 @@
                 'Content-Type': 'text/plain;charset=utf-8' // 브라우저 보안 검사(CORS) 프리패스!
             },
             body: JSON.stringify({
-                appkey: "saysemin",                         // 비밀상자
+                appkey: "saysemin",
                 apiKey: cleanKey,                           // 선생님의 노션 마스터키
                 url: 'https://api.notion.com/v1/pages',     // 노션의 최종 목적지 주소
                 method: 'POST',
@@ -4171,6 +4171,7 @@
                 const aiKey = localStorage.getItem('cls_ai_key');
                 
                 setIsTestingAll(true);
+                setIsSyncPanelOpen(true);
 
                 // 초기 상태 설정: 설정값 유무에 따라 pending 또는 error(미설정) 처리
                 setConnectionStatus({
@@ -4192,6 +4193,7 @@
                 }
 
                 let hasSuccess = false;
+                let hasFailure = false;
 
                 for (let i = 0; i < tests.length; i++) {
                     const test = tests[i];
@@ -4241,9 +4243,14 @@
                         [test.id]: { status: success ? 'success' : 'error', message: success ? '연동 성공' : errorMsg }
                     }));
                     if (success) hasSuccess = true;
+                    else hasFailure = true;
                 }
 
                 setIsTestingAll(false);
+                if (!hasFailure) {
+                    setTimeout(() => setIsSyncPanelOpen(false), 2000);
+                }
+
                 if (hasSuccess) {
                     setTestAllSuccess(true);
                     setTimeout(() => setTestAllSuccess(false), 3000);
