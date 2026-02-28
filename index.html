@@ -5430,6 +5430,21 @@
                                                 </div>
                                             </div>
                                             <div 
+                                                className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.showClassStoryButton ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                                onClick={() => updateAppConfig({ showClassStoryButton: !appConfig.showClassStoryButton })}
+                                            >
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icon d={PATHS.book} size={16} className={appConfig.showClassStoryButton ? "text-indigo-500" : "text-slate-400"}/>
+                                                    <span className={`text-xs font-bold ${appConfig.showClassStoryButton ? "text-indigo-700" : "text-slate-500"}`}>학급 이야기 버튼</span>
+                                                </div>
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <span className={`text-[10px] font-bold ${appConfig.showClassStoryButton ? "text-indigo-500" : "text-slate-400"}`}>{appConfig.showClassStoryButton ? "ON" : "OFF"}</span>
+                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${appConfig.showClassStoryButton ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}>
+                                                        {appConfig.showClassStoryButton && <Icon d={PATHS.check} size={14} className="text-white" strokeWidth={3} />}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div 
                                                 className={`border rounded-xl p-2.5 shadow-sm flex flex-col justify-between transition-all cursor-pointer select-none ${appConfig.dDayEnabled !== false ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}
                                                 onClick={() => updateAppConfig({ dDayEnabled: !(appConfig.dDayEnabled !== false) })}
                                             >
@@ -7016,7 +7031,7 @@ const firebaseConfig = {
     const modalRef = React.useRef(null);
     const textareaRef = React.useRef(null);
     const [saveProgress, setSaveProgress] = React.useState(0);
-    const [viewMode, setViewMode] = React.useState('list');
+    const [viewMode, setViewMode] = React.useState('grid');
     const [searchText, setSearchText] = React.useState("");
     const [showStudentDropdown, setShowStudentDropdown] = React.useState(false);
 
@@ -7741,7 +7756,7 @@ const firebaseConfig = {
         { emoji: '🤖', title: '전문가 수준의 AI 상담소', desc: '학생 이름표를 더블클릭하면 인사이트 창이 열립니다. [AI 상담소]의 톱니바퀴 버튼을 누르면 ABA, PDC, 감정코칭 등 맞춤형 전문가 프롬프트를 바로 불러옵니다.' },
         { emoji: '📊', title: '클릭 한 번에 생기부 초안 완성', desc: '기록이 쌓이면 [AI 총평 초안] 탭을 활용해 보세요. 행발, 교과 등 자동 추천 템플릿에 맞춰 학생의 종합 의견 초안을 뚝딱 만들어줍니다.' }
     ];
-            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100 });
+            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const [editingGroupName, setEditingGroupName] = useState("");
@@ -10037,9 +10052,11 @@ const firebaseConfig = {
                                         <Btn onClick={() => setShowAllRecords(true)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 flex items-center gap-2 shadow-sm transition-colors">
                                             <Icon d={PATHS.history} size={16} /> 전체 기록 보기
                                         </Btn>
-                                        <Btn onClick={() => { if(!apiKey) return setToastMessage("설정에서 API 키를 먼저 입력해주세요."); setAiContent(""); setShowClassStory(true); }} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-colors ${apiKey ? 'bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50' : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                                            <Icon d={PATHS.book} size={16} /> 오늘의 학급 이야기 보기
-                                        </Btn>
+                                        {appConfig.showClassStoryButton && (
+                                            <Btn onClick={() => { if(!apiKey) return setToastMessage("설정에서 API 키를 먼저 입력해주세요."); setAiContent(""); setShowClassStory(true); }} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-colors ${apiKey ? 'bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50' : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'}`}>
+                                                <Icon d={PATHS.book} size={16} /> 오늘의 학급 이야기 보기
+                                            </Btn>
+                                        )}
                                         <button onClick={() => setShowStoryHelp(true)} className="text-notion-text-light hover:text-notion-text p-1 rounded hover:bg-notion-bg-hover transition-colors" title="도움말"><Icon d={PATHS.help} size={18} /></button>
                                     </div>
                                     <RecordView students={students} records={records} dailyTasks={dailyTasks} date={date} toggleCheck={toggleCheck} appConfig={appConfig} stats={stats} onLongPress={(id) => setGrassStudentId(id)} />
