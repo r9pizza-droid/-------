@@ -2,40 +2,53 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     let { personalKey, personalDbId, studentName, date, category, content, mode, studentIds, testMode } = req.body;
 
-    const cleanKey = personalKey ? personalKey.replace(/["']/g, '').trim() : '';
-    const cleanDbId = personalDbId ? personalDbId.toString().replace(/["']/g, '').trim() : '';
+    const cleanKey = personalKey ? String(personalKey).replace(/["']/g, '').trim() : '';
+    const cleanDbId = personalDbId ? String(personalDbId).replace(/["']/g, '').trim() : '';
 
     if (!cleanKey || !cleanDbId) return res.status(400).json({ error: "설정 정보가 누락되었습니다." });
 
-    // [핵심] 모드에 따라 항목 이름을 자동으로 결정합니다.
-    // 포트폴리오 모드(relation)면 "제목", 일반 모드면 "이름"을 사용합니다.
     const titlePropertyName = (mode === 'relation') ? "제목" : "이름";
-
     let properties = {};
     const pageIcon = { type: "emoji", emoji: testMode ? "🧪" : "🍀" };
+
+    // 🌟 1. 핵심: 에러 방지용 '안전한 관계형 배열' 생성 함수
+    // null이나 길이가 맞지 않는 잘못된 ID가 들어오면 서버가 죽지 않고 알아서 걸러줍니다.
+    const getCleanRelationArray = (ids) => {
+        if (!ids || !Array.isArray(ids)) return [];
+        return ids
+            .filter(id => id != null && id !== "") 
+            .map(id => String(id).replace(/["']/g, '').trim())
+            .filter(id => id.length === 32 || id.length === 36) // 노션 ID 길이(32자) 검증
+            .map(id => ({ "id": id }));
+    };
 
     if (testMode) {
         /** ✅ 연동 테스트 모드 **/
         properties[titlePropertyName] = { 
             "title": [{ "text": { "content": `✅ [${titlePropertyName}] 칸 연동 테스트 성공!` } }] 
         };
+        
+        // 🌟 2. 테스트 모드: 선택한 여러 명의 학생들(studentIds)이 '학생' 관계형 칸에 한꺼번에 들어가는지 점검
+        if (mode === 'relation' && studentIds) {
+            const relationArray = getCleanRelationArray(studentIds);
+            if (relationArray.length > 0) {
+                properties["학생"] = { "relation": relationArray };
+            }
+        }
     } else {
         /** 📝 실제 기록 저장 모드 **/
         if (mode === 'relation') {
-            // [포트폴리오 모드] '제목' 칸에 요약본 저장
-            const summary = content ? (content.length > 15 ? content.substring(0, 15) + "..." : content) : "새로운 기록";
-            const titleText = studentName ? `[${studentName}] ${category || "관찰"} - ${summary}` : `[${category || "관찰"}] ${summary}`;
-            properties["제목"] = { "title": [{ "text": { "content": titleText } }] };
-            properties["분류"] = { "select": { "name": category || "관찰" } };
+            const summary = content ? (content.length > 15 ? content.substring(0, 15) + '...' : content) : "포트폴리오 기록";
+            properties["제목"] = { "title": [{ "text": { "content": summary } }] };
+            properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };
             properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };
-            if (studentIds && studentIds.length > 0) {
-                const cleanIds = studentIds.map(id => id.toString().replace(/["']/g, '').trim()).filter(id => id.length > 0);
-                if (cleanIds.length > 0) {
-                    properties["학생"] = { "relation": cleanIds.map(id => ({ "id": id })) };
-                }
+            
+            // 🌟 3. 실제 저장: 안전하게 필터링된 ID들만 모아서 관계형 한 칸에 모두 쏙 전송
+            const relationArray = getCleanRelationArray(studentIds);
+            if (relationArray.length > 0) {
+                properties["학생"] = { "relation": relationArray };
             }
         } else {
-            // [일반 모드] '이름' 칸에 학생 이름 저장
             properties["이름"] = { "title": [{ "text": { "content": studentName || "학생" } }] };
             properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };
             properties["분류"] = { "select": { "name": category || "관찰" } };
@@ -53,8 +66,14 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({ parent: { database_id: cleanDbId }, icon: pageIcon, properties: properties })
         });
+        
         const data = await response.json();
-        if (!response.ok) return res.status(response.status).json(data);
-        res.status(200).json({ success: true });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+        if (!response.ok) {
+            throw new Error(data.message || "노션 저장에 실패했습니다.");
+        }
+        
+        return res.status(200).json({ success: true, data: data });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
 }
