@@ -7111,8 +7111,19 @@ const firebaseConfig = {
                         
                         if (target === 'notion_portfolio') {
                             const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
-                            const ids = []; selectedStudents.forEach(s => { if (map[s.name]) ids.push(map[s.name]); });
-                            bodyData.mode = 'relation'; bodyData.studentIds = ids;
+                            const ids = []; 
+                            const missingNames = [];
+                            selectedStudents.forEach(s => { 
+                                if (map[s.name]) ids.push(map[s.name]); 
+                                else missingNames.push(s.name);
+                            });
+                            if (missingNames.length > 0) {
+                                showToast(`⚠️ 노션 ID 미설정 학생 제외: ${missingNames.join(', ')}`);
+                            }
+                            const joinedNames = selectedStudents.map(s => s.name).join(', ');
+                            bodyData.mode = 'relation'; 
+                            bodyData.studentIds = ids;
+                            bodyData.studentName = joinedNames;
                             await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
                             updateProgress();
                         } else {
