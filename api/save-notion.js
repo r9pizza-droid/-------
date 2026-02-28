@@ -28,7 +28,10 @@ export default async function handler(req, res) {
             properties["분류"] = { "select": { "name": category || "관찰" } };
             properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };
             if (studentIds && studentIds.length > 0) {
-                properties["학생"] = { "relation": studentIds.map(id => ({ "id": id })) };
+                const cleanIds = studentIds.map(id => id.toString().replace(/["']/g, '').trim()).filter(id => id.length > 0);
+                if (cleanIds.length > 0) {
+                    properties["학생"] = { "relation": cleanIds.map(id => ({ "id": id })) };
+                }
             }
         } else {
             // [일반 모드] '이름' 칸에 학생 이름 저장
