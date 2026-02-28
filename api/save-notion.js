@@ -40,8 +40,7 @@ export default async function handler(req, res) {
         /** 📝 실제 기록 저장 모드 **/
         if (mode === 'relation') {
             const summary = content ? (content.length > 15 ? content.substring(0, 15) + '...' : content) : "포트폴리오 기록";
-            const titleContent = studentName ? `[${studentName}] ${summary}` : summary;
-            properties["제목"] = { "title": [{ "text": { "content": titleContent } }] };
+            properties["제목"] = { "title": [{ "text": { "content": summary } }] };
             properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };
             properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };
             
