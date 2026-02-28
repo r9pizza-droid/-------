@@ -1262,15 +1262,15 @@
                         const promises = [];
                         targetStudentIds.forEach(tId => {
                             promises.push(db.collection('classes').doc(appId).collection('studentData').doc(String(tId)).get().then(doc => {
+                                let tNotes = [];
                                 if (doc.exists) {
                                     const data = doc.data();
-                                    let tNotes = data.counseling || [];
-                                    const noteIndex = tNotes.findIndex(n => n.id === editingNoteId);
-                                    if (noteIndex >= 0) tNotes[noteIndex] = updatedNote;
-                                    else tNotes = [updatedNote, ...tNotes];
-                                    return { ref: doc.ref, counseling: tNotes };
+                                    tNotes = data.counseling || [];
                                 }
-                                return null;
+                                const noteIndex = tNotes.findIndex(n => n.id === editingNoteId);
+                                if (noteIndex >= 0) tNotes[noteIndex] = updatedNote;
+                                else tNotes = [updatedNote, ...tNotes];
+                                return { ref: doc.ref, counseling: tNotes };
                             }));
                         });
                         removedIds.forEach(rId => {
@@ -1966,23 +1966,14 @@
 
                                     {/* Unified Input Form */}
                                     <div className="flex flex-col gap-3 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
-                                        {selectedStudents.length > 1 && (
-                                            <div className="flex flex-wrap gap-1.5 mb-1 relative">
-                                                {selectedStudents.map(s => (
-                                                    <span key={s.id} className="text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 border bg-indigo-50 text-indigo-700 border-indigo-200 font-bold shadow-sm">
-                                                        {s.name}
-                                                        {s.id !== student.id && <button onClick={() => removeSelectedStudent(s.id)} className="hover:text-rose-500 bg-indigo-100 rounded-full p-0.5"><Icon d={PATHS.x} size={10}/></button>}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        <textarea 
-                                            value={notionContent}
-                                            onChange={(e) => setNotionContent(e.target.value)}
-                                            className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none h-24 placeholder-slate-400 shadow-sm"
-                                            placeholder="관찰한 내용이나 칭찬할 내용을 입력하세요..."
-                                        />
+                                        <div className="flex flex-wrap gap-1.5 mb-1 relative">
+                                            {selectedStudents.map(s => (
+                                                <span key={s.id} className="text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 border bg-indigo-50 text-indigo-700 border-indigo-200 font-bold shadow-sm">
+                                                    {s.name}
+                                                    {s.id !== student.id && <button onClick={() => removeSelectedStudent(s.id)} className="hover:text-rose-500 bg-indigo-100 rounded-full p-0.5"><Icon d={PATHS.x} size={10}/></button>}
+                                                </span>
+                                            ))}
+                                        </div>
 
                                         {/* [New] 저장소 선택 탭 UI */}
                                         {(hasNotionRecord || hasNotionPortfolio || hasGoogleSheet) ? (
@@ -2026,6 +2017,13 @@
                                             </div>
                                             <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className="p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 shadow-sm" />
                                         </div>
+                                        
+                                        <textarea 
+                                            value={notionContent}
+                                            onChange={(e) => setNotionContent(e.target.value)}
+                                            className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none h-24 placeholder-slate-400 shadow-sm"
+                                            placeholder="관찰한 내용이나 칭찬할 내용을 입력하세요..."
+                                        />
                                         
                                         <div className="flex justify-end -mt-1">
                                             <label className="flex items-center gap-1.5 cursor-pointer select-none">
