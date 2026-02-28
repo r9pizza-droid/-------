@@ -2170,41 +2170,37 @@
                             return (
                                 <div key={note.id} className="flex flex-col">
                                     
-                                    {/* 실제 기록 내용 박스 */}
-                                    <div className="group w-full bg-white border border-slate-200 rounded-xl p-3 text-sm text-slate-700 shadow-sm hover:border-indigo-300 transition-colors">
+                                    {/* 실제 기록 내용 박스 (relative 추가로 위치 기준점 잡아줌) */}
+                                    <div className="group relative w-full bg-white border border-slate-200 rounded-xl p-3 text-sm text-slate-700 shadow-sm hover:border-indigo-300 transition-colors">
                                         
-                                        {/* 🌟 복구된 첫 줄: 태그 영역 & 수정/삭제 버튼 */}
-                                        <div className="flex justify-between items-start mb-2">
+                                        {/* 🌟 1. 태그가 들어갈 자리 (우측 버튼과 겹치지 않게 pr-16 여백 추가) */}
+                                        <div className="mb-2 pr-16 flex flex-wrap gap-1">
+                                            {/* 👇 선생님! 여기에 기존 태그 코드를 넣어주세요 👇 */}
                                             
-                                            {/* 태그 / 연동된 사람 이름이 들어갈 자리 */}
-                                            <div className="flex flex-wrap gap-1 flex-1">
-                                                {/* 👇 선생님! 여기에 기존에 쓰시던 태그 렌더링 코드를 넣어주세요! 👇 */}
-                                                
-                                                {/* 예시: 태그가 있다면 보여주는 임시 디자인 (삭제하고 선생님 코드로 교체하세요) */}
-                                                {note.tags && note.tags.length > 0 && note.tags.map((tag, idx) => (
-                                                    <span key={idx} className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-md">
-                                                        #{tag}
-                                                    </span>
-                                                ))}
-                                                
-                                                {/* 👆 여기까지 👆 */}
-                                            </div>
+                                            {note.tags && note.tags.map((tag, idx) => (
+                                                <span key={idx} className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-md">
+                                                    #{tag}
+                                                </span>
+                                            ))}
                                             
-                                            {/* 수정 / 삭제 버튼 (마우스 올렸을 때 우측 상단에 표시) */}
-                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 shrink-0 ml-2">
-                                                <button onClick={() => startEditing(note)} className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="수정">
-                                                    <Icon d={PATHS.edit} size={14} />
-                                                </button>
-                                                <button onClick={() => handleDeleteNote(note)} className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors" title="삭제">
-                                                    <Icon d={PATHS.trash} size={14} />
-                                                </button>
-                                            </div>
+                                            {/* 👆 여기까지 👆 */}
                                         </div>
 
-                                        {/* 기록 내용 (태그 아래에 위치하게 됩니다) */}
+                                        {/* 🌟 2. 기록 내용 자리 */}
                                         <div className="whitespace-pre-wrap leading-relaxed">
                                             {note.content}
                                         </div>
+
+                                        {/* 🌟 3. 원래 방식대로 완벽 복구된 수정/삭제 버튼 (z-10을 주어 최상단으로 올림) */}
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/90 backdrop-blur-sm rounded-lg p-1 z-10 shadow-sm">
+                                            <button onClick={() => startEditing(note)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="수정">
+                                                <Icon d={PATHS.edit} size={14} />
+                                            </button>
+                                            <button onClick={() => handleDeleteNote(note)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors" title="삭제">
+                                                <Icon d={PATHS.trash} size={14} />
+                                            </button>
+                                        </div>
+
                                     </div>
 
                                     {/* 박스들 사이 중간 점선 (테두리와 동일한 slate-200) */}
