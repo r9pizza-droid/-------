@@ -7316,12 +7316,16 @@ const firebaseConfig = {
                             </div>
                             {showStudentDropdown && (
                                 <div className="absolute top-full left-0 w-full bg-white shadow-xl border border-slate-200 rounded-xl z-50 max-h-48 overflow-y-auto mt-1 custom-scroll py-1">
-                                    {students.filter(s => s.name.includes(searchText) && !selectedStudents.some(sel => sel.id === s.id)).map(s => (
-                                        <div key={s.id} className="px-3 py-2 text-xs hover:bg-indigo-50 cursor-pointer font-bold flex justify-between items-center" onMouseDown={() => { handleStudentSelect(s); setSearchText(""); }}>
+                                    {students.filter(s => s.name.includes(searchText)).map(s => {
+                                        const isSelected = selectedStudents.some(sel => sel.id === s.id);
+                                        return (
+                                        <div key={s.id} className={`px-3 py-2 text-xs cursor-pointer font-bold flex justify-between items-center ${isSelected ? 'bg-indigo-50 text-indigo-600' : 'hover:bg-slate-50 text-slate-700'}`} onMouseDown={() => { toggleStudentSelection(s); setSearchText(""); }}>
                                             <span>{s.order}번 {s.name}</span>
+                                            {isSelected && <Icon d={PATHS.check} size={14} />}
                                         </div>
-                                    ))}
-                                    {students.filter(s => s.name.includes(searchText) && !selectedStudents.some(sel => sel.id === s.id)).length === 0 && (
+                                        );
+                                    })}
+                                    {students.filter(s => s.name.includes(searchText)).length === 0 && (
                                         <div className="px-3 py-2 text-xs text-slate-400 text-center">검색 결과가 없습니다.</div>
                                     )}
                                 </div>
@@ -10053,11 +10057,13 @@ const firebaseConfig = {
                                             <Icon d={PATHS.history} size={16} /> 전체 기록 보기
                                         </Btn>
                                         {appConfig.showClassStoryButton && (
-                                            <Btn onClick={() => { if(!apiKey) return setToastMessage("설정에서 API 키를 먼저 입력해주세요."); setAiContent(""); setShowClassStory(true); }} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-colors ${apiKey ? 'bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50' : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                                                <Icon d={PATHS.book} size={16} /> 오늘의 학급 이야기 보기
-                                            </Btn>
+                                            <>
+                                                <Btn onClick={() => { if(!apiKey) return setToastMessage("설정에서 API 키를 먼저 입력해주세요."); setAiContent(""); setShowClassStory(true); }} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-colors ${apiKey ? 'bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50' : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'}`}>
+                                                    <Icon d={PATHS.book} size={16} /> 오늘의 학급 이야기 보기
+                                                </Btn>
+                                                <button onClick={() => setShowStoryHelp(true)} className="text-notion-text-light hover:text-notion-text p-1 rounded hover:bg-notion-bg-hover transition-colors" title="도움말"><Icon d={PATHS.help} size={18} /></button>
+                                            </>
                                         )}
-                                        <button onClick={() => setShowStoryHelp(true)} className="text-notion-text-light hover:text-notion-text p-1 rounded hover:bg-notion-bg-hover transition-colors" title="도움말"><Icon d={PATHS.help} size={18} /></button>
                                     </div>
                                     <RecordView students={students} records={records} dailyTasks={dailyTasks} date={date} toggleCheck={toggleCheck} appConfig={appConfig} stats={stats} onLongPress={(id) => setGrassStudentId(id)} />
                                 </>
