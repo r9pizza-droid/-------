@@ -11,14 +11,12 @@ export default async function handler(req, res) {
     let properties = {};
     const pageIcon = { type: "emoji", emoji: testMode ? "🧪" : "🍀" };
 
-    // 🌟 1. 핵심: 에러 방지용 '안전한 관계형 배열' 생성 함수
-    // null이나 길이가 맞지 않는 잘못된 ID가 들어오면 서버가 죽지 않고 알아서 걸러줍니다.
     const getCleanRelationArray = (ids) => {
         if (!ids || !Array.isArray(ids)) return [];
         return ids
             .filter(id => id != null && id !== "") 
             .map(id => String(id).replace(/["']/g, '').trim())
-            .filter(id => id.length === 32 || id.length === 36) // 노션 ID 길이(32자) 검증
+            .filter(id => id.length === 32 || id.length === 36)
             .map(id => ({ "id": id }));
     };
 
@@ -28,7 +26,6 @@ export default async function handler(req, res) {
             "title": [{ "text": { "content": `✅ [${titlePropertyName}] 칸 연동 테스트 성공!` } }] 
         };
         
-        // 🌟 2. 테스트 모드: 선택한 여러 명의 학생들(studentIds)이 '학생' 관계형 칸에 한꺼번에 들어가는지 점검
         if (mode === 'relation' && studentIds) {
             const relationArray = getCleanRelationArray(studentIds);
             if (relationArray.length > 0) {
@@ -38,17 +35,22 @@ export default async function handler(req, res) {
     } else {
         /** 📝 실제 기록 저장 모드 **/
         if (mode === 'relation') {
-            const summary = content ? (content.length > 15 ? content.substring(0, 15) + '...' : content) : "포트폴리오 기록";
-            properties["제목"] = { "title": [{ "text": { "content": summary } }] };
+            
+            // 🌟 수정된 부분: 요약 내용 앞에 [카테고리] 말머리를 붙입니다.
+            const summaryText = content ? (content.length > 15 ? content.substring(0, 15) + '...' : content) : "기록 내용 없음";
+            const categoryPrefix = category ? `[${category}]` : "[기록]"; // 카테고리가 없으면 기본값 [기록]
+            const finalTitle = `${categoryPrefix} ${summaryText}`;
+
+            properties["제목"] = { "title": [{ "text": { "content": finalTitle } }] };
             properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };
             properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };
             
-            // 🌟 3. 실제 저장: 안전하게 필터링된 ID들만 모아서 관계형 한 칸에 모두 쏙 전송
             const relationArray = getCleanRelationArray(studentIds);
             if (relationArray.length > 0) {
                 properties["학생"] = { "relation": relationArray };
             }
         } else {
+            // [일반 모드]
             properties["이름"] = { "title": [{ "text": { "content": studentName || "학생" } }] };
             properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };
             properties["분류"] = { "select": { "name": category || "관찰" } };
@@ -69,7 +71,23 @@ export default async function handler(req, res) {
         
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || "노션 저장에 실패했습니다.");
+            let errorMsg = data.message || "노션 저장에 실패했습니다.";
+            
+            if (data.code === 'unauthorized') {
+                errorMsg = "API 키가 잘못되었습니다. (Unauthorized)";
+            } else if (data.code === 'object_not_found') {
+                errorMsg = "데이터베이스 ID를 찾을 수 없습니다. (Object Not Found)";
+            } else if (data.code === 'validation_error') {
+                errorMsg = `데이터 형식이 올바르지 않습니다. (${data.message})`;
+            } else if (data.code === 'rate_limited') {
+                errorMsg = "요청이 너무 많습니다. 잠시 후 다시 시도해주세요. (Rate Limited)";
+            } else if (data.code === 'internal_server_error') {
+                errorMsg = "노션 서버 오류입니다. (Internal Server Error)";
+            } else if (data.code === 'service_unavailable') {
+                errorMsg = "노션 서비스가 점검 중입니다. (Service Unavailable)";
+            }
+
+            throw new Error(errorMsg);
         }
         
         return res.status(200).json({ success: true, data: data });

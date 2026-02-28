@@ -964,6 +964,7 @@
             const [isExpanded, setIsExpanded] = useState(false);
             const [isGrassExpanded, setIsGrassExpanded] = useState(false); // [추가됨] 활동 잔디 접고 펴기 상태
             const [selectedGrassDate, setSelectedGrassDate] = useState(null);
+            const [collapsedDates, setCollapsedDates] = useState({});
             const [dateRangeAnim, setDateRangeAnim] = useState(false);
             const [cachedDetailDate, setCachedDetailDate] = useState(null); // [New] 애니메이션 중 데이터 유지용
             const [isDetailViewOpen, setIsDetailViewOpen] = useState(false); // [New] 슬라이드 상태 분리
@@ -1965,7 +1966,7 @@
 
                                     {/* Unified Input Form */}
                                     <div className="flex flex-col gap-3 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
-                                        {saveTargets.has('notion_portfolio') && (
+                                        {selectedStudents.length > 1 && (
                                             <div className="flex flex-wrap gap-1.5 mb-1 relative">
                                                 {selectedStudents.map(s => (
                                                     <span key={s.id} className="text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 border bg-indigo-50 text-indigo-700 border-indigo-200 font-bold shadow-sm">
@@ -1975,6 +1976,13 @@
                                                 ))}
                                             </div>
                                         )}
+
+                                        <textarea 
+                                            value={notionContent}
+                                            onChange={(e) => setNotionContent(e.target.value)}
+                                            className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none h-24 placeholder-slate-400 shadow-sm"
+                                            placeholder="관찰한 내용이나 칭찬할 내용을 입력하세요..."
+                                        />
 
                                         {/* [New] 저장소 선택 탭 UI */}
                                         {(hasNotionRecord || hasNotionPortfolio || hasGoogleSheet) ? (
@@ -1988,45 +1996,36 @@
                                         )}
 
                                         <div className="flex items-center gap-2 relative z-20">
-                                            {saveTargets.has('notion_portfolio') && (
-                                                <div className="flex-1 relative">
-                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        <Icon d={PATHS.search} size={14} className="text-slate-400" />
-                                                    </div>
-                                                    <input 
-                                                        placeholder="다른 학생 함께 태그하기..." 
-                                                        className="w-full p-2.5 pl-9 bg-white border border-slate-300 rounded-xl text-xs font-medium outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm" 
-                                                        value={searchText}
-                                                        onChange={(e) => { setSearchText(e.target.value); setShowStudentDropdown(true); }}
-                                                        onFocus={() => setShowStudentDropdown(true)}
-                                                        onBlur={() => setTimeout(() => setShowStudentDropdown(false), 200)}
-                                                    />
-                                                    {showStudentDropdown && (
-                                                        <div className="absolute top-full left-0 w-full bg-white shadow-2xl border border-slate-200 rounded-xl z-50 max-h-48 overflow-y-auto mt-2 custom-scroll py-1 animate-fade-in">
-                                                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 border-b border-slate-100 mb-1">학생 검색</div>
-                                                            {students.filter(s => s.name.includes(searchText)).sort((a, b) => a.name.localeCompare(b.name)).map(s => (
-                                                                <div 
-                                                                    key={s.id} 
-                                                                    className="px-3 py-2.5 text-xs text-slate-700 hover:bg-indigo-50 cursor-pointer transition-colors flex justify-between items-center"
-                                                                    onMouseDown={() => { handleStudentSelect(s.name); setSearchText(""); }}
-                                                                >
-                                                                    <span className="font-bold flex items-center gap-2"><span className="text-[10px] text-slate-400 font-normal">{s.order}번</span> {s.name}</span>
-                                                                    {selectedStudents.find(sel => sel.id === s.id) && <Icon d={PATHS.check} size={12} className="text-indigo-500 bg-indigo-100 rounded-full p-0.5"/>}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                            <div className="flex-1 relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <Icon d={PATHS.search} size={14} className="text-slate-400" />
                                                 </div>
-                                            )}
+                                                <input 
+                                                    placeholder="다른 학생 함께 태그하기..." 
+                                                    className="w-full p-2.5 pl-9 bg-white border border-slate-300 rounded-xl text-xs font-medium outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm" 
+                                                    value={searchText}
+                                                    onChange={(e) => { setSearchText(e.target.value); setShowStudentDropdown(true); }}
+                                                    onFocus={() => setShowStudentDropdown(true)}
+                                                    onBlur={() => setTimeout(() => setShowStudentDropdown(false), 200)}
+                                                />
+                                                {showStudentDropdown && (
+                                                    <div className="absolute top-full left-0 w-full bg-white shadow-2xl border border-slate-200 rounded-xl z-50 max-h-48 overflow-y-auto mt-2 custom-scroll py-1 animate-fade-in">
+                                                        <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 border-b border-slate-100 mb-1">학생 검색</div>
+                                                        {students.filter(s => s.name.includes(searchText)).sort((a, b) => a.name.localeCompare(b.name)).map(s => (
+                                                            <div 
+                                                                key={s.id} 
+                                                                className="px-3 py-2.5 text-xs text-slate-700 hover:bg-indigo-50 cursor-pointer transition-colors flex justify-between items-center"
+                                                                onMouseDown={() => { handleStudentSelect(s.name); setSearchText(""); }}
+                                                            >
+                                                                <span className="font-bold flex items-center gap-2"><span className="text-[10px] text-slate-400 font-normal">{s.order}번</span> {s.name}</span>
+                                                                {selectedStudents.find(sel => sel.id === s.id) && <Icon d={PATHS.check} size={12} className="text-indigo-500 bg-indigo-100 rounded-full p-0.5"/>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                             <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className="p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 shadow-sm" />
                                         </div>
-                                        
-                                        <textarea 
-                                            value={notionContent}
-                                            onChange={(e) => setNotionContent(e.target.value)}
-                                            className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none h-24 placeholder-slate-400 shadow-sm"
-                                            placeholder="관찰한 내용이나 칭찬할 내용을 입력하세요..."
-                                        />
                                         
                                         <div className="flex justify-end -mt-1">
                                             <label className="flex items-center gap-1.5 cursor-pointer select-none">
@@ -2136,97 +2135,55 @@
                                         )}
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto custom-scroll space-y-2 pr-1 max-h-[400px]">
-                                        {displayedNotes.length > 0 ? displayedNotes.map(n => (
-                                            <div key={n.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-colors">
-                                                {editingNoteId === n.id ? (
-                                                    <div className="flex flex-col gap-3">
-                                                        <div className="flex flex-col gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-xs font-bold text-slate-500">함께 기록된 학생</span>
-                                                                <div className="relative flex-1">
-                                                                    <input 
-                                                                        className="text-xs bg-white border border-slate-200 rounded px-2 py-1 outline-none w-full focus:border-indigo-300" 
-                                                                        placeholder="학생 검색 및 추가..." 
-                                                                        value={editSearchText}
-                                                                        onChange={(e) => { setEditSearchText(e.target.value); setShowEditStudentDropdown(true); }}
-                                                                        onFocus={() => setShowEditStudentDropdown(true)}
-                                                                        onBlur={() => setTimeout(() => setShowEditStudentDropdown(false), 200)}
-                                                                    />
-                                                                    {showEditStudentDropdown && (
-                                                                        <div className="absolute top-full left-0 w-full bg-white shadow-xl border border-slate-200 rounded-lg z-50 max-h-32 overflow-y-auto mt-1 custom-scroll">
-                                                                            {students
-                                                                                .filter(s => s.name.includes(editSearchText) && s.id !== student.id && !editRelatedStudents.some(rs => rs.id === s.id))
-                                                                                .map(s => (
-                                                                                    <div key={s.id} className="px-3 py-2 text-xs hover:bg-indigo-50 cursor-pointer font-bold text-slate-700" onMouseDown={() => handleAddEditStudent(s)}>
-                                                                                        {s.name}
-                                                                                    </div>
-                                                                                ))
-                                                                            }
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex flex-wrap gap-1.5 min-h-[24px]">
-                                                                {editRelatedStudents.length > 0 ? editRelatedStudents.map(s => (
-                                                                    <span key={s.id} className="text-xs px-2 py-1 rounded-full flex items-center gap-1 border bg-white text-slate-700 border-slate-200 font-bold shadow-sm">
-                                                                        {s.name}
-                                                                        <button onClick={() => handleRemoveEditStudent(s.id)} className="text-slate-400 hover:text-rose-500 bg-slate-100 rounded-full p-0.5"><Icon d={PATHS.x} size={10}/></button>
-                                                                    </span>
-                                                                )) : <span className="text-xs text-slate-400 py-1">없음</span>}
-                                                            </div>
-                                                        </div>
-                                                        <textarea value={editNoteContent} onChange={(e) => setEditNoteContent(e.target.value)} className="w-full p-3 border border-indigo-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-100 resize-none bg-indigo-50/30" rows="3" />
-                                                        <div className="flex justify-end gap-2">
-                                                            <Btn onClick={() => setEditingNoteId(null)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200">취소</Btn>
-                                                            <Btn onClick={saveEditing} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700">저장</Btn>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-md">{n.date}</span>
-                                                                
-                                                                {/* 1. 예전 기록 호환용 (단일 배지) */}
-                                                                {n.destTag && !n.destTags && (
-                                                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-sm ${n.destTag.includes('노션') ? (n.destTag.includes('포폴') ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100') : 'bg-green-50 text-green-600 border-green-100'}`}>
-                                                                        {n.destTag}
-                                                                    </span>
-                                                                )}
+                                    <div className="flex-1 overflow-y-auto custom-scroll pr-1 max-h-[400px]">
+                                        {displayedNotes.length > 0 ? (
+    <div className="py-2 pr-2">
+        {Object.entries(displayedNotes.reduce((acc, note) => {
+            if (!acc[note.date]) acc[note.date] = [];
+            acc[note.date].push(note);
+            return acc;
+        }, {})).sort((a, b) => b[0].localeCompare(a[0])).map(([date, groupNotes]) => {
+            return (
+                <div key={date} style={{ display: 'flex', width: '100%', alignItems: 'stretch' }}>
+                    
+                    {/* 🔴 왼쪽 날짜 기둥 (무조건 빨간 실선 긋기) */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px', flexShrink: 0 }}>
+                        <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '4px', textAlign: 'center', zIndex: 10, marginTop: '4px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>{dayjs(date).format('MM.DD')}</div>
+                        </div>
+                        <div style={{ width: '12px', height: '12px', backgroundColor: '#f43f5e', borderRadius: '50%', marginTop: '8px', zIndex: 10 }}></div>
+                        
+                        {/* 🌟 무조건 선 보이게 강제 설정! */}
+                        <div style={{ flex: 1, width: '4px', backgroundColor: '#f43f5e', minHeight: '30px' }}></div>
+                    </div>
 
-                                                                {/* 2. 새로운 기록용 (여러 개의 배지를 나란히 표시) */}
-                                                                {n.destTags && n.destTags.map((tag, idx) => (
-                                                                    <span key={idx} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-sm ${tag.includes('노션') ? (tag.includes('포폴') ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100') : 'bg-green-50 text-green-600 border-green-100'}`}>
-                                                                        {tag}
-                                                                    </span>
-                                                                ))}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingBottom: '24px', paddingTop: '6px' }}>
+                        {groupNotes.map((note) => {
+                            return (
+                                <div key={note.id} style={{ display: 'flex', width: '100%', alignItems: 'stretch' }}>
+                                    
+                                    {/* 🔵 오른쪽 내용 기둥 (무조건 파란 점선 긋기) */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32px', flexShrink: 0 }}>
+                                        <div style={{ width: '8px', height: '8px', backgroundColor: '#6366f1', borderRadius: '50%', marginTop: '16px' }}></div>
+                                        
+                                        {/* 🌟 무조건 선 보이게 강제 설정! */}
+                                        <div style={{ flex: 1, borderLeft: '3px dashed #6366f1', minHeight: '30px' }}></div>
+                                    </div>
 
-                                                                {/* [New] 함께 기록된 학생 태그 */}
-                                                                {n.relatedStudents && n.relatedStudents.length > 0 && (
-                                                                    <div className="flex items-center gap-1 ml-1 flex-wrap">
-                                                                        <span className="text-[9px] text-slate-400">with</span>
-                                                                        {n.relatedStudents
-                                                                            .filter(s => s.id !== student.id)
-                                                                            .map(s => (
-                                                                                <span key={s.id} onClick={(e) => { e.stopPropagation(); if(onSwitchStudent) onSwitchStudent(s.id); }} className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors" title={`${s.name} 학생 인사이트 보기`}>
-                                                                                    {s.name}
-                                                                                </span>
-                                                                            ))
-                                                                        }
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <button onClick={() => startEditing(n)} className="text-slate-400 hover:text-indigo-600 p-1 bg-slate-50 hover:bg-indigo-50 rounded"><Icon d={PATHS.edit} size={14}/></button>
-                                                                <button onClick={() => handleDeleteNote(n.id)} className="text-slate-400 hover:text-rose-600 p-1 bg-slate-50 hover:bg-rose-50 rounded"><Icon d={PATHS.x} size={14}/></button>
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed font-medium">{n.content}</p>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )) : (
+                                    <div style={{ flex: 1, paddingBottom: '16px' }}>
+                                        <div className="bg-white border border-slate-300 rounded-xl p-3.5 text-sm text-slate-700 shadow-sm whitespace-pre-wrap">
+                                            {note.content}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        })}
+    </div>
+) : (
                                             <div className="h-32 flex flex-col items-center justify-center text-slate-400 text-sm gap-3 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
                                                 <Icon d={PATHS.document} size={24} className="opacity-30" />
                                                 <span>아직 기록이 없습니다.</span>
@@ -2347,7 +2304,7 @@
                                                     else if (colIndex === 4) { tooltipPos = "right-0"; arrowPos = "right-6"; }
 
                                                     return (
-                                                    <div key={i} onClick={() => { setSelectedGrassDate(h.date); setIsDetailViewOpen(true); }} className={`flex flex-col items-center gap-2 group relative cursor-pointer p-2 rounded-2xl transition-all duration-200 ease-out ${selectedGrassDate === h.date ? `${isToday ? theme.bg : 'bg-white'} border-2 ${isToday ? 'border-transparent' : 'border-indigo-100'} scale-100 md:scale-105 shadow-md z-20` : (isToday ? `${theme.bg} border-2 border-transparent shadow-sm scale-100 md:scale-110 hover:scale-105 md:hover:scale-115 z-10` : 'hover:bg-slate-50 border-2 border-transparent hover:border-slate-100 hover:scale-110 hover:shadow-lg hover:z-30')}`}>
+                                                    <div key={i} onClick={() => { setSelectedGrassDate(h.date); setIsDetailViewOpen(true); }} className={`flex flex-col items-center gap-0.5 group relative cursor-pointer p-2 rounded-2xl transition-all duration-200 ease-out ${selectedGrassDate === h.date ? `${isToday ? theme.bg : 'bg-white'} border-2 ${isToday ? theme.border : 'border-indigo-100'} scale-100 md:scale-105 shadow-md z-20` : (isToday ? `${theme.bg} border-2 ${theme.border} shadow-md scale-100 md:scale-110 hover:scale-105 md:hover:scale-115 z-10` : 'hover:bg-slate-50 border-2 border-transparent hover:border-slate-100 hover:scale-110 hover:shadow-lg hover:z-30')}`}>
                                                         <div className={`w-12 h-12 rounded-full shadow-inner flex items-center justify-center relative overflow-hidden bg-slate-100 ${isToday ? `ring-4 ${theme.ring} ring-offset-2` : ''}`} style={getPieStyle(h.ratio)}></div>
                                                         <span className={`text-xs ${isToday ? `${theme.text} font-black` : selectedGrassDate === h.date ? 'text-slate-800 font-bold' : 'text-slate-500 font-medium'}`}>{dayjs(h.date).format('MM/DD')}</span>
                                                         <div className={`absolute bottom-full mb-2 z-50 w-max bg-slate-900 text-white rounded-xl px-3 py-2 shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-1 group-hover:translate-y-0 pointer-events-none flex items-center gap-3 ${tooltipPos}`}>
@@ -3448,7 +3405,7 @@
                             })
                         });
                         const data = await response.json();
-                        if (!response.ok) throw new Error(data.message || "실패");
+                        if (!response.ok) throw new Error(data.error || data.message || "실패");
                         successCount++;
                         messages.push(`✅ ${test.label}: 성공`);
                     } catch (e) {
@@ -7124,7 +7081,11 @@ const firebaseConfig = {
                             bodyData.mode = 'relation'; 
                             bodyData.studentIds = ids;
                             bodyData.studentName = joinedNames;
-                            await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
+                            const res = await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
+                            if (!res.ok) {
+                                const errData = await res.json();
+                                throw new Error(errData.error || "노션 저장 실패");
+                            }
                             updateProgress();
                         } else {
                             // [Fix] 노션(기록) 모드일 때 선택된 모든 학생에 대해 개별 저장
@@ -7135,7 +7096,11 @@ const firebaseConfig = {
                                     studentName: s.name, 
                                     date: dayjs(date).format('YYYY-MM-DD') 
                                 };
-                                await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(individualBody) });
+                                const res = await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(individualBody) });
+                                if (!res.ok) {
+                                    const errData = await res.json();
+                                    throw new Error(errData.error || "노션 저장 실패");
+                                }
                                 updateProgress();
                             }
                         }
@@ -7146,6 +7111,7 @@ const firebaseConfig = {
                     if (closeAfterSave) onClose();
                 } catch (e) {
                     console.error(e); setNotionStatus('error'); setTimeout(() => setNotionStatus('idle'), 3000);
+                    showToast(`❌ ${e.message}`);
                 }
             };
 
