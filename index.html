@@ -101,10 +101,10 @@
     </script>
     <style data-app-style="true">
         /* 🌟 이 한 줄이 화면 밑의 모든 유령 여백을 강제로 잘라냅니다! */
-        #root > div { padding-bottom: 20px !important; margin-bottom: 0 !important; }
+        #root > div { padding-bottom: 10px !important; margin-bottom: 0 !important; }
         
         /* 🌟 못 찾으셨다면 이 줄을 추가하세요! (main 태그의 하단 여백 강제 축소) */
-        main { padding-bottom: 60px !important; }
+        main { padding-bottom: 10px !important; }
         
         .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -149,7 +149,7 @@
     </style>
 
 
-    <div id="root" class="min-h-screen flex flex-col" style="height: 100vh;" bis_skin_checked="1"></div>
+    <div id="root" class="min-h-screen flex flex-col" bis_skin_checked="1"></div>
 
     <script type="text/babel" data-app-script="true">
         const safeLocalStorage = {
@@ -7847,6 +7847,31 @@ const firebaseConfig = {
                     
                     return { x: Math.max(10, newX), y: Math.max(10, newY) };
                 });
+            }, [appConfig.uiScale]);
+
+            // [New] 화면 크기 변경 시 플로팅 버튼 위치 보정 (Resize Event)
+            useEffect(() => {
+                const handleResize = () => {
+                    setButtonPos(prev => {
+                        const scaleFactor = (appConfig.uiScale || 100) / 100;
+                        const screenW = window.innerWidth;
+                        const screenH = window.innerHeight;
+                        const btnSize = 80; 
+
+                        const effectiveW = screenW / scaleFactor;
+                        const effectiveH = screenH / scaleFactor;
+
+                        let newX = prev.x;
+                        let newY = prev.y;
+
+                        if (newX > effectiveW - btnSize) newX = effectiveW - btnSize;
+                        if (newY > effectiveH - btnSize) newY = effectiveH - btnSize;
+
+                        return { x: Math.max(10, newX), y: Math.max(10, newY) };
+                    });
+                };
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
             }, [appConfig.uiScale]);
 
             // [New] 버전 변경 시 업데이트 노트 자동 표시
