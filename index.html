@@ -2233,14 +2233,23 @@
                                                         else if (tag === '구글 시트') colorClass = "bg-green-50 border-green-100 text-green-600";
                                                         return <span key={idx} className={`px-1.5 py-0.5 border text-[8px] rounded-full font-bold shadow-sm ${colorClass}`}>{tag}</span>;
                                                     })}
-                                                    {note.relatedStudents && note.relatedStudents.filter(s => s.id !== student.id).map((s, idx) => (
-                                                        <div key={idx} className="flex items-center gap-1">
-                                                            <span className="text-[8px] text-slate-400">with</span>
-                                                            <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[8px] rounded-full font-bold cursor-pointer hover:bg-slate-200 border border-slate-200" onClick={(e) => { e.stopPropagation(); onSwitchStudent(s.id); }}>
-                                                                {s.name}
-                                                            </span>
-                                                        </div>
-                                                    ))}
+                                                    {(() => {
+                                                        const related = note.relatedStudents ? note.relatedStudents.filter(s => s.id !== student.id) : [];
+                                                        if (related.length === 0) return null;
+                                                        return (
+                                                            <div className="flex items-center gap-1 flex-wrap">
+                                                                <span className="text-[8px] text-slate-400">with</span>
+                                                                {related.map((s, idx) => (
+                                                                    <div key={idx} className="flex items-center">
+                                                                        <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[8px] rounded-full font-bold cursor-pointer hover:bg-slate-200 border border-slate-200" onClick={(e) => { e.stopPropagation(); onSwitchStudent(s.id); }}>
+                                                                            {s.name}
+                                                                        </span>
+                                                                        {idx < related.length - 1 && <span className="text-[8px] text-slate-400 ml-0.5">,</span>}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 shrink-0 ml-2">
                                                     <button onClick={() => startEditing(note)} className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="수정">
@@ -7365,11 +7374,12 @@ const firebaseConfig = {
     );
 };
 
-        const AllRecordsModal = ({ isOpen, onClose, students, appConfig }) => {
+        const AllRecordsModal = ({ isOpen, onClose, students, appConfig, onLoadAllData }) => {
             const [sortOrder, setSortOrder] = useState('desc');
             const [selectedDate, setSelectedDate] = useState(null);
             const [showCalendar, setShowCalendar] = useState(false);
             const [searchTerm, setSearchTerm] = useState("");
+            const [isLoadingData, setIsLoadingData] = useState(false);
 
             const allRecords = useMemo(() => {
                 const combined = [];
@@ -7429,13 +7439,25 @@ const firebaseConfig = {
                 });
             }, [groupedRecords, sortOrder]);
 
+            const handleLoadData = async () => {
+                if (isLoadingData) return;
+                setIsLoadingData(true);
+                try {
+                    if (onLoadAllData) await onLoadAllData();
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    setIsLoadingData(false);
+                }
+            };
+
             if (!isOpen) return null;
 
             return (
                 <BaseModal isOpen={isOpen} onClose={onClose} title="전체 관찰/칭찬 기록" icon={PATHS.list} maxWidth="max-w-4xl">
                     <div className="flex flex-col h-[70vh]">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
                                 <div className="relative flex-1 sm:flex-none">
                                     <Icon d={PATHS.search} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                                     <input 
@@ -7452,6 +7474,15 @@ const firebaseConfig = {
                                 >
                                     <Icon d={PATHS.calendar} size={14} />
                                     {selectedDate ? dayjs(selectedDate).format('MM/DD') : '날짜 선택'}
+                                </button>
+                                <button 
+                                    onClick={handleLoadData}
+                                    className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 whitespace-nowrap transition-colors bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 ${isLoadingData ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={isLoadingData}
+                                    title="클라우드에서 전체 기록 불러오기"
+                                >
+                                    {isLoadingData ? <Icon d={PATHS.spinner} size={14} className="animate-spin" /> : <Icon d={PATHS.download} size={14} />}
+                                    <span className="hidden sm:inline">전체 불러오기</span>
                                 </button>
                                 {selectedDate && (
                                     <button onClick={() => setSelectedDate(null)} className="p-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-400 transition-colors">
@@ -9980,6 +10011,33 @@ const firebaseConfig = {
                 }
             };
 
+            const handleLoadAllData = async () => {
+                if (isLocalMode) {
+                    setToastMessage("로컬 모드에서는 이미 모든 데이터가 로드되어 있습니다.");
+                    return;
+                }
+                if (!db || !appId) return;
+
+                try {
+                    setToastMessage("클라우드에서 전체 기록을 불러오는 중...");
+                    const studentSnapshot = await db.collection('classes').doc(appId).collection('studentData').get();
+                    const studentDataMap = {};
+                    studentSnapshot.forEach(doc => { studentDataMap[doc.id] = doc.data(); });
+
+                    const updatedStudents = students.map(s => {
+                        const extra = studentDataMap[String(s.id)];
+                        return extra ? { ...s, ...extra } : s;
+                    });
+                    
+                    setStudents(updatedStudents);
+                    setToastMessage("전체 기록 로드 완료!");
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("데이터 로드 실패: " + e.message);
+                    throw e;
+                }
+            };
+
             const handleForceLocalMode = () => {
                 setIsLocalMode(true);
                 setIsLoading(false);
@@ -10559,7 +10617,7 @@ const firebaseConfig = {
                         onTestUpdate={() => setNewVersionAvailable(true)}
                     />
                     <NotionSetupModal isOpen={isNotionSetupOpen} onClose={() => setIsNotionSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} isPortfolioMode={isPortfolioMode} setIsPortfolioMode={setIsPortfolioMode} studentMap={studentMap} setStudentMap={setStudentMap} portfolioDbId={portfolioDbId} setPortfolioDbId={setPortfolioDbId} />
-                    <AllRecordsModal isOpen={showAllRecords} onClose={() => setShowAllRecords(false)} students={students} appConfig={appConfig} />
+                    <AllRecordsModal isOpen={showAllRecords} onClose={() => setShowAllRecords(false)} students={students} appConfig={appConfig} onLoadAllData={handleLoadAllData} />
                     <GoogleSheetSetupModal isOpen={isGoogleSheetSetupOpen} onClose={() => setIsGoogleSheetSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} />
                     <ApiKeySetupModal isOpen={isApiKeySetupOpen} onClose={() => setIsApiKeySetupOpen(false)} apiKey={apiKey} setApiKey={setApiKey} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} validateApiKey={validateApiKey} />
                     <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} onInstall={confirmInstall} isIOS={isIOS} />
