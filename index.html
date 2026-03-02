@@ -8335,8 +8335,9 @@ const firebaseConfig = {
                 
                 // [Fix] Firefox 등 zoom 미지원 브라우저 대응 및 높이 보정 로직 개선
                 const isZoomSupported = 'zoom' in document.documentElement.style;
+                const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
-                if (isZoomSupported) {
+                if (isZoomSupported && !isMobileDevice) {
                     document.body.style.zoom = scale + '%';
                     document.body.style.setProperty('--ui-scale', scaleFactor);
                     
@@ -8347,7 +8348,7 @@ const firebaseConfig = {
                         root.style.height = `${adjustedHeight}vh`;
                     }
                 } else {
-                    // zoom 미지원 시 배율 설정 무시 (레이아웃 깨짐 방지)
+                    // zoom 미지원 시 또는 모바일 환경에서는 배율 설정 무시 (레이아웃 깨짐 및 fixed 요소 오류 방지)
                     document.body.style.zoom = '';
                     document.body.style.removeProperty('--ui-scale');
                     const root = document.getElementById('root');
