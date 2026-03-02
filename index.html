@@ -8748,10 +8748,18 @@ const firebaseConfig = {
                 );
                 setStudents(updatedStudents);
                 
+                if (typeof selectedStudent !== 'undefined' && selectedStudent && selectedStudent.id === studentId) { setSelectedStudent({ ...selectedStudent, photoUrl: photoURL }); }
+                
                 // 2. 선생님의 기존 방식대로 저장 (로컬 + Firebase)
-                if (!isLocalMode) saveData('cls_students', updatedStudents);
-                if (!isLocalMode && typeof saveStudentDataToFirestore === 'function') {
-                    saveStudentDataToFirestore(studentId, { photoUrl: photoURL });
+                if (!isLocalMode) {
+                    saveData('cls_students', updatedStudents); 
+                    if (typeof db !== 'undefined') {
+                        db.collection("students").doc(String(studentId)).set({ 
+                            photoUrl: photoURL 
+                        }, { merge: true })
+                        .then(() => console.log("Firebase 사진 저장 완료!"))
+                        .catch((err) => console.error("Firebase 사진 저장 실패:", err));
+                    }
                 }
                 
                 setToastMessage("사진이 성공적으로 등록되었습니다! 🎉");
