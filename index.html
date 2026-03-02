@@ -152,6 +152,11 @@
         body.is-dragging-seat .seat-cell {
             pointer-events: auto !important;
         }
+        @keyframes seat-move {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05) translateY(-10px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+            100% { transform: scale(1); }
+        }
     </style>
 
 
@@ -2323,7 +2328,7 @@
                                 </div>
 
                                 {/* [수정됨] Grass Chart Area - 5x5 달력형 및 오늘 날짜 테두리 강조 */}
-                                <div className="bg-white p-6 border border-slate-100 rounded-3xl shadow-xl shadow-indigo-50/50 overflow-hidden">
+                                <div className="overflow-hidden">
                                     {/* [New] Grid Overlay 구조로 변경하여 부드러운 슬라이드 구현 */}
                                     <div className="grid grid-cols-1 grid-rows-1">
                                         
@@ -2457,7 +2462,7 @@
                                                     else if (colIndex === 4) { tooltipPos = "right-0"; arrowPos = "right-6"; }
 
                                                     return (
-                                                    <div key={i} onClick={() => { setSelectedGrassDate(h.date); setIsDetailViewOpen(true); }} className={`flex flex-col items-center gap-0.5 group relative cursor-pointer p-2 rounded-2xl transition-all duration-200 ease-out ${selectedGrassDate === h.date ? `${isToday ? theme.bg : 'bg-white'} border-2 ${isToday ? theme.border : 'border-indigo-100'} scale-100 md:scale-105 shadow-md z-20` : (isToday ? `${theme.bg} border-2 ${theme.border} shadow-md scale-100 md:scale-110 hover:scale-105 md:hover:scale-115 z-10` : 'hover:bg-slate-50 border-2 border-transparent hover:border-slate-100 hover:scale-110 hover:shadow-lg hover:z-30')}`}>
+                                                    <div key={i} onClick={() => { setSelectedGrassDate(h.date); setIsDetailViewOpen(true); }} className={`flex flex-col items-center gap-0.5 group relative cursor-pointer p-2 rounded-2xl transition-all duration-200 ease-out ${selectedGrassDate === h.date ? 'bg-white border-2 border-indigo-100 scale-100 md:scale-105 shadow-md z-20' : 'hover:bg-slate-50 border-2 border-transparent hover:border-slate-100 hover:scale-110 hover:shadow-lg hover:z-30'}`}>
                                                         <div className={`w-12 h-12 rounded-full shadow-inner flex items-center justify-center relative overflow-hidden bg-slate-100 ${isToday ? `ring-4 ${theme.ring} ring-offset-2` : ''}`} style={getPieStyle(h.ratio)}></div>
                                                         <span className={`text-xs ${isToday ? `${theme.text} font-black` : selectedGrassDate === h.date ? 'text-slate-800 font-bold' : 'text-slate-500 font-medium'}`}>{dayjs(h.date).format('MM/DD')}</span>
                                                         <div className={`absolute bottom-full mb-2 z-50 w-max bg-slate-900 text-white rounded-xl px-3 py-2 shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-1 group-hover:translate-y-0 pointer-events-none flex items-center gap-3 ${tooltipPos}`}>
@@ -5831,6 +5836,53 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Icon d={PATHS.magic} size={16} className="text-slate-400"/>
+                                                    <span className="text-xs font-bold text-slate-500">자전과 공전 효과</span>
+                                                </div>
+                                                <select 
+                                                    value={appConfig.rotationAnimation || 'flip'} 
+                                                    onChange={(e) => updateAppConfig({ rotationAnimation: e.target.value })}
+                                                    className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg outline-none cursor-pointer hover:bg-slate-200 transition-colors border-none"
+                                                >
+                                                    <option value="flip">FLIP (이동)</option>
+                                                    <option value="wormhole">WORMHOLE (웜홀)</option>
+                                                    <option value="hoop">HOOP (점프)</option>
+                                                    <option value="none">NONE (효과 없음)</option>
+                                                </select>
+                                            </div>
+                                            <div className="text-[9px] text-slate-400">
+                                                모둠 회전 시 자리 이동 애니메이션 스타일을 선택합니다.
+                                            </div>
+                                        </div>
+                                    
+                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <Icon d={PATHS.edit} size={16} className="text-slate-400"/>
+                                                <span className="text-xs font-bold text-slate-500">플로팅 버튼 표시</span>
+                                            </div>
+                                            <div onClick={() => updateAppConfig({ showFloatingButton: !(appConfig.showFloatingButton !== false) })} className="relative cursor-pointer">
+                                                <div className={`w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${appConfig.showFloatingButton !== false ? 'bg-indigo-500' : 'bg-slate-200'}`}></div>
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${appConfig.showFloatingButton !== false ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-base">🧰</span>
+                                                <span className="text-xs font-bold text-slate-500">메인 화면 도구 버튼</span>
+                                            </div>
+                                            <div onClick={() => updateAppConfig({ showToolButton: !(appConfig.showToolButton !== false) })} className="relative cursor-pointer">
+                                                <div className={`w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${appConfig.showToolButton !== false ? 'bg-indigo-500' : 'bg-slate-200'}`}></div>
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${appConfig.showToolButton !== false ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     
                                     <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
                                         <div className="flex justify-between items-center">
@@ -6733,18 +6785,88 @@
             );
         };
 
-        const SeatChart = ({ students, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, saveData, isLocalMode, showToast, openConfirm, groups, onGroupsChange, groupNumber, groupMethod, roleMap, onOpenStudentInfo }) => {
+        const SeatChart = ({ students, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, saveData, isLocalMode, showToast, openConfirm, groups, onGroupsChange, groupNumber, groupMethod, roleMap, onOpenStudentInfo, groupNames, date, onGroupNameChange, isRotating, animationType = 'smooth' }) => {
             const [isLayoutMode, setIsLayoutMode] = useState(false);
             const [selectedSeat, setSelectedSeat] = useState(null);
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
             const [isCollapsed, setIsCollapsed] = useState(false);
             const [selectedStudentId, setSelectedStudentId] = useState(null);
             const seatChartRef = useRef(null);
-            const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
             const clickRef = useRef({ key: null, count: 0, lastTime: 0 });
+            const [editingGroupIdx, setEditingGroupIdx] = useState(null);
+            const [editingGroupName, setEditingGroupName] = useState("");
+            const prevPositions = useRef({});
+
+            React.useLayoutEffect(() => {
+                const nodes = document.querySelectorAll('.seat-node');
+                
+                if (isRotating && animationType !== 'none') {
+                    nodes.forEach(node => {
+                        const id = node.getAttribute('data-student-id');
+                        const prev = prevPositions.current[id];
+                        if (prev) {
+                            const current = node.getBoundingClientRect();
+                            const deltaX = prev.left - current.left;
+                            const deltaY = prev.top - current.top;
+                            
+                            if (deltaX !== 0 || deltaY !== 0 || animationType !== 'flip') {
+                                if (animationType === 'wormhole') {
+                                    node.animate([
+                                        { transform: `translate(${deltaX}px, ${deltaY}px) scale(1) rotate(0deg)`, opacity: 1, offset: 0 },
+                                        { transform: `translate(${deltaX}px, ${deltaY}px) scale(0) rotate(180deg)`, opacity: 0, offset: 0.45 },
+                                        { transform: `translate(0px, 0px) scale(0) rotate(180deg)`, opacity: 0, offset: 0.55 },
+                                        { transform: `translate(0px, 0px) scale(1) rotate(0deg)`, opacity: 1, offset: 1 }
+                                    ], {
+                                        duration: 1000,
+                                        easing: 'ease-in-out',
+                                        fill: 'forwards'
+                                    });
+                                } else if (animationType === 'hoop') {
+                                    node.animate([
+                                        { transform: `translate(${deltaX}px, ${deltaY}px) scale(1)`, opacity: 1, offset: 0 },
+                                        { transform: `translate(${deltaX}px, ${deltaY}px - 50px) scale(1.05)`, opacity: 0, offset: 0.45 },
+                                        { transform: `translate(0px, -50px) scale(1.05)`, opacity: 0, offset: 0.55 },
+                                        { transform: `translate(0px, 0px) scale(1)`, opacity: 1, offset: 1 }
+                                    ], {
+                                        duration: 1000,
+                                        easing: 'ease-in-out',
+                                        fill: 'forwards'
+                                    });
+                                } else {
+                                    node.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                                    node.style.transition = 'none';
+                                    void node.offsetWidth;
+                                    
+                                    requestAnimationFrame(() => {
+                                        node.style.transition = 'transform 1.2s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                                        node.style.transform = '';
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+
+                const newPositions = {};
+                nodes.forEach(node => {
+                    const id = node.getAttribute('data-student-id');
+                    if (id) {
+                        const rect = node.getBoundingClientRect();
+                        newPositions[id] = { top: rect.top, left: rect.left };
+                    }
+                });
+                prevPositions.current = newPositions;
+            }, [seatAssignments, isRotating, animationType]);
+
+            const handleNameSave = (r) => {
+                if (onGroupNameChange) {
+                    onGroupNameChange(r, editingGroupName);
+                }
+                setEditingGroupIdx(null);
+            };
 
             useEffect(() => {
-                const handleResize = () => setIsMobile(window.innerWidth < 768);
+                const handleResize = () => {}; // isMobile 상태 제거
                 window.addEventListener('resize', handleResize);
                 return () => window.removeEventListener('resize', handleResize);
             }, []);
@@ -6985,20 +7107,19 @@
 
             const handleLoadGroups = () => {
                 if (!groups || groups.length === 0) return showToast("편성된 모둠이 없습니다.");
-                openConfirm("모둠 결과를 자리 배치에 적용하시겠습니까?\n(기존 배치는 초기화됩니다)", () => {
+                openConfirm("모둠 결과를 자리 배치에 적용하시겠습니까?\n(기존 자리 배치는 초기화됩니다)", () => {
                     const newAssignments = {};
-                    const flatStudents = groups.flat().filter(s => s && s.id);
-                    let idx = 0;
-                    for (let r = 0; r < seatConfig.rows; r++) {
-                        for (let c = 0; c < seatConfig.cols; c++) {
-                            const key = `${r}-${c}`;
-                            if ((seatConfig.disabledSeats || []).includes(key)) continue;
-                            if (idx < flatStudents.length) {
-                                newAssignments[key] = flatStudents[idx].id;
-                                idx++;
+                    // 🌟 모둠 구조를 유지하며 자리 배치
+                    groups.forEach((group, groupIndex) => {
+                        if (group && Array.isArray(group)) {
+                            group.forEach((student, studentIndex) => {
+                                if (student && student.id) {
+                                    const seatKey = `${groupIndex}-${studentIndex}`;
+                                    newAssignments[seatKey] = student.id;
+                                }
+                            });
                             }
-                        }
-                    }
+                    });
                     setSeatAssignments(newAssignments);
                     if (!isLocalMode) saveData('cls_seat_assignments', newAssignments);
                     showToast("모둠 결과가 자리에 배치되었습니다.");
@@ -7071,44 +7192,86 @@
 
             return (
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm select-none">
-                    <div className="flex flex-col mb-4">
+                    <div className="flex flex-col mb-6">
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-slate-800 flex items-center gap-2"><span className="text-xl">🪑</span> 자리 배치도</h3>
                             <div className="flex items-center gap-2">
                                 <Btn onClick={handleDownloadImage} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg" title="이미지로 저장"><Icon d={PATHS.download} size={18} /></Btn>
-                                <Btn onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`p-1.5 rounded-lg transition-colors ${isSettingsOpen ? 'bg-slate-100 text-slate-600' : 'text-slate-400 hover:bg-slate-50'}`}>
+                                <Btn onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`p-1.5 rounded-lg transition-colors ${isSettingsOpen ? 'bg-slate-100 text-slate-600' : 'text-slate-400 hover:bg-slate-50'}`} title="자리 배치 설정">
                                     <Icon d={isSettingsOpen ? PATHS.right : PATHS.left} size={16} />
                                 </Btn>
-                                <Btn onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                                <Btn onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg" title="접기/펼치기">
                                     <Icon d={PATHS.down} size={18} className={`transition-transform duration-200 ${!isCollapsed ? 'rotate-180' : ''}`} />
                                 </Btn>
                             </div>
                         </div>
                         {isSettingsOpen && !isCollapsed && (
                             <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 justify-end animate-fade-in">
-                                <div className="flex items-center bg-slate-100 rounded-lg p-1"><button onClick={() => { const n = Math.max(1, seatConfig.rows - 1); setSeatConfig({ ...seatConfig, rows: n }); if(!isLocalMode) saveData('cls_seat_config', { ...seatConfig, rows: n }); }} className="w-6 h-6 flex items-center justify-center hover:bg-white rounded text-slate-600 font-bold">-</button><span className="text-xs font-bold text-slate-500 px-2">행 {seatConfig.rows}</span><button onClick={() => { const n = Math.min(10, seatConfig.rows + 1); setSeatConfig({ ...seatConfig, rows: n }); if(!isLocalMode) saveData('cls_seat_config', { ...seatConfig, rows: n }); }} className="w-6 h-6 flex items-center justify-center hover:bg-white rounded text-slate-600 font-bold">+</button></div>
-                                <div className="flex items-center bg-slate-100 rounded-lg p-1"><button onClick={() => { const n = Math.max(1, seatConfig.cols - 1); setSeatConfig({ ...seatConfig, cols: n }); if(!isLocalMode) saveData('cls_seat_config', { ...seatConfig, cols: n }); }} className="w-6 h-6 flex items-center justify-center hover:bg-white rounded text-slate-600 font-bold">-</button><span className="text-xs font-bold text-slate-500 px-2">열 {seatConfig.cols}</span><button onClick={() => { const n = Math.min(10, seatConfig.cols + 1); setSeatConfig({ ...seatConfig, cols: n }); if(!isLocalMode) saveData('cls_seat_config', { ...seatConfig, cols: n }); }} className="w-6 h-6 flex items-center justify-center hover:bg-white rounded text-slate-600 font-bold">+</button></div>
+                                <div className="flex items-center bg-slate-100 rounded-lg p-1"><button onClick={() => { const n = Math.max(1, seatConfig.rows - 1); setSeatConfig({ ...seatConfig, rows: n }); if(!isLocalMode) saveData('cls_seat_config', { ...seatConfig, rows: n }); }} className="w-6 h-6 flex items-center justify-center hover:bg-white rounded text-slate-600 font-bold">-</button><span className="text-xs font-bold text-slate-500 px-2">총 모둠 수 {seatConfig.rows}</span><button onClick={() => { const n = Math.min(10, seatConfig.rows + 1); setSeatConfig({ ...seatConfig, rows: n }); if(!isLocalMode) saveData('cls_seat_config', { ...seatConfig, rows: n }); }} className="w-6 h-6 flex items-center justify-center hover:bg-white rounded text-slate-600 font-bold">+</button></div>
+                                <div className="flex items-center bg-slate-100 rounded-lg p-1"><button onClick={() => { const n = Math.max(1, seatConfig.cols - 1); setSeatConfig({ ...seatConfig, cols: n }); if(!isLocalMode) saveData('cls_seat_config', { ...seatConfig, cols: n }); }} className="w-6 h-6 flex items-center justify-center hover:bg-white rounded text-slate-600 font-bold">-</button><span className="text-xs font-bold text-slate-500 px-2">모둠당 최대 인원 {seatConfig.cols}</span><button onClick={() => { const n = Math.min(10, seatConfig.cols + 1); setSeatConfig({ ...seatConfig, cols: n }); if(!isLocalMode) saveData('cls_seat_config', { ...seatConfig, cols: n }); }} className="w-6 h-6 flex items-center justify-center hover:bg-white rounded text-slate-600 font-bold">+</button></div>
                                 <label className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border transition-colors ${isLayoutMode ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500'}`}><input type="checkbox" checked={isLayoutMode} onChange={e => setIsLayoutMode(e.target.checked)} className="hidden" /><span className="text-xs font-bold">구조 편집</span></label>
-                                <div className="flex gap-1"><Btn onClick={handleLoadGroups} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">모둠 적용</Btn><Btn onClick={handleSaveSeatsToGroups} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">모둠 설정</Btn><Btn onClick={() => openConfirm("자리 배치를 초기화하시겠습니까?", () => { setSeatAssignments({}); if(!isLocalMode) saveData('cls_seat_assignments', {}); })} className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold hover:bg-slate-200">초기화</Btn></div>
+                                <div className="flex gap-1"><Btn onClick={handleLoadGroups} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">모둠 적용</Btn><Btn onClick={() => openConfirm("자리 배치를 초기화하시겠습니까?", () => { setSeatAssignments({}); if(!isLocalMode) saveData('cls_seat_assignments', {}); })} className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold hover:bg-slate-200">초기화</Btn></div>
                             </div>
                         )}
-                    </div>{!isCollapsed && (<div className="flex flex-col lg:flex-row gap-6" ref={seatChartRef}><div className="flex-1 overflow-auto custom-scroll bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col items-center"><div className="w-48 h-6 bg-slate-200 rounded-b-lg mb-6 flex items-center justify-center text-[10px] font-bold text-slate-500 shadow-inner">교탁</div><div className="grid gap-2 md:gap-3 w-full max-w-6xl" style={{ gridTemplateColumns: `repeat(${seatConfig.cols}, minmax(${isMobile ? '60px' : '90px'}, 1fr))` }}>{Array.from({ length: seatConfig.rows }).map((_, r) => Array.from({ length: seatConfig.cols }).map((_, c) => { const seatKey = `${r}-${c}`; const studentId = seatAssignments[seatKey]; 
-                    const student = students.find(s => s.id === studentId); 
-                    const isDisabled = (seatConfig.disabledSeats || []).includes(seatKey); 
-                    const isSelected = selectedSeat === seatKey; 
-                    const role = student ? roleMap[student.id] : null; 
-                    // [중요] onDrop 이벤트가 seat-cell DIV에 걸려있음
-                    return (<div key={seatKey} onClick={() => handleSeatClick(r, c)} onDragOver={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragEnter={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragLeave={!isLayoutMode && !isDisabled ? handleDragLeave : undefined} onDrop={!isLayoutMode && !isDisabled ? (e) => handleDrop(e, r, c) : undefined} className={`seat-cell h-20 md:h-28 rounded-xl border-2 flex flex-col items-center justify-center p-1 transition-all duration-200 ease-in-out relative group ${isLayoutMode ? (isDisabled ? 'bg-slate-100 border-slate-200 cursor-pointer hover:bg-slate-200' : 'bg-white border-indigo-200 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50') : (isDisabled ? 'opacity-0 pointer-events-none' : (student ? (student.gender === 'M' ? 'bg-blue-50/30 border-blue-200' : 'bg-pink-50/30 border-pink-200') : 'bg-white border-slate-200 border-dashed hover:border-indigo-300'))} ${isSelected ? 'ring-4 ring-indigo-400 ring-offset-2 z-10 border-indigo-500' : ''}`}>{!isLayoutMode && student && (<div draggable="true" onDragStart={(e) => handleDragStart(e, student.id, seatKey)} onDragEnd={handleDragEnd} onClick={(e) => { e.stopPropagation(); handleStudentClick(student.id); }} onDoubleClick={(e) => { e.stopPropagation(); onOpenStudentInfo(student.id); }} onContextMenu={(e) => handleRightClick(e, seatKey)} className="w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing seat-node animate-bounce-in touch-none"><div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm mb-1 overflow-hidden pointer-events-none">{(student.gender === 'M' ? '👦' : '👧')}</div><span className="text-sm font-bold text-slate-700 w-full text-center leading-tight break-keep px-0.5 pointer-events-none">{student.name}</span>{role && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full mt-1 font-bold truncate max-w-full pointer-events-none">{role}</span>}</div>)}{isLayoutMode && !isDisabled && <span className="text-indigo-200 text-xs">{r+1}-{c+1}</span>}</div>); }))}</div></div>
+                    </div>{!isCollapsed && (<div className="flex flex-col lg:flex-row gap-6" ref={seatChartRef}><div className="flex-1 overflow-auto custom-scroll bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col items-center"><div className="w-48 h-6 bg-slate-200 rounded-b-lg mb-8 flex items-center justify-center text-[10px] font-bold text-slate-500 shadow-inner">교탁</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6 w-full max-w-5xl">
+                        {Array.from({ length: seatConfig.rows }).map((_, r) => (
+                            <div key={r} className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2 px-1">
+                                    {editingGroupIdx === r ? (
+                                        <input 
+                                            className="text-xs font-extrabold text-slate-700 bg-white border border-indigo-300 rounded-lg px-3 py-1 outline-none w-24 focus:ring-2 focus:ring-indigo-200"
+                                            value={editingGroupName}
+                                            onChange={(e) => setEditingGroupName(e.target.value)}
+                                            autoFocus
+                                            onKeyDown={(e) => { if (e.key === 'Enter') handleNameSave(r); }}
+                                            onBlur={() => handleNameSave(r)}
+                                        />
+                                    ) : (
+                                        <span 
+                                            onClick={() => { setEditingGroupIdx(r); setEditingGroupName(groupNames?.[date]?.[r] || `${r + 1}모둠`); }}
+                                            className="text-xs font-extrabold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                                        >
+                                            {groupNames?.[date]?.[r] || `${r + 1}모둠`}
+                                        </span>
+                                    )}
+                                    <div className="h-px bg-slate-200 flex-1 opacity-50"></div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1 mx-auto w-fit">
+                                    {Array.from({ length: seatConfig.cols }).map((_, gridIndex) => {
+                                        let c;
+                                        const row = Math.floor(gridIndex / 2);
+                                        const isRight = gridIndex % 2 === 1;
+                                        if (isRight) {
+                                            c = row + 1;
+                                        } else {
+                                            if (row === 0) c = 0;
+                                            else c = seatConfig.cols - row;
+                                        }
+                                        if (c >= seatConfig.cols) c = gridIndex;
+
+                                        const seatKey = `${r}-${c}`;
+                                        const studentId = seatAssignments[seatKey];
+                                        const student = students.find(s => s.id === studentId);
+                                        const isDisabled = (seatConfig.disabledSeats || []).includes(seatKey);
+                                        const isSelected = selectedSeat === seatKey;
+                                        const role = student ? roleMap[student.id] : null;
+                                        return (<div key={seatKey} onClick={() => handleSeatClick(r, c)} onDragOver={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragEnter={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragLeave={!isLayoutMode && !isDisabled ? handleDragLeave : undefined} onDrop={!isLayoutMode && !isDisabled ? (e) => handleDrop(e, r, c) : undefined} className={`seat-cell h-20 w-20 mx-auto rounded-xl border-2 flex flex-col items-center justify-center p-1 transition-all duration-200 ease-in-out relative group ${isLayoutMode ? (isDisabled ? 'bg-slate-100 border-slate-200 cursor-pointer hover:bg-slate-200' : 'bg-white border-indigo-200 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50') : (isDisabled ? 'opacity-0 pointer-events-none' : (student ? (student.gender === 'M' ? 'bg-blue-50/30 border-blue-200' : 'bg-pink-50/30 border-pink-200') : 'bg-white border-slate-200 border-dashed hover:border-indigo-300'))} ${isSelected ? 'ring-4 ring-indigo-400 ring-offset-2 z-10 border-indigo-500' : ''}`}>{!isLayoutMode && student && (<div data-student-id={student.id} draggable="true" onDragStart={(e) => handleDragStart(e, student.id, seatKey)} onDragEnd={handleDragEnd} onClick={(e) => { e.stopPropagation(); handleStudentClick(student.id); }} onDoubleClick={(e) => { e.stopPropagation(); onOpenStudentInfo(student.id); }} onContextMenu={(e) => handleRightClick(e, seatKey)} className={`w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing seat-node touch-none ${isRotating ? '' : 'animate-bounce-in'}`}><div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm mb-1 overflow-hidden pointer-events-none">{student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : (student.gender === 'M' ? '👦' : '👧')}</div><span className="text-xs font-bold text-slate-700 w-full text-center leading-tight break-keep px-0.5 pointer-events-none">{student.name}</span>{role && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full mt-1 font-bold truncate max-w-full pointer-events-none">{role}</span>}</div>)}{isLayoutMode && !isDisabled && <span className="text-indigo-200 text-xs">{r+1}-{c+1}</span>}</div>);
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div></div>
                 <div id="seat-waiting-list" className="lg:w-72 bg-slate-50 rounded-2xl border border-slate-200 p-4 flex flex-col h-auto min-h-[200px] md:min-h-[400px] flex-shrink-0">
                     <h4 className="font-bold text-slate-600 mb-2 text-xs flex justify-between items-center">
                         <span>대기 명단</span>
                         <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-full">{unassignedStudents.length}</span>
                     </h4>
-                    <div className="flex-1 overflow-y-auto custom-scroll grid grid-cols-2 gap-3 content-start p-1">
+                    <div className="flex-1 overflow-y-auto custom-scroll grid grid-cols-3 lg:grid-cols-2 gap-2 content-start p-1">
                         {unassignedStudents.map(s => (
-                            <div key={s.id} draggable="true" onDragStart={(e) => handleDragStart(e, s.id, null)} onDragEnd={handleDragEnd} onClick={() => handleStudentClick(s.id)} onDoubleClick={() => onOpenStudentInfo(s.id)} className={`student-card bg-white p-1 rounded-lg border-2 shadow-sm flex flex-col items-center justify-center gap-1 aspect-square cursor-grab active:cursor-grabbing transition-all duration-200 touch-none ${selectedStudentId === s.id ? 'border-blue-600 ring-4 ring-blue-100 bg-blue-50 z-10' : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'}`}>
-                                <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-lg shadow-sm overflow-hidden pointer-events-none">{(s.gender === 'M' ? '👦' : '👧')}</div>
-                                <span className="text-sm font-bold text-slate-700 truncate w-full text-center pointer-events-none">{s.name}</span>
+                            <div key={s.id} draggable="true" onDragStart={(e) => handleDragStart(e, s.id, null)} onDragEnd={handleDragEnd} onClick={() => handleStudentClick(s.id)} onDoubleClick={() => onOpenStudentInfo(s.id)} className={`student-card bg-white p-1 rounded-lg border-2 shadow-sm flex flex-col items-center justify-center gap-1 aspect-square cursor-grab active:cursor-grabbing transition-all duration-200 touch-none ${selectedStudentId === s.id ? 'border-blue-600 ring-2 ring-blue-100 bg-blue-50 z-10' : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'}`}>
+                                <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-lg shadow-sm overflow-hidden pointer-events-none">{s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" /> : (s.gender === 'M' ? '👦' : '👧')}</div>
+                                <span className="text-xs font-bold text-slate-700 truncate w-full text-center pointer-events-none">{s.name}</span>
                             </div>
                         ))}
                     </div></div></div>)}
@@ -8255,8 +8418,8 @@ const firebaseConfig = {
             const [groupRoles, setGroupRoles] = useState({});
             const [rolesList, setRolesList] = useState(['나눔이', '맺음이', '챙김이', '깔끔이']);
             const [roleDescriptions, setRoleDescriptions] = useState(DEFAULT_ROLE_DESCRIPTIONS);
-            const [seatAssignments, setSeatAssignments] = useState({});
-            const [seatConfig, setSeatConfig] = useState({ rows: 5, cols: 5, disabledSeats: ['0-2', '1-2', '2-2', '3-2', '4-2', '2-0', '2-1', '2-3', '2-4'] });
+            const [seatAssignments, setSeatAssignments] = useState({}); // { "groupIndex-studentIndex": studentId }
+            const [seatConfig, setSeatConfig] = useState({ rows: 4, cols: 6, disabledSeats: [] });
             const [groupDuration, setGroupDuration] = useState(1);
             const [historyDuration, setHistoryDuration] = useState(14);
             const [isDevMode, setIsDevMode] = useState(() => localStorage.getItem('cls_dev_mode') === 'true');
@@ -8444,6 +8607,8 @@ const firebaseConfig = {
             const [aiCheckState, setAiCheckState] = useState({ isOpen: false, prompt: "", resolve: null, reject: null });
             const [hideRotationBanner, setHideRotationBanner] = useState(false);
             const [showAllRecords, setShowAllRecords] = useState(false);
+            const [isRotating, setIsRotating] = useState(false);
+            const [showAnimMenu, setShowAnimMenu] = useState(false);
 
             useEffect(() => {
                 window.triggerAiSecurityCheck = (prompt) => {
@@ -9569,6 +9734,14 @@ const firebaseConfig = {
                     }
                 }
             };
+
+            const updateAppConfig = (updates) => {
+                setAppConfig(prev => {
+                    const newConfig = { ...prev, ...updates };
+                    saveData('cls_app_config', newConfig);
+                    return newConfig;
+                });
+            };
             
             const useDeepEffect = (fn, deps) => { const isFirst = useRef(true);
             useEffect(() => { if (isFirst.current) { isFirst.current = false; return; } fn(); }, deps); };
@@ -9655,18 +9828,18 @@ const firebaseConfig = {
                 try {
                     const newAssignments = {};
                     if (!groupsToSync || !Array.isArray(groupsToSync)) return;
-                    const flatStudents = groupsToSync.flat().filter(s => s && s.id);
-                    let idx = 0;
-                    for (let r = 0; r < seatConfig.rows; r++) {
-                        for (let c = 0; c < seatConfig.cols; c++) {
-                            const key = `${r}-${c}`;
-                            if ((seatConfig.disabledSeats || []).includes(key)) continue;
-                            if (idx < flatStudents.length) {
-                                newAssignments[key] = flatStudents[idx].id;
-                                idx++;
-                            }
+                    
+                    groupsToSync.forEach((group, groupIndex) => {
+                        if (group && Array.isArray(group)) {
+                            group.forEach((student, studentIndex) => {
+                                if (student && student.id) {
+                                    const seatKey = `${groupIndex}-${studentIndex}`;
+                                    newAssignments[seatKey] = student.id;
+                                }
+                            });
                         }
-                    }
+                    });
+                    
                     setSeatAssignments(newAssignments);
                     if (!isLocalMode) saveData('cls_seat_assignments', newAssignments);
                 } catch (e) {
@@ -9823,6 +9996,13 @@ const firebaseConfig = {
                         }
 
                         syncSeatsWithGroups(mappedGroups);
+                        
+                        // [New] 모둠 수에 맞춰 자리 배치도 설정 업데이트
+                        const maxGroupSize = Math.max(...mappedGroups.map(g => g.length), 0);
+                        const newSeatConfig = { ...seatConfig, rows: mappedGroups.length, cols: Math.max(seatConfig.cols, maxGroupSize) };
+                        setSeatConfig(newSeatConfig);
+                        if (!isLocalMode) saveData('cls_seat_config', newSeatConfig);
+
                         setToastMessage(`AI 모둠 편성이 완료되었습니다. (${groupDuration}일 적용)`);
                         if (window.innerWidth < 768) setIsGroupPanelOpen(false);
                     } catch (e) {
@@ -10081,6 +10261,12 @@ const firebaseConfig = {
                          }
                          
                          syncSeatsWithGroups(plainGroups);
+
+                         // [New] 모둠 수에 맞춰 자리 배치도 설정 업데이트
+                         const maxGroupSize = Math.max(...plainGroups.map(g => g.length), 0);
+                         const newSeatConfig = { ...seatConfig, rows: plainGroups.length, cols: Math.max(seatConfig.cols, maxGroupSize) };
+                         setSeatConfig(newSeatConfig);
+                         if (!isLocalMode) saveData('cls_seat_config', newSeatConfig);
                     } else {
                          const newGroupsData = { ...currentGroupsByDate }; // [Fix] 최신 데이터 사용
                          const newGroupRoles = { ...currentGroupRoles };
@@ -10114,6 +10300,12 @@ const firebaseConfig = {
                          }
 
                          syncSeatsWithGroups(finalGroups);
+
+                         // [New] 모둠 수에 맞춰 자리 배치도 설정 업데이트
+                         const maxGroupSize = Math.max(...finalGroups.map(g => g.length), 0);
+                         const newSeatConfig = { ...seatConfig, rows: finalGroups.length, cols: Math.max(seatConfig.cols, maxGroupSize) };
+                         setSeatConfig(newSeatConfig);
+                         if (!isLocalMode) saveData('cls_seat_config', newSeatConfig);
                     }
                     setToastMessage(`모둠 편성이 완료되었습니다. (${groupDuration}일 적용)` + (useHistory ? " (최근 기록 반영됨)" : ""));
                   } catch (e) {
@@ -10127,6 +10319,7 @@ const firebaseConfig = {
             const rotateCurrentGroups = () => { 
                 if (!groups || groups.length < 2) return setToastMessage("회전할 모둠이 없습니다.");
                 
+                setIsRotating(true);
                 const rotateArray = (arr) => {
                     if (arr.length < 2) return arr;
                     const last = arr[arr.length - 1];
@@ -10151,6 +10344,15 @@ const firebaseConfig = {
                 
                 syncSeatsWithGroups(newGroups);
                 setToastMessage("자전과 공전(회전)이 완료되었습니다."); 
+                
+                const duration = {
+                    'hoop': 1000,
+                    'wormhole': 1000,
+                    'flip': 1200,
+                    'none': 0
+                }[appConfig.rotationAnimation || 'flip'] || 1200;
+
+                setTimeout(() => setIsRotating(false), duration);
             };
 
             const handleGroupNameSave = (groupIndex, newName) => {
@@ -10160,21 +10362,23 @@ const firebaseConfig = {
                     return;
                 }
 
-                const currentGroupMembers = groups[groupIndex].map(s => s.id).sort().join(',');
+                const currentGroupMembers = groups && groups[groupIndex] ? groups[groupIndex].map(s => s.id).sort().join(',') : null;
                 const sameMemberGroups = [];
                 
-                Object.entries(groupsByDate).forEach(([d, dateGroups]) => {
-                    if (d === date) return;
-                    if (!Array.isArray(dateGroups)) return;
-                    
-                    dateGroups.forEach((g, gIdx) => {
-                        if (!Array.isArray(g)) return;
-                        const members = g.map(s => (s.id || s)).sort().join(',');
-                        if (members === currentGroupMembers) {
-                            sameMemberGroups.push({ date: d, index: gIdx });
-                        }
+                if (currentGroupMembers) {
+                    Object.entries(groupsByDate).forEach(([d, dateGroups]) => {
+                        if (d === date) return;
+                        if (!Array.isArray(dateGroups)) return;
+                        
+                        dateGroups.forEach((g, gIdx) => {
+                            if (!Array.isArray(g)) return;
+                            const members = g.map(s => (s.id || s)).sort().join(',');
+                            if (members === currentGroupMembers) {
+                                sameMemberGroups.push({ date: d, index: gIdx });
+                            }
+                        });
                     });
-                });
+                }
 
                 const prevGroupNames = { ...groupNames }; // Undo를 위한 이전 상태 저장
 
@@ -10475,6 +10679,13 @@ const firebaseConfig = {
                         
                         const hydratedLastGroups = hydrateGroups({ [date]: lastGroups }, students)[date];
                         syncSeatsWithGroups(hydratedLastGroups);
+
+                        // [New] 불러온 모둠 수에 맞춰 자리 배치도 설정 업데이트
+                        const maxGroupSize = Math.max(...hydratedLastGroups.map(g => g.length), 0);
+                        const newSeatConfig = { ...seatConfig, rows: hydratedLastGroups.length, cols: Math.max(seatConfig.cols, maxGroupSize) };
+                        setSeatConfig(newSeatConfig);
+                        if (!isLocalMode) saveData('cls_seat_config', newSeatConfig);
+
                         setToastMessage(`${dayjs(targetDate).format('MM/DD')} 모둠을 불러왔습니다.`);
                     });
                 } else {
@@ -10906,7 +11117,9 @@ const firebaseConfig = {
     💡
 </button>{!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}</div><div className="hidden md:flex gap-1">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (<button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all active:scale-95 ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>))}</div></div>
                     <div className="flex items-center gap-2 absolute right-4 top-3 md:relative md:top-auto md:right-auto">
-                        <button onClick={()=>setIsToolsOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>🧰</span><span className="text-sm font-medium">도구</span></button>
+                        {appConfig.showToolButton !== false && (
+                            <button onClick={()=>setIsToolsOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>🧰</span><span className="text-sm font-medium">도구</span></button>
+                        )}
                         <button onClick={()=>setIsSettingOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>⚙️</span><span className="text-sm font-medium">설정</span></button>
                     </div>
                     </div>{(mode === 'record' || mode === 'group') && (<div className="bg-white border-b border-notion-border pt-2 pb-2 flex justify-center"><div className="w-full max-w-2xl px-4 flex flex-col gap-2">{mode === 'record' ? <><DateHeader date={date} setDate={setDate} onAdd={()=>setIsTaskModalOpen(true)} onReset={resetDateRecord} onCalendar={()=>setIsCalendarOpen(true)} appConfig={appConfig}/> <ProgressBar progress={progress} appConfig={appConfig} /></> : <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border mx-auto w-fit justify-center cursor-pointer"
@@ -11050,8 +11263,40 @@ const firebaseConfig = {
                                                     </Btn>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2 mt-2">
-                                                    <Btn onClick={rotateCurrentGroups} className={`py-2.5 border rounded-xl font-bold transition-all relative overflow-hidden ${isRotationDay ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-md ring-2 ring-amber-100' : 'bg-white border-slate-300 text-slate-700'}`}>{isRotationDay && <span className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>}자전과 공전</Btn>
-                                                    <Btn onClick={() => setShowGroupResetModal(true)} className="py-2.5 bg-white border border-rose-200 text-rose-500 rounded-xl font-bold">초기화</Btn>
+                                                    <div className={`flex items-center border rounded-xl font-bold text-sm transition-all relative ${isRotationDay ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-md ring-2 ring-amber-100' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                        <button onClick={rotateCurrentGroups} className="flex-1 py-2.5 flex items-center justify-center hover:bg-black/5 rounded-l-xl transition-colors active:scale-95">
+                                                            {isRotationDay && <span className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>}
+                                                            자전과 공전
+                                                        </button>
+                                                        <div className="w-px h-4 bg-slate-400/30"></div>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setShowAnimMenu(!showAnimMenu); }} 
+                                                            className="px-3 py-2.5 flex items-center justify-center hover:bg-black/5 rounded-r-xl transition-colors"
+                                                            title="이동 효과 설정"
+                                                        >
+                                                            <span className="text-[10px] border-2 border-current rounded-full w-4 h-4 flex items-center justify-center font-bold">!</span>
+                                                        </button>
+                                                        {showAnimMenu && (
+                                                            <>
+                                                            <div className="fixed inset-0 z-40" onClick={() => setShowAnimMenu(false)}></div>
+                                                            <div className="absolute bottom-full left-0 mb-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in flex flex-col text-xs text-slate-600">
+                                                                <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 font-bold text-slate-500 flex justify-between items-center">
+                                                                    <span>이동 효과</span>
+                                                                    <button onClick={() => setShowAnimMenu(false)}><Icon d={PATHS.x} size={12}/></button>
+                                                                </div>
+                                                                {[
+                                                                    { id: 'flip', label: 'FLIP (이동)' },
+                                                                    { id: 'wormhole', label: 'WORMHOLE (웜홀)' },
+                                                                    { id: 'hoop', label: 'HOOP (점프)' },
+                                                                    { id: 'none', label: 'NONE (효과 없음)' }
+                                                                ].map(opt => (
+                                                                    <button key={opt.id} onClick={(e) => { e.stopPropagation(); updateAppConfig({ rotationAnimation: opt.id }); setShowAnimMenu(false); }} className={`px-3 py-2.5 text-left hover:bg-indigo-50 hover:text-indigo-600 flex justify-between items-center border-b border-slate-50 last:border-0 ${(appConfig.rotationAnimation || 'flip') === opt.id ? 'text-indigo-600 font-bold bg-indigo-50/50' : ''}`}><span>{opt.label}</span>{(appConfig.rotationAnimation || 'flip') === opt.id && <Icon d={PATHS.check} size={12} />}</button>
+                                                                ))}
+                                                            </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    <Btn onClick={() => setShowGroupResetModal(true)} className="py-2.5 bg-white border border-rose-200 text-rose-500 rounded-xl font-bold text-sm">초기화</Btn>
                                                 </div>
                                             </div>
                                         </div>
@@ -11071,8 +11316,8 @@ const firebaseConfig = {
                                                         <input type="checkbox" checked={!!(groupRoles[date] && Object.keys(groupRoles[date]).length > 0)} onChange={(e) => { if(e.target.checked) handleAssignRoles(); else openConfirm("역할 배정을 해제하시겠습니까?", handleClearRoles); }} className="hidden" />
                                                     </label>
                                                     <div className="flex gap-2">
-                                                        <Btn onClick={() => setIsRoleEditOpen(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-xs sm:text-sm whitespace-nowrap">역할 목록 수정</Btn>
-                                                        <Btn onClick={() => setShowPartnerAnalysis(true)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 text-xs sm:text-sm whitespace-nowrap">👫 짝꿍 이력 분석</Btn>
+                                                        <Btn onClick={() => setIsRoleEditOpen(true)} className="flex-1 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold hover:bg-slate-50 text-sm whitespace-nowrap">역할 목록 수정</Btn>
+                                                        <Btn onClick={() => setShowPartnerAnalysis(true)} className="flex-1 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold hover:bg-slate-50 text-sm whitespace-nowrap">👫 짝꿍 이력 분석</Btn>
                                                     </div>
                                                 </div>
                                             )}
@@ -11223,7 +11468,7 @@ const firebaseConfig = {
                                                 <BalanceVisualizer groups={groups} students={students} groupNames={groupNames} date={date} />
                                             </div>
                                         )}
-                                        <SeatChart students={students} seatAssignments={seatAssignments} setSeatAssignments={setSeatAssignments} seatConfig={seatConfig} setSeatConfig={setSeatConfig} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} openConfirm={openConfirm} groups={groups} onGroupsChange={handleGroupsChange} groupNumber={groupNumber} groupMethod={groupMethod} roleMap={roleMap} onOpenStudentInfo={(id) => setGrassStudentId(id)} />
+                                        <SeatChart students={students} seatAssignments={seatAssignments} setSeatAssignments={setSeatAssignments} seatConfig={seatConfig} setSeatConfig={setSeatConfig} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} openConfirm={openConfirm} groups={groups} onGroupsChange={handleGroupsChange} groupNumber={groupNumber} groupMethod={groupMethod} roleMap={roleMap} onOpenStudentInfo={(id) => setGrassStudentId(id)} groupNames={groupNames} date={date} onGroupNameChange={handleGroupNameSave} isRotating={isRotating} animationType={appConfig.rotationAnimation || 'flip'} />
                                     </div>
                                 </div>
                             )}
@@ -11262,10 +11507,11 @@ const firebaseConfig = {
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe">
                         <div className="flex justify-around items-center h-14">
                             {[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (
-                                <button key={m.id} onClick={()=>setMode(m.id)} className={`relative flex flex-col items-center justify-center w-full h-full transition-all active:scale-90 ${mode===m.id ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
-                                    {mode === m.id && <div className="absolute top-0 w-10 h-1 bg-indigo-500 rounded-b-full shadow-[0_2px_8px_rgba(99,102,241,0.4)] animate-fade-in"></div>}
-                                    <div className={`p-1 rounded-xl transition-all ${mode===m.id ? 'bg-indigo-50 animate-jump-in' : ''}`}><Icon d={m.icon} size={20} strokeWidth={mode===m.id?2.5:2} /></div>
-                                    <span className={`text-[10px] font-bold mt-0.5 ${mode===m.id ? 'text-indigo-600' : 'text-slate-400'}`}>{m.label}</span>
+                                <button key={m.id} onClick={()=>setMode(m.id)} className={`relative flex flex-col items-center justify-center w-full h-full transition-all active:scale-90 group ${mode===m.id ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                                    <div className={`px-5 py-1 rounded-xl transition-all duration-300 ${mode===m.id ? 'bg-indigo-100 -translate-y-1' : 'group-hover:bg-slate-50'}`}>
+                                        <Icon d={m.icon} size={20} strokeWidth={mode===m.id?2.5:2} className={`transition-transform ${mode===m.id ? 'scale-110' : ''}`} />
+                                    </div>
+                                    <span className={`text-[10px] font-bold mt-0.5 transition-colors ${mode===m.id ? 'text-indigo-600' : 'text-slate-400'}`}>{m.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -11681,6 +11927,7 @@ const firebaseConfig = {
                         <GlobalRecordModal isOpen={showGlobalRecord} onClose={()=>setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} appConfig={appConfig} db={db} appId={appId} />
                     )}
                     <AiSecurityCheckModal isOpen={aiCheckState.isOpen} onClose={handleAiCheckCancel} prompt={aiCheckState.prompt} onConfirm={handleAiCheckConfirm} />
+                    {appConfig.showFloatingButton !== false && (
                     <button 
                         onMouseEnter={() => { setIsHidden(false); if(hideTimer.current) clearTimeout(hideTimer.current); }}
                         onMouseDown={handleButtonDragStart}
@@ -11701,6 +11948,7 @@ const firebaseConfig = {
                         <Icon d={PATHS.edit} size={appConfig.floatingButtonSize === 'small' ? 20 : appConfig.floatingButtonSize === 'large' ? 28 : appConfig.floatingButtonSize === 'xlarge' ? 36 : 24} />
                         <span className={`absolute bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none ${buttonPos.x < window.innerWidth / 2 ? 'left-full ml-3' : 'right-full mr-3'}`}>빠른 기록</span>
                     </button>
+                    )}
                 </div>
                     )}
                 </>
@@ -11825,21 +12073,31 @@ const firebaseConfig = {
                 return (
                     <BaseModal isOpen={isOpen} onClose={() => setEditingRole(null)} title={`${editingRole} 설명 편집`} icon={PATHS.edit} footer={
                         <div className="flex gap-2">
-                            <Btn onClick={() => setEditingRole(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold">취소</Btn>
-                            <Btn onClick={saveDesc} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold">저장</Btn>
+                            <Btn onClick={() => setEditingRole(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">취소</Btn>
+                            <Btn onClick={saveDesc} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">저장</Btn>
                         </div>
                     }>
                         <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between items-center mb-1">
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                <div className="flex justify-between items-center mb-2">
                                     <label className="text-xs font-bold text-slate-500">역할 타이틀</label>
-                                    {hasDefault && <Btn onClick={restoreDefault} className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded hover:bg-slate-200">기본값 복원</Btn>}
+                                    {hasDefault && <Btn onClick={restoreDefault} className="text-[10px] bg-white border border-slate-200 text-slate-500 px-2 py-1 rounded-lg hover:bg-slate-50 shadow-sm transition-colors">기본값 복원</Btn>}
                                 </div>
-                                <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full p-2 border rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="예: 친구들을 도와주는 나눔이!" />
+                                <input 
+                                    value={editTitle} 
+                                    onChange={e => setEditTitle(e.target.value)} 
+                                    className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" 
+                                    placeholder="예: 친구들을 도와주는 나눔이!" 
+                                />
                             </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 block mb-1">상세 설명 (줄바꿈으로 구분)</label>
-                                <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full h-32 p-2 border rounded-xl text-sm resize-none outline-none focus:border-indigo-500" placeholder="할 일을 한 줄씩 입력하세요." />
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                <label className="text-xs font-bold text-slate-500 block mb-2">상세 설명 (줄바꿈으로 구분)</label>
+                                <textarea 
+                                    value={editDesc} 
+                                    onChange={e => setEditDesc(e.target.value)} 
+                                    className="w-full h-40 p-3 border border-slate-200 rounded-xl text-sm resize-none outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all custom-scroll" 
+                                    placeholder="할 일을 한 줄씩 입력하세요." 
+                                />
                             </div>
                         </div>
                     </BaseModal>
@@ -11847,10 +12105,43 @@ const firebaseConfig = {
             }
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="역할 목록 편집" icon={PATHS.edit} footer={<Btn onClick={() => onSave(tempRoles)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700">저장하기</Btn>}>
-                    <div className="flex gap-2 mb-4"><input value={newRole} onChange={(e) => setNewRole(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAdd()} className="flex-1 p-2 border rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="새 역할 이름" /><Btn onClick={handleAdd} className="bg-indigo-50 text-indigo-600 px-4 rounded-xl font-bold hover:bg-indigo-100">추가</Btn></div>
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scroll pr-1">{tempRoles.map((role, i) => (<div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200"><span className="font-bold text-slate-700 text-sm">{i + 1}. {role}</span><div className="flex items-center gap-1"><Btn onClick={() => startEditDesc(role)} className="p-1 text-indigo-400 hover:text-indigo-600" title="설명 수정"><Icon d={PATHS.document} size={16} /></Btn><div className="w-px h-4 bg-slate-300 mx-1"></div><Btn onClick={() => handleMove(i, -1)} disabled={i === 0} className="p-1 text-slate-400 hover:text-indigo-500 disabled:opacity-30"><Icon d={PATHS.down} className="rotate-180" size={16} /></Btn><Btn onClick={() => handleMove(i, 1)} disabled={i === tempRoles.length - 1} className="p-1 text-slate-400 hover:text-indigo-500 disabled:opacity-30"><Icon d={PATHS.down} size={16} /></Btn><div className="w-px h-4 bg-slate-300 mx-1"></div><Btn onClick={() => handleDelete(i)} className="p-1 text-rose-400 hover:text-rose-600"><Icon d={PATHS.trash} size={16} /></Btn></div></div>))}</div>
-                    <p className="text-xs text-slate-400 mt-2 text-center">* 위에서부터 순서대로 모둠원에게 배정됩니다.</p>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="역할 목록 편집" icon={PATHS.edit} footer={<Btn onClick={() => onSave(tempRoles)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">저장하기</Btn>}>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-4">
+                        <div className="flex gap-2">
+                            <input 
+                                value={newRole} 
+                                onChange={(e) => setNewRole(e.target.value)} 
+                                onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAdd()} 
+                                className="flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" 
+                                placeholder="새로운 역할 이름 입력 (예: 기록이)" 
+                            />
+                            <Btn onClick={handleAdd} className="bg-indigo-600 text-white px-5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition-all active:scale-95 whitespace-nowrap">추가</Btn>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scroll pr-1">
+                        {tempRoles.length > 0 ? tempRoles.map((role, i) => (
+                            <div key={i} className="group flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all">
+                                <div className="flex items-center gap-3">
+                                    <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                                    <span className="font-bold text-slate-700 text-sm">{role}</span>
+                                </div>
+                                <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                    <Btn onClick={() => startEditDesc(role)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="설명 수정"><Icon d={PATHS.document} size={16} /></Btn>
+                                    <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                    <div className="flex bg-slate-50 rounded-lg p-0.5 border border-slate-100">
+                                        <Btn onClick={() => handleMove(i, -1)} disabled={i === 0} className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 hover:bg-white rounded transition-colors"><Icon d={PATHS.down} className="rotate-180" size={14} /></Btn>
+                                        <Btn onClick={() => handleMove(i, 1)} disabled={i === tempRoles.length - 1} className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 hover:bg-white rounded transition-colors"><Icon d={PATHS.down} size={14} /></Btn>
+                                    </div>
+                                    <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                    <Btn onClick={() => handleDelete(i)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="삭제"><Icon d={PATHS.trash} size={16} /></Btn>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="text-center py-8 text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">등록된 역할이 없습니다.</div>
+                        )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-3 text-center flex items-center justify-center gap-1"><Icon d={PATHS.help} size={12} /> 위에서부터 순서대로 모둠원에게 배정됩니다.</p>
                 </BaseModal>
             );
         };
