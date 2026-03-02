@@ -8972,7 +8972,7 @@ const firebaseConfig = {
         });
         setStudents(updatedStudents);
         
-        if (!isLocalMode) saveData('cls_students', updatedStudents);
+        saveData('cls_students', updatedStudents);
         
         if (!isLocalMode && db && appId) {
             try {
