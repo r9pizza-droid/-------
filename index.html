@@ -7837,7 +7837,8 @@ const firebaseConfig = {
                                 studentName: student.name,
                                 studentId: student.id,
                                 studentOrder: student.order,
-                                studentGender: student.gender
+                                studentGender: student.gender,
+                                studentPhoto: student.photoUrl
                             });
                         });
                     }
@@ -7970,23 +7971,23 @@ const firebaseConfig = {
                                                     <div key={`${record.id}-${record.studentId}`} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-all group relative">
                                                         <div className="flex justify-between items-start mb-2">
                                                             <div className="flex items-center gap-2">
-                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border ${record.studentGender === 'M' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-pink-50 text-pink-600 border-pink-100'}`}>
-                                                                    {record.studentName.slice(0, 1)}
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border overflow-hidden ${record.studentGender === 'M' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-pink-50 text-pink-600 border-pink-100'}`}>
+                                                                    {appConfig.showPhotoInRecord && record.studentPhoto ? <img src={record.studentPhoto} className="w-full h-full object-cover" alt={record.studentName} /> : record.studentName.slice(0, 1)}
                                                                 </div>
                                                                 <div>
                                                                     <div className="flex items-center gap-1.5">
-                                                                        <span className="font-bold text-slate-700 text-sm">{record.studentName}</span>
-                                                                        <span className="text-[10px] font-normal text-slate-400 bg-slate-50 px-1.5 rounded-full">#{record.studentOrder}</span>
+                                                                        <span className="font-bold text-slate-700 text-sm whitespace-nowrap">{record.studentName}</span>
+                                                                        <span className="text-[10px] font-normal text-slate-400 bg-slate-50 px-1.5 rounded-full whitespace-nowrap">#{record.studentOrder}</span>
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex gap-1">
+                                                            <div className="flex gap-1 flex-wrap justify-end ml-2">
                                                                 {record.destTags && record.destTags.map((tag, idx) => {
                                                                     let colorClass = "bg-slate-50 text-slate-500 border-slate-100";
                                                                     if (tag === '노션(기록)') colorClass = "bg-blue-50 text-blue-600 border-blue-100";
                                                                     else if (tag === '노션(포폴)') colorClass = "bg-yellow-50 text-yellow-700 border-yellow-100";
                                                                     else if (tag === '구글 시트') colorClass = "bg-green-50 text-green-600 border-green-100";
-                                                                    return <span key={idx} className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${colorClass}`}>{tag}</span>;
+                                                                    return <span key={idx} className={`text-[9px] px-1.5 py-0.5 rounded border font-bold whitespace-nowrap ${colorClass}`}>{tag}</span>;
                                                                 })}
                                             </div>
                                         </div>
