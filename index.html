@@ -8740,32 +8740,37 @@ const firebaseConfig = {
             const data = await response.json();
 
             if (data.success) {
-                const photoURL = data.data.url;
-                
-                // 1. 화면의 학생 목록 업데이트
-                const updatedStudents = students.map(s => 
-                    s.id === studentId ? { ...s, photoUrl: photoURL } : s
-                );
-                setStudents(updatedStudents);
-                
-                if (typeof selectedStudent !== 'undefined' && selectedStudent && selectedStudent.id === studentId) { setSelectedStudent({ ...selectedStudent, photoUrl: photoURL }); }
-                
-                // 2. 선생님의 기존 방식대로 저장 (로컬 + Firebase)
-                if (!isLocalMode) {
-                    saveData('cls_students', updatedStudents); 
-                    if (typeof db !== 'undefined') {
-                        db.collection("students").doc(String(studentId)).set({ 
-                            photoUrl: photoURL 
-                        }, { merge: true })
-                        .then(() => console.log("Firebase 사진 저장 완료!"))
-                        .catch((err) => console.error("Firebase 사진 저장 실패:", err));
-                    }
-                }
-                
-                setToastMessage("사진이 성공적으로 등록되었습니다! 🎉");
-            } else {
-                throw new Error("ImgBB 업로드 실패");
-            }
+    const photoURL = data.data.url;
+    
+    // 1. 화면의 학생 목록 업데이트
+    const updatedStudents = students.map(s => 
+        s.id === studentId ? { ...s, photoUrl: photoURL } : s
+    );
+    setStudents(updatedStudents);
+    
+    // 2. 현재 열려있는 인사이트 카드 화면도 즉시 새로고침
+    if (selectedStudent && selectedStudent.id === studentId) {
+        setSelectedStudent({ ...selectedStudent, photoUrl: photoURL });
+    }
+    
+    // 3. 🌟 정확한 데이터베이스 경로에 저장 (로컬 + Firebase)
+    if (!isLocalMode) {
+        saveData('cls_students', updatedStudents); 
+        
+        // 🔥 파이어베이스 경로를 선생님 앱 구조에 맞게 완벽 수정!
+        if (typeof db !== 'undefined' && typeof appId !== 'undefined') {
+            db.collection("classes").doc(appId).collection("studentData").doc(String(studentId)).set({ 
+                photoUrl: photoURL 
+            }, { merge: true })
+            .then(() => console.log("Firebase 사진 저장 완료!"))
+            .catch((err) => console.error("Firebase 사진 저장 실패:", err));
+        }
+    }
+    
+    setToastMessage("사진이 성공적으로 등록되었습니다! 🎉");
+} else {
+    throw new Error("ImgBB 업로드 실패");
+}
         } catch (error) {
             console.error("사진 업로드 중 에러 발생:", error);
             alert("사진 업로드에 실패했습니다. API 키가 잘못되었는지 확인해 주세요.");
