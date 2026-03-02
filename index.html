@@ -11140,7 +11140,7 @@ const firebaseConfig = {
             return (
                 <>
                     {showLoadingScreen && (
-                    <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 text-slate-800 transition-opacity duration-500 ${isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                    <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 text-slate-800 transition-opacity duration-500 ${isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}`}>
                         <div className="relative flex flex-col items-center p-10 max-w-sm w-full">
                             {/* Icon with Glow */}
                             <div className="relative mb-8 group">
@@ -11176,7 +11176,7 @@ const firebaseConfig = {
 
                             {/* Long Loading Fallback */}
                             {showLongLoading && (
-                                <div className="animate-fade-in mt-8 w-full">
+                                <div className="animate-fade-in mt-8 w-full relative z-50">
                                     <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200 shadow-lg text-center">
                                         <div className="text-2xl mb-2 animate-pulse">📡</div>
                                         <p className="text-xs text-slate-600 font-bold mb-4 leading-relaxed">
