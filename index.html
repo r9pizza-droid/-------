@@ -4662,7 +4662,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey }) => {
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -6117,7 +6117,7 @@
                                             )}
                                             <div className="w-16 h-16 rounded-full overflow-hidden border border-slate-100 bg-slate-50 mb-2 relative cursor-pointer group/img">
                                                 {student.photoUrl ? (
-                                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
+                                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center text-[10px] text-rose-500 font-bold bg-rose-50">Error</div>'; }} />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-2xl text-slate-300">
                                                         {student.gender === 'M' ? '👦' : '👧'}
@@ -6137,7 +6137,10 @@
                                     ))}
                                 </div>
                                 
-                                <div className="flex justify-end">
+                                <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                                    <Btn onClick={onSyncPhotos} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 flex items-center gap-2 text-xs">
+                                        <Icon d={PATHS.download} size={14} /> 클라우드 사진 동기화
+                                    </Btn>
                                     <Btn onClick={() => setShowBulkPhotoGuide(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">닫기</Btn>
                                 </div>
                             </div>
@@ -6305,7 +6308,7 @@
                                             {showPhoto && (
                                                 <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
                                                     {s.photoUrl ? (
-                                                        <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} />
+                                                        <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} onError={(e) => { e.target.style.display='none'; }} />
                                                     ) : (
                                                         <span className="text-lg">{s.gender === 'M' ? '👦' : '👧'}</span>
                                                     )}
@@ -11176,6 +11179,7 @@ const firebaseConfig = {
                         onPhotoUpload={handlePhotoUpload}
                         onPhotoDelete={handlePhotoDelete}
                         imgbbApiKey={imgbbApiKey}
+                        onSyncPhotos={handleLoadAllData}
                     />
                     {showImgbbModal && (
                         <BaseModal isOpen={showImgbbModal} onClose={() => setShowImgbbModal(false)} title="📸 imgBB API 키 설정">
