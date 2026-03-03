@@ -5939,6 +5939,28 @@
                                     <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
                                         <div className="flex justify-between items-center mb-2">
                                             <div className="flex items-center gap-2">
+                                                <Icon d={PATHS.history} size={16} className="text-slate-400"/>
+                                                <span className="text-xs font-bold text-slate-500">길게 누르기 시간 (인사이트)</span>
+                                            </div>
+                                            <select 
+                                                value={appConfig.longPressDuration || 1500} 
+                                                onChange={(e) => updateAppConfig({ longPressDuration: parseInt(e.target.value) })}
+                                                className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg outline-none cursor-pointer hover:bg-slate-200 transition-colors border-none"
+                                            >
+                                                <option value={1500}>1.5초</option>
+                                                <option value={2000}>2.0초</option>
+                                                <option value={2500}>2.5초</option>
+                                                <option value={3000}>3.0초</option>
+                                            </select>
+                                        </div>
+                                        <div className="text-[9px] text-slate-400">
+                                            학생 카드를 길게 눌러 인사이트 창을 열 때 필요한 시간입니다.
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <div className="flex items-center gap-2">
                                                 <Icon d={PATHS.search} size={16} className="text-slate-400"/>
                                                 <span className="text-xs font-bold text-slate-500">화면 배율 (UI Scale)</span>
                                             </div>
@@ -6544,11 +6566,12 @@
 
             const handleTouchStart = (id) => {
                 isLongPress.current = false;
+                const duration = appConfig.longPressDuration || 1500;
                 longPressTimer.current = setTimeout(() => {
                     isLongPress.current = true;
                     if (navigator.vibrate) navigator.vibrate(15);
                     onLongPress(id);
-                }, 1000);
+                }, duration);
             };
 
             const handleTouchEnd = () => {
@@ -6605,7 +6628,6 @@
                                 onTouchStart={() => handleTouchStart(s.id)} 
                                 onTouchEnd={handleTouchEnd}
                                 onClick={() => { if (!isLongPress.current) toggleCheck(s.id); }}
-                                onDoubleClick={(e) => { e.preventDefault(); onLongPress(s.id); }}
                                 className={`group relative flex flex-col bg-white rounded-md border transition-all duration-200 cursor-pointer overflow-hidden hover:bg-notion-bg-hover hover:-translate-y-1 active:scale-95 ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm hover:shadow-md"}`}>
                                 <div className={`h-1 w-full transition-colors duration-200 ${isDone ? 'bg-notion-blue' : 'bg-transparent'}`}></div>
                                 <div className="p-3 flex flex-col h-full min-h-[100px]">
