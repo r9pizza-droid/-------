@@ -5601,9 +5601,9 @@
                             {activeTab === 'app' && (
                                 <div className="space-y-6 animate-fade-in">
                                     <div className="flex p-1 bg-slate-100 rounded-xl mb-2">
-                                        <button onClick={() => setAppSubTab('basic')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${appSubTab === 'basic' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>📱 기본 설정</button>
-                                        <button onClick={() => setAppSubTab('display')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${appSubTab === 'display' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>🎨 화면/소리</button>
-                                        <button onClick={() => setAppSubTab('vacation')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${appSubTab === 'vacation' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>🏖️ 방학 설정</button>
+                                        <button onClick={() => setAppSubTab('basic')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${appSubTab === 'basic' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>앱 기본 설정</button>
+                                        <button onClick={() => setAppSubTab('display')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${appSubTab === 'display' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>화면 및 소리 설정</button>
+                                        <button onClick={() => setAppSubTab('vacation')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${appSubTab === 'vacation' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>방학기간 설정</button>
                                     </div>
 
                                     {appSubTab === 'basic' && (
