@@ -3246,7 +3246,7 @@
             const handleAdd = () => { if (newTagInput.trim()) { onAdd(newTagInput.trim()); setNewTagInput(""); } };
             const handleFinishEdit = () => { if (editingTag && editTagValue.trim() && editTagValue.trim() !== editingTag) onEdit(editingTag, editTagValue.trim()); setEditingTag(null); setEditTagValue(""); };
             return (
-                <div className="mt-2"><div className="flex flex-wrap gap-1 items-center">{tags.map(t => <Btn key={t} onClick={() => setTag(t)} className={`px-2 py-1 text-xs rounded-lg border ${current === t ? 'bg-indigo-500 text-white border-indigo-500 shadow-sm hover:bg-indigo-500' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{t}</Btn>)}<Btn onClick={() => setShowManager(!showManager)} className={`p-1 rounded-full ${showManager ? 'bg-slate-200 text-slate-600' : 'text-slate-300 hover:text-slate-500'}`}><span className="text-sm">⚙️</span></Btn></div>{showManager && (<div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 animate-fade-in relative z-10"><div className="text-[10px] font-bold text-slate-400 mb-2">태그 관리</div><div className="flex flex-wrap gap-2 mb-2">{tags.map(tag => editingTag === tag ? (<div key={tag} className="flex items-center bg-white border border-indigo-300 rounded-lg overflow-hidden shadow-sm"><input value={editTagValue} onChange={e => setEditTagValue(e.target.value)} className="w-16 px-1 py-0.5 text-xs outline-none" autoFocus onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleFinishEdit() }} /><Btn onClick={handleFinishEdit} className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 hover:bg-indigo-200"><Icon d={PATHS.check} size={10} /></Btn><Btn onClick={() => setEditingTag(null)} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 hover:bg-slate-200"><Icon d={PATHS.x} size={10} /></Btn></div>) : (<div key={tag} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center gap-1 group"><span>{tag}</span><div className="flex gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity"><Btn onClick={() => { setEditingTag(tag); setEditTagValue(tag); }} className="hover:text-indigo-500 p-0.5"><Icon d={PATHS.edit} size={10} /></Btn>{tag !== '기타' && <Btn onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(tag); }} className="text-rose-500 hover:text-rose-700 p-0.5"><Icon d={PATHS.trash} size={10} /></Btn>}</div></div>))}</div><div className="flex gap-1"><input value={newTagInput} onChange={e => setNewTagInput(e.target.value)} className="flex-1 p-1.5 border rounded-lg text-xs outline-none focus:border-indigo-500" placeholder="새 태그 이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd() }} /><Btn onClick={handleAdd} className="bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold hover:bg-indigo-600">추가</Btn></div></div>)}</div>
+                <div className="mt-2"><div className="flex flex-wrap gap-1 items-center">{tags.map(t => <Btn key={t} onClick={() => setTag(t)} className={`px-2 py-1 text-xs rounded-lg border ${current === t ? 'bg-indigo-500 text-white border-indigo-500 shadow-sm hover:bg-indigo-500' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{t}</Btn>)}<Btn onClick={() => setShowManager(!showManager)} className={`p-1 rounded-full ${showManager ? 'bg-slate-200 text-slate-600' : 'text-slate-300 hover:text-slate-500'}`}><span className="text-sm">⚙️</span></Btn></div>{showManager && (<div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 animate-fade-in relative z-10"><div className="text-[10px] font-bold text-slate-400 mb-2">태그 관리</div><div className="flex flex-wrap gap-2 mb-2">{tags.map(tag => editingTag === tag ? (<div key={tag} className="flex items-center bg-white border border-indigo-300 rounded-lg overflow-hidden shadow-sm"><input value={editTagValue} onChange={e => setEditTagValue(e.target.value)} className="w-16 px-1 py-0.5 text-xs outline-none" autoFocus onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleFinishEdit() }} /><Btn onClick={handleFinishEdit} className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 hover:bg-indigo-200"><Icon d={PATHS.check} size={10} /></Btn><Btn onClick={() => setEditingTag(null)} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 hover:bg-slate-200"><Icon d={PATHS.x} size={10} /></Btn></div>) : (<div key={tag} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center gap-1 group"><span>{tag}</span><div className="flex gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity"><Btn onClick={() => { setEditingTag(tag); setEditTagValue(tag); }} className="hover:text-indigo-500 p-0.5"><Icon d={PATHS.edit} size={10} /></Btn>{tag !== '기타' && <Btn onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(tag); }} className="text-rose-500 hover:text-rose-700 p-0.5"><Icon d={PATHS.trash} size={10} /></Btn>}</div></div>))}</div><div className="flex gap-1"><input value={newTagInput} onChange={e => setNewTagInput(e.target.value)} className="flex-1 min-w-0 p-1.5 border rounded-lg text-xs outline-none focus:border-indigo-500" placeholder="새 태그 이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd() }} /><Btn onClick={handleAdd} className="shrink-0 bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold hover:bg-indigo-600 whitespace-nowrap">추가</Btn></div></div>)}</div>
             );
         };
         const TaskModal = ({ isOpen, onClose, date, dailyTasks, setDailyTasks, weeklyTasks, setWeeklyTasks, saveData, isLocalMode, showToast, tags, setTags, openConfirm }) => {
@@ -3374,30 +3374,32 @@
             };
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="과제 설정" icon={PATHS.edit} footer={<Btn onClick={handleSaveAll} className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg hover:bg-slate-900">모든 설정 저장 및 닫기</Btn>}><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-indigo-500 pl-3 flex justify-between"><span>오늘의 과제 ({dayjs(date).format('YY.MM.DD')})</span><span className="text-xs font-normal text-slate-400">최대 5개</span></h4><div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div className="flex flex-col mb-3"><div className="flex gap-2 items-center mb-2 w-full">
-    <div className="flex items-center gap-1.5 shrink-0 bg-slate-100 px-3 py-2.5 rounded-xl border border-slate-200">
+                <BaseModal isOpen={isOpen} onClose={onClose} title="과제 설정" icon={PATHS.edit} footer={<Btn onClick={handleSaveAll} className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg hover:bg-slate-900">모든 설정 저장 및 닫기</Btn>}><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-indigo-500 pl-3 flex justify-between"><span>오늘의 과제 ({dayjs(date).format('YY.MM.DD')})</span><span className="text-xs font-normal text-slate-400">최대 5개</span></h4><div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div className="flex flex-col mb-3"><div className="flex flex-col sm:flex-row gap-2 mb-2 w-full">
+    <div className="flex items-center gap-1.5 shrink-0 bg-slate-100 px-3 py-2.5 rounded-xl border border-slate-200 w-full sm:w-auto">
         <span className="text-xs font-extrabold text-slate-500 whitespace-nowrap">제출일</span>
         <input 
             type="date" 
             value={dueDate} 
             onChange={e => setDueDate(e.target.value)} 
-            className="text-sm font-bold text-slate-700 bg-transparent outline-none cursor-pointer" 
+            className="text-sm font-bold text-slate-700 bg-transparent outline-none cursor-pointer flex-1 sm:flex-none" 
             title="과제 제출일 변경" 
         />
     </div>
-    <input 
-        value={newTask} 
-        onChange={e => setNewTask(e.target.value)} 
-        className="flex-1 min-w-0 p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:border-indigo-500 shadow-sm" 
-        placeholder="예: 수학 익힘책 풀어오기" 
-        onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addTask() }} 
-    />
-    <Btn 
-        onClick={addTask} 
-        className="shrink-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-indigo-700 whitespace-nowrap"
-    >
-        추가
-    </Btn>
+    <div className="flex gap-2 w-full sm:flex-1">
+        <input 
+            value={newTask} 
+            onChange={e => setNewTask(e.target.value)} 
+            className="flex-1 min-w-0 p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:border-indigo-500 shadow-sm" 
+            placeholder="예: 수학 익힘책 풀어오기" 
+            onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addTask() }} 
+        />
+        <Btn 
+            onClick={addTask} 
+            className="shrink-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-indigo-700 whitespace-nowrap"
+        >
+            추가
+        </Btn>
+    </div>
 </div><TagSelector current={selectedTag} setTag={setSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="space-y-2">{tasks.map((t, i) => (
     <div key={i} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
         {editingIndex === i ? (
@@ -6802,7 +6804,7 @@
                                         </div>
                                     ) : (
                                         <div className="flex-1 flex items-center justify-center">
-                                            {isDone ? <span className="text-xs text-notion-blue font-medium bg-blue-50 px-2 py-1 rounded">완료</span> : <span className="text-xs text-notion-text-light bg-notion-bg-alt px-2 py-1 rounded">미완료</span>}
+                                            {isDone ? <span className="text-xs text-notion-blue font-medium bg-blue-50 px-2 py-1 rounded">완료</span> : null}
                                         </div>
                                     )}
                                 </div>
