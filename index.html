@@ -367,6 +367,12 @@
         );
         const BaseModal = ({ isOpen, onClose, title, icon, children, footer, maxWidth = "max-w-2xl", zIndex = "z-50", onTitleClick }) => {
             useEffect(() => {
+                if (isOpen) document.body.style.overflow = 'hidden';
+                else document.body.style.overflow = '';
+                return () => { document.body.style.overflow = ''; };
+            }, [isOpen]);
+
+            useEffect(() => {
                 if (!isOpen) return;
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
@@ -431,6 +437,11 @@
             );
         };
         const ConfirmModal = ({ isOpen, message, onConfirm, onCancel }) => {
+            useEffect(() => {
+                if (isOpen) document.body.style.overflow = 'hidden';
+                else document.body.style.overflow = '';
+                return () => { document.body.style.overflow = ''; };
+            }, [isOpen]);
 
             if (!isOpen) return null;
             return (
@@ -445,6 +456,12 @@
             );
         };
         const UpdateNotificationModal = ({ isOpen, onUpdate, onClose }) => {
+            useEffect(() => {
+                if (isOpen) document.body.style.overflow = 'hidden';
+                else document.body.style.overflow = '';
+                return () => { document.body.style.overflow = ''; };
+            }, [isOpen]);
+
             if (!isOpen) return null;
             
             // 🌟 최신 업데이트 정보 가져오기
@@ -926,6 +943,12 @@
 
         const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload }) => {
             if (!isOpen || !student || !student.history) return null;
+            
+            useEffect(() => {
+                document.body.style.overflow = 'hidden';
+                return () => { document.body.style.overflow = ''; };
+            }, []);
+
             useEffect(() => {
                 const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
                 window.addEventListener('keydown', handleEsc);
@@ -3040,6 +3063,12 @@
             const [range, setRange] = useState({ start: null, end: null });
             const [blinkDate, setBlinkDate] = useState(null);
             const [tempSelected, setTempSelected] = useState(null);
+
+            useEffect(() => {
+                if (isOpen) document.body.style.overflow = 'hidden';
+                else document.body.style.overflow = '';
+                return () => { document.body.style.overflow = ''; };
+            }, [isOpen]);
 
             useEffect(() => { 
                 if (isOpen) {
@@ -7816,6 +7845,11 @@ const firebaseConfig = {
         const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos, appConfig, db, appId }) => {
     if (!isOpen) return null;
     
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = ''; };
+    }, []);
+
     // [New] 연동 상태 확인 및 기본값 설정
     const [hasNotionRecord, setHasNotionRecord] = React.useState(false);
     const [hasNotionPortfolio, setHasNotionPortfolio] = React.useState(false);
@@ -8386,7 +8420,7 @@ const firebaseConfig = {
                                             <div className="space-y-3 animate-fade-in">
                                                 {groupedRecords[date].map((record) => {
                                                     const isRecordExpanded = expandedRecordIds[record.id];
-                                                    const threshold = isMobile ? 2 : 9999;
+                                                    const threshold = isMobile ? 1 : 9999;
                                                     const visibleStudents = isRecordExpanded ? record.students : record.students.slice(0, threshold);
                                                     const hiddenCount = record.students.length - threshold;
 
@@ -8417,9 +8451,9 @@ const firebaseConfig = {
                                                                     let dotColor = "bg-slate-300";
                                                                     let badgeClass = "bg-slate-50 text-slate-500 border-slate-100";
                                                                     
-                                                                    if (tag === '노션(기록)') { dotColor = "bg-blue-500"; badgeClass = "bg-blue-50 text-blue-600 border-blue-100"; }
-                                                                    else if (tag === '노션(포폴)') { dotColor = "bg-amber-500"; badgeClass = "bg-yellow-50 text-yellow-700 border-yellow-100"; }
-                                                                    else if (tag === '구글 시트') { dotColor = "bg-green-500"; badgeClass = "bg-green-50 text-green-600 border-green-100"; }
+                                                                    if (tag === '노션(기록)') { dotColor = "bg-blue-300"; badgeClass = "bg-blue-50 text-blue-600 border-blue-100"; }
+                                                                    else if (tag === '노션(포폴)') { dotColor = "bg-amber-300"; badgeClass = "bg-yellow-50 text-yellow-700 border-yellow-100"; }
+                                                                    else if (tag === '구글 시트') { dotColor = "bg-green-300"; badgeClass = "bg-green-50 text-green-600 border-green-100"; }
                                                                     
                                                                     return (
                                                                         <React.Fragment key={idx}>
@@ -11844,7 +11878,7 @@ const firebaseConfig = {
                 </div>
             )}
                     <Toast message={toastMessage} action={toastAction} onClose={()=>{ setToastMessage(null); setToastAction(null); }} />
-                    <StatsGrassModal 
+                    {!!grassStudentId && <StatsGrassModal 
                         isOpen={!!grassStudentId} 
                         onClose={()=>setGrassStudentId(null)} 
                         student={stats.students.find(s=>s.id===grassStudentId)} 
@@ -11867,7 +11901,7 @@ const firebaseConfig = {
                         setStudents={setStudents}
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
-                        onPhotoUpload={handlePhotoUpload} />
+                        onPhotoUpload={handlePhotoUpload} />}
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)} 
