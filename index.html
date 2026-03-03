@@ -8501,10 +8501,138 @@ const firebaseConfig = {
             );
         };
 // --- [여기까지 복사] ---
+        const PostModal = ({ isOpen, onClose, onCreate }) => {
+            const [category, setCategory] = useState('생활지도팁');
+            const [title, setTitle] = useState("");
+            const [authorName, setAuthorName] = useState("");
+            const [content, setContent] = useState("");
+
+            useEffect(() => {
+                if (isOpen) {
+                    setCategory('생활지도팁');
+                    setTitle("");
+                    setAuthorName("");
+                    setContent("");
+                }
+            }, [isOpen]);
+
+            const handleSubmit = () => {
+                if (!title.trim() || !authorName.trim() || !content.trim()) {
+                    alert("모든 항목을 입력해주세요.");
+                    return;
+                }
+                onCreate(title, content, authorName, category);
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="새 꿀팁 쓰기" icon={PATHS.edit}>
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">카테고리</label>
+                            <div className="relative">
+                                <select 
+                                    value={category} 
+                                    onChange={(e) => setCategory(e.target.value)} 
+                                    className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 bg-white appearance-none cursor-pointer font-bold text-slate-600"
+                                >
+                                    <option value="생활지도팁">생활지도팁</option>
+                                    <option value="수업팁">수업팁</option>
+                                    <option value="업무팁">업무팁</option>
+                                </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <Icon d={PATHS.down} size={14} />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">제목</label>
+                            <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="제목을 입력하세요" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">작성자</label>
+                            <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="선생님 닉네임" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">내용</label>
+                            <textarea value={content} onChange={(e) => setContent(e.target.value)} className="w-full h-40 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 resize-none custom-scroll" placeholder="내용을 입력하세요" />
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                            <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">취소</Btn>
+                            <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">등록</Btn>
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        };
+
+        const CommunityHelpModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="게시판 이용 안내" icon={PATHS.help}>
+                    <div className="space-y-4 text-sm text-slate-600 leading-relaxed">
+                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                            <h4 className="font-bold text-indigo-700 mb-2 flex items-center gap-2">🔥 Firebase 연동 (필수)</h4>
+                            <p className="mb-2">게시판은 클라우드 데이터베이스(Firebase)를 기반으로 운영됩니다.</p>
+                            <ul className="list-disc pl-5 space-y-1 text-xs">
+                                <li><strong>설정 &gt; 데이터 관리 &gt; 외부 서비스 연동</strong>에서 Firebase가 연결되어 있어야 글 목록을 불러오거나 작성할 수 있습니다.</li>
+                                <li>연결되지 않은 경우, 게시판 기능이 작동하지 않습니다.</li>
+                            </ul>
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <h4 className="font-bold text-slate-700 mb-2 flex items-center gap-2">📸 ImgBB 사진 연동 (선택)</h4>
+                            <p className="mb-2">게시글에 사진을 포함하거나 프로필 사진을 연동하려면 ImgBB 설정이 필요합니다.</p>
+                            <ul className="list-disc pl-5 space-y-1 text-xs">
+                                <li><strong>설정 &gt; 데이터 관리 &gt; 외부 서비스 연동</strong>에서 ImgBB API 키를 등록해주세요.</li>
+                                <li>사진은 무료 이미지 호스팅 서비스인 ImgBB에 저장됩니다.</li>
+                            </ul>
+                        </div>
+                        <div className="text-center text-xs text-slate-400 mt-4">
+                            * 선생님들의 소중한 꿀팁을 공유하는 공간입니다. <br/>서로 존중하고 배려하는 마음으로 이용해 주세요.
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        };
+
+        const sharedFirebaseConfig = {
+            apiKey: "AIzaSyCeHxv8oRMA7xhk4u6ZHmoeMzb7JhcRuVc",
+            authDomain: "homework-14674.firebaseapp.com",
+            projectId: "homework-14674",
+            storageBucket: "homework-14674.firebasestorage.app",
+            messagingSenderId: "358784571550",
+            appId: "1:358784571550:web:0419abd2dcee35779b038f"
+        };
+
+        let sharedApp;
+        try {
+            sharedApp = firebase.app("CommunityApp");
+        } catch (e) {
+            sharedApp = firebase.initializeApp(sharedFirebaseConfig, "CommunityApp");
+        }
+        const sharedDb = sharedApp.firestore();
+
         const App = () => {
             const [forceRender, setForceRender] = useState(0); // 화면 새로고침용 스위치
             const CURRENT_VERSION = UPDATE_NOTES[0].version; // 무조건 json의 첫번째(최신)를 내 버전으로 인식!
             const updateDate = UPDATE_NOTES[0].date;
+
+            // [New] Community Board States
+            const [communityPosts, setCommunityPosts] = useState([]);
+            const [showPostModal, setShowPostModal] = useState(false);
+            const [showCommunityHelp, setShowCommunityHelp] = useState(false);
+            const [lastPostDoc, setLastPostDoc] = useState(null);
+            const [hasMorePosts, setHasMorePosts] = useState(true);
+            const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+            
+            const [likedPosts, setLikedPosts] = useState(() => {
+                try {
+                    return JSON.parse(localStorage.getItem('cls_liked_posts') || '[]');
+                } catch (e) {
+                    return [];
+                }
+            });
 
             // [Service Worker Update Logic] 
     const [newVersionAvailable, setNewVersionAvailable] = useState(false); 
@@ -8727,6 +8855,122 @@ const firebaseConfig = {
     ];
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false });
             const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
+
+            // [New] Community Logic
+            const handleCreatePost = async (title, content, authorName, category) => {
+                try {
+                    await sharedDb.collection('community').add({
+                        title,
+                        content,
+                        authorName,
+                        category,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    setToastMessage("게시글이 등록되었습니다.");
+                    setShowPostModal(false);
+                    fetchPosts();
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("글쓰기 실패: " + e.message);
+                }
+            };
+
+            const fetchPosts = async () => {
+                if (!sharedDb) return;
+                setIsLoadingPosts(true);
+                try {
+                    const snapshot = await sharedDb.collection('community')
+                        .orderBy('createdAt', 'desc')
+                        .limit(30)
+                        .get();
+                    
+                    const posts = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return { 
+                            id: doc.id, 
+                            ...data,
+                            createdAt: data.createdAt ? data.createdAt.toDate() : new Date() 
+                        };
+                    });
+                    setCommunityPosts(posts);
+                    setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
+                    setHasMorePosts(snapshot.docs.length === 30);
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("글 불러오기 실패: " + e.message);
+                } finally {
+                    setIsLoadingPosts(false);
+                }
+            };
+
+            const loadMorePosts = async () => {
+                if (!sharedDb || !lastPostDoc || !hasMorePosts) return;
+                setIsLoadingPosts(true);
+                try {
+                    const snapshot = await sharedDb.collection('community')
+                        .orderBy('createdAt', 'desc')
+                        .startAfter(lastPostDoc)
+                        .limit(30)
+                        .get();
+
+                    const newPosts = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return { 
+                            id: doc.id, 
+                            ...data,
+                            createdAt: data.createdAt ? data.createdAt.toDate() : new Date() 
+                        };
+                    });
+                    setCommunityPosts(prev => [...prev, ...newPosts]);
+                    setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
+                    setHasMorePosts(snapshot.docs.length === 30);
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("더 불러오기 실패: " + e.message);
+                } finally {
+                    setIsLoadingPosts(false);
+                }
+            };
+
+            const handleLikePost = async (postId) => {
+                if (!sharedDb) return;
+                
+                if (likedPosts.includes(postId)) {
+                    setToastMessage("이미 좋아요를 눌렀습니다.");
+                    return;
+                }
+
+                try {
+                    setCommunityPosts(prev => prev.map(p => 
+                        p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p
+                    ));
+                    
+                    const newLikedPosts = [...likedPosts, postId];
+                    setLikedPosts(newLikedPosts);
+                    localStorage.setItem('cls_liked_posts', JSON.stringify(newLikedPosts));
+
+                    const postRef = sharedDb.collection('community').doc(postId);
+                    await postRef.update({
+                        likes: firebase.firestore.FieldValue.increment(1)
+                    });
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("좋아요 반영 실패: " + e.message);
+                    setCommunityPosts(prev => prev.map(p => 
+                        p.id === postId ? { ...p, likes: (p.likes || 0) - 1 } : p
+                    ));
+                    const revertedLikedPosts = likedPosts.filter(id => id !== postId);
+                    setLikedPosts(revertedLikedPosts);
+                    localStorage.setItem('cls_liked_posts', JSON.stringify(revertedLikedPosts));
+                }
+            };
+
+            useEffect(() => {
+                if (mode === 'community' && sharedDb) {
+                    fetchPosts();
+                }
+            }, [mode]);
+
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const [editingGroupName, setEditingGroupName] = useState("");
             const lastBackupTime = useRef("");
@@ -11397,7 +11641,7 @@ const firebaseConfig = {
     title="사용 설명서 보기"
 >
     💡
-</button>{!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}</div><div className="hidden md:flex gap-1">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (<button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all active:scale-95 ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>))}</div></div>
+</button>{!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}</div><div className="hidden md:flex gap-1">{[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart},{id:'community',label:'게시판',icon:PATHS.list}].map(m => (<button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all active:scale-95 ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>))}</div></div>
                     <div className="flex items-center gap-2 absolute right-4 top-3 md:relative md:top-auto md:right-auto">
                         {appConfig.showToolButton !== false && (
                             <button onClick={()=>setIsToolsOpen(true)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5"><span>🧰</span><span className="text-sm font-medium">도구</span></button>
@@ -11781,13 +12025,81 @@ const firebaseConfig = {
                                 </div>
                                 </div>
                             )}
+                            {mode === 'community' && (
+                                <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-10">
+                                    <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                        <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                            <span className="text-2xl">🍯</span> 선생님 꿀팁 게시판
+                                            <button onClick={() => setShowCommunityHelp(true)} className="text-slate-400 hover:text-indigo-500 p-1.5 rounded-full hover:bg-slate-50 transition-colors" title="이용 안내">
+                                                <Icon d={PATHS.help} size={18} />
+                                            </button>
+                                        </h3>
+                                        <button 
+                                            onClick={() => setShowPostModal(true)} 
+                                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center gap-2 transition-transform active:scale-95"
+                                        >
+                                            <Icon d={PATHS.edit} size={16} /> 새 글 쓰기
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {communityPosts.length === 0 && !isLoadingPosts ? (
+                                            <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                                <div className="text-4xl mb-2 opacity-50">📭</div>
+                                                <p className="text-sm font-bold">아직 등록된 꿀팁이 없습니다.</p>
+                                                <p className="text-xs mt-1">첫 번째 꿀팁을 공유해보세요!</p>
+                                            </div>
+                                        ) : (
+                                            communityPosts.map(post => {
+                                                let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
+                                                if (post.category === '생활지도팁') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
+                                                else if (post.category === '수업팁') badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
+                                                else if (post.category === '업무팁') badgeColor = "bg-green-50 text-green-600 border-green-100";
+
+                                                return (
+                                                    <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
+                                                            <span className="text-[10px] text-slate-400 font-medium">{dayjs(post.createdAt).format('YYYY.MM.DD HH:mm')}</span>
+                                                        </div>
+                                                        <h4 className="text-base font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors">{post.title}</h4>
+                                                        <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed mb-3 whitespace-pre-wrap">{post.content}</p>
+                                                        <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs">👤</div>
+                                                                <span className="text-xs font-bold text-slate-500">{post.authorName} 선생님</span>
+                                                            </div>
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleLikePost(post.id); }}
+                                                                className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${likedPosts.includes(post.id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
+                                                            >
+                                                                <Icon d={PATHS.heart} size={14} className={likedPosts.includes(post.id) ? "fill-current" : ""} />
+                                                                <span className="text-xs font-bold">{post.likes || 0}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                        {isLoadingPosts && <div className="py-10 flex justify-center"><Icon d={PATHS.spinner} className="animate-spin text-indigo-500" size={32}/></div>}
+                                    </div>
+
+                                    {hasMorePosts && !isLoadingPosts && communityPosts.length > 0 && (
+                                        <div className="flex justify-center pt-4">
+                                            <button onClick={loadMorePosts} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all">
+                                                이전 꿀팁 더 보기 ⬇️
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden text-center py-3 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors bg-slate-50 border-t border-slate-200 -mx-4 mt-4 mb-20">{CURRENT_VERSION} | spk </footer>
                     </main>
                     <footer onClick={() => setShowUpdateNotes(true)} className="hidden md:block text-center py-2 text-xs text-slate-400 bg-slate-50 hover:bg-slate-100 border-t border-slate-200 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visual Studio Code With Gemini</footer>
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe">
                         <div className="flex justify-around items-center h-14">
-                            {[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart}].map(m => (
+                            {[{id:'record',label:'기록',icon:PATHS.edit},{id:'simple',label:'단순',icon:PATHS.check},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart},{id:'community',label:'게시판',icon:PATHS.list}].map(m => (
                                 <button key={m.id} onClick={()=>setMode(m.id)} className={`relative flex flex-col items-center justify-center w-full h-full transition-all active:scale-90 group ${mode===m.id ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
                                     <div className={`px-5 py-1 rounded-xl transition-all duration-300 ${mode===m.id ? 'bg-indigo-100 -translate-y-1' : 'group-hover:bg-slate-50'}`}>
                                         <Icon d={m.icon} size={20} strokeWidth={mode===m.id?2.5:2} className={`transition-transform ${mode===m.id ? 'scale-110' : ''}`} />
@@ -12207,6 +12519,8 @@ const firebaseConfig = {
                     {showGlobalRecord && (
                         <GlobalRecordModal isOpen={showGlobalRecord} onClose={()=>setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} appConfig={appConfig} db={db} appId={appId} />
                     )}
+                    {showPostModal && <PostModal isOpen={showPostModal} onClose={() => setShowPostModal(false)} onCreate={handleCreatePost} />}
+                    <CommunityHelpModal isOpen={showCommunityHelp} onClose={() => setShowCommunityHelp(false)} />
                     <AiSecurityCheckModal isOpen={aiCheckState.isOpen} onClose={handleAiCheckCancel} prompt={aiCheckState.prompt} onConfirm={handleAiCheckConfirm} />
                     {appConfig.showFloatingButton !== false && (
                     <button 
