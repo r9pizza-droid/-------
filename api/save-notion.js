@@ -43,6 +43,7 @@ export default async function handler(req, res) {
 
             properties["제목"] = { "title": [{ "text": { "content": finalTitle } }] };
             properties["날짜"] = { "date": { "start": date || new Date().toISOString().split('T')[0] } };
+            properties["분류"] = { "select": { "name": category || "관찰" } };
             properties["내용"] = { "rich_text": [{ "text": { "content": content || "" } }] };
             
             const relationArray = getCleanRelationArray(studentIds);
