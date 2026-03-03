@@ -6795,25 +6795,35 @@
                                     </div>
                                     
                                     {isExpanded && (
-                                        <div className="px-4 pb-4 pt-2 space-y-6 border-t border-slate-100">
+                                        <div className="px-4 pb-6 pt-4 space-y-8 border-t border-slate-100 bg-white relative">
+                                            <div className="absolute left-[27px] top-4 bottom-6 w-px bg-slate-200"></div>
                                             {group.items.map((update, i) => (
-                                                <div key={i} className="relative pl-4 border-l-2 border-slate-200">
-                                                    <div className={`absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full ${groupIndex === 0 && i === 0 ? 'bg-indigo-500 ring-4 ring-indigo-100' : 'bg-slate-300'}`}></div>
-                                                    <div className="flex justify-between items-baseline mb-2 cursor-pointer group/title" onClick={() => setSelectedNote(update)}>
-                                                        <h5 className={`font-bold text-sm flex items-center gap-2 ${groupIndex === 0 && i === 0 ? 'text-indigo-600' : 'text-slate-700'} group-hover/title:text-indigo-500 transition-colors`}>
-                                                            {update.version}
-                                                            {groupIndex === 0 && i === 0 && <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold animate-pulse">NEW</span>}
-                                                            <Icon d={PATHS.right} size={12} className="opacity-0 group-hover/title:opacity-100 transition-opacity text-slate-400 -ml-1" />
-                                                        </h5>
+                                                <div key={i} className="relative pl-8">
+                                                    <div className={`absolute left-[23px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white z-10 ${groupIndex === 0 && i === 0 ? 'bg-indigo-500 ring-2 ring-indigo-100' : 'bg-slate-300'}`}></div>
+                                                    
+                                                    <div className="group/item">
+                                                        <div className="flex justify-between items-baseline mb-2 cursor-pointer" onClick={() => setSelectedNote(update)}>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <h5 className={`font-bold text-sm ${groupIndex === 0 && i === 0 ? 'text-indigo-600' : 'text-slate-700'} group-hover/item:text-indigo-500 transition-colors`}>
+                                                                    {update.version}
+                                                                </h5>
+                                                                {groupIndex === 0 && i === 0 && <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold shadow-sm">NEW</span>}
+                                                                <span className="text-[10px] text-slate-400 font-medium bg-slate-50 px-1.5 py-0.5 rounded">{update.date}</span>
+                                                            </div>
+                                                            <Icon d={PATHS.right} size={14} className="opacity-0 group-hover/item:opacity-100 transition-opacity text-slate-300" />
+                                                        </div>
+
+                                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 group-hover/item:border-indigo-100 group-hover/item:bg-indigo-50/30 transition-colors">
+                                                            <ul className="space-y-1.5">
+                                                                {(update.list || update.changes).map((change, j) => (
+                                                                    <li key={j} className="text-xs text-slate-600 flex items-start gap-2 leading-relaxed">
+                                                                        <span className="text-indigo-300 mt-1.5 text-[6px] flex-shrink-0">●</span>
+                                                                        <span className="flex-1">{change}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
                                                     </div>
-                                                    <ul className="space-y-1">
-                                                        {(update.list || update.changes).map((change, j) => (
-                                                            <li key={j} className="text-sm text-slate-600 flex items-start gap-2">
-                                                                <span className="text-slate-400 mt-1.5 text-[6px]">●</span>
-                                                                <span className="flex-1 leading-relaxed">{change}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
                                                 </div>
                                             ))}
                                         </div>
