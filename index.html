@@ -5945,7 +5945,6 @@
                                                             >
                                                                 <option value="flip">FLIP (이동)</option>
                                                                 <option value="wormhole">WORMHOLE (웜홀)</option>
-                                                                <option value="hoop">HOOP (점프)</option>
                                                                 <option value="none">NONE (효과 없음)</option>
                                                             </select>
                                                         </div>
@@ -6999,40 +6998,27 @@
                             const deltaX = prev.left - current.left;
                             const deltaY = prev.top - current.top;
                             
-                            if (deltaX !== 0 || deltaY !== 0 || animationType !== 'flip') {
-                                if (animationType === 'hoop') {
-                                    node.animate([
-                                        { transform: `translate(${deltaX}px, ${deltaY}px) scale(1)`, opacity: 1, offset: 0 },
-                                        { transform: `translate(${deltaX}px, ${deltaY - 150}px) scale(1.1)`, opacity: 0, offset: 0.45 },
-                                        { transform: `translate(0px, -150px) scale(1.1)`, opacity: 0, offset: 0.55 },
-                                        { transform: `translate(0px, 0px) scale(1)`, opacity: 1, offset: 1 }
-                                    ], {
-                                        duration: 1000,
-                                        easing: 'ease-in-out',
-                                        fill: 'forwards'
-                                    });
-                                } else if (animationType === 'wormhole') {
-                                    node.animate([
-                                        { transform: `translate(${deltaX}px, ${deltaY}px) scale(1) rotate(0deg)`, opacity: 1, offset: 0 },
-                                        { transform: `translate(${deltaX}px, ${deltaY}px) scale(0) rotate(180deg)`, opacity: 0, offset: 0.45 },
-                                        { transform: `translate(0px, 0px) scale(0) rotate(180deg)`, opacity: 0, offset: 0.55 },
-                                        { transform: `translate(0px, 0px) scale(1) rotate(0deg)`, opacity: 1, offset: 1 }
-                                    ], {
-                                        duration: 1000,
-                                        easing: 'ease-in-out',
-                                        fill: 'forwards'
-                                    });
-                                } else {
-                                    // FLIP (Default)
-                                    node.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-                                    node.style.transition = 'none';
-                                    void node.offsetWidth; // Force reflow
+                            if (animationType === 'wormhole') {
+                                node.animate([
+                                    { transform: `translate(${deltaX}px, ${deltaY}px) scale(1) rotate(0deg)`, opacity: 1, offset: 0 },
+                                    { transform: `translate(${deltaX}px, ${deltaY}px) scale(0) rotate(180deg)`, opacity: 0, offset: 0.45 },
+                                    { transform: `translate(0px, 0px) scale(0) rotate(180deg)`, opacity: 0, offset: 0.55 },
+                                    { transform: `translate(0px, 0px) scale(1) rotate(0deg)`, opacity: 1, offset: 1 }
+                                ], {
+                                    duration: 1000,
+                                    easing: 'ease-in-out',
+                                    fill: 'forwards'
+                                });
+                            } else {
+                                // FLIP (Default)
+                                node.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                                node.style.transition = 'none';
+                                void node.offsetHeight; // Force reflow
 
-                                    requestAnimationFrame(() => {
-                                        node.style.transition = 'transform 1.2s cubic-bezier(0.25, 0.8, 0.25, 1)';
-                                        node.style.transform = '';
-                                    });
-                                }
+                                requestAnimationFrame(() => {
+                                    node.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+                                    node.style.transform = '';
+                                });
                             }
                         }
                     });
@@ -7406,7 +7392,14 @@
                         )}
                     </div>{!isCollapsed && (<div className="flex flex-col lg:flex-row gap-6" ref={seatChartRef}><div className="flex-1 overflow-auto custom-scroll bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col items-center"><div className="w-48 h-6 bg-slate-200 rounded-b-lg mb-8 flex items-center justify-center text-[10px] font-bold text-slate-500 shadow-inner">교탁</div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6 w-full max-w-5xl">
-                        {Array.from({ length: seatConfig.rows }).map((_, r) => (
+                        {Array.from({ length: seatConfig.rows }).map((_, visualIndex) => {
+                            const totalGroups = seatConfig.rows;
+                            let r;
+                            if (visualIndex === 0) r = 0;
+                            else if (visualIndex % 2 === 1) r = (visualIndex + 1) / 2;
+                            else r = totalGroups - (visualIndex / 2);
+                            if (r < 0 || r >= totalGroups) r = visualIndex;
+                            return (
                             <div key={r} className="flex flex-col gap-2">
                                 <div className="flex items-center gap-2 px-1">
                                     {editingGroupIdx === r ? (
@@ -7447,11 +7440,11 @@
                                         const isDisabled = (seatConfig.disabledSeats || []).includes(seatKey);
                                         const isSelected = selectedSeat === seatKey;
                                         const role = student ? roleMap[student.id] : null;
-                                        return (<div key={seatKey} onClick={() => handleSeatClick(r, c)} onDragOver={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragEnter={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragLeave={!isLayoutMode && !isDisabled ? handleDragLeave : undefined} onDrop={!isLayoutMode && !isDisabled ? (e) => handleDrop(e, r, c) : undefined} className={`seat-cell h-20 w-20 mx-auto rounded-xl border-2 flex flex-col items-center justify-center p-1 transition-all duration-200 ease-in-out relative group ${isLayoutMode ? (isDisabled ? 'bg-slate-100 border-slate-200 cursor-pointer hover:bg-slate-200' : 'bg-white border-indigo-200 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50') : (isDisabled ? 'opacity-0 pointer-events-none' : (student ? (student.gender === 'M' ? 'bg-blue-50/30 border-blue-200' : 'bg-pink-50/30 border-pink-200') : 'bg-white border-slate-200 border-dashed hover:border-indigo-300'))} ${isSelected ? 'ring-4 ring-indigo-400 ring-offset-2 z-10 border-indigo-500' : ''}`}>{!isLayoutMode && student && (<div data-student-id={student.id} draggable="true" onDragStart={(e) => handleDragStart(e, student.id, seatKey)} onDragEnd={handleDragEnd} onClick={(e) => { e.stopPropagation(); handleStudentClick(student.id); }} onDoubleClick={(e) => { e.stopPropagation(); onOpenStudentInfo(student.id); }} onContextMenu={(e) => handleRightClick(e, seatKey)} className={`w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing seat-node touch-none ${isRotating ? '' : 'animate-bounce-in'}`}><div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm mb-1 overflow-hidden pointer-events-none">{student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : (student.gender === 'M' ? '👦' : '👧')}</div><span className="text-xs font-bold text-slate-700 w-full text-center leading-tight break-keep px-0.5 pointer-events-none">{student.name}</span>{role && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full mt-1 font-bold truncate max-w-full pointer-events-none">{role}</span>}</div>)}{isLayoutMode && !isDisabled && <span className="text-indigo-200 text-xs">{r+1}-{c+1}</span>}</div>);
+                                        return (<div key={seatKey} onClick={() => handleSeatClick(r, c)} onDragOver={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragEnter={!isLayoutMode && !isDisabled ? handleDragOver : undefined} onDragLeave={!isLayoutMode && !isDisabled ? handleDragLeave : undefined} onDrop={!isLayoutMode && !isDisabled ? (e) => handleDrop(e, r, c) : undefined} className={`seat-cell h-20 w-20 mx-auto rounded-xl border-2 flex flex-col items-center justify-center p-1 transition-all duration-200 ease-in-out relative group ${isLayoutMode ? (isDisabled ? 'bg-slate-100 border-slate-200 cursor-pointer hover:bg-slate-200' : 'bg-white border-indigo-200 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50') : (isDisabled ? 'opacity-0 pointer-events-none' : (student ? (student.gender === 'M' ? 'bg-blue-50/30 border-blue-200' : 'bg-pink-50/30 border-pink-200') : 'bg-white border-slate-200 border-dashed hover:border-indigo-300'))} ${isSelected ? 'ring-4 ring-indigo-400 ring-offset-2 z-10 border-indigo-500' : ''}`}>{!isLayoutMode && student && (<div data-student-id={student.id} draggable="true" onDragStart={(e) => handleDragStart(e, student.id, seatKey)} onDragEnd={handleDragEnd} onClick={(e) => { e.stopPropagation(); handleStudentClick(student.id); }} onDoubleClick={(e) => { e.stopPropagation(); onOpenStudentInfo(student.id); }} onContextMenu={(e) => handleRightClick(e, seatKey)} className={`w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing seat-node touch-none`}><div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm mb-1 overflow-hidden pointer-events-none">{student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : (student.gender === 'M' ? '👦' : '👧')}</div><span className="text-xs font-bold text-slate-700 w-full text-center leading-tight break-keep px-0.5 pointer-events-none">{student.name}</span>{role && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full mt-1 font-bold truncate max-w-full pointer-events-none">{role}</span>}</div>)}{isLayoutMode && !isDisabled && <span className="text-indigo-200 text-xs">{r+1}-{c+1}</span>}</div>);
                                     })}
                                 </div>
                             </div>
-                        ))}
+                        )})}
                     </div></div>
                 <div id="seat-waiting-list" className="lg:w-72 bg-slate-50 rounded-2xl border border-slate-200 p-4 flex flex-col h-auto min-h-[200px] md:min-h-[400px] flex-shrink-0">
                     <h4 className="font-bold text-slate-600 mb-2 text-xs flex justify-between items-center">
@@ -8206,6 +8199,7 @@ const firebaseConfig = {
             const [isLoadingData, setIsLoadingData] = useState(false);
             const [expandedDates, setExpandedDates] = useState({});
             const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
+            const [expandedRecordIds, setExpandedRecordIds] = useState({});
 
             const allRecords = useMemo(() => {
                 const combined = [];
@@ -8383,29 +8377,40 @@ const firebaseConfig = {
                                             {/* Records for this date */}
                                             {isExpanded && (
                                             <div className="space-y-3 animate-fade-in">
-                                                {groupedRecords[date].map((record) => (
+                                                {groupedRecords[date].map((record) => {
+                                                    const isRecordExpanded = expandedRecordIds[record.id];
+                                                    const visibleStudents = isRecordExpanded ? record.students : record.students.slice(0, 5);
+                                                    const hiddenCount = record.students.length - 5;
+
+                                                    return (
                                                     <div key={record.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-all group relative">
                                                         <div className="flex justify-between items-start mb-2">
                                                             <div className="flex flex-wrap gap-2 items-center flex-1">
-                                                                {record.students.map(student => (
+                                                                {visibleStudents.map(student => (
                                                                     <div key={student.id} className="flex items-center gap-2 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
                                                                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border overflow-hidden ${student.gender === 'M' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-pink-50 text-pink-600 border-pink-100'}`}>
                                                                             {appConfig.showPhotoInRecord && student.photo ? <img src={student.photo} className="w-full h-full object-cover" alt={student.name} /> : student.name.slice(0, 1)}
                                                                         </div>
                                                                         <div className="flex items-center gap-1">
                                                                             <span className="font-bold text-slate-700 text-xs whitespace-nowrap">{student.name}</span>
-                                                                            <span className="text-[9px] font-normal text-slate-400 bg-white px-1 rounded-full whitespace-nowrap border border-slate-100">#{student.order}</span>
+                                                                            <span className="text-[9px] font-normal text-slate-400 bg-white px-1 rounded-full whitespace-nowrap border border-slate-100 hidden sm:inline">#{student.order}</span>
                                                                         </div>
                                                                     </div>
                                                                 ))}
+                                                                {!isRecordExpanded && hiddenCount > 0 && (
+                                                                    <button onClick={(e) => { e.stopPropagation(); setExpandedRecordIds(prev => ({...prev, [record.id]: true})); }} className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg hover:bg-slate-200 transition-colors">+{hiddenCount}명</button>
+                                                                )}
+                                                                {isRecordExpanded && record.students.length > 5 && (
+                                                                    <button onClick={(e) => { e.stopPropagation(); setExpandedRecordIds(prev => ({...prev, [record.id]: false})); }} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-1">접기</button>
+                                                                )}
                                                             </div>
                                                             <div className="flex gap-1 flex-wrap justify-end ml-2 shrink-0">
                                                                 {record.destTags && record.destTags.map((tag, idx) => {
-                                                                    let colorClass = "bg-slate-50 text-slate-500 border-slate-100";
-                                                                    if (tag === '노션(기록)') colorClass = "bg-blue-50 text-blue-600 border-blue-100";
-                                                                    else if (tag === '노션(포폴)') colorClass = "bg-yellow-50 text-yellow-700 border-yellow-100";
-                                                                    else if (tag === '구글 시트') colorClass = "bg-green-50 text-green-600 border-green-100";
-                                                                    return <span key={idx} className={`text-[9px] px-1.5 py-0.5 rounded border font-bold whitespace-nowrap ${colorClass}`}>{tag}</span>;
+                                                                    let colorClass = "bg-slate-300";
+                                                                    if (tag === '노션(기록)') colorClass = "bg-blue-500";
+                                                                    else if (tag === '노션(포폴)') colorClass = "bg-amber-500";
+                                                                    else if (tag === '구글 시트') colorClass = "bg-green-500";
+                                                                    return <div key={idx} className={`w-2.5 h-2.5 rounded-full ${colorClass}`} title={tag}></div>;
                                                                 })}
                                             </div>
                                         </div>
@@ -8414,7 +8419,7 @@ const firebaseConfig = {
                                                             {record.content}
                                             </div>
                                                     </div>
-                                                ))}
+                                                );})}
                                             </div>
                                             )}
                                         </div>
@@ -10572,7 +10577,6 @@ const firebaseConfig = {
                 setToastMessage("자전과 공전(회전)이 완료되었습니다."); 
                 
                 const duration = {
-                    'hoop': 1000,
                     'wormhole': 1000,
                     'flip': 1200,
                     'none': 0
@@ -11513,7 +11517,6 @@ const firebaseConfig = {
                                                                 {[
                                                                     { id: 'flip', label: 'FLIP (이동)' },
                                                                     { id: 'wormhole', label: 'WORMHOLE (웜홀)' },
-                                                                    { id: 'hoop', label: 'HOOP (점프)' },
                                                                     { id: 'none', label: 'NONE (효과 없음)' }
                                                                 ].map(opt => (
                                                                     <button key={opt.id} onClick={(e) => { e.stopPropagation(); updateAppConfig({ rotationAnimation: opt.id }); setShowAnimMenu(false); }} className={`px-3 py-2.5 text-left hover:bg-indigo-50 hover:text-indigo-600 flex justify-between items-center border-b border-slate-50 last:border-0 ${(appConfig.rotationAnimation || 'flip') === opt.id ? 'text-indigo-600 font-bold bg-indigo-50/50' : ''}`}><span>{opt.label}</span>{(appConfig.rotationAnimation || 'flip') === opt.id && <Icon d={PATHS.check} size={12} />}</button>
