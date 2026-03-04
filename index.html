@@ -8533,7 +8533,7 @@ const firebaseConfig = {
         const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey }) => {
             const [category, setCategory] = useState('생활지도팁');
             const [title, setTitle] = useState("");
-            const [authorName, setAuthorName] = useState("");
+            const [authorName, setAuthorName] = useState(() => localStorage.getItem('community_authorName') || "");
             const [content, setContent] = useState("");
             const [postPassword, setPostPassword] = useState("");
             const [imageUrl, setImageUrl] = useState("");
@@ -8552,7 +8552,7 @@ const firebaseConfig = {
                     } else {
                         setCategory('생활지도팁');
                         setTitle("");
-                        setAuthorName("");
+                        setAuthorName(localStorage.getItem('community_authorName') || "");
                         setContent("");
                         setPostPassword("");
                         setImageUrl("");
@@ -8643,6 +8643,7 @@ const firebaseConfig = {
                     alert("모든 항목을 입력해주세요.");
                     return;
                 }
+                localStorage.setItem('community_authorName', authorName);
                 onSave(title, content, authorName, category, postPassword, imageUrl);
             };
 
@@ -8770,7 +8771,7 @@ const firebaseConfig = {
             const ADMIN_UID = 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2';
             const [isAdmin, setIsAdmin] = useState(false);
             const [editingPost, setEditingPost] = useState(null);
-            const [commentAuthor, setCommentAuthor] = useState(() => localStorage.getItem('cls_comment_author') || "");
+            const [commentAuthor, setCommentAuthor] = useState(() => localStorage.getItem('community_authorName') || "");
             const [commentContent, setCommentContent] = useState("");
 
             useEffect(() => {
@@ -8786,6 +8787,7 @@ const firebaseConfig = {
             const [communityPosts, setCommunityPosts] = useState([]);
             const [showPostModal, setShowPostModal] = useState(false);
             const [showCommunityHelp, setShowCommunityHelp] = useState(false);
+            const [filterAuthor, setFilterAuthor] = useState(null);
             const [lastPostDoc, setLastPostDoc] = useState(null);
             const [hasMorePosts, setHasMorePosts] = useState(true);
             const [isLoadingPosts, setIsLoadingPosts] = useState(false);
@@ -9250,7 +9252,7 @@ const firebaseConfig = {
             setToastMessage("이름과 내용을 모두 입력해주세요.");
             return;
         }
-        localStorage.setItem('cls_comment_author', commentAuthor);
+        localStorage.setItem('community_authorName', commentAuthor);
 
         const uid = firebase.auth().currentUser?.uid || "anonymous";
         const newCommentData = {
@@ -12391,8 +12393,25 @@ const firebaseConfig = {
                                         </button>
                                     </div>
 
+                                    {filterAuthor && (
+                                        <div className="flex items-center justify-between bg-indigo-50 p-3 rounded-xl border border-indigo-100 animate-fade-in">
+                                            <span className="text-xs font-bold text-indigo-700 flex items-center gap-2">
+                                                <span className="bg-white p-1 rounded-full shadow-sm">👤</span> 
+                                                '{filterAuthor}' 선생님의 글 모아보기
+                                            </span>
+                                            <button 
+                                                onClick={() => setFilterAuthor(null)}
+                                                className="text-xs bg-white text-slate-500 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold shadow-sm transition-colors"
+                                            >
+                                                전체 보기
+                                            </button>
+                                        </div>
+                                    )}
+
                                     <div className="space-y-4">
-                                        {communityPosts.map(post => {
+                                        {communityPosts
+                                            .filter(post => !filterAuthor || post.authorName === filterAuthor)
+                                            .map(post => {
                                                 let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
                                                 if (post.category === '생활지도팁') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
                                                 else if (post.category === '수업팁') badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
@@ -12435,7 +12454,13 @@ const firebaseConfig = {
                                                         <div className="flex items-center justify-between pt-3 border-t border-slate-50">
                                                             <div className="flex items-center gap-2">
                                                                 <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs">👤</div>
-                                                                <span className="text-xs font-bold text-slate-500">{post.authorName} 선생님</span>
+                                                                <span 
+                                                                    className="text-xs font-bold text-slate-500 hover:text-indigo-600 hover:underline cursor-pointer transition-colors"
+                                                                    onClick={(e) => { e.stopPropagation(); setFilterAuthor(post.authorName); }}
+                                                                    title="작성자 글 모아보기"
+                                                                >
+                                                                    {post.authorName} 선생님
+                                                                </span>
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 <button 
@@ -12450,7 +12475,7 @@ const firebaseConfig = {
                                                                     className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${likedPosts.includes(post.id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
                                                                 >
                                                                     <Icon d={PATHS.heart} size={14} className={likedPosts.includes(post.id) ? "fill-current" : ""} />
-                                                                    <span className="text-xs font-bold">{post.likes || 0}</span>
+                                                                    <span className="text-xs font-bold">{post.likes ? post.likes.length : 0}</span>
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -12461,15 +12486,29 @@ const firebaseConfig = {
                                                                     {loadingComments ? (
                                                                         <div className="text-center text-xs text-slate-400 py-2"><Icon d={PATHS.spinner} className="animate-spin inline mr-1"/> 로딩 중...</div>
                                                                     ) : comments.length > 0 ? (
-                                                                        comments.map(comment => (
-                                                                            <div key={comment.id} className="bg-slate-50 p-2.5 rounded-xl text-xs border border-slate-100">
-                                                                                <div className="flex justify-between items-center mb-1">
-                                                                                    <span className="font-bold text-slate-700">{comment.authorName}</span>
-                                                                                    <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
+                                                                        comments.map(comment => {
+                                                                            const isMyComment = firebase.auth().currentUser?.uid === comment.uid;
+                                                                            return (
+                                                                                <div key={comment.id} className="bg-slate-50 p-2.5 rounded-xl text-xs border border-slate-100 group/comment">
+                                                                                    <div className="flex justify-between items-center mb-1">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="font-bold text-slate-700">{comment.author || comment.authorName}</span>
+                                                                                            <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
+                                                                                        </div>
+                                                                                        {(isAdmin || isMyComment) && (
+                                                                                            <button 
+                                                                                                onClick={(e) => { e.stopPropagation(); handleDeleteComment(post.id, comment.id, comment.uid); }}
+                                                                                                className="text-slate-300 hover:text-rose-500 p-1 rounded-full hover:bg-rose-50 transition-colors opacity-0 group-hover/comment:opacity-100"
+                                                                                                title="삭제"
+                                                                                            >
+                                                                                                <Icon d={PATHS.trash} size={12} />
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
                                                                                 </div>
-                                                                                <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
-                                                                            </div>
-                                                                        ))
+                                                                            );
+                                                                        })
                                                                     ) : (
                                                                         <div className="text-center text-xs text-slate-400 py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">첫 번째 댓글을 남겨보세요!</div>
                                                                     )}
@@ -12512,6 +12551,14 @@ const firebaseConfig = {
                                                 </div>
                                             </div>
                                         ))}
+
+                                        {filterAuthor && communityPosts.filter(p => p.authorName === filterAuthor).length === 0 && !isLoadingPosts && (
+                                            <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                                <div className="text-4xl mb-2 opacity-50">🔍</div>
+                                                <p className="text-sm font-bold">불러온 글 중에 '{filterAuthor}' 선생님의 글이 없습니다.</p>
+                                                <p className="text-xs mt-1">아래 '이전 꿀팁 더 보기'를 눌러 더 찾아보세요.</p>
+                                            </div>
+                                        )}
 
                                         {communityPosts.length === 0 && !isLoadingPosts && (
                                             <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
