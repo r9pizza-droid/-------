@@ -8722,6 +8722,11 @@ const firebaseConfig = {
                             <p className="mb-2">게시판은 <strong>[온라인 전용]</strong> 메뉴입니다.</p>
                             <p className="text-xs">인터넷(Wi-Fi)이 연결된 상태에서만 글을 읽고 쓸 수 있습니다.</p>
                         </div>
+                        <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
+                            <h4 className="font-bold text-rose-700 mb-2 flex items-center gap-2">🔔 알림 기능</h4>
+                            <p className="mb-2">내 글에 <strong>좋아요</strong>나 <strong>댓글</strong>이 달리면 알림을 받을 수 있습니다.</p>
+                            <p className="text-xs">우측 상단의 종 모양 아이콘을 눌러 확인해보세요.</p>
+                        </div>
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                             <h4 className="font-bold text-slate-700 mb-2 flex items-center gap-2">📸 ImgBB 사진 연동 (선택)</h4>
                             <p className="mb-2">게시글에 사진을 포함하거나 프로필 사진을 연동하려면 ImgBB 설정이 필요합니다.</p>
@@ -8787,6 +8792,86 @@ const firebaseConfig = {
                     return () => unsubscribe();
                 } catch (e) {}
             }, [isLocalMode]);
+
+            // [New] 알림 구독 및 처리 로직
+            useEffect(() => {
+                if (!sharedDb) return;
+                const unsubscribeAuth = firebase.auth().onAuthStateChanged(user => {
+                    if (user) {
+                        const unsubscribeNoti = sharedDb.collection('notifications')
+                            .where('targetUid', '==', user.uid)
+                            .orderBy('createdAt', 'desc')
+                            .limit(50)
+                            .onSnapshot(snapshot => {
+                                const notis = snapshot.docs.map(doc => ({
+                                    id: doc.id,
+                                    ...doc.data(),
+                                    createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
+                                }));
+                                setNotifications(notis);
+                            }, err => console.error("알림 동기화 오류:", err));
+                        return () => unsubscribeNoti();
+                    } else {
+                        setNotifications([]);
+                    }
+                });
+                return () => unsubscribeAuth();
+            }, [sharedDb]);
+
+            const handleReadNotification = async (noti) => {
+                if (!noti.isRead) {
+                    try {
+                        await sharedDb.collection('notifications').doc(noti.id).update({ isRead: true });
+                    } catch (e) { console.error(e); }
+                }
+            };
+
+            const markAllRead = async () => {
+                const unread = notifications.filter(n => !n.isRead);
+                if (unread.length === 0) return;
+                const batch = sharedDb.batch();
+                unread.forEach(n => {
+                    const ref = sharedDb.collection('notifications').doc(n.id);
+                    batch.update(ref, { isRead: true });
+                });
+                try {
+                    await batch.commit();
+                    setToastMessage("모두 읽음 처리되었습니다.");
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("처리 실패: " + e.message);
+                }
+            };
+
+            const handleDeleteNotification = async (e, notiId) => {
+                e.stopPropagation();
+                if (!confirm("알림을 삭제하시겠습니까?")) return;
+                try {
+                    await sharedDb.collection('notifications').doc(notiId).delete();
+                    setToastMessage("알림이 삭제되었습니다.");
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("삭제 실패: " + e.message);
+                }
+            };
+
+            const handleDeleteReadNotifications = async () => {
+                const readNotis = notifications.filter(n => n.isRead);
+                if (readNotis.length === 0) return;
+                if (!confirm(`읽은 알림 ${readNotis.length}개를 모두 삭제하시겠습니까?`)) return;
+                const batch = sharedDb.batch();
+                readNotis.forEach(n => {
+                    const ref = sharedDb.collection('notifications').doc(n.id);
+                    batch.delete(ref);
+                });
+                try {
+                    await batch.commit();
+                    setToastMessage("읽은 알림이 모두 삭제되었습니다.");
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("삭제 실패: " + e.message);
+                }
+            };
 
             // [New] Community Board States
             const [communityPosts, setCommunityPosts] = useState([]);
@@ -12053,14 +12138,17 @@ const firebaseConfig = {
                         <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fade-in flex flex-col max-h-96">
                             <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                                 <span className="text-xs font-bold text-slate-600">알림</span>
-                                {unreadCount > 0 && <button onClick={markAllRead} className="text-[10px] text-indigo-500 hover:underline">모두 읽음</button>}
+                                <div className="flex gap-2">
+                                    {unreadCount > 0 && <button onClick={markAllRead} className="text-[10px] text-indigo-500 hover:underline">모두 읽음</button>}
+                                    {notifications.some(n => n.isRead) && <button onClick={handleDeleteReadNotifications} className="text-[10px] text-slate-400 hover:text-rose-500 hover:underline">읽은 알림 삭제</button>}
+                                </div>
                             </div>
                             <div className="overflow-y-auto custom-scroll flex-1">
                                 {notifications.length > 0 ? notifications.map(noti => (
-                                    <div key={noti.id} onClick={() => handleReadNotification(noti)} className={`p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors ${!noti.isRead ? 'bg-indigo-50/30' : ''}`}>
+                                    <div key={noti.id} onClick={() => handleReadNotification(noti)} className={`p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors ${!noti.isRead ? 'bg-indigo-50/30' : ''} group relative`}>
                                         <div className="flex items-start gap-2">
                                             <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${!noti.isRead ? 'bg-rose-500' : 'bg-slate-300'}`}></div>
-                                            <div className="flex-1">
+                                            <div className="flex-1 pr-4">
                                                 <p className="text-xs text-slate-700 leading-snug">
                                                     <span className="font-bold">{noti.senderName}</span>님이 
                                                     <span className="font-bold text-indigo-600"> '{noti.postTitle}'</span>에 
@@ -12069,6 +12157,13 @@ const firebaseConfig = {
                                                 <span className="text-[10px] text-slate-400 mt-1 block">{dayjs(noti.createdAt).format('MM.DD HH:mm')}</span>
                                             </div>
                                         </div>
+                                        <button 
+                                            onClick={(e) => handleDeleteNotification(e, noti.id)}
+                                            className="absolute top-2 right-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                            title="삭제"
+                                        >
+                                            <Icon d={PATHS.x} size={12} />
+                                        </button>
                                     </div>
                                 )) : (
                                     <div className="p-8 text-center text-slate-400 text-xs">새로운 알림이 없습니다.</div>
