@@ -12399,11 +12399,6 @@ const firebaseConfig = {
                                                 else if (post.category === '업무팁') badgeColor = "bg-green-50 text-green-600 border-green-100";
                                                 else if (post.category === '기타(잡담)') badgeColor = "bg-amber-50 text-amber-600 border-amber-100";
 
-                                                // [New] 좋아요 상태 및 개수 계산 (UID 노출 방지)
-                                                const currentUid = firebase.auth().currentUser?.uid;
-                                                const isLiked = (currentUid && post.likes && post.likes.includes(currentUid)) || likedPosts.includes(post.id);
-                                                const likeCount = post.likes ? post.likes.length : 0;
-
                                                 return (
                                                     <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group">
                                                         <div className="flex justify-between items-start mb-2">
@@ -12452,10 +12447,10 @@ const firebaseConfig = {
                                                                 </button>
                                                                 <button 
                                                                     onClick={(e) => { e.stopPropagation(); handleLikePost(post.id); }}
-                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${isLiked ? 'text-rose-500 bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
+                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${likedPosts.includes(post.id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
                                                                 >
-                                                                    <Icon d={PATHS.heart} size={14} className={isLiked ? "fill-current" : ""} />
-                                                                    <span className="text-xs font-bold">{likeCount}</span>
+                                                                    <Icon d={PATHS.heart} size={14} className={likedPosts.includes(post.id) ? "fill-current" : ""} />
+                                                                    <span className="text-xs font-bold">{post.likes || 0}</span>
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -12466,28 +12461,15 @@ const firebaseConfig = {
                                                                     {loadingComments ? (
                                                                         <div className="text-center text-xs text-slate-400 py-2"><Icon d={PATHS.spinner} className="animate-spin inline mr-1"/> 로딩 중...</div>
                                                                     ) : comments.length > 0 ? (
-                                                                        comments.map(comment => {
-                                                                            const currentUid = firebase.auth().currentUser?.uid;
-                                                                            const isAuthor = currentUid && comment.uid === currentUid;
-                                                                            const canDelete = isAdmin || isAuthor;
-
-                                                                            return (
-                                                                                <div key={comment.id} className="bg-slate-50 p-2.5 rounded-xl text-xs border border-slate-100 group/comment">
-                                                                                    <div className="flex justify-between items-center mb-1">
-                                                                                        <div className="flex items-center gap-2">
-                                                                                            <span className="font-bold text-slate-700">{comment.author || comment.authorName}</span>
-                                                                                            <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
-                                                                                        </div>
-                                                                                        {canDelete && (
-                                                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteComment(post.id, comment.id, comment.uid); }} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/comment:opacity-100 transition-opacity p-1" title="삭제">
-                                                                                                <Icon d={PATHS.trash} size={12} />
-                                                                                            </button>
-                                                                                        )}
-                                                                                    </div>
-                                                                                    <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
+                                                                        comments.map(comment => (
+                                                                            <div key={comment.id} className="bg-slate-50 p-2.5 rounded-xl text-xs border border-slate-100">
+                                                                                <div className="flex justify-between items-center mb-1">
+                                                                                    <span className="font-bold text-slate-700">{comment.authorName}</span>
+                                                                                    <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
                                                                                 </div>
-                                                                            );
-                                                                        })
+                                                                                <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
+                                                                            </div>
+                                                                        ))
                                                                     ) : (
                                                                         <div className="text-center text-xs text-slate-400 py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">첫 번째 댓글을 남겨보세요!</div>
                                                                     )}
