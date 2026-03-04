@@ -8755,15 +8755,22 @@ const firebaseConfig = {
         let sharedApp;
         let sharedDb;
         try {
-            if (!firebase.apps.some(app => app.name === "CommunityApp")) {
-                sharedApp = firebase.initializeApp(sharedFirebaseConfig, "CommunityApp");
-            } else {
-                sharedApp = firebase.app("CommunityApp");
-            }
-            sharedDb = sharedApp.firestore();
-        } catch (e) {
-            console.error("Shared DB Init Failed:", e);
+        // 1. 이미 초기화된 앱이 있는지 확인합니다.
+         if (!firebase.apps.length) {
+        // 2. 이름을 넣지 않고 초기화하여 '기본 앱([DEFAULT])'으로 만듭니다.
+        sharedApp = firebase.initializeApp(sharedFirebaseConfig);
+        } else {
+        // 3. 이미 있다면 기본 앱을 그대로 가져옵니다.
+        sharedApp = firebase.app();
         }
+    
+    // 4. 게시판에서 사용할 데이터베이스(Firestore)를 연결합니다.
+    sharedDb = sharedApp.firestore();
+    
+    console.log("✅ 게시판 앱 서버 연결 성공!");
+} catch (e) {
+    console.error("❌ 게시판 앱 연결 실패:", e);
+}
 
         const App = () => {
             // 🔔 [알림 기능] 상태 및 로직 시작
