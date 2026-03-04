@@ -8505,7 +8505,7 @@ const firebaseConfig = {
                 </BaseModal>
             );
         };
-        const PostModal = ({ isOpen, onClose, onCreate }) => {
+        const PostModal = ({ isOpen, onClose, onSave, initialPost }) => {
             const [category, setCategory] = useState('생활지도팁');
             const [title, setTitle] = useState("");
             const [authorName, setAuthorName] = useState("");
@@ -8514,26 +8514,34 @@ const firebaseConfig = {
 
             useEffect(() => {
                 if (isOpen) {
-                    setCategory('생활지도팁');
-                    setTitle("");
-                    setAuthorName("");
-                    setContent("");
-                    setPostPassword("");
+                    if (initialPost) {
+                        setCategory(initialPost.category);
+                        setTitle(initialPost.title);
+                        setAuthorName(initialPost.authorName);
+                        setContent(initialPost.content);
+                        setPostPassword(initialPost.postPassword);
+                    } else {
+                        setCategory('생활지도팁');
+                        setTitle("");
+                        setAuthorName("");
+                        setContent("");
+                        setPostPassword("");
+                    }
                 }
-            }, [isOpen]);
+            }, [isOpen, initialPost]);
 
             const handleSubmit = () => {
                 if (!title.trim() || !authorName.trim() || !content.trim() || !postPassword.trim()) {
                     alert("모든 항목을 입력해주세요.");
                     return;
                 }
-                onCreate(title, content, authorName, category, postPassword);
+                onSave(title, content, authorName, category, postPassword);
             };
 
             if (!isOpen) return null;
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="새 꿀팁 쓰기" icon={PATHS.edit}>
+                <BaseModal isOpen={isOpen} onClose={onClose} title={initialPost ? "게시글 수정" : "새 꿀팁 쓰기"} icon={PATHS.edit}>
                     <div className="space-y-4">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-500">카테고리</label>
@@ -8567,7 +8575,7 @@ const firebaseConfig = {
                         </div>
                         <div className="flex gap-2 pt-2">
                             <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">취소</Btn>
-                            <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">등록</Btn>
+                            <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">{initialPost ? "수정" : "등록"}</Btn>
                         </div>
                     </div>
                 </BaseModal>
@@ -8636,7 +8644,7 @@ const firebaseConfig = {
 
             const ADMIN_UID = 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2';
             const [isAdmin, setIsAdmin] = useState(false);
-            const [postPassword, setPostPassword] = useState(""); // 비밀번호 저장용 메모장
+            const [editingPost, setEditingPost] = useState(null);
             const [commentAuthor, setCommentAuthor] = useState(() => localStorage.getItem('cls_comment_author') || "");
             const [commentContent, setCommentContent] = useState("");
 
@@ -8665,48 +8673,80 @@ const firebaseConfig = {
                 }
             });
 
-            const fetchPosts = async () => {
-                if (!sharedDb) return;
-                setIsLoadingPosts(true);
-                try {
-                    const snapshot = await sharedDb.collection('community')
-                        .orderBy('createdAt', 'desc')
-                        .limit(10)
-                        .get();
-                    
-                    const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setCommunityPosts(posts);
-                    setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
-                    setHasMorePosts(snapshot.docs.length === 10);
-                } catch (e) {
-                    console.error(e);
-                    setToastMessage("게시글 불러오기 실패: " + e.message);
-                } finally {
-                    setIsLoadingPosts(false);
-                }
-            };
+            // 🔄 1. 실시간 게시글 동기화 파이프 연결 (onSnapshot)
+    useEffect(() => {
+        // 데이터베이스(sharedDb)가 연결되어 있을 때만 실행
+        if (!sharedDb) return;
+        
+        setIsLoadingPosts(true);
 
-            const loadMorePosts = async () => {
-                if (!sharedDb || !lastPostDoc) return;
-                setIsLoadingPosts(true);
-                try {
-                    const snapshot = await sharedDb.collection('community')
-                        .orderBy('createdAt', 'desc')
-                        .startAfter(lastPostDoc)
-                        .limit(10)
-                        .get();
-
-                    const newPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setCommunityPosts(posts => [...posts, ...newPosts]);
+        // onSnapshot: 데이터가 바뀔 때마다 자동으로 화면을 새로고침해줍니다.
+        const unsubscribe = sharedDb.collection('community')
+            .orderBy('createdAt', 'desc')
+            .limit(30)
+            .onSnapshot(snapshot => {
+                const posts = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return { 
+                        id: doc.id, 
+                        ...data,
+                        createdAt: data.createdAt ? data.createdAt.toDate() : new Date() 
+                    };
+                });
+                
+                setCommunityPosts(posts); // 🌟 여기서 화면이 실시간으로 바뀝니다!
+                
+                if (snapshot.docs.length > 0) {
                     setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
-                    setHasMorePosts(snapshot.docs.length === 10);
-                } catch (e) {
-                    console.error(e);
-                    setToastMessage("추가 게시글 불러오기 실패: " + e.message);
-                } finally {
-                    setIsLoadingPosts(false);
                 }
-            };
+                setHasMorePosts(snapshot.docs.length === 30);
+                setIsLoadingPosts(false);
+            }, error => {
+                console.error(error);
+                setToastMessage("실시간 동기화 실패: " + error.message);
+                setIsLoadingPosts(false);
+            });
+
+        // 다른 화면으로 가거나 앱이 꺼질 때 파이프를 끊습니다. (메모리 절약)
+        return () => unsubscribe();
+    }, [sharedDb]);
+
+    // ➕ 2. 옛날 글 더보기 함수 (기존과 비슷하지만 중복 방지 로직 추가)
+    const loadMorePosts = async () => {
+        if (!sharedDb || !lastPostDoc || !hasMorePosts) return;
+        setIsLoadingPosts(true);
+        try {
+            const snapshot = await sharedDb.collection('community')
+                .orderBy('createdAt', 'desc')
+                .startAfter(lastPostDoc)
+                .limit(30)
+                .get();
+
+            const newPosts = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return { 
+                    id: doc.id, 
+                    ...data,
+                    createdAt: data.createdAt ? data.createdAt.toDate() : new Date() 
+                };
+            });
+            
+            // 기존 실시간 글 목록과 옛날 글 목록을 합칩니다.
+            setCommunityPosts(prev => {
+                const existingIds = new Set(prev.map(p => p.id));
+                const filteredNewPosts = newPosts.filter(p => !existingIds.has(p.id));
+                return [...prev, ...filteredNewPosts];
+            });
+            
+            setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
+            setHasMorePosts(snapshot.docs.length === 30);
+        } catch (e) {
+            console.error(e);
+            setToastMessage("더 불러오기 실패: " + e.message);
+        } finally {
+            setIsLoadingPosts(false);
+        }
+    };
 
             // [Service Worker Update Logic] 
     const [newVersionAvailable, setNewVersionAvailable] = useState(false); 
@@ -8930,26 +8970,52 @@ const firebaseConfig = {
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false });
 
             // [New] Community Logic
-            const handleCreatePost = async (title, content, authorName, category) => {
+            const handleSavePost = async (title, content, authorName, category, password) => {
                 try {
-                    await sharedDb.collection('community').add({
-                title,
-                content,
-                authorName,
-                category,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                postPassword: postPassword, // 기존에 추가한 비밀번호
-                likes: [],     // ❤️ 좋아요 숫자를 저장할 빈 배열 (추가)
-                comments: []   // 💬 댓글을 저장할 빈 배열 (추가)
-            });
-                    setToastMessage("게시글이 등록되었습니다.");
+                     if (editingPost) {
+                        await sharedDb.collection('community').doc(editingPost.id).update({
+                            title, content, authorName, category, postPassword: password
+                        });
+                        setToastMessage("게시글이 수정되었습니다.");
+                        setCommunityPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, title, content, authorName, category, postPassword: password } : p));
+                        setEditingPost(null);
+                    } else {
+                        await sharedDb.collection('community').add({
+                            title,
+                            content,
+                            authorName,
+                            category,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            postPassword: password,
+                            likes: [],
+                            comments: []
+                        });
+                        setToastMessage("게시글이 등록되었습니다.");
+                        fetchPosts();
+                    }
                     setShowPostModal(false);
-                    fetchPosts();
                 } catch (e) {
                     console.error(e);
-                    setToastMessage("글쓰기 실패: " + e.message);
+                    setToastMessage((editingPost ? "수정" : "글쓰기") + " 실패: " + e.message);
                 }
             };
+
+    const handleEditPost = (post) => {
+        if (isAdmin) {
+            setEditingPost(post);
+            setShowPostModal(true);
+        } else {
+            const inputPw = prompt("게시글 비밀번호 4자리를 입력하세요.");
+            if (!inputPw) return;
+            if (inputPw !== post.postPassword) {
+                alert("비밀번호가 일치하지 않습니다.");
+                return;
+            }
+            setEditingPost(post);
+            setShowPostModal(true);
+        }
+    };      
+      
     const handleDeletePost = async (post) => {
         if (isAdmin) {
             if (!confirm("관리자 권한으로 이 글을 삭제하시겠습니까?")) return;
@@ -8980,20 +9046,32 @@ const firebaseConfig = {
 
         const uid = firebase.auth().currentUser?.uid || "anonymous";
         const currentLikes = post.likes || [];
-        const isLiked = likedPosts.includes(postId);
         
-        const newLikedPosts = isLiked 
-            ? likedPosts.filter(id => id !== postId)
-            : [...likedPosts, postId];
+        // 좋아요 상태 판단 (서버 데이터 우선, 없으면 로컬 스토리지 확인)
+        const isLikedServer = uid !== "anonymous" && currentLikes.includes(uid);
+        const isLikedLocal = likedPosts.includes(postId);
+        const isLiked = isLikedServer || isLikedLocal;
+        
+        let newLikes = [...currentLikes];
+        let newLikedPosts = [...likedPosts];
+
+        if (isLiked) {
+            // [취소] 이미 좋아요를 눌렀다면 제거
+            if (uid === "anonymous") {
+                const index = newLikes.indexOf("anonymous");
+                if (index > -1) newLikes.splice(index, 1);
+            } else {
+                newLikes = newLikes.filter(id => id !== uid);
+            }
+            newLikedPosts = newLikedPosts.filter(id => id !== postId);
+        } else {
+            // [추가] 좋아요를 누르지 않았다면 추가
+            newLikes.push(uid);
+            if (!newLikedPosts.includes(postId)) newLikedPosts.push(postId);
+        }
+
         setLikedPosts(newLikedPosts);
         localStorage.setItem('cls_liked_posts', JSON.stringify(newLikedPosts));
-
-        let newLikes = [...currentLikes];
-        if (isLiked) {
-            newLikes = newLikes.filter(id => id !== uid);
-        } else {
-            if (!newLikes.includes(uid)) newLikes.push(uid);
-        }
 
         // 로컬 화면 즉시 반영 (빠른 피드백)
         setCommunityPosts(prev => prev.map(p => 
@@ -9004,7 +9082,6 @@ const firebaseConfig = {
             await sharedDb.collection('community').doc(postId).update({ likes: newLikes });
         } catch (e) { 
             console.error(e); 
-            // 실패 시 롤백
         }
     };
 
@@ -12166,6 +12243,13 @@ const firebaseConfig = {
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-[10px] text-slate-400 font-medium">{dayjs(post.createdAt).format('YYYY.MM.DD HH:mm')}</span>
                                                                 <button 
+                                                                    onClick={(e) => { e.stopPropagation(); handleEditPost(post); }}
+                                                                    className="text-slate-300 hover:text-indigo-500 transition-colors p-1 rounded-full hover:bg-indigo-50"
+                                                                    title="수정"
+                                                                >
+                                                                    <Icon d={PATHS.edit} size={14} />
+                                                                </button>
+                                                                <button 
                                                                     onClick={(e) => { e.stopPropagation(); handleDeletePost(post); }}
                                                                     className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded-full hover:bg-rose-50"
                                                                     title="삭제"
@@ -12701,7 +12785,7 @@ const firebaseConfig = {
                     {showGlobalRecord && (
                         <GlobalRecordModal isOpen={showGlobalRecord} onClose={()=>setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} appConfig={appConfig} db={db} appId={appId} />
                     )}
-                    {showPostModal && <PostModal isOpen={showPostModal} onClose={() => setShowPostModal(false)} onCreate={handleCreatePost} />}
+                    {showPostModal && <PostModal isOpen={showPostModal} onClose={() => { setShowPostModal(false); setEditingPost(null); }} onSave={handleSavePost} initialPost={editingPost} />}
                     <CommunityHelpModal isOpen={showCommunityHelp} onClose={() => setShowCommunityHelp(false)} />
                     <AiSecurityCheckModal isOpen={aiCheckState.isOpen} onClose={handleAiCheckCancel} prompt={aiCheckState.prompt} onConfirm={handleAiCheckConfirm} />
                     {appConfig.showFloatingButton !== false && (
