@@ -356,7 +356,8 @@
             speaker: "M11 5L6 9H2v6h4l5 4V5z M19.07 4.93a10 10 0 0 1 0 14.14 M15.54 8.46a5 5 0 0 1 0 7.07",
             mute: "M11 5L6 9H2v6h4l5 4V5z M23 9l-6 6 M17 9l6 6",
             play: "M5 3l14 9-14 9V3z",
-            history: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
+            history: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
+            message: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
         };
 
         const Icon = ({ d, size = 20, className = "" }) => (
@@ -7745,7 +7746,7 @@
                 if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
 
                 try {
-                    if (!firebase.apps.length) firebase.initializeApp(config);
+                    if (!firebase.apps.some(app => app.name === '[DEFAULT]')) firebase.initializeApp(config);
                     await firebase.auth().signInWithEmailAndPassword(authId, authPw); 
                     if (rememberMe) { localStorage.setItem('cls_fb_id', authId); localStorage.setItem('cls_fb_pw', authPw); localStorage.setItem('cls_fb_config', inputConfig); } 
                     else { localStorage.removeItem('cls_fb_id'); localStorage.removeItem('cls_fb_pw'); localStorage.removeItem('cls_fb_config'); }
@@ -7765,7 +7766,7 @@
 
                 setIsTesting(true);
                 try {
-                    if (!firebase.apps.length) firebase.initializeApp(config);
+                    if (!firebase.apps.some(app => app.name === '[DEFAULT]')) firebase.initializeApp(config);
                     await firebase.auth().signInWithEmailAndPassword(authId, authPw);
                     showToast("✅ 연결 테스트 성공! (로그인 확인됨)");
                 } catch (e) {
@@ -8965,6 +8966,78 @@ const firebaseConfig = {
                 }
             };
 
+            // [New] Comment Logic
+            const [expandedPostId, setExpandedPostId] = useState(null);
+            const [comments, setComments] = useState([]);
+            const [commentAuthor, setCommentAuthor] = useState(() => localStorage.getItem('cls_comment_author') || "");
+            const [commentContent, setCommentContent] = useState("");
+            const [loadingComments, setLoadingComments] = useState(false);
+
+            const toggleComments = async (postId) => {
+                if (expandedPostId === postId) {
+                    setExpandedPostId(null);
+                    setComments([]);
+                    return;
+                }
+                
+                setExpandedPostId(postId);
+                setLoadingComments(true);
+                setComments([]);
+                try {
+                    const snapshot = await sharedDb.collection('community').doc(postId).collection('comments')
+                        .orderBy('createdAt', 'asc')
+                        .get();
+                    const loadedComments = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return { 
+                            id: doc.id, 
+                            ...data,
+                            createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
+                        };
+                    });
+                    setComments(loadedComments);
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("댓글 불러오기 실패");
+                } finally {
+                    setLoadingComments(false);
+                }
+            };
+
+            const handleAddComment = async (postId) => {
+                if (!commentContent.trim() || !commentAuthor.trim()) {
+                    setToastMessage("이름과 내용을 모두 입력해주세요.");
+                    return;
+                }
+                localStorage.setItem('cls_comment_author', commentAuthor);
+                try {
+                    await sharedDb.collection('community').doc(postId).collection('comments').add({
+                        authorName: commentAuthor,
+                        content: commentContent,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    setCommentContent("");
+                    
+                    // Refresh comments
+                    const snapshot = await sharedDb.collection('community').doc(postId).collection('comments')
+                        .orderBy('createdAt', 'asc')
+                        .get();
+                    const loadedComments = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return { 
+                            id: doc.id, 
+                            ...data,
+                            createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
+                        };
+                    });
+                    setComments(loadedComments);
+                    setToastMessage("댓글이 등록되었습니다.");
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("댓글 등록 실패: " + e.message);
+                }
+            };
+
             useEffect(() => {
                 if (mode === 'community' && sharedDb) {
                     fetchPosts();
@@ -10008,7 +10081,7 @@ const firebaseConfig = {
                 if (savedConfig) {
                     try {
                         const config = JSON.parse(savedConfig);
-                        if (!firebase.apps.length) firebase.initializeApp(config);
+                        if (!firebase.apps.some(app => app.name === '[DEFAULT]')) firebase.initializeApp(config);
                         
                         const firestore = firebase.firestore();
                         setDb(firestore);
@@ -12043,14 +12116,7 @@ const firebaseConfig = {
                                     </div>
 
                                     <div className="space-y-4">
-                                        {communityPosts.length === 0 && !isLoadingPosts ? (
-                                            <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                                                <div className="text-4xl mb-2 opacity-50">📭</div>
-                                                <p className="text-sm font-bold">아직 등록된 꿀팁이 없습니다.</p>
-                                                <p className="text-xs mt-1">첫 번째 꿀팁을 공유해보세요!</p>
-                                            </div>
-                                        ) : (
-                                            communityPosts.map(post => {
+                                        {communityPosts.map(post => {
                                                 let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
                                                 if (post.category === '생활지도팁') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
                                                 else if (post.category === '수업팁') badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
@@ -12069,19 +12135,89 @@ const firebaseConfig = {
                                                                 <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs">👤</div>
                                                                 <span className="text-xs font-bold text-slate-500">{post.authorName} 선생님</span>
                                                             </div>
-                                                            <button 
-                                                                onClick={(e) => { e.stopPropagation(); handleLikePost(post.id); }}
-                                                                className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${likedPosts.includes(post.id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
-                                                            >
-                                                                <Icon d={PATHS.heart} size={14} className={likedPosts.includes(post.id) ? "fill-current" : ""} />
-                                                                <span className="text-xs font-bold">{post.likes || 0}</span>
-                                                            </button>
+                                                            <div className="flex items-center gap-2">
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); toggleComments(post.id); }}
+                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${expandedPostId === post.id ? 'text-indigo-500 bg-indigo-50' : 'text-slate-400 hover:text-indigo-500 hover:bg-indigo-50'}`}
+                                                                >
+                                                                    <Icon d={PATHS.message} size={14} />
+                                                                    <span className="text-xs font-bold">댓글</span>
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); handleLikePost(post.id); }}
+                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${likedPosts.includes(post.id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
+                                                                >
+                                                                    <Icon d={PATHS.heart} size={14} className={likedPosts.includes(post.id) ? "fill-current" : ""} />
+                                                                    <span className="text-xs font-bold">{post.likes || 0}</span>
+                                                                </button>
+                                                            </div>
                                                         </div>
+                                                        
+                                                        {expandedPostId === post.id && (
+                                                            <div className="mt-3 pt-3 border-t border-slate-100 animate-fade-in cursor-default" onClick={e => e.stopPropagation()}>
+                                                                <div className="space-y-2 mb-3 max-h-60 overflow-y-auto custom-scroll pr-1">
+                                                                    {loadingComments ? (
+                                                                        <div className="text-center text-xs text-slate-400 py-2"><Icon d={PATHS.spinner} className="animate-spin inline mr-1"/> 로딩 중...</div>
+                                                                    ) : comments.length > 0 ? (
+                                                                        comments.map(comment => (
+                                                                            <div key={comment.id} className="bg-slate-50 p-2.5 rounded-xl text-xs border border-slate-100">
+                                                                                <div className="flex justify-between items-center mb-1">
+                                                                                    <span className="font-bold text-slate-700">{comment.authorName}</span>
+                                                                                    <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
+                                                                                </div>
+                                                                                <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="text-center text-xs text-slate-400 py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">첫 번째 댓글을 남겨보세요!</div>
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                <div className="flex flex-col gap-2">
+                                                                    <div className="flex gap-2">
+                                                                        <input value={commentAuthor} onChange={e => setCommentAuthor(e.target.value)} placeholder="이름" className="w-20 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 bg-white" />
+                                                                        <input value={commentContent} onChange={e => setCommentContent(e.target.value)} placeholder="댓글을 입력하세요..." className="flex-1 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 bg-white" onKeyDown={e => { if(e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddComment(post.id); }} />
+                                                                        <button onClick={() => handleAddComment(post.id)} className="px-3 bg-indigo-500 text-white rounded-xl text-xs font-bold hover:bg-indigo-600 shadow-sm whitespace-nowrap">등록</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
-                                            })
+                                            })}
+                                        
+                                        {isLoadingPosts && Array.from({ length: communityPosts.length === 0 ? 3 : 1 }).map((_, i) => (
+                                            <div key={`skeleton-${i}`} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-pulse">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="h-5 w-16 bg-slate-100 rounded-lg"></div>
+                                                    <div className="h-3 w-24 bg-slate-100 rounded"></div>
+                                                </div>
+                                                <div className="h-6 w-3/4 bg-slate-100 rounded mb-3"></div>
+                                                <div className="space-y-2 mb-4">
+                                                    <div className="h-3 w-full bg-slate-100 rounded"></div>
+                                                    <div className="h-3 w-full bg-slate-100 rounded"></div>
+                                                    <div className="h-3 w-2/3 bg-slate-100 rounded"></div>
+                                                </div>
+                                                <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 rounded-full bg-slate-100"></div>
+                                                        <div className="h-3 w-20 bg-slate-100 rounded"></div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <div className="h-6 w-12 bg-slate-100 rounded-lg"></div>
+                                                        <div className="h-6 w-12 bg-slate-100 rounded-lg"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {communityPosts.length === 0 && !isLoadingPosts && (
+                                            <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                                <div className="text-4xl mb-2 opacity-50">📭</div>
+                                                <p className="text-sm font-bold">아직 등록된 꿀팁이 없습니다.</p>
+                                                <p className="text-xs mt-1">첫 번째 꿀팁을 공유해보세요!</p>
+                                            </div>
                                         )}
-                                        {isLoadingPosts && <div className="py-10 flex justify-center"><Icon d={PATHS.spinner} className="animate-spin text-indigo-500" size={32}/></div>}
                                     </div>
 
                                     {hasMorePosts && !isLoadingPosts && communityPosts.length > 0 && (
