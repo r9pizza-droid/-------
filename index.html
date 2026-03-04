@@ -8628,8 +8628,8 @@ const firebaseConfig = {
                     <div className="space-y-4">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-500">카테고리</label>
-                            <div className="grid grid-cols-3 gap-2">
-                                {['생활지도팁', '수업팁', '업무팁'].map(cat => (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map(cat => (
                                     <button
                                         key={cat}
                                         onClick={() => setCategory(cat)}
@@ -12342,6 +12342,7 @@ const firebaseConfig = {
                                                 if (post.category === '생활지도팁') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
                                                 else if (post.category === '수업팁') badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
                                                 else if (post.category === '업무팁') badgeColor = "bg-green-50 text-green-600 border-green-100";
+                                                else if (post.category === '기타(잡담)') badgeColor = "bg-amber-50 text-amber-600 border-amber-100";
 
                                                 return (
                                                     <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group">
