@@ -8511,6 +8511,7 @@ const firebaseConfig = {
             const [title, setTitle] = useState("");
             const [authorName, setAuthorName] = useState("");
             const [content, setContent] = useState("");
+            const [postPassword, setPostPassword] = useState("");
 
             useEffect(() => {
                 if (isOpen) {
@@ -8518,6 +8519,7 @@ const firebaseConfig = {
                     setTitle("");
                     setAuthorName("");
                     setContent("");
+                    setPostPassword("");
                 }
             }, [isOpen]);
 
@@ -8558,6 +8560,10 @@ const firebaseConfig = {
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-500">작성자</label>
                             <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="선생님 닉네임" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">비밀번호</label>
+                            <input type="password" maxLength={4} value={postPassword} onChange={(e) => setPostPassword(e.target.value.replace(/[^0-9]/g, ''))} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="비밀번호 4자리" required />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-500">내용</label>
