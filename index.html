@@ -8991,7 +8991,6 @@ const firebaseConfig = {
                             comments: []
                         });
                         setToastMessage("게시글이 등록되었습니다.");
-                        fetchPosts();
                     }
                     setShowPostModal(false);
                 } catch (e) {
@@ -9166,12 +9165,6 @@ const firebaseConfig = {
             setToastMessage("댓글 삭제 실패: " + e.message);
         }
     };
-
-            useEffect(() => {
-                if (mode === 'community' && sharedDb) {
-                    fetchPosts();
-                }
-            }, [mode]);
 
             const [editingGroupIdx, setEditingGroupIdx] = useState(null);
             const [editingGroupName, setEditingGroupName] = useState("");
