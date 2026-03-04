@@ -9100,6 +9100,9 @@ const firebaseConfig = {
             // [New] Community Logic
             const handleSavePost = async (title, content, authorName, category, password, imageUrl) => {
                 try {
+                     // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
+                     setCommentAuthor(authorName);
+
                      if (editingPost) {
                         await sharedDb.collection('community').doc(editingPost.id).update({
                             title, content, authorName, category, postPassword: password, imageUrl: imageUrl || null
@@ -9226,6 +9229,10 @@ const firebaseConfig = {
             return;
         }
         
+        // [New] 댓글 창 열 때 저장된 이름 불러오기 (이름 자동 완성)
+        const savedName = localStorage.getItem('community_authorName');
+        if (savedName) setCommentAuthor(savedName);
+
         setExpandedPostId(postId);
         setLoadingComments(true);
         try {
