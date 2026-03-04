@@ -8761,64 +8761,11 @@ const firebaseConfig = {
         }
 
         const App = () => {
-            
+            // 🔔 [알림 기능] 상태 및 로직 시작
+            const [notifications, setNotifications] = useState([]);
+            const [showNotifications, setShowNotifications] = useState(false);
+            const unreadCount = notifications.filter(n => !n.isRead).length;
             const [forceRender, setForceRender] = useState(0); // 화면 새로고침용 스위치
-            // ==========================================
-    // 🔔 [알림 기능] 상태 및 로직 시작
-    // ==========================================
-    const [notifications, setNotifications] = useState([]);
-    const [showNotifications, setShowNotifications] = useState(false);
-
-    // 안 읽은 알림 개수 계산 (에러의 원인이었던 녀석입니다!)
-    const unreadCount = notifications.filter(n => !n.isRead).length;
-
-    // 파이어베이스에서 실시간 알림 가져오기
-    useEffect(() => {
-        if (!sharedDb) return;
-        const unsubscribeAuth = firebase.auth().onAuthStateChanged(user => {
-            if (user) {
-                const unsubscribeNoti = sharedDb.collection('notifications')
-                    .where('targetUid', '==', user.uid)
-                    .orderBy('createdAt', 'desc')
-                    .limit(20)
-                    .onSnapshot(snapshot => {
-                        const list = snapshot.docs.map(doc => ({
-                            id: doc.id,
-                            ...doc.data(),
-                            createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
-                        }));
-                        setNotifications(list);
-                    });
-                return () => unsubscribeNoti();
-            } else {
-                setNotifications([]);
-            }
-        });
-        return () => unsubscribeAuth();
-    }, [sharedDb]);
-
-    // 알림 개별 읽음 처리
-    const handleReadNotification = async (noti) => {
-        if (!noti.isRead) {
-            try {
-                await sharedDb.collection('notifications').doc(noti.id).update({ isRead: true });
-            } catch (e) { console.error(e); }
-        }
-    };
-
-    // 알림 모두 읽음 처리
-    const markAllRead = async () => {
-        if (!sharedDb) return;
-        const batch = sharedDb.batch();
-        notifications.filter(n => !n.isRead).forEach(n => {
-            const ref = sharedDb.collection('notifications').doc(n.id);
-            batch.update(ref, { isRead: true });
-        });
-        try { await batch.commit(); } catch(e) { console.error(e); }
-    };
-    // ==========================================
-    // 🔔 [알림 기능] 상태 및 로직 끝
-    // ==========================================
             const CURRENT_VERSION = UPDATE_NOTES[0].version; // 무조건 json의 첫번째(최신)를 내 버전으로 인식!
             const updateDate = UPDATE_NOTES[0].date;
 
