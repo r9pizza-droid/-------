@@ -358,6 +358,7 @@
             play: "M5 3l14 9-14 9V3z",
             history: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
             message: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
+            image: "M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z",
             bell: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"
         };
 
@@ -8903,6 +8904,7 @@ const firebaseConfig = {
             const [lastPostDoc, setLastPostDoc] = useState(null);
             const [hasMorePosts, setHasMorePosts] = useState(true);
             const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+            const [postViewMode, setPostViewMode] = useState('card');
             
             const [likedPosts, setLikedPosts] = useState(() => {
                 try {
@@ -12628,6 +12630,13 @@ const firebaseConfig = {
                                         </div>
                                     )}
 
+                                    <div className="flex justify-end mb-2 px-1">
+                                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                                            <button onClick={() => setPostViewMode('card')} className={`p-1.5 rounded-md transition-all ${postViewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="카드형 보기"><Icon d={PATHS.grid} size={14} /></button>
+                                            <button onClick={() => setPostViewMode('list')} className={`p-1.5 rounded-md transition-all ${postViewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="리스트 보기"><Icon d={PATHS.list} size={14} /></button>
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-4">
                                         {communityPosts
                                             .filter(post => !filterAuthor || post.authorName === filterAuthor)
@@ -12637,6 +12646,89 @@ const firebaseConfig = {
                                                 else if (post.category === '수업팁') badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
                                                 else if (post.category === '업무팁') badgeColor = "bg-green-50 text-green-600 border-green-100";
                                                 else if (post.category === '기타(잡담)') badgeColor = "bg-amber-50 text-amber-600 border-amber-100";
+
+                                                if (postViewMode === 'list') {
+                                                    return (
+                                                        <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden">
+                                                            <div className="p-3 flex items-center gap-3" onClick={() => toggleComments(post.id)}>
+                                                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}</span>
+                                                                <div className="flex-1 min-w-0 flex items-center gap-2">
+                                                                    <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
+                                                                    {post.imageUrl && <Icon d={PATHS.image} size={12} className="text-slate-400" />}
+                                                                    {post.postPassword && <span className="text-[10px] text-slate-300">🔒</span>}
+                                                                </div>
+                                                                <div className="flex items-center gap-3 text-xs text-slate-400 shrink-0">
+                                                                    <span className="hidden sm:inline font-medium">{post.authorName}</span>
+                                                                    <span className="hidden sm:inline text-[10px]">{dayjs(post.createdAt).format('MM.DD')}</span>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <Icon d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
+                                                                        <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {expandedPostId === post.id && (
+                                                                <div className="bg-slate-50 border-t border-slate-100 p-4 cursor-default animate-fade-in" onClick={e => e.stopPropagation()}>
+                                                                    <div className="mb-4 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white p-3 rounded-xl border border-slate-200">
+                                                                        {post.content}
+                                                                        {post.imageUrl && (
+                                                                            <div className="mt-3">
+                                                                                <img src={post.imageUrl} alt="첨부" className="max-h-60 rounded-lg object-contain border border-slate-100" />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex justify-between items-center mb-4">
+                                                                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                                            <span className="font-bold">{post.authorName}</span>
+                                                                            <span className="text-slate-300">|</span>
+                                                                            <span>{dayjs(post.createdAt).format('YYYY.MM.DD HH:mm')}</span>
+                                                                        </div>
+                                                                        <div className="flex gap-2">
+                                                                            <button onClick={(e) => { e.stopPropagation(); handleEditPost(post); }} className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200 hover:border-indigo-200 transition-colors"><Icon d={PATHS.edit} size={12}/> 수정</button>
+                                                                            <button onClick={(e) => { e.stopPropagation(); handleDeletePost(post); }} className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200 hover:border-rose-200 transition-colors"><Icon d={PATHS.trash} size={12}/> 삭제</button>
+                                                                            <button onClick={(e) => { e.stopPropagation(); handleLikePost(post.id); }} className={`text-xs flex items-center gap-1 px-2 py-1 rounded border transition-colors ${likedPosts.includes(post.id) ? 'text-rose-500 font-bold bg-rose-50 border-rose-200' : 'text-slate-400 hover:text-rose-500 bg-white border-slate-200'}`}>
+                                                                                <Icon d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current" : ""} /> 좋아요 {post.likes ? post.likes.length : 0}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="space-y-2 mb-3 max-h-60 overflow-y-auto custom-scroll pr-1">
+                                                                        {loadingComments ? (
+                                                                            <div className="text-center text-xs text-slate-400 py-2"><Icon d={PATHS.spinner} className="animate-spin inline mr-1"/> 로딩 중...</div>
+                                                                        ) : comments.length > 0 ? (
+                                                                            comments.map(comment => {
+                                                                                const isMyComment = firebase.auth().currentUser?.uid === comment.uid;
+                                                                                return (
+                                                                                    <div key={comment.id} className="bg-white p-2.5 rounded-xl text-xs border border-slate-200 group/comment">
+                                                                                        <div className="flex justify-between items-center mb-1">
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <span className="font-bold text-slate-700">{comment.author || comment.authorName}</span>
+                                                                                                <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
+                                                                                            </div>
+                                                                                            {(isAdmin || isMyComment) && (
+                                                                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteComment(post.id, comment.id, comment.uid); }} className="text-slate-300 hover:text-rose-500 p-1 rounded-full hover:bg-rose-50 transition-colors opacity-0 group-hover/comment:opacity-100" title="삭제"><Icon d={PATHS.trash} size={12} /></button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
+                                                                                    </div>
+                                                                                );
+                                                                            })
+                                                                        ) : (
+                                                                            <div className="text-center text-xs text-slate-400 py-4 border border-dashed border-slate-300 rounded-xl">첫 번째 댓글을 남겨보세요!</div>
+                                                                        )}
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex gap-2">
+                                                                        <input value={commentAuthor} onChange={e => setCommentAuthor(e.target.value)} placeholder="이름" className="w-14 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 bg-white shrink-0" />
+                                                                        <input value={commentContent} onChange={e => setCommentContent(e.target.value)} placeholder="댓글..." className="flex-1 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 bg-white min-w-0" onKeyDown={e => { if(e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddComment(post.id); }} />
+                                                                        <button onClick={() => handleAddComment(post.id)} className="p-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 shadow-sm shrink-0 flex items-center justify-center"><Icon d={PATHS.send} size={16} /></button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                }
 
                                                 return (
                                                     <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group">
