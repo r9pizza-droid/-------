@@ -8505,7 +8505,6 @@ const firebaseConfig = {
                 </BaseModal>
             );
         };
-// --- [여기까지 복사] ---
         const PostModal = ({ isOpen, onClose, onCreate }) => {
             const [category, setCategory] = useState('생활지도팁');
             const [title, setTitle] = useState("");
@@ -8631,6 +8630,25 @@ const firebaseConfig = {
             const CURRENT_VERSION = UPDATE_NOTES[0].version; // 무조건 json의 첫번째(최신)를 내 버전으로 인식!
             const updateDate = UPDATE_NOTES[0].date;
 
+            const [isLocalMode, setIsLocalMode] = useState(true); 
+            const [db, setDb] = useState(null); 
+            const [appId, setAppId] = useState("");
+
+            const ADMIN_UID = 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2';
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [postPassword, setPostPassword] = useState(""); // 비밀번호 저장용 메모장
+            const [commentAuthor, setCommentAuthor] = useState(() => localStorage.getItem('cls_comment_author') || "");
+            const [commentContent, setCommentContent] = useState("");
+
+            useEffect(() => {
+                try {
+                    const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+                        setIsAdmin(!!user && user.uid === ADMIN_UID);
+                    });
+                    return () => unsubscribe();
+                } catch (e) {}
+            }, [isLocalMode]);
+
             // [New] Community Board States
             const [communityPosts, setCommunityPosts] = useState([]);
             const [showPostModal, setShowPostModal] = useState(false);
@@ -8646,6 +8664,49 @@ const firebaseConfig = {
                     return [];
                 }
             });
+
+            const fetchPosts = async () => {
+                if (!sharedDb) return;
+                setIsLoadingPosts(true);
+                try {
+                    const snapshot = await sharedDb.collection('community')
+                        .orderBy('createdAt', 'desc')
+                        .limit(10)
+                        .get();
+                    
+                    const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setCommunityPosts(posts);
+                    setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
+                    setHasMorePosts(snapshot.docs.length === 10);
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("게시글 불러오기 실패: " + e.message);
+                } finally {
+                    setIsLoadingPosts(false);
+                }
+            };
+
+            const loadMorePosts = async () => {
+                if (!sharedDb || !lastPostDoc) return;
+                setIsLoadingPosts(true);
+                try {
+                    const snapshot = await sharedDb.collection('community')
+                        .orderBy('createdAt', 'desc')
+                        .startAfter(lastPostDoc)
+                        .limit(10)
+                        .get();
+
+                    const newPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setCommunityPosts(posts => [...posts, ...newPosts]);
+                    setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
+                    setHasMorePosts(snapshot.docs.length === 10);
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("추가 게시글 불러오기 실패: " + e.message);
+                } finally {
+                    setIsLoadingPosts(false);
+                }
+            };
 
             // [Service Worker Update Logic] 
     const [newVersionAvailable, setNewVersionAvailable] = useState(false); 
@@ -8867,18 +8928,20 @@ const firebaseConfig = {
         { emoji: '📊', title: '클릭 한 번에 생기부 초안 완성', desc: '기록이 쌓이면 [AI 총평 초안] 탭을 활용해 보세요. 행발, 교과 등 자동 추천 템플릿에 맞춰 학생의 종합 의견 초안을 뚝딱 만들어줍니다.' }
     ];
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false });
-            const [isLocalMode, setIsLocalMode] = useState(true); const [db, setDb] = useState(null); const [appId, setAppId] = useState("");
 
             // [New] Community Logic
             const handleCreatePost = async (title, content, authorName, category) => {
                 try {
                     await sharedDb.collection('community').add({
-                        title,
-                        content,
-                        authorName,
-                        category,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                title,
+                content,
+                authorName,
+                category,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                postPassword: postPassword, // 기존에 추가한 비밀번호
+                likes: [],     // ❤️ 좋아요 숫자를 저장할 빈 배열 (추가)
+                comments: []   // 💬 댓글을 저장할 빈 배열 (추가)
+            });
                     setToastMessage("게시글이 등록되었습니다.");
                     setShowPostModal(false);
                     fetchPosts();
@@ -8887,204 +8950,145 @@ const firebaseConfig = {
                     setToastMessage("글쓰기 실패: " + e.message);
                 }
             };
+    const handleDeletePost = async (post) => {
+        if (isAdmin) {
+            if (!confirm("관리자 권한으로 이 글을 삭제하시겠습니까?")) return;
+        } else {
+            const inputPw = prompt("게시글 비밀번호 4자리를 입력하세요.");
+            if (!inputPw) return;
+            if (inputPw !== post.postPassword) {
+                alert("비밀번호가 일치하지 않습니다.");
+                return;
+            }
+            if (!confirm("정말 삭제하시겠습니까?")) return;
+        }
 
-            const handleDeletePost = async (post) => {
-                const adminUid = 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2';
-                const currentUser = firebase.auth().currentUser;
-                const isAdmin = currentUser && currentUser.uid === adminUid;
+        try {
+            await sharedDb.collection('community').doc(post.id).delete();
+            setToastMessage("게시글이 삭제되었습니다.");
+            setCommunityPosts(prev => prev.filter(p => p.id !== post.id)); // 화면 즉시 반영
+        } catch (e) {
+            console.error(e);
+            alert("삭제 실패: " + e.message);
+        }
+    };
 
-                if (isAdmin) {
-                    if (confirm("관리자 권한으로 삭제하시겠습니까?")) {
-                        try {
-                            await sharedDb.collection('community').doc(post.id).delete();
-                            setToastMessage("관리자 권한으로 삭제되었습니다.");
-                            setCommunityPosts(prev => prev.filter(p => p.id !== post.id));
-                        } catch (e) {
-                            console.error(e);
-                            setToastMessage("삭제 실패: " + e.message);
-                        }
-                    }
-                    return;
-                }
+    const handleLikePost = async (postId) => {
+        if (!sharedDb) return;
+        const post = communityPosts.find(p => p.id === postId);
+        if (!post) return;
 
-                const password = prompt("비밀번호 4자리를 입력하세요.");
-                if (!password) return;
+        const uid = firebase.auth().currentUser?.uid || "anonymous";
+        const currentLikes = post.likes || [];
+        const isLiked = likedPosts.includes(postId);
+        
+        const newLikedPosts = isLiked 
+            ? likedPosts.filter(id => id !== postId)
+            : [...likedPosts, postId];
+        setLikedPosts(newLikedPosts);
+        localStorage.setItem('cls_liked_posts', JSON.stringify(newLikedPosts));
 
-                if (password === post.postPassword) {
-                    try {
-                        await sharedDb.collection('community').doc(post.id).delete();
-                        setToastMessage("게시글이 삭제되었습니다.");
-                        setCommunityPosts(prev => prev.filter(p => p.id !== post.id));
-                    } catch (e) {
-                        console.error(e);
-                        setToastMessage("삭제 실패: " + e.message);
-                    }
-                } else {
-                    setToastMessage("비밀번호가 일치하지 않습니다.");
-                }
-            };
+        let newLikes = [...currentLikes];
+        if (isLiked) {
+            newLikes = newLikes.filter(id => id !== uid);
+        } else {
+            if (!newLikes.includes(uid)) newLikes.push(uid);
+        }
 
-            const fetchPosts = async () => {
-                if (!sharedDb) return;
-                setIsLoadingPosts(true);
-                try {
-                    const snapshot = await sharedDb.collection('community')
-                        .orderBy('createdAt', 'desc')
-                        .limit(30)
-                        .get();
-                    
-                    const posts = snapshot.docs.map(doc => {
-                        const data = doc.data();
-                        return { 
-                            id: doc.id, 
-                            ...data,
-                            createdAt: data.createdAt ? data.createdAt.toDate() : new Date() 
-                        };
-                    });
-                    setCommunityPosts(posts);
-                    setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
-                    setHasMorePosts(snapshot.docs.length === 30);
-                } catch (e) {
-                    console.error(e);
-                    setToastMessage("글 불러오기 실패: " + e.message);
-                } finally {
-                    setIsLoadingPosts(false);
-                }
-            };
+        // 로컬 화면 즉시 반영 (빠른 피드백)
+        setCommunityPosts(prev => prev.map(p => 
+            p.id === postId ? { ...p, likes: newLikes } : p
+        ));
 
-            const loadMorePosts = async () => {
-                if (!sharedDb || !lastPostDoc || !hasMorePosts) return;
-                setIsLoadingPosts(true);
-                try {
-                    const snapshot = await sharedDb.collection('community')
-                        .orderBy('createdAt', 'desc')
-                        .startAfter(lastPostDoc)
-                        .limit(30)
-                        .get();
+        try {
+            await sharedDb.collection('community').doc(postId).update({ likes: newLikes });
+        } catch (e) { 
+            console.error(e); 
+            // 실패 시 롤백
+        }
+    };
 
-                    const newPosts = snapshot.docs.map(doc => {
-                        const data = doc.data();
-                        return { 
-                            id: doc.id, 
-                            ...data,
-                            createdAt: data.createdAt ? data.createdAt.toDate() : new Date() 
-                        };
-                    });
-                    setCommunityPosts(prev => [...prev, ...newPosts]);
-                    setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
-                    setHasMorePosts(snapshot.docs.length === 30);
-                } catch (e) {
-                    console.error(e);
-                    setToastMessage("더 불러오기 실패: " + e.message);
-                } finally {
-                    setIsLoadingPosts(false);
-                }
-            };
+    // 💬 댓글 관련 상태
+    const [expandedPostId, setExpandedPostId] = useState(null);
+    const [comments, setComments] = useState([]);
+    const [loadingComments, setLoadingComments] = useState(false);
 
-            const handleLikePost = async (postId) => {
-                if (!sharedDb) return;
-                
-                if (likedPosts.includes(postId)) {
-                    setToastMessage("이미 좋아요를 눌렀습니다.");
-                    return;
-                }
+    // 💬 댓글 창 열고 닫기 + 불러오기
+    const toggleComments = async (postId) => {
+        if (expandedPostId === postId) {
+            setExpandedPostId(null);
+            setComments([]);
+            return;
+        }
+        
+        setExpandedPostId(postId);
+        setLoadingComments(true);
+        try {
+            const snapshot = await sharedDb.collection('community').doc(postId).collection('comments')
+                .orderBy('createdAt', 'asc')
+                .get();
+            const loadedComments = snapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data(),
+                createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
+            }));
+            setComments(loadedComments);
+        } catch (e) {
+            console.error(e);
+            setToastMessage("댓글 불러오기 실패");
+        } finally {
+            setLoadingComments(false);
+        }
+    };
 
-                try {
-                    setCommunityPosts(prev => prev.map(p => 
-                        p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p
-                    ));
-                    
-                    const newLikedPosts = [...likedPosts, postId];
-                    setLikedPosts(newLikedPosts);
-                    localStorage.setItem('cls_liked_posts', JSON.stringify(newLikedPosts));
+    // 💬 새로운 댓글 등록 함수 (하위 컬렉션 방식 통합)
+    const handleAddComment = async (postId) => {
+        if (!commentContent.trim() || !commentAuthor.trim()) {
+            setToastMessage("이름과 내용을 모두 입력해주세요.");
+            return;
+        }
+        localStorage.setItem('cls_comment_author', commentAuthor);
 
-                    const postRef = sharedDb.collection('community').doc(postId);
-                    await postRef.update({
-                        likes: firebase.firestore.FieldValue.increment(1)
-                    });
-                } catch (e) {
-                    console.error(e);
-                    setToastMessage("좋아요 반영 실패: " + e.message);
-                    setCommunityPosts(prev => prev.map(p => 
-                        p.id === postId ? { ...p, likes: (p.likes || 0) - 1 } : p
-                    ));
-                    const revertedLikedPosts = likedPosts.filter(id => id !== postId);
-                    setLikedPosts(revertedLikedPosts);
-                    localStorage.setItem('cls_liked_posts', JSON.stringify(revertedLikedPosts));
-                }
-            };
+        const uid = firebase.auth().currentUser?.uid || "anonymous";
+        const newCommentData = {
+            uid: uid,
+            author: commentAuthor,
+            content: commentContent,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
 
-            // [New] Comment Logic
-            const [expandedPostId, setExpandedPostId] = useState(null);
-            const [comments, setComments] = useState([]);
-            const [commentAuthor, setCommentAuthor] = useState(() => localStorage.getItem('cls_comment_author') || "");
-            const [commentContent, setCommentContent] = useState("");
-            const [loadingComments, setLoadingComments] = useState(false);
+        try {
+            // 하위 컬렉션 'comments'에 추가
+            const docRef = await sharedDb.collection('community').doc(postId).collection('comments').add(newCommentData);
+            
+            // 입력창 비우고 화면 즉시 반영
+            setCommentContent("");
+            setComments(prev => [...prev, { id: docRef.id, ...newCommentData, createdAt: new Date() }]);
+            
+        } catch (e) { 
+            console.error(e); 
+            setToastMessage("댓글 등록 실패: " + e.message);
+        }
+    };
 
-            const toggleComments = async (postId) => {
-                if (expandedPostId === postId) {
-                    setExpandedPostId(null);
-                    setComments([]);
-                    return;
-                }
-                
-                setExpandedPostId(postId);
-                setLoadingComments(true);
-                setComments([]);
-                try {
-                    const snapshot = await sharedDb.collection('community').doc(postId).collection('comments')
-                        .orderBy('createdAt', 'asc')
-                        .get();
-                    const loadedComments = snapshot.docs.map(doc => {
-                        const data = doc.data();
-                        return { 
-                            id: doc.id, 
-                            ...data,
-                            createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
-                        };
-                    });
-                    setComments(loadedComments);
-                } catch (e) {
-                    console.error(e);
-                    setToastMessage("댓글 불러오기 실패");
-                } finally {
-                    setLoadingComments(false);
-                }
-            };
+    // ❌ 댓글 삭제 함수
+    const handleDeleteComment = async (postId, commentId, commentUid) => {
+        const currentUid = firebase.auth().currentUser?.uid;
+        if (!isAdmin && currentUid !== commentUid) {
+            alert("본인이 작성한 댓글만 삭제할 수 있습니다.");
+            return;
+        }
+        if (!confirm("댓글을 삭제하시겠습니까?")) return;
 
-            const handleAddComment = async (postId) => {
-                if (!commentContent.trim() || !commentAuthor.trim()) {
-                    setToastMessage("이름과 내용을 모두 입력해주세요.");
-                    return;
-                }
-                localStorage.setItem('cls_comment_author', commentAuthor);
-                try {
-                    await sharedDb.collection('community').doc(postId).collection('comments').add({
-                        authorName: commentAuthor,
-                        content: commentContent,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    setCommentContent("");
-                    
-                    // Refresh comments
-                    const snapshot = await sharedDb.collection('community').doc(postId).collection('comments')
-                        .orderBy('createdAt', 'asc')
-                        .get();
-                    const loadedComments = snapshot.docs.map(doc => {
-                        const data = doc.data();
-                        return { 
-                            id: doc.id, 
-                            ...data,
-                            createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
-                        };
-                    });
-                    setComments(loadedComments);
-                    setToastMessage("댓글이 등록되었습니다.");
-                } catch (e) {
-                    console.error(e);
-                    setToastMessage("댓글 등록 실패: " + e.message);
-                }
-            };
+        try {
+            await sharedDb.collection('community').doc(postId).collection('comments').doc(commentId).delete();
+            // 화면에서 즉시 제거
+            setComments(prev => prev.filter(c => c.id !== commentId));
+        } catch (e) { 
+            console.error(e); 
+            setToastMessage("댓글 삭제 실패: " + e.message);
+        }
+    };
 
             useEffect(() => {
                 if (mode === 'community' && sharedDb) {
@@ -9944,25 +9948,6 @@ const firebaseConfig = {
                     setIsApiKeyValid(false);
                     logSystemEvent(`API 키 유효성 검사 실패: ${e.message}`, 'error');
                     setToastMessage("오류: " + e.message);
-                }
-            };
-
-            const callGemini = async (apiKey, prompt) => {
-                if (!apiKey) throw new Error("API 키가 필요합니다.");
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL_NAME}:generateContent?key=${apiKey.trim()}`;
-                try {
-                    const response = await fetch(url, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.error?.message || response.statusText);
-                    updateAiUsage();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                } catch (e) {
-                    logSystemEvent(`AI 요청 실패: ${e.message}`, 'error');
-                    throw new Error("AI 요청 실패: " + e.message);
                 }
             };
 
