@@ -13214,7 +13214,48 @@ const firebaseConfig = {
                                             <Icon d={PATHS.upload} size={14} /> 초안 내보내기
                                         </Btn>
                                     </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 relative z-10">{stats.students.map(s => (<div key={s.id} onClick={() => setGrassStudentId(s.id)} className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all group"><div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center font-bold text-xs text-slate-500 overflow-hidden">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : s.order}</div><div className="flex flex-col min-w-0"><span className="text-sm font-bold text-slate-700 truncate">{appConfig.showPhotoInRecord && s.photoUrl ? <span className="text-xs text-slate-500 mr-1">{s.order}.</span> : null}{s.name}</span><div className="flex gap-0.5 mt-1">{s.history.slice(0,5).map((h,i) => (<div key={i} className="w-2 h-2 rounded-full" style={h.ratio > 0 ? { background: `conic-gradient(#4ade80 0% ${h.ratio*100}%, #e2e8f0 ${h.ratio*100}% 100%)` } : { backgroundColor: '#e2e8f0' }}></div>))}</div></div></div>))}</div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 relative z-10">{stats.students.map(s => (<div key={s.id} onClick={() => setGrassStudentId(s.id)} className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all group"><div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center font-bold text-xs text-slate-500 overflow-hidden">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : s.order}</div><div className="flex flex-col min-w-0"><span className="text-sm font-bold text-slate-700 truncate">{appConfig.showPhotoInRecord && s.photoUrl ? <span className="text-xs text-slate-500 mr-1">{s.order}.</span> : null}{s.name}</span><div className="flex gap-1 mt-1">
+                                        {(() => {
+                                            const monday = dayjs(date).startOf('week').add(1, 'day');
+                                            return Array.from({ length: 5 }).map((_, i) => {
+                                                const d = monday.add(i, 'day');
+                                                const dStr = d.format('YYYY-MM-DD');
+                                                const tasks = dailyTasks[dStr] || [];
+                                                let ratio = 0;
+                                                let hasTask = false;
+                                                
+                                                if (tasks.length > 0) {
+                                                    hasTask = true;
+                                                    const rec = records[dStr]?.[s.id];
+                                                    let done = 0;
+                                                    if (rec) {
+                                                        tasks.forEach((_, idx) => {
+                                                            if (rec.tasks && rec.tasks[idx]) done++;
+                                                            else if (!rec.tasks && rec.done) done++;
+                                                        });
+                                                    }
+                                                    ratio = done / tasks.length;
+                                                }
+
+                                                if (!hasTask) {
+                                                    return (
+                                                        <div key={i} className="w-2 h-2 rounded-full bg-slate-100" title={`${dStr}: 과제 없음`}></div>
+                                                    );
+                                                }
+
+                                                const getPieStyle = (ratio) => {
+                                                    if (ratio <= 0) return { backgroundColor: '#e2e8f0' };
+                                                    if (ratio >= 1) return { backgroundColor: '#4ade80' };
+                                                    const percentage = ratio * 100;
+                                                    return { background: `conic-gradient(#4ade80 0% ${percentage}%, #e2e8f0 ${percentage}% 100%)` };
+                                                };
+
+                                                return (
+                                                    <div key={i} className="w-2 h-2 rounded-full" style={getPieStyle(ratio)} title={`${dStr}: ${Math.round(ratio * 100)}%`}></div>
+                                                );
+                                            });
+                                        })()}
+                                    </div></div></div>))}</div>
                                 </div>
                                 </div>
                             )}
