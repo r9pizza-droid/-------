@@ -8970,24 +8970,46 @@ const firebaseConfig = {
 
         const App = () => {
             // ==========================================
-            // 📛 [별칭 시스템] 상태 및 확인 로직
-            // ==========================================
-            const [userNickname, setUserNickname] = useState("");
-            const [showNicknameModal, setShowNicknameModal] = useState(false);
-            const [tempNickname, setTempNickname] = useState("");
+    // 📛 [별칭 시스템] 상태 및 확인 로직 (기억력 강화 버전)
+    // ==========================================
+    // 1. 켤 때부터 내 컴퓨터(브라우저)가 기억하는 이름이 있는지 먼저 찾아봅니다.
+    const [userNickname, setUserNickname] = useState(() => localStorage.getItem('myBoardName') || "");
+    const [showNicknameModal, setShowNicknameModal] = useState(false);
+    const [tempNickname, setTempNickname] = useState("");
 
-            // 게시판(community) 입장 시 별칭 확인
-            useEffect(() => {
-                if (mode === 'community' && firebase.auth().currentUser && sharedDb) {
-                    const uid = firebase.auth().currentUser.uid;
-                    sharedDb.collection('userProfiles').doc(uid).get().then(doc => {
-                if (doc.exists && doc.data().name) {
-                    setUserNickname(doc.data().name); // 별칭이 있으면 저장
-                    setShowNicknameModal(false);
+    // 게시판(community) 입장 시 별칭 확인
+    useEffect(() => {
+        if (mode === 'community') {
+            // 내 컴퓨터에 이미 저장된 이름이 있다면 묻지도 따지지도 않고 통과!
+            const savedName = localStorage.getItem('myBoardName');
+            if (savedName) {
+                setUserNickname(savedName);
+                setShowNicknameModal(false);
+                return; 
+            }
+
+            // 내 컴퓨터에 없다면 파이어베이스 서버에 물어봅니다. (지연 시간 대비)
+            const checkFirebase = () => {
+                const user = firebase.auth().currentUser;
+                if (user && sharedDb) {
+                    sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
+                        if (doc.exists && doc.data().name) {
+                            const fetchedName = doc.data().name;
+                            setUserNickname(fetchedName);
+                            localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
+                            setShowNicknameModal(false);
+                        } else {
+                            setShowNicknameModal(true);
+                        }
+                    }).catch(e => console.error("별칭 확인 오류:", e));
                 } else {
-                    setShowNicknameModal(true); // 없으면 모달 띄우기
+                    // 로그인이 아직 확인 안 된 찰나의 순간에는 잠시 모달을 띄웁니다.
+                    setShowNicknameModal(true); 
                 }
-            }).catch(e => console.error("별칭 확인 오류:", e));
+            };
+
+            // 파이어베이스가 로그인 상태를 확인하는 시간을 조금 기다려줍니다.
+            setTimeout(checkFirebase, 500); 
         } else {
             setShowNicknameModal(false);
         }
@@ -8996,28 +9018,28 @@ const firebaseConfig = {
     // 별칭 저장 버튼 눌렀을 때 실행되는 함수
     const handleSaveNickname = async () => {
         if (tempNickname.trim().length < 2) {
-            setToastMessage("별칭은 2글자 이상 입력해주세요.");
+            alert("별칭은 2글자 이상 입력해주세요.");
             return;
         }
         try {
             const user = firebase.auth().currentUser;
-            if (!user) {
-                setToastMessage("로그인 정보가 없습니다.");
-                return;
+            if (user && sharedDb) {
+                // 1. 파이어베이스 서버에 저장
+                await sharedDb.collection('userProfiles').doc(user.uid).set({
+                    uid: user.uid,
+                    name: tempNickname.trim(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
             }
-            const uid = user.uid;
-
-            await sharedDb.collection('userProfiles').doc(uid).set({
-                uid: uid,
-                name: tempNickname.trim(),
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            
+            // 2. 내 컴퓨터(브라우저)에도 강력하게 저장!! (이게 핵심입니다)
+            localStorage.setItem('myBoardName', tempNickname.trim());
+            
             setUserNickname(tempNickname.trim());
             setShowNicknameModal(false);
-            setToastMessage("별칭이 등록되었습니다!");
         } catch (e) {
             console.error("별칭 저장 실패:", e);
-            setToastMessage("별칭 저장에 실패했습니다.");
+            alert("별칭 저장에 실패했습니다.");
         }
     };
     // ==========================================
@@ -12067,12 +12089,12 @@ const firebaseConfig = {
                 return map;
             }, [groupsByDate, groupRoles, date]);
 
-            const stats = useMemo(() => { const dates = Object.keys(records).sort(); const isWithinPeriod = (dStr, period) => { const d = dayjs(dStr); const now = dayjs(); if (period === 'weekly') return d.isAfter(now.subtract(7, 'day')) && d.isBefore(now.add(1, 'day')); if (period === 'monthly') return d.isAfter(now.subtract(30, 'day')) && d.isBefore(now.add(1, 'day')); return true; }; const calcStatsForStudent = (s, period, tag) => { let doneCount = 0; let totalCount = 0; for(let i=34; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; if (!isWithinPeriod(d, period)) continue; const dayRecord = records[d]; const dayTasks = dailyTasks[d] || []; if (tag === '전체') { if (dayRecord) 
-            { const tasksForDay = dailyTasks[d] || []; if (tasksForDay.length > 0) { totalCount += tasksForDay.length; const sRec = dayRecord[s.id]; if (sRec) { tasksForDay.forEach((_, idx) => { if (sRec.tasks && sRec.tasks[idx]) doneCount++; else if (!sRec.tasks && sRec.done) doneCount++; }); } } else { totalCount++;
-            if (dayRecord[s.id]?.done) doneCount++; } } } else { const tagTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
-            if (tagTasks.length > 0) { totalCount += tagTasks.length; tagTasks.forEach((t, idx) => { const originalIdx = dayTasks.indexOf(t); const isTaskDone = dayRecord?.[s.id]?.done || dayRecord?.[s.id]?.tasks?.[originalIdx]; if(isTaskDone) doneCount++; });
-            } } } return { count: doneCount, total: totalCount, rate: totalCount > 0 ?
-            (doneCount / totalCount) * 100 : 0 }; }; const computedStudents = students.map(s => { let count = 0, currentStreak = 0; const history = []; const datesSorted = Object.keys(records).sort(); for(let i=29; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; let dailyDoneCount = 0; let dailyTotalCount = 0; const dayTasks = dailyTasks[d] || []; const dayRecord = records[d]; if(dayTasks.length > 0) { dailyTotalCount = dayTasks.length; if(dayRecord && dayRecord[s.id]) { dayTasks.forEach((_, idx) => { if(dayRecord[s.id].tasks && dayRecord[s.id].tasks[idx]) dailyDoneCount++; else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++; }); } } else { if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; } } const 
+            const stats = useMemo(() => { const dates = Object.keys(records).sort(); const isWithinPeriod = (dStr, period) => { const d = dayjs(dStr); const now = dayjs(); if (period === 'weekly') return d.isAfter(now.subtract(7, 'day')) && d.isBefore(now.add(1, 'day')); if (period === 'monthly') return d.isAfter(now.subtract(30, 'day')) && d.isBefore(now.add(1, 'day')); return true; }; const calcStatsForStudent = (s, period, tag) => { let score = 0; let totalCount = 0; for(let i=34; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; if (!isWithinPeriod(d, period)) continue; const dayRecord = records[d]; const dayTasks = dailyTasks[d] || []; if (tag === '전체') { if (dayRecord) 
+            { const tasksForDay = dailyTasks[d] || []; if (tasksForDay.length > 0) { totalCount += tasksForDay.length; const sRec = dayRecord[s.id]; if (sRec) { tasksForDay.forEach((_, idx) => { const isDone = sRec.tasks ? sRec.tasks[idx] : sRec.done; const isLate = sRec.lateTasks ? sRec.lateTasks[idx] : false; if (isDone) { score += isLate ? 0.5 : 1; } }); } } else { totalCount++;
+            if (dayRecord[s.id]?.done) score += 1; } } } else { const tagTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
+            if (tagTasks.length > 0) { totalCount += tagTasks.length; tagTasks.forEach((t, idx) => { const originalIdx = dayTasks.indexOf(t); const sRec = dayRecord?.[s.id]; const isTaskDone = sRec?.done || sRec?.tasks?.[originalIdx]; const isLate = sRec?.lateTasks?.[originalIdx]; if(isTaskDone) { score += isLate ? 0.5 : 1; } });
+            } } } return { count: score, total: totalCount, rate: totalCount > 0 ?
+            (score / totalCount) * 100 : 0 }; }; const computedStudents = students.map(s => { let count = 0, currentStreak = 0; const history = []; const datesSorted = Object.keys(records).sort(); for(let i=29; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; let dailyDoneCount = 0; let dailyTotalCount = 0; const dayTasks = dailyTasks[d] || []; const dayRecord = records[d]; if(dayTasks.length > 0) { dailyTotalCount = dayTasks.length; if(dayRecord && dayRecord[s.id]) { dayTasks.forEach((_, idx) => { if(dayRecord[s.id].tasks && dayRecord[s.id].tasks[idx]) dailyDoneCount++; else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++; }); } } else { if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; } } const 
             ratio = dailyTotalCount > 0 ? dailyDoneCount / dailyTotalCount : 0; history.push({ date: d, ratio: ratio, count: dailyDoneCount, total: dailyTotalCount, done: dailyDoneCount === dailyTotalCount && dailyTotalCount > 0 }); if(ratio === 1) count++; } for(let i=0; i<365;
             i++) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const rec = records[d]?.[s.id]; let isDoneDay = false;
             if(rec) { if(rec.tasks) { if(rec.done) isDoneDay = true; } else if(rec.done) { isDoneDay = true; } } if(isDoneDay) currentStreak++;
@@ -12911,7 +12933,7 @@ const firebaseConfig = {
                                     <button onClick={(e) => { e.stopPropagation(); setShowBriefingHelp(true); }} className="text-slate-400 hover:text-indigo-500 p-2 rounded-full hover:bg-slate-100 transition-colors" title="도움말"><Icon d={PATHS.help} size={20} /></button>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden"><div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">🏆</div><div className="flex flex-col gap-3 mb-4"><div className="flex justify-between items-center"><h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">🏆 명예의 전당</h3><div className="flex items-center gap-2"><div className="relative"><select value={honorTag} onChange={(e) => setHonorTag(e.target.value)} className="appearance-none bg-slate-100 text-slate-600 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 border-none cursor-pointer hover:bg-slate-200 transition-colors">{['전체', ...tags].map(t => <option key={t} value={t}>{t}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d="M6 9l6 6 6-6" size={12} /></div></div><SwitchToggle value={honorPeriod} onChange={setHonorPeriod} /></div></div></div><div className="space-y-3">{stats.top5.map((s, i) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${i===0?'bg-yellow-500 text-white':i===1?'bg-slate-400 text-white':i===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{i+1}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span className="font-bold text-indigo-600">{s.honorStats.count}회</span></div>))}{stats.top5.length === 0 && <div className="text-center text-slate-400 py-4">데이터가 없습니다.</div>}</div></div>
+                                    <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden"><div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">🏆</div><div className="flex flex-col gap-3 mb-4"><div className="flex justify-between items-center"><h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">🏆 명예의 전당</h3><div className="flex items-center gap-2"><div className="relative"><select value={honorTag} onChange={(e) => setHonorTag(e.target.value)} className="appearance-none bg-slate-100 text-slate-600 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 border-none cursor-pointer hover:bg-slate-200 transition-colors">{['전체', ...tags].map(t => <option key={t} value={t}>{t}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d="M6 9l6 6 6-6" size={12} /></div></div><SwitchToggle value={honorPeriod} onChange={setHonorPeriod} /></div></div></div><div className="space-y-3">{stats.top5.map((s, i) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${i===0?'bg-yellow-500 text-white':i===1?'bg-slate-400 text-white':i===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{i+1}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span className="font-bold text-indigo-600">{s.honorStats.count}점</span></div>))}{stats.top5.length === 0 && <div className="text-center text-slate-400 py-4">데이터가 없습니다.</div>}</div></div>
                                     <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden"><div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">📣</div><div className="flex flex-col gap-3 mb-4"><div className="flex justify-between items-center"><h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">📣 도움이 필요해요</h3><div className="flex items-center gap-2"><div className="relative"><select value={helpTag} onChange={(e) => setHelpTag(e.target.value)} className="appearance-none bg-slate-100 text-slate-600 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 border-none cursor-pointer hover:bg-slate-200 transition-colors">{['전체', ...tags].map(t => <option key={t} value={t}>{t}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d="M6 9l6 6 6-6" size={12} /></div></div><SwitchToggle value={helpPeriod} onChange={setHelpPeriod} /></div></div></div><div className="space-y-3">{stats.bottom5.filter(s => s.helpStats.rate < 100).map((s, i) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><div className="flex items-center gap-2"><div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-rose-400" style={{width:`${s.helpStats.rate}%`}}></div></div><span className="font-bold text-rose-500 text-sm">{Math.round(s.helpStats.rate)}%</span></div></div>))}{stats.bottom5.filter(s => s.helpStats.rate < 100).length === 0 && <div className="text-center text-slate-400 py-4">모두 잘하고 있어요! 🎉</div>}</div></div>
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
