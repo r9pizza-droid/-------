@@ -8816,7 +8816,90 @@ const firebaseConfig = {
     console.error("❌ 게시판 앱 연결 실패:", e);
 }
 
+        const Lightbox = ({ isOpen, onClose, images, initialIndex = 0 }) => {
+            const [index, setIndex] = useState(initialIndex);
+            
+            useEffect(() => { setIndex(initialIndex); }, [initialIndex, isOpen]);
+
+            useEffect(() => {
+                if (!isOpen) return;
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') onClose();
+                    if (e.key === 'ArrowLeft') setIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+                    if (e.key === 'ArrowRight') setIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [isOpen, onClose, images]);
+
+            if (!isOpen || !images || images.length === 0) return null;
+
+            return (
+                <div className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center animate-fade-in backdrop-blur-sm" onClick={onClose}>
+                    <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white p-2 z-50 rounded-full hover:bg-white/10 transition-colors"><Icon d={PATHS.x} size={32} /></button>
+                    <div className="relative w-full h-full flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+                        {images.length > 1 && (
+                            <button onClick={(e) => { e.stopPropagation(); setIndex(prev => (prev > 0 ? prev - 1 : images.length - 1)); }} className="absolute left-4 text-white/70 hover:text-white p-3 bg-black/20 hover:bg-black/50 rounded-full transition-colors z-50"><Icon d={PATHS.left} size={32} /></button>
+                        )}
+                        <img src={images[index]} alt={`Image ${index + 1}`} className="max-w-full max-h-full object-contain shadow-2xl select-none" />
+                        {images.length > 1 && (
+                            <button onClick={(e) => { e.stopPropagation(); setIndex(prev => (prev < images.length - 1 ? prev + 1 : 0)); }} className="absolute right-4 text-white/70 hover:text-white p-3 bg-black/20 hover:bg-black/50 rounded-full transition-colors z-50"><Icon d={PATHS.right} size={32} /></button>
+                        )}
+                        {images.length > 1 && (
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 px-4 py-1.5 rounded-full text-white text-sm font-bold backdrop-blur-md border border-white/10">{index + 1} / {images.length}</div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
         const App = () => {
+            // ==========================================
+            // 📛 [별칭 시스템] 상태 및 확인 로직
+            // ==========================================
+            const [userNickname, setUserNickname] = useState("");
+            const [showNicknameModal, setShowNicknameModal] = useState(false);
+            const [tempNickname, setTempNickname] = useState("");
+
+            // 게시판(community) 입장 시 별칭 확인
+            useEffect(() => {
+                if (mode === 'community' && firebase.auth().currentUser && sharedDb) {
+                    const uid = firebase.auth().currentUser.uid;
+                    sharedDb.collection('userProfiles').doc(uid).get().then(doc => {
+                if (doc.exists && doc.data().name) {
+                    setUserNickname(doc.data().name); // 별칭이 있으면 저장
+                    setShowNicknameModal(false);
+                } else {
+                    setShowNicknameModal(true); // 없으면 모달 띄우기
+                }
+            }).catch(e => console.error("별칭 확인 오류:", e));
+        } else {
+            setShowNicknameModal(false);
+        }
+    }, [mode, sharedDb]);
+
+    // 별칭 저장 버튼 눌렀을 때 실행되는 함수
+    const handleSaveNickname = async () => {
+        if (tempNickname.trim().length < 2) {
+            setToastMessage("별칭은 2글자 이상 입력해주세요.");
+            return;
+        }
+        try {
+            const uid = firebase.auth().currentUser.uid;
+            await sharedDb.collection('userProfiles').doc(uid).set({
+                uid: uid,
+                name: tempNickname.trim(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            setUserNickname(tempNickname.trim());
+            setShowNicknameModal(false);
+            setToastMessage("별칭이 등록되었습니다!");
+        } catch (e) {
+            console.error("별칭 저장 실패:", e);
+            setToastMessage("별칭 저장에 실패했습니다.");
+        }
+    };
+    // ==========================================
             // 🔔 [알림 기능] 상태 및 로직 시작
             const [notifications, setNotifications] = useState([]);
             const [showNotifications, setShowNotifications] = useState(false);
@@ -8938,6 +9021,11 @@ const firebaseConfig = {
             const [replyingToId, setReplyingToId] = useState(null);
             const [replyContent, setReplyContent] = useState("");
             
+            const [lightboxState, setLightboxState] = useState({ isOpen: false, images: [], index: 0 });
+            const openLightbox = (images, index = 0) => {
+                setLightboxState({ isOpen: true, images, index });
+            };
+
             const [likedPosts, setLikedPosts] = useState(() => {
                 try {
                     return JSON.parse(localStorage.getItem('cls_liked_posts') || '[]');
@@ -12710,9 +12798,9 @@ const firebaseConfig = {
                                             ))}
                                         </div>
                                         <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
-                                            <button onClick={() => { setPostViewMode('card'); setExpandedPostId(null); }} className={`p-1.5 rounded-md transition-all ${postViewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="카드형 보기"><Icon d={PATHS.grid} size={14} /></button>
-                                            <button onClick={() => { setPostViewMode('gallery'); setExpandedPostId(null); }} className={`p-1.5 rounded-md transition-all ${postViewMode === 'gallery' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="갤러리 보기"><Icon d={PATHS.image} size={14} /></button>
                                             <button onClick={() => { setPostViewMode('list'); setExpandedPostId(null); }} className={`p-1.5 rounded-md transition-all ${postViewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="리스트 보기"><Icon d={PATHS.list} size={14} /></button>
+                                            <button onClick={() => { setPostViewMode('gallery'); setExpandedPostId(null); }} className={`p-1.5 rounded-md transition-all ${postViewMode === 'gallery' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="갤러리 보기"><Icon d={PATHS.image} size={14} /></button>
+                                            <button onClick={() => { setPostViewMode('card'); setExpandedPostId(null); }} className={`p-1.5 rounded-md transition-all ${postViewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="카드형 보기"><Icon d={PATHS.grid} size={14} /></button>
                                         </div>
                                     </div>
 
@@ -12763,9 +12851,11 @@ const firebaseConfig = {
                                                                     <div className="mb-4 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white p-3 rounded-xl border border-slate-200">
                                                                         {post.content}
                                                                         {images.length > 0 && (
-                                                                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                            <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-2">
                                                                                 {images.map((url, idx) => (
-                                                                                    <img key={idx} src={url} alt={`첨부 ${idx+1}`} className="rounded-lg border border-slate-100 w-full object-contain max-h-96 bg-slate-50" />
+                                                                                    <div key={idx} className="aspect-square rounded-lg border border-slate-100 bg-slate-50 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); openLightbox(images, idx); }}>
+                                                                                        <img src={url} alt={`첨부 ${idx+1}`} className="w-full h-full object-cover" />
+                                                                                    </div>
                                                                                 ))}
                                                                             </div>
                                                                         )}
@@ -12860,7 +12950,7 @@ const firebaseConfig = {
                                                         <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col h-full" onClick={() => toggleComments(post.id)}>
                                                             <div className="aspect-square bg-slate-100 relative overflow-hidden">
                                                                 {images.length > 0 ? (
-                                                                    <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                                                                    <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 cursor-pointer" loading="lazy" onClick={(e) => { e.stopPropagation(); openLightbox(images, 0); }} />
                                                                 ) : (
                                                                     <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
                                                                         <span className="text-4xl opacity-50">📝</span>
@@ -12917,8 +13007,8 @@ const firebaseConfig = {
                                                                 <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed mb-3 whitespace-pre-wrap">{post.content}</p>
                                                             </div>
                                                             {images.length > 0 && (
-                                                                <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0 relative">
-                                                                    <img src={images[0]} alt="첨부 이미지" className="w-full h-full object-cover" loading="lazy" />
+                                                                <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0 relative cursor-pointer hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); openLightbox(images, 0); }}>
+                                                                    <img src={images[0]} alt="첨부 이미지" className="w-full h-full object-cover" loading="lazy"/>
                                                                     {images.length > 1 && <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 rounded-full font-bold">+{images.length - 1}</div>}
                                                                 </div>
                                                             )}
@@ -13093,6 +13183,7 @@ const firebaseConfig = {
                             onClose={handleCloseUpdate}
                         />
                     )}
+                    <Lightbox isOpen={lightboxState.isOpen} onClose={() => setLightboxState(prev => ({ ...prev, isOpen: false }))} images={lightboxState.images} initialIndex={lightboxState.index} />
                     {/* 🌟 튜토리얼 모달창 */}
             {showTutorial && (
                 <div className="fixed inset-0 bg-black/60 z-[6000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
