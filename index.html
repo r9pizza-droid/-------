@@ -9129,7 +9129,7 @@ const firebaseConfig = {
                                 }));
                                 setNotifications(notis);
 
-                                if (!isNotiFirstLoad.current && appConfig.enablePushNotifications && appConfig.enableNotifications !== false) {
+                                if (!isNotiFirstLoad.current && appConfig && appConfig.enablePushNotifications && appConfig.enableNotifications !== false) {
                                     snapshot.docChanges().forEach(change => {
                                         if (change.type === 'added') {
                                             const newNoti = change.doc.data();
@@ -9152,7 +9152,7 @@ const firebaseConfig = {
                     }
                 });
                 return () => unsubscribeAuth();
-            }, [sharedDb, appConfig.enablePushNotifications, appConfig.enableNotifications]);
+            }, [sharedDb, appConfig]);
 
             const handleReadNotification = async (noti) => {
                 if (!noti.isRead) {
