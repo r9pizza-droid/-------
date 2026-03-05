@@ -9973,15 +9973,6 @@ const firebaseConfig = {
         setTimeout(() => setSelectedPost(null), 300); // 애니메이션 시간 고려
     };
 
-    const handleNavigatePost = (direction) => {
-        if (!selectedPost) return;
-        const currentIndex = filteredPosts.findIndex(p => p.id === selectedPost.id);
-        const newIndex = currentIndex + direction;
-        if (newIndex >= 0 && newIndex < filteredPosts.length) {
-            handleOpenPostDetail(filteredPosts[newIndex]);
-        }
-    };
-
     // 💬 새로운 댓글 등록 함수 (하위 컬렉션 방식 통합)
             const handleAddComment = async (postId, parentId = null) => {
                 const contentToUse = parentId ? replyContent : commentContent;
