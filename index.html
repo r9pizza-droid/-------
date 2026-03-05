@@ -4955,7 +4955,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos }) => {
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -5000,6 +5000,32 @@
             const [showBulkPhotoGuide, setShowBulkPhotoGuide] = useState(false);
             const [isVacStartCalOpen, setIsVacStartCalOpen] = useState(false);
             const [isVacEndCalOpen, setIsVacEndCalOpen] = useState(false);
+            
+            // [New] 사용자 관리 (관리자 전용)
+            const [userList, setUserList] = useState([]);
+            const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
+            const fetchUserList = async () => {
+                if (!sharedDb) return;
+                setIsLoadingUsers(true);
+                try {
+                    const snapshot = await sharedDb.collection('userProfiles').orderBy('createdAt', 'desc').get();
+                    const users = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+                    setUserList(users);
+                } catch (e) { console.error(e); showToast("사용자 목록 로딩 실패"); }
+                finally { setIsLoadingUsers(false); }
+            };
+
+            const handleUpdateUserName = async (uid, currentName) => {
+                const newName = prompt("새로운 별칭을 입력하세요:", currentName);
+                if (newName && newName.trim() !== "" && newName !== currentName) {
+                    try {
+                        await sharedDb.collection('userProfiles').doc(uid).update({ name: newName.trim() });
+                        showToast("별칭이 수정되었습니다.");
+                        fetchUserList();
+                    } catch (e) { console.error(e); showToast("수정 실패: " + e.message); }
+                }
+            };
 
             const handleTestAllConnections = async () => {
                 const notionKey = localStorage.getItem('cls_notion_key');
@@ -6158,6 +6184,27 @@
                                                         <Icon d={PATHS.help} size={10} /> 방학 기간에는 달력에서 날짜 선택이 제한됩니다.
                                                     </div>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* [New] 관리자 전용 사용자 관리 섹션 */}
+                                    {isAdminMode && (
+                                        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-fade-in mt-6">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm"><span className="text-lg">👑</span> 관리자 메뉴: 사용자 관리</h4>
+                                                <Btn onClick={fetchUserList} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">
+                                                    {isLoadingUsers ? "로딩 중..." : "목록 불러오기"}
+                                                </Btn>
+                                            </div>
+                                            <div className="max-h-60 overflow-y-auto custom-scroll space-y-2">
+                                                {userList.map(user => (
+                                                    <div key={user.uid} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                                        <div className="flex flex-col"><span className="text-sm font-bold text-slate-700">{user.name || "(이름 없음)"}</span><span className="text-[10px] text-slate-400 font-mono">{user.uid}</span></div>
+                                                        <button onClick={() => handleUpdateUserName(user.uid, user.name)} className="text-xs bg-white border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600 font-bold">이름 수정</button>
+                                                    </div>
+                                                ))}
+                                                {userList.length === 0 && !isLoadingUsers && <div className="text-center text-xs text-slate-400 py-4">사용자 목록을 불러오세요.</div>}
                                             </div>
                                         </div>
                                     )}
@@ -8886,7 +8933,13 @@ const firebaseConfig = {
             return;
         }
         try {
-            const uid = firebase.auth().currentUser.uid;
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                setToastMessage("로그인 정보가 없습니다.");
+                return;
+            }
+            const uid = user.uid;
+
             await sharedDb.collection('userProfiles').doc(uid).set({
                 uid: uid,
                 name: tempNickname.trim(),
@@ -13361,6 +13414,7 @@ const firebaseConfig = {
                         onPhotoDelete={handlePhotoDelete}
                         imgbbApiKey={imgbbApiKey}
                         onSyncPhotos={handleLoadAllData}
+                        isAdmin={isAdmin}
                     />
                     {showImgbbModal && (
                         <ImgbbSetupModal 
