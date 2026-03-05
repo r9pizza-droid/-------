@@ -5667,6 +5667,7 @@
                                     <div className="flex w-full p-1 bg-slate-100 rounded-xl mb-2">
                                         <button onClick={() => setAppSubTab('basic')} className={`flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${appSubTab === 'basic' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>앱 기본 설정</button>
                                         <button onClick={() => setAppSubTab('display')} className={`flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${appSubTab === 'display' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>화면 및 기능 설정</button>
+                                        <button onClick={() => setAppSubTab('notification')} className={`flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${appSubTab === 'notification' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>알림 설정</button>
                                         <button onClick={() => setAppSubTab('vacation')} className={`flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${appSubTab === 'vacation' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>방학기간 설정</button>
                                     </div>
 
@@ -6168,6 +6169,46 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                    )}
+
+                                    {appSubTab === 'notification' && (
+                                        <div className="animate-fade-in space-y-6">
+                                            <div className="group">
+                                                <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5 cursor-default select-none">
+                                                    <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🔔</div> 
+                                                    알림 설정
+                                                </h4>
+                                                <div className="space-y-4">
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <Icon d={PATHS.bell} size={18} className="text-slate-400"/>
+                                                                <span className="text-sm font-bold text-slate-700">앱 내 알림</span>
+                                                            </div>
+                                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                                <input type="checkbox" className="sr-only peer" checked={appConfig.enableNotifications !== false} onChange={(e) => updateAppConfig({ enableNotifications: e.target.checked })} />
+                                                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                                            </label>
+                                                        </div>
+                                                        <p className="text-xs text-slate-500">좋아요, 댓글 등 새로운 소식이 있을 때 종 모양 아이콘에 배지를 표시합니다.</p>
+                                                    </div>
+
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-lg">🌐</span>
+                                                                <span className="text-sm font-bold text-slate-700">브라우저 푸시 알림</span>
+                                                            </div>
+                                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                                <input type="checkbox" className="sr-only peer" checked={!!appConfig.enablePushNotifications} onChange={async (e) => { if (e.target.checked) { if (!('Notification' in window)) { alert("이 브라우저는 알림을 지원하지 않습니다."); return; } const permission = await Notification.requestPermission(); if (permission === 'granted') { updateAppConfig({ enablePushNotifications: true }); new Notification("알림 설정 완료", { body: "이제 브라우저 알림을 받을 수 있습니다." }); } else { alert("알림 권한이 차단되었습니다. 브라우저 설정에서 권한을 허용해주세요."); updateAppConfig({ enablePushNotifications: false }); } } else { updateAppConfig({ enablePushNotifications: false }); } }} />
+                                                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                                            </label>
+                                                        </div>
+                                                        <p className="text-xs text-slate-500">앱이 켜져 있을 때 브라우저 알림을 보냅니다. (OS 설정에 따라 다를 수 있음)</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     )}
 
                                     {appSubTab === 'vacation' && (
@@ -9075,6 +9116,7 @@ const firebaseConfig = {
                 if (!sharedDb) return;
                 const unsubscribeAuth = firebase.auth().onAuthStateChanged(user => {
                     if (user) {
+                        isNotiFirstLoad.current = true;
                         const unsubscribeNoti = sharedDb.collection('notifications')
                             .where('targetUid', '==', user.uid)
                             .orderBy('createdAt', 'desc')
@@ -9086,6 +9128,23 @@ const firebaseConfig = {
                                     createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
                                 }));
                                 setNotifications(notis);
+
+                                if (!isNotiFirstLoad.current && appConfig.enablePushNotifications && appConfig.enableNotifications !== false) {
+                                    snapshot.docChanges().forEach(change => {
+                                        if (change.type === 'added') {
+                                            const newNoti = change.doc.data();
+                                            if (!newNoti.isRead && Notification.permission === 'granted') {
+                                                try {
+                                                    new Notification("다했나요? 알림", {
+                                                        body: newNoti.message,
+                                                        icon: appConfig.favicon || undefined
+                                                    });
+                                                } catch (e) { console.error(e); }
+                                            }
+                                        }
+                                    });
+                                }
+                                isNotiFirstLoad.current = false;
                             }, err => console.error("알림 동기화 오류:", err));
                         return () => unsubscribeNoti();
                     } else {
@@ -9093,13 +9152,26 @@ const firebaseConfig = {
                     }
                 });
                 return () => unsubscribeAuth();
-            }, [sharedDb]);
+            }, [sharedDb, appConfig.enablePushNotifications, appConfig.enableNotifications]);
 
             const handleReadNotification = async (noti) => {
                 if (!noti.isRead) {
                     try {
                         await sharedDb.collection('notifications').doc(noti.id).update({ isRead: true });
                     } catch (e) { console.error(e); }
+                }
+
+                if (noti.postId) {
+                    setMode('community');
+                    setShowNotifications(false);
+                    setTimeout(() => {
+                        const el = document.getElementById(`post-${noti.postId}`);
+                        if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            el.classList.add('ring-4', 'ring-indigo-300', 'transition-all', 'duration-500');
+                            setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-300'), 2000);
+                        }
+                    }, 300);
                 }
             };
 
@@ -9585,8 +9657,8 @@ const firebaseConfig = {
             newLikes.push(uid);
             if (!newLikedPosts.includes(postId)) newLikedPosts.push(postId);
 
-            // [알림] 좋아요 알림 전송 (작성자가 본인이 아닐 경우)
-            if (post.uid && post.uid !== uid) {
+                    // [알림] 좋아요 알림 전송
+                    if (post.uid) {
                 try {
                     sharedDb.collection('notifications').add({
                         targetUid: post.uid,
@@ -9685,9 +9757,9 @@ const firebaseConfig = {
             }
             setComments(prev => [...prev, { id: docRef.id, ...newCommentData, createdAt: new Date() }]);
             
-            // [알림] 댓글 알림 전송 (작성자가 본인이 아닐 경우)
+            // [알림] 댓글 알림 전송
             const post = communityPosts.find(p => p.id === postId);
-            if (post && post.uid && post.uid !== uid) {
+            if (post && post.uid) {
                 try {
                     sharedDb.collection('notifications').add({
                         targetUid: post.uid,
@@ -9703,7 +9775,7 @@ const firebaseConfig = {
             // [New] 대댓글일 경우 원댓글 작성자에게도 알림 (게시글 작성자와 다를 경우)
             if (parentId) {
                 const parentComment = comments.find(c => c.id === parentId);
-                if (parentComment && parentComment.uid && parentComment.uid !== uid && parentComment.uid !== post.uid) {
+                if (parentComment && parentComment.uid && parentComment.uid !== post.uid) {
                     try {
                         sharedDb.collection('notifications').add({
                             targetUid: parentComment.uid,
@@ -9887,6 +9959,7 @@ const firebaseConfig = {
             const [showAllRecords, setShowAllRecords] = useState(false);
             const [isRotating, setIsRotating] = useState(false);
             const [showAnimMenu, setShowAnimMenu] = useState(false);
+            const isNotiFirstLoad = useRef(true);
 
             useEffect(() => {
                 window.triggerAiSecurityCheck = (prompt) => {
@@ -13044,7 +13117,7 @@ const firebaseConfig = {
 
                                                 if (postViewMode === 'list') {
                                                     return (
-                                                        <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden">
+                                                        <div key={post.id} id={`post-${post.id}`} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden">
                                                             <div className="p-3 flex items-center gap-3" onClick={() => toggleComments(post.id)}>
                                                                 <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}</span>
                                                                 <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -13162,7 +13235,7 @@ const firebaseConfig = {
 
                                                 if (postViewMode === 'gallery' && expandedPostId !== post.id) {
                                                     return (
-                                                        <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col h-full" onClick={() => toggleComments(post.id)}>
+                                                        <div key={post.id} id={`post-${post.id}`} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col h-full" onClick={() => toggleComments(post.id)}>
                                                             <div className="aspect-square bg-slate-100 relative overflow-hidden">
                                                                 {images.length > 0 ? (
                                                                     <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 cursor-pointer" loading="lazy" onClick={(e) => { e.stopPropagation(); openLightbox(images, 0); }} />
@@ -13195,7 +13268,7 @@ const firebaseConfig = {
                                                 }
 
                                                 return (
-                                                    <div key={post.id} className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group ${postViewMode === 'gallery' ? 'col-span-full' : ''}`}>
+                                                    <div key={post.id} id={`post-${post.id}`} className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group ${postViewMode === 'gallery' ? 'col-span-full' : ''}`}>
                                                         <div className="flex justify-between items-start mb-2">
                                                             <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
                                                             <div className="flex items-center gap-2">
