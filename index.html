@@ -8553,7 +8553,7 @@ const firebaseConfig = {
             const [authorName, setAuthorName] = useState(() => localStorage.getItem('community_authorName') || "");
             const [content, setContent] = useState("");
             const [postPassword, setPostPassword] = useState("");
-            const [imageUrl, setImageUrl] = useState("");
+            const [imageUrls, setImageUrls] = useState([]);
             const [isUploading, setIsUploading] = useState(false);
             const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -8565,14 +8565,14 @@ const firebaseConfig = {
                         setAuthorName(initialPost.authorName);
                         setContent(initialPost.content);
                         setPostPassword(initialPost.postPassword);
-                        setImageUrl(initialPost.imageUrl || "");
+                        setImageUrls(initialPost.imageUrls || (initialPost.imageUrl ? [initialPost.imageUrl] : []));
                     } else {
                         setCategory('생활지도팁');
                         setTitle("");
                         setAuthorName(localStorage.getItem('community_authorName') || "");
                         setContent("");
                         setPostPassword("");
-                        setImageUrl("");
+                        setImageUrls([]);
                     }
                 }
             }, [isOpen, initialPost]);
@@ -8608,8 +8608,8 @@ const firebaseConfig = {
             };
 
             const handleImageUpload = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
                 
                 if (!imgbbApiKey) {
                     alert("이미지 업로드를 위해서는 설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 설정해야 합니다.");
@@ -8619,35 +8619,32 @@ const firebaseConfig = {
                 setIsUploading(true);
                 setUploadProgress(0);
                 try {
-                    let uploadFile = file;
-                    // 2MB 이상일 경우 자동 압축
-                    if (file.size > 2 * 1024 * 1024) {
-                        uploadFile = await compressImage(file);
-                    }
-
-                    const formData = new FormData();
-                    formData.append("image", uploadFile);
-                    
-                    const xhr = new XMLHttpRequest();
-                    xhr.open("POST", `https://api.imgbb.com/1/upload?key=${imgbbApiKey}`);
-                    
-                    xhr.upload.onprogress = (event) => {
-                        if (event.lengthComputable) {
-                            setUploadProgress(Math.round((event.loaded / event.total) * 100));
+                    let successCount = 0;
+                    for (let i = 0; i < files.length; i++) {
+                        let uploadFile = files[i];
+                        // 2MB 이상일 경우 자동 압축
+                        if (uploadFile.size > 2 * 1024 * 1024) {
+                            uploadFile = await compressImage(uploadFile);
                         }
-                    };
+
+                        const formData = new FormData();
+                        formData.append("image", uploadFile);
+                        
+                        const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
+                            method: "POST",
+                            body: formData
+                        });
+                        const data = await res.json();
+                        
+                        if (data.success) {
+                            setImageUrls(prev => [...prev, data.data.url]);
+                            successCount++;
+                        }
+                        setUploadProgress(Math.round(((i + 1) / files.length) * 100));
+                    }
                     
-                    xhr.onload = () => {
-                        if (xhr.status === 200) {
-                            const data = JSON.parse(xhr.responseText);
-                            if (data.success) setImageUrl(data.data.url);
-                            else alert("업로드 실패: " + (data.error?.message || "오류"));
-                        } else alert("서버 오류");
-                        setIsUploading(false);
-                    };
-                    
-                    xhr.onerror = () => { alert("네트워크 오류"); setIsUploading(false); };
-                    xhr.send(formData);
+                    if (successCount < files.length) alert(`일부 이미지 업로드 실패 (${successCount}/${files.length} 성공)`);
+                    setIsUploading(false);
                 } catch (err) {
                     console.error(err);
                     alert("이미지 업로드 중 오류가 발생했습니다.");
@@ -8661,7 +8658,7 @@ const firebaseConfig = {
                     return;
                 }
                 localStorage.setItem('community_authorName', authorName);
-                onSave(title, content, authorName, category, postPassword, imageUrl);
+                onSave(title, content, authorName, category, postPassword, imageUrls);
             };
 
             if (!isOpen) return null;
@@ -8700,23 +8697,24 @@ const firebaseConfig = {
                             <textarea value={content} onChange={(e) => setContent(e.target.value)} className="w-full h-40 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 resize-none custom-scroll" placeholder="내용을 입력하세요" />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 flex justify-between">
-                                <span>사진 첨부 (선택)</span>
-                                {imageUrl && <button onClick={() => setImageUrl("")} className="text-rose-500 hover:underline">삭제</button>}
-                            </label>
-                            {imageUrl ? (
-                                <div className="relative w-full h-40 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center">
-                                    <img src={imageUrl} alt="첨부 이미지" className="h-full object-contain" />
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                    <label className={`flex-1 p-3 border border-slate-200 border-dashed rounded-xl text-xs text-slate-400 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                        {isUploading ? <Icon d={PATHS.spinner} className="animate-spin" /> : <Icon d={PATHS.upload} />}
-                                        <span>{isUploading ? `업로드 중... ${uploadProgress}%` : "이미지 업로드 (ImgBB)"}</span>
-                                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
-                                    </label>
+                            <label className="text-xs font-bold text-slate-500">사진 첨부 (선택)</label>
+                            {imageUrls.length > 0 && (
+                                <div className="grid grid-cols-3 gap-2 mb-2">
+                                    {imageUrls.map((url, idx) => (
+                                        <div key={idx} className="relative aspect-square bg-slate-50 rounded-xl border border-slate-200 overflow-hidden group/img">
+                                            <img src={url} alt={`첨부 ${idx + 1}`} className="w-full h-full object-cover" />
+                                            <button onClick={() => setImageUrls(prev => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-opacity hover:bg-rose-500"><Icon d={PATHS.x} size={12}/></button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
+                            <div className="flex items-center gap-2">
+                                <label className={`flex-1 p-3 border border-slate-200 border-dashed rounded-xl text-xs text-slate-400 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                    {isUploading ? <Icon d={PATHS.spinner} className="animate-spin" /> : <Icon d={PATHS.upload} />}
+                                    <span>{isUploading ? `업로드 중... ${uploadProgress}%` : "이미지 추가 (여러 장 가능)"}</span>
+                                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} disabled={isUploading} />
+                                </label>
+                            </div>
                             {!imgbbApiKey && <p className="text-[10px] text-rose-500">* 사진을 올리려면 설정에서 ImgBB API 키를 등록해주세요.</p>}
                         </div>
                         <div className="flex gap-2 pt-2">
@@ -8905,6 +8903,7 @@ const firebaseConfig = {
             const [hasMorePosts, setHasMorePosts] = useState(true);
             const [isLoadingPosts, setIsLoadingPosts] = useState(false);
             const [postViewMode, setPostViewMode] = useState('card');
+            const [postSearchTerm, setPostSearchTerm] = useState("");
             
             const [likedPosts, setLikedPosts] = useState(() => {
                 try {
@@ -9212,17 +9211,17 @@ const firebaseConfig = {
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false });
 
             // [New] Community Logic
-            const handleSavePost = async (title, content, authorName, category, password, imageUrl) => {
+            const handleSavePost = async (title, content, authorName, category, password, imageUrls) => {
                 try {
                      // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
                      setCommentAuthor(authorName);
 
                      if (editingPost) {
                         await sharedDb.collection('community').doc(editingPost.id).update({
-                            title, content, authorName, category, postPassword: password, imageUrl: imageUrl || null
+                            title, content, authorName, category, postPassword: password, imageUrls: imageUrls || []
                         });
                         setToastMessage("게시글이 수정되었습니다.");
-                        setCommunityPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, title, content, authorName, category, postPassword: password, imageUrl: imageUrl || null } : p));
+                        setCommunityPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, title, content, authorName, category, postPassword: password, imageUrls: imageUrls || [] } : p));
                         setEditingPost(null);
                     } else {
                         await sharedDb.collection('community').add({
@@ -9234,7 +9233,7 @@ const firebaseConfig = {
                             postPassword: password,
                             likes: [],
                             comments: [],
-                            imageUrl: imageUrl || null
+                            imageUrls: imageUrls || []
                         });
                         setToastMessage("게시글이 등록되었습니다.");
                     }
@@ -12601,18 +12600,32 @@ const firebaseConfig = {
                             {mode === 'community' && (
                                 <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-10">
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                        <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 whitespace-nowrap">
-                                            <span className="text-2xl">🍯</span> 선생님 꿀팁 게시판
-                                            <button onClick={() => setShowCommunityHelp(true)} className="text-slate-400 hover:text-indigo-500 p-1.5 rounded-full hover:bg-slate-50 transition-colors" title="이용 안내">
-                                                <Icon d={PATHS.help} size={18} />
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 whitespace-nowrap">
+                                                <span className="text-2xl">🍯</span> 꿀팁 게시판
+                                                <button onClick={() => setShowCommunityHelp(true)} className="text-slate-400 hover:text-indigo-500 p-1.5 rounded-full hover:bg-slate-50 transition-colors" title="이용 안내">
+                                                    <Icon d={PATHS.help} size={18} />
+                                                </button>
+                                            </h3>
+                                        </div>
+                                        <div className="flex gap-2 w-full sm:w-auto">
+                                            <div className="relative flex-1 sm:w-48">
+                                                <Icon d={PATHS.search} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                <input 
+                                                    type="text" 
+                                                    value={postSearchTerm} 
+                                                    onChange={(e) => setPostSearchTerm(e.target.value)} 
+                                                    placeholder="검색..." 
+                                                    className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-colors"
+                                                />
+                                            </div>
+                                            <button 
+                                                onClick={() => setShowPostModal(true)} 
+                                                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 whitespace-nowrap"
+                                            >
+                                                <Icon d={PATHS.edit} size={16} /> <span className="hidden sm:inline">글쓰기</span>
                                             </button>
-                                        </h3>
-                                        <button 
-                                            onClick={() => setShowPostModal(true)} 
-                                            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 whitespace-nowrap"
-                                        >
-                                            <Icon d={PATHS.edit} size={16} /> 새 글 쓰기
-                                        </button>
+                                        </div>
                                     </div>
 
                                     {filterAuthor && (
@@ -12640,12 +12653,23 @@ const firebaseConfig = {
                                     <div className="space-y-4">
                                         {communityPosts
                                             .filter(post => !filterAuthor || post.authorName === filterAuthor)
+                                            .filter(post => {
+                                                if (!postSearchTerm) return true;
+                                                const lowerTerm = postSearchTerm.toLowerCase();
+                                                return (
+                                                    post.title.toLowerCase().includes(lowerTerm) ||
+                                                    post.content.toLowerCase().includes(lowerTerm) ||
+                                                    post.authorName.toLowerCase().includes(lowerTerm)
+                                                );
+                                            })
                                             .map(post => {
                                                 let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
                                                 if (post.category === '생활지도팁') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
                                                 else if (post.category === '수업팁') badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
                                                 else if (post.category === '업무팁') badgeColor = "bg-green-50 text-green-600 border-green-100";
                                                 else if (post.category === '기타(잡담)') badgeColor = "bg-amber-50 text-amber-600 border-amber-100";
+
+                                                const images = post.imageUrls || (post.imageUrl ? [post.imageUrl] : []);
 
                                                 if (postViewMode === 'list') {
                                                     return (
@@ -12654,7 +12678,7 @@ const firebaseConfig = {
                                                                 <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}</span>
                                                                 <div className="flex-1 min-w-0 flex items-center gap-2">
                                                                     <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
-                                                                    {post.imageUrl && <Icon d={PATHS.image} size={12} className="text-slate-400" />}
+                                                                    {images.length > 0 && <Icon d={PATHS.image} size={12} className="text-slate-400" />}
                                                                     {post.postPassword && <span className="text-[10px] text-slate-300">🔒</span>}
                                                                 </div>
                                                                 <div className="flex items-center gap-3 text-xs text-slate-400 shrink-0">
@@ -12671,9 +12695,11 @@ const firebaseConfig = {
                                                                 <div className="bg-slate-50 border-t border-slate-100 p-4 cursor-default animate-fade-in" onClick={e => e.stopPropagation()}>
                                                                     <div className="mb-4 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white p-3 rounded-xl border border-slate-200">
                                                                         {post.content}
-                                                                        {post.imageUrl && (
-                                                                            <div className="mt-3">
-                                                                                <img src={post.imageUrl} alt="첨부" className="max-h-60 rounded-lg object-contain border border-slate-100" />
+                                                                        {images.length > 0 && (
+                                                                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                                {images.map((url, idx) => (
+                                                                                    <img key={idx} src={url} alt={`첨부 ${idx+1}`} className="rounded-lg border border-slate-100 w-full object-contain max-h-96 bg-slate-50" />
+                                                                                ))}
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -12757,9 +12783,10 @@ const firebaseConfig = {
                                                                 <h4 className="text-base font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">{post.title}</h4>
                                                                 <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed mb-3 whitespace-pre-wrap">{post.content}</p>
                                                             </div>
-                                                            {post.imageUrl && (
-                                                                <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
-                                                                    <img src={post.imageUrl} alt="첨부 이미지" className="w-full h-full object-cover" loading="lazy" />
+                                                            {images.length > 0 && (
+                                                                <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0 relative">
+                                                                    <img src={images[0]} alt="첨부 이미지" className="w-full h-full object-cover" loading="lazy" />
+                                                                    {images.length > 1 && <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 rounded-full font-bold">+{images.length - 1}</div>}
                                                                 </div>
                                                             )}
                                                         </div>
