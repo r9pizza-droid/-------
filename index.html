@@ -5662,10 +5662,10 @@
 
                             {activeTab === 'app' && (
                                 <div className="space-y-6 animate-fade-in">
-                                    <div className="inline-flex p-1 bg-slate-100 rounded-xl mb-2">
-                                        <button onClick={() => setAppSubTab('basic')} className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${appSubTab === 'basic' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>앱 기본 설정</button>
-                                        <button onClick={() => setAppSubTab('display')} className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${appSubTab === 'display' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>화면 및 소리 설정</button>
-                                        <button onClick={() => setAppSubTab('vacation')} className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${appSubTab === 'vacation' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>방학기간 설정</button>
+                                    <div className="flex w-full p-1 bg-slate-100 rounded-xl mb-2">
+                                        <button onClick={() => setAppSubTab('basic')} className={`flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${appSubTab === 'basic' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>앱 기본 설정</button>
+                                        <button onClick={() => setAppSubTab('display')} className={`flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${appSubTab === 'display' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>화면 및 기능 설정</button>
+                                        <button onClick={() => setAppSubTab('vacation')} className={`flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${appSubTab === 'vacation' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>방학기간 설정</button>
                                     </div>
 
                                     {appSubTab === 'basic' && (
@@ -5897,33 +5897,49 @@
                                                         </div>
                                                     </div>
                                                     <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <Icon d={PATHS.search} size={16} className="text-slate-400"/>
-                                                                <span className="text-xs font-bold text-slate-500">화면 배율 (UI Scale)</span>
+                                                        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2 gap-2 md:gap-0">
+                                                            <div className="flex justify-between items-center w-full md:w-auto">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Icon d={PATHS.search} size={16} className="text-slate-400"/>
+                                                                    <span className="text-xs font-bold text-slate-500">화면 배율 (UI Scale)</span>
+                                                                </div>
+                                                                <span className="md:hidden text-xs font-bold text-indigo-600">{appConfig.uiScale || 100}%</span>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-xs font-bold text-indigo-600">{appConfig.uiScale || 100}%</span>
+                                                            <div className="flex items-center gap-2 justify-end w-full md:w-auto">
+                                                                <span className="hidden md:inline text-xs font-bold text-indigo-600">{appConfig.uiScale || 100}%</span>
                                                                 {(appConfig.uiScale !== 100) && (
                                                                     <button 
                                                                         onClick={() => updateAppConfig({ uiScale: 100 })}
-                                                                        className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full hover:bg-slate-200 transition-colors font-bold"
+                                                                        className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full hover:bg-slate-200 transition-colors font-bold w-full md:w-auto"
                                                                     >초기화</button>
                                                                 )}
                                                             </div>
                                                         </div>
                                                         <div className="flex flex-col gap-2">
-                                                            <input type="range" min="80" max="200" step="5" value={appConfig.uiScale || 100} onChange={(e) => updateAppConfig({ uiScale: parseInt(e.target.value) })} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
-                                                            <div className="flex justify-between gap-1">
-                                                                {[100, 110, 125, 150].map(scale => (
-                                                                    <button 
-                                                                        key={scale} 
-                                                                        onClick={() => updateAppConfig({ uiScale: scale })}
-                                                                        className={`flex-1 py-1 text-[10px] font-bold rounded border transition-all ${appConfig.uiScale === scale ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-100'}`}
-                                                                    >
-                                                                        {scale}%
-                                                                    </button>
-                                                                ))}
+                                                            <div className="md:hidden">
+                                                                <select 
+                                                                    value={appConfig.uiScale || 100} 
+                                                                    onChange={(e) => updateAppConfig({ uiScale: parseInt(e.target.value) })}
+                                                                    className="w-full text-xs font-bold bg-slate-100 text-slate-600 px-2 py-2 rounded-lg outline-none cursor-pointer hover:bg-slate-200 transition-colors border-none"
+                                                                >
+                                                                    {[80, 90, 100, 110, 120, 125, 130, 140, 150, 160, 175, 200].map(scale => (
+                                                                        <option key={scale} value={scale}>{scale}%</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                            <div className="hidden md:flex flex-col gap-2">
+                                                                <input type="range" min="80" max="200" step="5" value={appConfig.uiScale || 100} onChange={(e) => updateAppConfig({ uiScale: parseInt(e.target.value) })} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                                                                <div className="flex justify-between gap-1">
+                                                                    {[100, 110, 125, 150].map(scale => (
+                                                                        <button 
+                                                                            key={scale} 
+                                                                            onClick={() => updateAppConfig({ uiScale: scale })}
+                                                                            className={`flex-1 py-1 text-[10px] font-bold rounded border transition-all ${appConfig.uiScale === scale ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-100'}`}
+                                                                        >
+                                                                            {scale}%
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -5952,6 +5968,28 @@
                                                                     <div className={`w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${appConfig.showPhotoInRecord ? 'bg-indigo-500' : 'bg-slate-200'}`}></div>
                                                                     <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${appConfig.showPhotoInRecord ? 'translate-x-5' : 'translate-x-0'}`}></div>
                                                                 </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors flex flex-col justify-between">
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Icon d={PATHS.history} size={16} className="text-slate-400"/>
+                                                                    <span className="text-xs font-bold text-slate-500">길게 누르기</span>
+                                                                </div>
+                                                                <select 
+                                                                    value={appConfig.longPressDuration || 1500} 
+                                                                    onChange={(e) => updateAppConfig({ longPressDuration: parseInt(e.target.value) })} 
+                                                                    className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg outline-none cursor-pointer hover:bg-slate-200 transition-colors border-none"
+                                                                >
+                                                                    <option value={1000}>1.0초</option>
+                                                                    <option value={1500}>1.5초</option>
+                                                                    <option value={2000}>2.0초</option>
+                                                                    <option value={2500}>2.5초</option>
+                                                                    <option value={3000}>3.0초</option>
+                                                                </select>
+                                                            </div>
+                                                            <div className="text-[9px] text-slate-400">
+                                                                학생 카드를 길게 눌러 인사이트 창을 여는 시간입니다.
                                                             </div>
                                                         </div>
                                                     </div>
@@ -5991,24 +6029,19 @@
                                                             </div>
                                                         </div>
                                                     <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors flex flex-col justify-between">
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <Icon d={PATHS.magic} size={16} className="text-slate-400"/>
-                                                                <span className="text-xs font-bold text-slate-500">자전과 공전 효과</span>
-                                                            </div>
-                                                            <select 
-                                                                value={appConfig.rotationAnimation || 'flip'} 
-                                                                onChange={(e) => updateAppConfig({ rotationAnimation: e.target.value })}
-                                                                className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg outline-none cursor-pointer hover:bg-slate-200 transition-colors border-none"
-                                                            >
-                                                                <option value="flip">FLIP (이동)</option>
-                                                                <option value="wormhole">WORMHOLE (웜홀)</option>
-                                                                <option value="none">NONE (효과 없음)</option>
-                                                            </select>
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <Icon d={PATHS.magic} size={16} className="text-slate-400"/>
+                                                            <span className="text-xs font-bold text-slate-500">자전과 공전 효과</span>
                                                         </div>
-                                                        <div className="text-[9px] text-slate-400">
-                                                            모둠 회전 시 자리 이동 애니메이션 스타일을 선택합니다.
-                                                        </div>
+                                                        <select 
+                                                            value={appConfig.rotationAnimation || 'flip'} 
+                                                            onChange={(e) => updateAppConfig({ rotationAnimation: e.target.value })}
+                                                            className="w-full text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1.5 rounded-lg outline-none cursor-pointer hover:bg-slate-200 transition-colors border-none"
+                                                        >
+                                                            <option value="flip">FLIP (이동)</option>
+                                                            <option value="wormhole">WORMHOLE (웜홀)</option>
+                                                            <option value="none">NONE (효과 없음)</option>
+                                                        </select>
                                                     </div>
                                                     </div>
                                                     </div>
@@ -6113,19 +6146,20 @@
                                                                 </div>
                                                             </div>
                                                         <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors flex flex-col justify-between">
-                                                            <div className="flex justify-between items-center">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Icon d={PATHS.edit} size={16} className="text-slate-400"/>
-                                                                    <span className="text-xs font-bold text-slate-500">버튼 크기</span>
-                                                                </div>
-                                                                <div className="flex bg-slate-100 p-1 rounded-lg">
-                                                                    {['small', 'medium', 'large', 'xlarge'].map(size => (
-                                                                        <button key={size} onClick={() => updateAppConfig({ floatingButtonSize: size })} className={`flex-1 whitespace-nowrap px-1 py-1 text-[10px] font-bold rounded-md transition-all ${appConfig.floatingButtonSize === size ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
-                                                                            {size === 'small' ? '작게' : size === 'medium' ? '보통' : size === 'large' ? '크게' : '더 크게'}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <Icon d={PATHS.edit} size={16} className="text-slate-400"/>
+                                                                <span className="text-xs font-bold text-slate-500">버튼 크기</span>
                                                             </div>
+                                                            <select 
+                                                                value={appConfig.floatingButtonSize || 'medium'} 
+                                                                onChange={(e) => updateAppConfig({ floatingButtonSize: e.target.value })}
+                                                                className="w-full text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1.5 rounded-lg outline-none cursor-pointer hover:bg-slate-200 transition-colors border-none"
+                                                            >
+                                                                <option value="small">작게</option>
+                                                                <option value="medium">보통</option>
+                                                                <option value="large">크게</option>
+                                                                <option value="xlarge">더 크게</option>
+                                                            </select>
                                                         </div>
                                                         </div>
                                                     </div>
@@ -10931,34 +10965,91 @@ const firebaseConfig = {
                 const d = targetDate || date;
                 if (navigator.vibrate) navigator.vibrate(15);
 
-                if (isSimpleMode) { const newDone = !simpleChecks[id];
-            setSimpleChecks({ ...simpleChecks, [id]: newDone }); if (newDone) confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#6366f1', '#8b5cf6'] });
-            return; } const currentRec = records[d]?.[id] || { done: false, tasks: {} }; const currentTasks = dailyTasks[d] || [];
-            
-            // [New] 지각 제출 체크
-            const today = dayjs().format('YYYY-MM-DD');
-            const isLate = d < today;
+                if (isSimpleMode) { 
+                    const newDone = !simpleChecks[id];
+                    setSimpleChecks({ ...simpleChecks, [id]: newDone }); 
+                    if (newDone) confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#6366f1', '#8b5cf6'] });
+                    return; 
+                } 
+                
+                const currentRec = records[d]?.[id] || { done: false, tasks: {} }; 
+                const currentTasks = dailyTasks[d] || [];
+                const today = dayjs().format('YYYY-MM-DD');
+                const isLate = d < today;
 
-            let newRec; if (taskIndex !== null) { const newTasksStatus = { ...currentRec.tasks, [taskIndex]: !currentRec.tasks?.[taskIndex] };
-            
-            // [New] 지각 상태 업데이트
-            const newLateStatus = { ...(currentRec.lateTasks || {}) };
-            if (newTasksStatus[taskIndex] && isLate) {
-                newLateStatus[taskIndex] = true;
-            } else {
-                delete newLateStatus[taskIndex];
-            }
+                let newRec; 
+                let updates = {}; 
 
-            const allDone = currentTasks.length > 0 && currentTasks.every((_, idx) => newTasksStatus[idx]); newRec = { ...currentRec, tasks: newTasksStatus, done: allDone, lateTasks: newLateStatus };
-            } else { const newDone = !currentRec.done; const newTasksStatus = {};
-            const newLateStatus = { ...(currentRec.lateTasks || {}) };
-            if (currentTasks.length > 0) currentTasks.forEach((_, idx) => {
-                newTasksStatus[idx] = newDone;
-                if (newDone && isLate) newLateStatus[idx] = true;
-                else delete newLateStatus[idx];
-            }); newRec = { ...currentRec, done: newDone, tasks: newTasksStatus, lateTasks: newLateStatus };
-            } const newRecords = { ...records, [d]: { ...records[d], [id]: newRec } }; setRecords(newRecords); if (!isLocalMode) saveRecordsToFirestore({ [d]: newRecords[d] });
-            if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } }); };
+                if (taskIndex !== null) { 
+                    const newTasksStatus = { ...currentRec.tasks, [taskIndex]: !currentRec.tasks?.[taskIndex] };
+                    const newLateStatus = { ...(currentRec.lateTasks || {}) };
+                    if (newTasksStatus[taskIndex] && isLate) {
+                        newLateStatus[taskIndex] = true;
+                    } else {
+                        delete newLateStatus[taskIndex];
+                    }
+                    const allDone = currentTasks.length > 0 && currentTasks.every((_, idx) => newTasksStatus[idx]); 
+                    newRec = { ...currentRec, tasks: newTasksStatus, done: allDone, lateTasks: newLateStatus };
+                    updates[d] = { ...records[d], [id]: newRec };
+                } else { 
+                    const newDone = !currentRec.done; 
+                    const newTasksStatus = {};
+                    const newLateStatus = { ...(currentRec.lateTasks || {}) };
+                    
+                    if (currentTasks.length > 0) currentTasks.forEach((_, idx) => {
+                        newTasksStatus[idx] = newDone;
+                        if (newDone && isLate) newLateStatus[idx] = true;
+                        else delete newLateStatus[idx];
+                    }); 
+                    newRec = { ...currentRec, done: newDone, tasks: newTasksStatus, lateTasks: newLateStatus };
+                    updates[d] = { ...records[d], [id]: newRec };
+
+                    // [New] 미제출(지각) 숙제 일괄 처리
+                    if (!targetDate || targetDate === date) {
+                        const pastDates = Object.keys(dailyTasks).filter(dt => dt < date);
+                        pastDates.forEach(dt => {
+                            const pTasks = dailyTasks[dt] || [];
+                            if (pTasks.length === 0) return;
+                            
+                            const pRec = records[dt]?.[id] || { done: false, tasks: {}, lateTasks: {} };
+                            let pChanged = false;
+                            const pNewTasksStatus = { ...(pRec.tasks || {}) };
+                            const pNewLateStatus = { ...(pRec.lateTasks || {}) };
+
+                            pTasks.forEach((_, idx) => {
+                                const isTaskDone = pNewTasksStatus[idx];
+                                const isTaskLate = pNewLateStatus[idx];
+
+                                if (newDone) {
+                                    if (!isTaskDone) {
+                                        pNewTasksStatus[idx] = true;
+                                        pNewLateStatus[idx] = true;
+                                        pChanged = true;
+                                    }
+                                } else {
+                                    if (isTaskDone && isTaskLate) {
+                                        pNewTasksStatus[idx] = false;
+                                        delete pNewLateStatus[idx];
+                                        pChanged = true;
+                                    }
+                                }
+                            });
+
+                            if (pChanged) {
+                                const pAllDone = pTasks.every((_, idx) => pNewTasksStatus[idx]);
+                                const pUpdatedRec = { ...pRec, tasks: pNewTasksStatus, done: pAllDone, lateTasks: pNewLateStatus };
+                                if (!updates[dt]) updates[dt] = { ...records[dt] };
+                                updates[dt][id] = pUpdatedRec;
+                            }
+                        });
+                    }
+                } 
+                
+                const newRecords = { ...records, ...updates }; 
+                setRecords(newRecords); 
+                if (!isLocalMode) saveRecordsToFirestore(updates);
+                if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } }); 
+            };
             
             const resetDateRecord = () => { openConfirm(`${date} 기록을 초기화하시겠습니까?`, () => { const newRecords = { ...records }; delete newRecords[date]; setRecords(newRecords); if (!isLocalMode) deleteRecordsFromFirestore([date]); setToastMessage("기록이 초기화되었습니다."); });
             };
@@ -12359,7 +12450,7 @@ const firebaseConfig = {
                 {showNotifications && (
                     <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
-                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fade-in flex flex-col max-h-96">
+                        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fade-in flex flex-col max-h-96">
                             <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                                 <span className="text-xs font-bold text-slate-600">알림</span>
                                 <div className="flex gap-2">
