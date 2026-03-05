@@ -6981,7 +6981,41 @@
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     <span className="text-[10px] text-notion-text-light">{s.order}번</span>
                                                     <div className="flex gap-0.5">
-                                                        {stats.students.find(st => st.id === s.id)?.history.slice(-5).map((h, i) => (<div key={i} className={`w-1.5 h-1.5 rounded-full ${h.ratio === 1 ? 'bg-green-400' : h.ratio > 0 ? 'bg-yellow-400' : 'bg-slate-200'}`} title={`${h.date}: ${Math.round(h.ratio * 100)}%`}></div>))}
+                                                        {(() => {
+                                                            const monday = dayjs(date).startOf('week').add(1, 'day');
+                                                            return Array.from({ length: 5 }).map((_, i) => {
+                                                                const d = monday.add(i, 'day');
+                                                                const dStr = d.format('YYYY-MM-DD');
+                                                                const tasks = dailyTasks[dStr] || [];
+                                                                let ratio = 0;
+                                                                let hasTask = false;
+                                                                
+                                                                if (tasks.length > 0) {
+                                                                    hasTask = true;
+                                                                    const rec = records[dStr]?.[s.id];
+                                                                    let done = 0;
+                                                                    if (rec) {
+                                                                        tasks.forEach((_, idx) => {
+                                                                            if (rec.tasks && rec.tasks[idx]) done++;
+                                                                            else if (!rec.tasks && rec.done) done++;
+                                                                        });
+                                                                    }
+                                                                    ratio = done / tasks.length;
+                                                                }
+
+                                                                if (!hasTask) {
+                                                                    return (
+                                                                        <div key={i} className="w-1.5 h-1.5 flex items-center justify-center" title={`${dStr}: 과제 없음`}>
+                                                                            <div className="w-0.5 h-0.5 bg-slate-300 rounded-full"></div>
+                                                                        </div>
+                                                                    );
+                                                                }
+
+                                                                return (
+                                                                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${ratio === 1 ? 'bg-green-400' : ratio > 0 ? 'bg-yellow-400' : 'bg-slate-200'}`} title={`${dStr}: ${Math.round(ratio * 100)}%`}></div>
+                                                                );
+                                                            });
+                                                        })()}
                                                     </div>
                                                 </div>
                                             </div>
@@ -7242,14 +7276,27 @@
             const prevPositions = useRef({});
 
             React.useLayoutEffect(() => {
-                const nodes = document.querySelectorAll('.seat-node');
+                const container = seatChartRef.current || document;
+                const nodes = container.querySelectorAll('.seat-node');
+                
+                // [Fix] Capture new positions BEFORE applying transforms to ensure correct delta calculation for next render
+                const newPositions = {};
+                nodes.forEach(node => {
+                    const id = node.getAttribute('data-student-id');
+                    if (id) {
+                        const rect = node.getBoundingClientRect();
+                        newPositions[id] = { top: rect.top, left: rect.left };
+                    }
+                });
                 
                 if (isRotating && animationType !== 'none') {
                     nodes.forEach(node => {
                         const id = node.getAttribute('data-student-id');
                         const prev = prevPositions.current[id];
                         if (prev) {
-                            const current = node.getBoundingClientRect();
+                            const current = newPositions[id];
+                            if (!current) return;
+
                             const deltaX = prev.left - current.left;
                             const deltaY = prev.top - current.top;
                             
@@ -7268,7 +7315,9 @@
                                 // FLIP (Default)
                                 node.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
                                 node.style.transition = 'none';
-                                void node.offsetHeight; // Force reflow
+                                
+                                // Force reflow
+                                void node.offsetHeight; 
 
                                 requestAnimationFrame(() => {
                                     node.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -7279,14 +7328,6 @@
                     });
                 }
 
-                const newPositions = {};
-                nodes.forEach(node => {
-                    const id = node.getAttribute('data-student-id');
-                    if (id) {
-                        const rect = node.getBoundingClientRect();
-                        newPositions[id] = { top: rect.top, left: rect.left };
-                    }
-                });
                 prevPositions.current = newPositions;
             }, [seatAssignments, isRotating, animationType]);
 
