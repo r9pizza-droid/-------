@@ -8607,9 +8607,8 @@ const firebaseConfig = {
                 });
             };
 
-            const handleImageUpload = async (e) => {
-                const files = Array.from(e.target.files);
-                if (files.length === 0) return;
+            const uploadFiles = async (files) => {
+                if (!files || files.length === 0) return;
                 
                 if (!imgbbApiKey) {
                     alert("이미지 업로드를 위해서는 설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 설정해야 합니다.");
@@ -8651,6 +8650,28 @@ const firebaseConfig = {
                     setIsUploading(false);
                 }
             };
+
+            const handleImageUpload = (e) => {
+                const files = Array.from(e.target.files);
+                uploadFiles(files);
+                e.target.value = '';
+            };
+
+            useEffect(() => {
+                const handlePaste = (e) => {
+                    if (!isOpen) return;
+                    const items = e.clipboardData.items;
+                    const files = [];
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].type.indexOf("image") !== -1) {
+                            files.push(items[i].getAsFile());
+                        }
+                    }
+                    if (files.length > 0) uploadFiles(files);
+                };
+                window.addEventListener('paste', handlePaste);
+                return () => window.removeEventListener('paste', handlePaste);
+            }, [isOpen, imgbbApiKey]);
 
             const handleSubmit = () => {
                 if (!title.trim() || !authorName.trim() || !content.trim() || !postPassword.trim()) {
@@ -8709,9 +8730,18 @@ const firebaseConfig = {
                                 </div>
                             )}
                             <div className="flex items-center gap-2">
-                                <label className={`flex-1 p-3 border border-slate-200 border-dashed rounded-xl text-xs text-slate-400 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <label 
+                                    className={`flex-1 p-3 border border-slate-200 border-dashed rounded-xl text-xs text-slate-400 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        if (!isUploading) {
+                                            uploadFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+                                        }
+                                    }}
+                                >
                                     {isUploading ? <Icon d={PATHS.spinner} className="animate-spin" /> : <Icon d={PATHS.upload} />}
-                                    <span>{isUploading ? `업로드 중... ${uploadProgress}%` : "이미지 추가 (여러 장 가능)"}</span>
+                                    <span>{isUploading ? `업로드 중... ${uploadProgress}%` : "이미지 추가 (클릭, 드래그, 붙여넣기)"}</span>
                                     <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} disabled={isUploading} />
                                 </label>
                             </div>
