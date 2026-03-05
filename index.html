@@ -4965,7 +4965,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin }) => {
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -5141,6 +5141,45 @@
                 if (hasSuccess) {
                     setTestAllSuccess(true);
                     setTimeout(() => setTestAllSuccess(false), 3000);
+                }
+            };
+
+            const handleTestCommentLikeNotification = async () => {
+                const user = firebase.auth().currentUser;
+                if (!user) {
+                    setToastMessage("알림 테스트를 위해서는 로그인이 필요합니다. (게시판 등에서 로그인)");
+                    return;
+                }
+                if (!sharedDb) {
+                    setToastMessage("서버 연결 상태를 확인해주세요.");
+                    return;
+                }
+
+                try {
+                    await sharedDb.collection('notifications').add({
+                        targetUid: user.uid,
+                        type: 'like',
+                        postId: 'test-post',
+                        postTitle: '테스트 게시글',
+                        senderName: '테스트 봇',
+                        message: "누군가 회원님의 글에 좋아요를 눌렀습니다. (테스트)",
+                        isRead: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    await sharedDb.collection('notifications').add({
+                        targetUid: user.uid,
+                        type: 'comment',
+                        postId: 'test-post',
+                        postTitle: '테스트 게시글',
+                        senderName: '테스트 봇',
+                        message: `테스트 봇님이 댓글을 남겼습니다: "알림 테스트입니다."`,
+                        isRead: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    setToastMessage("테스트 알림을 발송했습니다. (종 모양 아이콘 확인)");
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("알림 발송 실패: " + e.message);
                 }
             };
 
@@ -5723,8 +5762,9 @@
                                                                         </div>
                                                                     </div>
                                                                     <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100">
-                                                                        <Btn onClick={onTestUpdate} className="py-2 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100">🔔 알림 테스트</Btn>
-                                                                        <Btn onClick={() => { localStorage.setItem('cls_last_version', 'v0.0.0'); showToast("버전 정보가 초기화되었습니다. 새로고침 시 업데이트 노트가 표시됩니다."); }} className="py-2 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-slate-200">🔄 버전 초기화</Btn>
+                                                                        <Btn onClick={onTestUpdate} className="py-2 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100">🔔 업데이트 알림</Btn>
+                                                                        <Btn onClick={onTestCommentLike} className="py-2 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-bold hover:bg-rose-100">💬 댓글/좋아요 알림</Btn>
+                                                                        <Btn onClick={() => { localStorage.setItem('cls_last_version', 'v0.0.0'); showToast("버전 정보가 초기화되었습니다. 새로고침 시 업데이트 노트가 표시됩니다."); }} className="py-2 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-slate-200 col-span-2">🔄 버전 초기화</Btn>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -8882,7 +8922,7 @@ const firebaseConfig = {
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-500">내용</label>
                             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                                <div id="quill-editor" className="h-64 text-sm" style={{ border: 'none' }}></div>
+                                <div id="quill-editor" className="h-96 text-sm" style={{ border: 'none' }}></div>
                             </div>
                         </div>
                         <div className="space-y-1">
@@ -13648,6 +13688,7 @@ const firebaseConfig = {
                         isDevMode={isDevMode}
                         onDevModeClick={handleGearClick}
                         onTestUpdate={() => setNewVersionAvailable(true)}
+                        onTestCommentLike={handleTestCommentLikeNotification}
                         isImgbbConnected={!!imgbbApiKey}
                         onOpenImgbbSetup={() => { 
                             setShowImgbbModal(true); 
