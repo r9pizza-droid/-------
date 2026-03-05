@@ -1703,6 +1703,14 @@
                 const end = dayjs(grassEnd);
                 const diff = end.diff(start, 'day') + 1;
                 const history = [];
+                
+                const startDay = start.day();
+                if (startDay >= 2 && startDay <= 5) {
+                    for (let k = 1; k < startDay; k++) {
+                        history.push({ isPadding: true, date: `pad-${k}` });
+                    }
+                }
+
                 for (let i = 0; i < diff; i++) {
                     const d = start.add(i, 'day');
                     const dStr = d.format('YYYY-MM-DD');
@@ -2505,6 +2513,7 @@
                                             </div>
                                             <div className="grid grid-cols-5 gap-y-6 gap-x-2 justify-items-center py-4 mt-2">
                                                 {displayedGrass.map((h, i) => {
+                                                    if (h.isPadding) return <div key={i} className="w-12 h-12"></div>;
                                                     const isToday = h.date === todayStr;
                                                     const theme = GRASS_THEMES[grassTheme];
                                                     // [New] 툴팁 위치 조정 (가장자리 잘림 방지)
@@ -6887,6 +6896,13 @@
                 return null;
             };
             
+            const getPieStyle = (ratio) => {
+                if (ratio <= 0) return { backgroundColor: '#e2e8f0' };
+                if (ratio >= 1) return { backgroundColor: '#4ade80' };
+                const percentage = ratio * 100;
+                return { background: `conic-gradient(#4ade80 0% ${percentage}%, #e2e8f0 ${percentage}% 100%)` };
+            };
+
             const longPressTimer = useRef(null);
             const isLongPress = useRef(false);
 
@@ -6980,7 +6996,7 @@
                                                 </span>
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     <span className="text-[10px] text-notion-text-light">{s.order}번</span>
-                                                    <div className="flex gap-0.5">
+                                                    <div className="flex gap-1">
                                                         {(() => {
                                                             const monday = dayjs(date).startOf('week').add(1, 'day');
                                                             return Array.from({ length: 5 }).map((_, i) => {
@@ -7005,14 +7021,13 @@
 
                                                                 if (!hasTask) {
                                                                     return (
-                                                                        <div key={i} className="w-1.5 h-1.5 flex items-center justify-center" title={`${dStr}: 과제 없음`}>
-                                                                            <div className="w-0.5 h-0.5 bg-slate-300 rounded-full"></div>
+                                                                        <div key={i} className="w-2.5 h-2.5 rounded-full bg-slate-100" title={`${dStr}: 과제 없음`}>
                                                                         </div>
                                                                     );
                                                                 }
 
                                                                 return (
-                                                                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${ratio === 1 ? 'bg-green-400' : ratio > 0 ? 'bg-yellow-400' : 'bg-slate-200'}`} title={`${dStr}: ${Math.round(ratio * 100)}%`}></div>
+                                                                    <div key={i} className="w-2.5 h-2.5 rounded-full" style={getPieStyle(ratio)} title={`${dStr}: ${Math.round(ratio * 100)}%`}></div>
                                                                 );
                                                             });
                                                         })()}
