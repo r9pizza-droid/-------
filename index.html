@@ -9388,6 +9388,17 @@ const firebaseConfig = {
                     });
             }, [communityPosts, filterAuthor, filterCategory, postSearchTerm]);
             
+            // [New] 주간 인기글 (명예의 전당) 필터링
+            const bestPosts = useMemo(() => {
+                if (!communityPosts || communityPosts.length === 0) return [];
+                const oneWeekAgo = dayjs().subtract(7, 'day');
+                
+                return communityPosts
+                    .filter(p => dayjs(p.createdAt).isAfter(oneWeekAgo) && (p.likes?.length || 0) > 0) // 최근 7일 & 좋아요 1개 이상
+                    .sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0)) // 좋아요 순 정렬
+                    .slice(0, 5); // 상위 5개
+            }, [communityPosts]);
+
             const [lightboxState, setLightboxState] = useState({ isOpen: false, images: [], index: 0 });
             const openLightbox = (images, index = 0) => {
                 setLightboxState({ isOpen: true, images, index });
@@ -13308,6 +13319,38 @@ const firebaseConfig = {
                                             >
                                                 전체 보기
                                             </button>
+                                        </div>
+                                    )}
+
+                                    {/* 🔥 주간 인기글 (명예의 전당) 영역 */}
+                                    {!filterAuthor && !postSearchTerm && !filterCategory && bestPosts.length > 0 && (
+                                        <div className="mb-6 animate-fade-in">
+                                            <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2 text-sm">
+                                                <span className="text-lg">🔥</span> 이번 주 명예의 전당
+                                            </h4>
+                                            <div className="flex gap-3 overflow-x-auto custom-scroll pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x">
+                                                {bestPosts.map(post => (
+                                                    <div 
+                                                        key={post.id}
+                                                        onClick={() => handleOpenPostDetail(post)}
+                                                        className="min-w-[220px] w-[220px] bg-gradient-to-br from-white to-orange-50 border-2 border-orange-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group relative flex flex-col snap-center active:scale-95"
+                                                    >
+                                                        <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all">🏆</div>
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="text-[10px] bg-white/80 text-orange-600 px-2 py-0.5 rounded-md font-bold border border-orange-100 shadow-sm backdrop-blur-sm">{post.category}</span>
+                                                            <span className="text-[10px] text-orange-400 font-medium">{dayjs(post.createdAt).format('MM.DD')}</span>
+                                                        </div>
+                                                        <h5 className="font-bold text-slate-800 text-sm line-clamp-2 mb-3 group-hover:text-orange-700 transition-colors leading-snug">{post.title}</h5>
+                                                        <div className="mt-auto flex items-center justify-between text-xs border-t border-orange-100/50 pt-2">
+                                                            <span className="font-bold text-slate-500 text-[11px] truncate max-w-[100px]">{post.authorName}</span>
+                                                            <div className="flex items-center gap-1 text-rose-500 font-bold bg-white px-1.5 py-0.5 rounded-lg shadow-sm border border-orange-50">
+                                                                <Icon d={PATHS.heart} size={10} className="fill-current"/>
+                                                                <span>{post.likes ? post.likes.length : 0}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
 
