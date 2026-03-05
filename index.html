@@ -9206,26 +9206,32 @@ const firebaseConfig = {
                 return () => unsubscribeAuth();
             }, [sharedDb, appConfig]);
 
-            const handleReadNotification = async (noti) => {
-                if (!noti.isRead) {
-                    try {
-                        await sharedDb.collection('notifications').doc(noti.id).update({ isRead: true });
-                    } catch (e) { console.error(e); }
+            // ==========================================
+    // 🔔 알림 테스트 발송 함수 (하얀 화면 해결용)
+    // ==========================================
+            const handleTestCommentLikeNotification = async () => {
+                const user = firebase.auth().currentUser;
+                if (!user) {
+                    alert("로그인이 필요합니다.");
+                    return;
                 }
-
-                if (noti.postId) {
-                    setMode('community');
-                    setShowNotifications(false);
-                    setTimeout(() => {
-                        const el = document.getElementById(`post-${noti.postId}`);
-                        if (el) {
-                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            el.classList.add('ring-4', 'ring-indigo-300', 'transition-all', 'duration-500');
-                            setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-300'), 2000);
-                        }
-                    }, 300);
-                }
+                if (!sharedDb) return;
+        
+                try {
+                    await sharedDb.collection('notifications').add({
+                        targetUid: user.uid,
+                        type: 'test',
+                        postId: 'test-post',
+                        message: "🔔 테스트: 알림 기능이 정상적으로 작동하고 있습니다!",
+                        isRead: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                setToastMessage("테스트 알림이 발송되었습니다!");
+            } catch (e) {
+                console.error("알림 발송 실패:", e);
+            }
             };
+    // ==========================================
 
             const markAllRead = async () => {
                 const unread = notifications.filter(n => !n.isRead);
