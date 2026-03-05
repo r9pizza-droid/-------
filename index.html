@@ -9662,7 +9662,8 @@ const firebaseConfig = {
                             postPassword: password,
                             likes: [],
                             comments: [],
-                            imageUrls: imageUrls || []
+                            imageUrls: imageUrls || [],
+                            commentCount: 0
                         });
                         setToastMessage("게시글이 등록되었습니다.");
                     }
@@ -9797,6 +9798,9 @@ const firebaseConfig = {
                 createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
             }));
             setComments(loadedComments);
+            
+            // 댓글 수 동기화 (Self-healing)
+            sharedDb.collection('community').doc(postId).update({ commentCount: snapshot.size }).catch(e => console.log("Count update failed", e));
         } catch (e) {
             console.error(e);
             setToastMessage("댓글 불러오기 실패");
@@ -9833,6 +9837,9 @@ const firebaseConfig = {
             // 하위 컬렉션 'comments'에 추가
             const docRef = await sharedDb.collection('community').doc(postId).collection('comments').add(newCommentData);
             
+            // 댓글 수 증가
+            await sharedDb.collection('community').doc(postId).update({ commentCount: firebase.firestore.FieldValue.increment(1) });
+
             // 입력창 비우고 화면 즉시 반영
             if (parentId) {
                 setReplyContent("");
@@ -9891,6 +9898,10 @@ const firebaseConfig = {
 
         try {
             await sharedDb.collection('community').doc(postId).collection('comments').doc(commentId).delete();
+            
+            // 댓글 수 감소
+            await sharedDb.collection('community').doc(postId).update({ commentCount: firebase.firestore.FieldValue.increment(-1) });
+
             // 화면에서 즉시 제거
             setComments(prev => prev.filter(c => c.id !== commentId));
         } catch (e) { 
@@ -13213,6 +13224,10 @@ const firebaseConfig = {
                                                                 <div className="flex items-center gap-3 text-xs text-slate-400 shrink-0">
                                                                     <span className="hidden sm:inline font-medium">{post.authorName}</span>
                                                                     <span className="hidden sm:inline text-[10px]">{dayjs(post.createdAt).format('MM.DD')}</span>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <Icon d={PATHS.message} size={12} />
+                                                                        <span>{post.commentCount || 0}</span>
+                                                                    </div>
                                                                     <div className="flex items-center gap-1">
                                                                         <Icon d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
                                                                         <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
