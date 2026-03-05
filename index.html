@@ -12672,11 +12672,12 @@ const firebaseConfig = {
                                     <div className="flex justify-end mb-2 px-1">
                                         <div className="flex bg-slate-100 p-1 rounded-lg">
                                             <button onClick={() => setPostViewMode('card')} className={`p-1.5 rounded-md transition-all ${postViewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="카드형 보기"><Icon d={PATHS.grid} size={14} /></button>
+                                            <button onClick={() => setPostViewMode('gallery')} className={`p-1.5 rounded-md transition-all ${postViewMode === 'gallery' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="갤러리 보기"><Icon d={PATHS.image} size={14} /></button>
                                             <button onClick={() => setPostViewMode('list')} className={`p-1.5 rounded-md transition-all ${postViewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="리스트 보기"><Icon d={PATHS.list} size={14} /></button>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
+                                    <div className={postViewMode === 'gallery' ? "grid grid-cols-2 sm:grid-cols-3 gap-4" : "space-y-4"}>
                                         {communityPosts
                                             .filter(post => !filterAuthor || post.authorName === filterAuthor)
                                             .filter(post => {
@@ -12814,8 +12815,42 @@ const firebaseConfig = {
                                                     );
                                                 }
 
+                                                if (postViewMode === 'gallery' && expandedPostId !== post.id) {
+                                                    return (
+                                                        <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col h-full" onClick={() => toggleComments(post.id)}>
+                                                            <div className="aspect-square bg-slate-100 relative overflow-hidden">
+                                                                {images.length > 0 ? (
+                                                                    <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
+                                                                        <span className="text-4xl opacity-50">📝</span>
+                                                                        <span className="text-[10px] font-bold">이미지 없음</span>
+                                                                    </div>
+                                                                )}
+                                                                {images.length > 1 && <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{images.length - 1}</div>}
+                                                                <div className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
+                                                                {post.postPassword && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
+                                                            </div>
+                                                            <div className="p-3 flex flex-col flex-1">
+                                                                <h4 className="text-sm font-bold text-slate-800 mb-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">{post.title}</h4>
+                                                                <p className="text-xs text-slate-500 line-clamp-2 mb-2 flex-1">{post.content}</p>
+                                                                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-auto">
+                                                                    <span className="truncate max-w-[60px]">{post.authorName}</span>
+                                                                    <div className="flex items-center gap-2 shrink-0">
+                                                                        <div className="flex items-center gap-0.5">
+                                                                            <Icon d={PATHS.heart} size={10} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
+                                                                            <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
+                                                                        </div>
+                                                                        <span>{dayjs(post.createdAt).format('MM.DD')}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
                                                 return (
-                                                    <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                                                    <div key={post.id} className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group ${postViewMode === 'gallery' ? 'col-span-full' : ''}`}>
                                                         <div className="flex justify-between items-start mb-2">
                                                             <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
                                                             <div className="flex items-center gap-2">
