@@ -9304,7 +9304,13 @@ const firebaseConfig = {
             const renderPostContent = (content, isExpanded = false) => {
                 const isHtml = /<[a-z][\s\S]*>/i.test(content);
                 if (isHtml) {
-                    return <div className={`text-sm text-slate-600 leading-relaxed ql-editor p-0 ${!isExpanded ? 'line-clamp-3' : ''}`} dangerouslySetInnerHTML={{ __html: content }} style={!isExpanded ? { maxHeight: '4.5em', overflow: 'hidden' } : {}} />;
+                    if (!isExpanded) {
+                        const tmp = document.createElement("DIV");
+                        tmp.innerHTML = content;
+                        const textContent = tmp.textContent || tmp.innerText || "";
+                        return <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 mb-3">{textContent}</p>;
+                    }
+                    return <div className="text-sm text-slate-600 leading-relaxed ql-editor p-0" dangerouslySetInnerHTML={{ __html: content }} />;
                 }
                 return <p className={`text-sm text-slate-600 leading-relaxed whitespace-pre-wrap ${!isExpanded ? 'line-clamp-3 mb-3' : 'mb-4'}`}>{content}</p>;
             };
@@ -13189,8 +13195,8 @@ const firebaseConfig = {
                                                             
                                                             {expandedPostId === post.id && (
                                                                 <div className="bg-slate-50 border-t border-slate-100 p-4 cursor-default animate-fade-in" onClick={e => e.stopPropagation()}>
-                                                                    <div className="mb-4 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white p-3 rounded-xl border border-slate-200">
-                                                                        {post.content}
+                                                                    <div className="mb-4 bg-white p-3 rounded-xl border border-slate-200">
+                                                                        {renderPostContent(post.content, true)}
                                                                         {images.length > 0 && (
                                                                             <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-2">
                                                                                 {images.map((url, idx) => (
