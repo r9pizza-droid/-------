@@ -9809,6 +9809,21 @@ const firebaseConfig = {
         }
     };
 
+    // [New] 게시글 상세 뷰 열기/닫기 함수
+    const handleOpenPostDetail = (post) => {
+        setSelectedPost(post);
+        setIsPostDetailOpen(true);
+        // 상세 뷰 진입 시 댓글 데이터가 로드되지 않았다면 불러오기
+        if (expandedPostId !== post.id) {
+            toggleComments(post.id);
+        }
+    };
+
+    const handleClosePostDetail = () => {
+        setIsPostDetailOpen(false);
+        setTimeout(() => setSelectedPost(null), 300); // 애니메이션 시간 고려
+    };
+
     // 💬 새로운 댓글 등록 함수 (하위 컬렉션 방식 통합)
             const handleAddComment = async (postId, parentId = null) => {
                 const contentToUse = parentId ? replyContent : commentContent;
@@ -13121,414 +13136,267 @@ const firebaseConfig = {
                                 </div>
                                 </div>
                             )}
-                            {mode === 'community' && (
-                                <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-10">
-                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 whitespace-nowrap">
-                                                <span className="text-2xl">🍯</span> 꿀팁 게시판
-                                                <button onClick={() => setShowCommunityHelp(true)} className="text-slate-400 hover:text-indigo-500 p-1.5 rounded-full hover:bg-slate-50 transition-colors" title="이용 안내">
-                                                    <Icon d={PATHS.help} size={18} />
-                                                </button>
-                                            </h3>
-                                        </div>
-                                        <div className="flex gap-2 w-full sm:w-auto">
-                                            <div className="relative flex-1 sm:w-48">
-                                                <Icon d={PATHS.search} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                                <input 
-                                                    type="text" 
-                                                    value={postSearchTerm} 
-                                                    onChange={(e) => setPostSearchTerm(e.target.value)} 
-                                                    placeholder="검색..." 
-                                                    className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-colors"
-                                                />
+{mode === 'community' && (
+    <div className="max-w-3xl mx-auto pb-10 relative min-h-[80vh] overflow-hidden">
+        <div className="grid grid-cols-1 grid-rows-1 transition-all duration-300">
+            
+            {/* 1. 목록 뷰 (List View) */}
+            <div className={`col-start-1 row-start-1 w-full transition-all duration-500 ease-in-out transform ${isPostDetailOpen ? '-translate-x-[110%] opacity-0 invisible pointer-events-none' : 'translate-x-0 opacity-100 visible'}`}>
+                <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 whitespace-nowrap">
+                                <span className="text-2xl">🍯</span> 꿀팁 게시판
+                                <button onClick={() => setShowCommunityHelp(true)} className="text-slate-400 hover:text-indigo-500 p-1.5 rounded-full hover:bg-slate-50 transition-colors" title="이용 안내">
+                                    <Icon d={PATHS.help} size={18} />
+                                </button>
+                            </h3>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <div className="relative flex-1 sm:w-48">
+                                <Icon d={PATHS.search} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input type="text" value={postSearchTerm} onChange={(e) => setPostSearchTerm(e.target.value)} placeholder="검색..." className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-colors" />
+                            </div>
+                            <button onClick={() => { if (!userNickname) { setShowNicknameModal(true); } else { setShowPostModal(true); } }} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 whitespace-nowrap">
+                                <Icon d={PATHS.edit} size={16} /> <span className="hidden sm:inline">글쓰기</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {filterAuthor && (
+                        <div className="flex items-center justify-between bg-indigo-50 p-3 rounded-xl border border-indigo-100 animate-fade-in">
+                            <span className="text-xs font-bold text-indigo-700 flex items-center gap-2"><span className="bg-white p-1 rounded-full shadow-sm">👤</span> '{filterAuthor}' 선생님의 글 모아보기</span>
+                            <button onClick={() => setFilterAuthor(null)} className="text-xs bg-white text-slate-500 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold shadow-sm transition-colors">전체 보기</button>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row justify-between items-end mb-2 px-1 gap-2">
+                        <div className="flex gap-1 overflow-x-auto custom-scroll pb-1 w-full sm:w-auto no-scrollbar">
+                            <button onClick={() => setFilterCategory(null)} className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${!filterCategory ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>전체</button>
+                            {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map(cat => (
+                                <button key={cat} onClick={() => setFilterCategory(cat === filterCategory ? null : cat)} className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${filterCategory === cat ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{cat}</button>
+                            ))}
+                        </div>
+                        <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
+                            <button onClick={() => setPostViewMode('list')} className={`p-1.5 rounded-md transition-all ${postViewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="리스트 보기"><Icon d={PATHS.list} size={14} /></button>
+                            <button onClick={() => setPostViewMode('gallery')} className={`p-1.5 rounded-md transition-all ${postViewMode === 'gallery' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="갤러리 보기"><Icon d={PATHS.grid} size={14} /></button>
+                        </div>
+                    </div>
+
+                    <div className={postViewMode === 'gallery' ? "grid grid-cols-2 sm:grid-cols-3 gap-4" : "space-y-4"}>
+                        {filteredCommunityPosts.map(post => {
+                            let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
+                            if (post.category === '생활지도팁') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
+                            else if (post.category === '수업팁') badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
+                            else if (post.category === '업무팁') badgeColor = "bg-green-50 text-green-600 border-green-100";
+                            else if (post.category === '기타(잡담)') badgeColor = "bg-amber-50 text-amber-600 border-amber-100";
+                            const images = post.imageUrls || (post.imageUrl ? [post.imageUrl] : []);
+
+                            if (postViewMode === 'list') {
+                                return (
+                                    <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden" onClick={() => handlePostClick(post)}>
+                                        <div className="p-4 flex items-center gap-3">
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}</span>
+                                            <div className="flex-1 min-w-0 flex items-center gap-2">
+                                                <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
+                                                {images.length > 0 && <Icon d={PATHS.image} size={12} className="text-slate-400" />}
+                                                {post.postPassword && <span className="text-[10px] text-slate-300">🔒</span>}
                                             </div>
-                                            <button 
-                                                onClick={() => {
-                                                    if (!userNickname) {
-                                                        setShowNicknameModal(true);
-                                                    } else {
-                                                        setShowPostModal(true);
-                                                    }
-                                                }} 
-                                                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 whitespace-nowrap"
-                                            >
-                                                <Icon d={PATHS.edit} size={16} /> <span className="hidden sm:inline">글쓰기</span>
-                                            </button>
+                                            <div className="flex items-center gap-3 text-xs text-slate-400 shrink-0">
+                                                <span className="hidden sm:inline font-medium">{post.authorName}</span>
+                                                <span className="hidden sm:inline text-[10px]">{dayjs(post.createdAt).format('MM.DD')}</span>
+                                                <div className="flex items-center gap-1">
+                                                    <Icon d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
+                                                    <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    {filterAuthor && (
-                                        <div className="flex items-center justify-between bg-indigo-50 p-3 rounded-xl border border-indigo-100 animate-fade-in">
-                                            <span className="text-xs font-bold text-indigo-700 flex items-center gap-2">
-                                                <span className="bg-white p-1 rounded-full shadow-sm">👤</span> 
-                                                '{filterAuthor}' 선생님의 글 모아보기
-                                            </span>
-                                            <button 
-                                                onClick={() => setFilterAuthor(null)}
-                                                className="text-xs bg-white text-slate-500 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold shadow-sm transition-colors"
-                                            >
-                                                전체 보기
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    <div className="flex flex-col sm:flex-row justify-between items-end mb-2 px-1 gap-2">
-                                        <div className="flex gap-1 overflow-x-auto custom-scroll pb-1 w-full sm:w-auto no-scrollbar">
-                                            <button onClick={() => setFilterCategory(null)} className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${!filterCategory ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>전체</button>
-                                            {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map(cat => (
-                                                <button key={cat} onClick={() => setFilterCategory(cat === filterCategory ? null : cat)} className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${filterCategory === cat ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
-                                                    {cat}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
-                                            <button onClick={() => { setPostViewMode('list'); setExpandedPostId(null); }} className={`p-1.5 rounded-md transition-all ${postViewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="리스트 보기"><Icon d={PATHS.list} size={14} /></button>
-                                            <button onClick={() => { setPostViewMode('gallery'); setExpandedPostId(null); }} className={`p-1.5 rounded-md transition-all ${postViewMode === 'gallery' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="갤러리 보기"><Icon d={PATHS.image} size={14} /></button>
-                                            <button onClick={() => { setPostViewMode('card'); setExpandedPostId(null); }} className={`p-1.5 rounded-md transition-all ${postViewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="카드형 보기"><Icon d={PATHS.grid} size={14} /></button>
+                                );
+                            }
+                            return (
+                                <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col h-full" onClick={() => handlePostClick(post)}>
+                                    <div className="aspect-square bg-slate-100 relative overflow-hidden">
+                                        {images.length > 0 ? (
+                                            <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                                        ) : (
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2"><span className="text-4xl opacity-50">📝</span><span className="text-[10px] font-bold">이미지 없음</span></div>
+                                        )}
+                                        <div className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
+                                    </div>
+                                    <div className="p-3 flex flex-col flex-1">
+                                        <h4 className="text-sm font-bold text-slate-800 mb-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">{post.title}</h4>
+                                        <div className="text-xs text-slate-500 line-clamp-2 mb-2 flex-1">{renderPostContent(post.content, false)}</div>
+                                        <div className="flex justify-between items-center text-[10px] text-slate-400 mt-auto">
+                                            <span className="truncate max-w-[60px]">{post.authorName}</span>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <div className="flex items-center gap-0.5"><Icon d={PATHS.heart} size={10} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} /><span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span></div>
+                                                <span>{dayjs(post.createdAt).format('MM.DD')}</span>
+                                            </div>
                                         </div>
                                     </div>
+                                </div>
+                            );
+                        })}
+                        {communityPosts.length === 0 && !isLoadingPosts && (
+                            <div className="col-span-full text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                <div className="text-4xl mb-2 opacity-50">📭</div>
+                                <p className="text-sm font-bold">아직 등록된 꿀팁이 없습니다.</p>
+                            </div>
+                        )}
+                    </div>
+                    {hasMorePosts && !isLoadingPosts && communityPosts.length > 0 && (
+                        <div className="flex justify-center pt-4">
+                            <button onClick={loadMorePosts} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all">이전 꿀팁 더 보기 ⬇️</button>
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                                    <div className={postViewMode === 'gallery' ? "grid grid-cols-2 sm:grid-cols-3 gap-4" : "space-y-4"}>
-                                        {communityPosts
-                                            .filter(post => !filterAuthor || post.authorName === filterAuthor)
-                                            .filter(post => !filterCategory || post.category === filterCategory)
-                                            .filter(post => {
-                                                if (!postSearchTerm) return true;
-                                                const lowerTerm = postSearchTerm.toLowerCase();
-                                                return (
-                                                    post.title.toLowerCase().includes(lowerTerm) ||
-                                                    post.content.toLowerCase().includes(lowerTerm) ||
-                                                    post.authorName.toLowerCase().includes(lowerTerm)
-                                                );
-                                            })
-                                            .map(post => {
-                                                let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
-                                                if (post.category === '생활지도팁') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
-                                                else if (post.category === '수업팁') badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
-                                                else if (post.category === '업무팁') badgeColor = "bg-green-50 text-green-600 border-green-100";
-                                                else if (post.category === '기타(잡담)') badgeColor = "bg-amber-50 text-amber-600 border-amber-100";
+            {/* 2. 상세 뷰 (Detail View - 슬라이드) */}
+            <div className={`col-start-1 row-start-1 w-full transition-all duration-500 ease-in-out transform ${isPostDetailOpen ? 'translate-x-0 opacity-100 visible' : 'translate-x-[110%] opacity-0 invisible pointer-events-none'} bg-white z-10 rounded-2xl shadow-xl border border-slate-200`}>
+                {selectedPost && (
+                    <div className="flex flex-col h-full p-4 sm:p-6 bg-white rounded-2xl">
+                        {/* 상단 툴바 */}
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                            <button onClick={handleBackToPostList} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors">
+                                <Icon d={PATHS.left} size={18} /> 목록으로
+                            </button>
+                            <div className="flex gap-2">
+                                {(isAdmin || (firebase.auth().currentUser?.uid === selectedPost.uid) || selectedPost.authorName === localStorage.getItem('community_authorName')) && (
+                                    <>
+                                        <button onClick={(e) => { e.stopPropagation(); handleEditPost(selectedPost); }} className="text-xs font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-200 transition-colors"><Icon d={PATHS.edit} size={14}/> 수정</button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeletePost(selectedPost); if(isPostDetailOpen) handleBackToPostList(); }} className="text-xs font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-rose-200 transition-colors"><Icon d={PATHS.trash} size={14}/> 삭제</button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* 글 본문 영역 */}
+                        <div className="flex-1 overflow-y-auto custom-scroll pr-2 mb-6">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${selectedPost.category === '생활지도팁' ? 'bg-pink-50 text-pink-600 border-pink-100' : selectedPost.category === '수업팁' ? 'bg-blue-50 text-blue-600 border-blue-100' : selectedPost.category === '업무팁' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{selectedPost.category}</span>
+                                <span className="text-xs text-slate-400 font-medium">{dayjs(selectedPost.createdAt).format('YYYY.MM.DD HH:mm')}</span>
+                            </div>
+                            <h2 className="text-2xl font-bold text-slate-800 mb-4 leading-tight">{selectedPost.title}</h2>
+                            <div className="flex items-center justify-between text-sm text-slate-500 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div className="flex items-center gap-2 font-bold cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => { setFilterAuthor(selectedPost.authorName); handleBackToPostList(); }} title="이 작성자 글 모아보기"><span className="text-lg">👤</span> {selectedPost.authorName} 선생님</div>
+                                <button onClick={() => handleLikePost(selectedPost.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors font-bold ${likedPosts.includes(selectedPost.id) ? 'text-rose-500 bg-rose-100' : 'text-slate-500 bg-white border border-slate-200 hover:text-rose-500 hover:bg-rose-50'}`}>
+                                    <Icon d={PATHS.heart} size={16} className={likedPosts.includes(selectedPost.id) ? "fill-current" : ""} />
+                                    <span>좋아요 {selectedPost.likes ? selectedPost.likes.length : 0}</span>
+                                </button>
+                            </div>
+                            <div className="text-slate-700 leading-relaxed whitespace-pre-wrap text-base min-h-[100px] mb-6">
+                                {renderPostContent(selectedPost.content, true)}
+                            </div>
+                            
+                            {/* 첨부 이미지 */}
+                            {(selectedPost.imageUrls || (selectedPost.imageUrl ? [selectedPost.imageUrl] : [])).length > 0 && (
+                                <div className="mb-8 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {(selectedPost.imageUrls || [selectedPost.imageUrl]).map((url, idx) => (
+                                        <div key={idx} className="aspect-square rounded-2xl border border-slate-200 bg-white overflow-hidden cursor-pointer hover:opacity-90 transition-opacity shadow-sm" onClick={() => openLightbox((selectedPost.imageUrls || [selectedPost.imageUrl]), idx)}>
+                                            <img src={url} alt={`첨부 ${idx+1}`} className="w-full h-full object-cover" />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
-                                                const images = post.imageUrls || (post.imageUrl ? [post.imageUrl] : []);
-
-                                                if (postViewMode === 'list') {
-                                                    return (
-                                                        <div key={post.id} id={`post-${post.id}`} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden">
-                                                            <div className="p-3 flex items-center gap-3" onClick={() => toggleComments(post.id)}>
-                                                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}</span>
-                                                                <div className="flex-1 min-w-0 flex items-center gap-2">
-                                                                    <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
-                                                                    {images.length > 0 && <Icon d={PATHS.image} size={12} className="text-slate-400" />}
-                                                                    {post.postPassword && <span className="text-[10px] text-slate-300">🔒</span>}
-                                                                </div>
-                                                                <div className="flex items-center gap-3 text-xs text-slate-400 shrink-0">
-                                                                    <span className="hidden sm:inline font-medium">{post.authorName}</span>
-                                                                    <span className="hidden sm:inline text-[10px]">{dayjs(post.createdAt).format('MM.DD')}</span>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <Icon d={PATHS.message} size={12} />
-                                                                        <span>{post.commentCount || 0}</span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <Icon d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
-                                                                        <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
-                                                                    </div>
-                                                                </div>
+                            {/* 댓글 영역 */}
+                            <div className="border-t border-slate-100 pt-6">
+                                <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-4">💬 댓글 <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{comments.length}</span></h4>
+                                <div className="space-y-3 mb-6">
+                                    {loadingComments ? (
+                                        <div className="text-center text-xs text-slate-400 py-4"><Icon d={PATHS.spinner} className="animate-spin inline mr-1"/> 댓글 로딩 중...</div>
+                                    ) : comments.length > 0 ? (
+                                        comments.filter(c => !c.parentId).map(comment => {
+                                            const isMyComment = firebase.auth().currentUser?.uid === comment.uid;
+                                            const replies = comments.filter(r => r.parentId === comment.id);
+                                            return (
+                                                <div key={comment.id} className="space-y-2">
+                                                    <div className="bg-slate-50 p-4 rounded-2xl text-xs border border-slate-100 group/comment">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-slate-700 text-sm">{comment.author || comment.authorName}</span>
+                                                                <span className="text-[10px] text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
                                                             </div>
-                                                            
-                                                            {expandedPostId === post.id && (
-                                                                <div className="bg-slate-50 border-t border-slate-100 p-4 cursor-default animate-fade-in" onClick={e => e.stopPropagation()}>
-                                                                    <div className="mb-4 bg-white p-3 rounded-xl border border-slate-200">
-                                                                        {renderPostContent(post.content, true)}
-                                                                        {images.length > 0 && (
-                                                                            <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-2">
-                                                                                {images.map((url, idx) => (
-                                                                                    <div key={idx} className="aspect-square rounded-lg border border-slate-100 bg-slate-50 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); openLightbox(images, idx); }}>
-                                                                                        <img src={url} alt={`첨부 ${idx+1}`} className="w-full h-full object-cover" />
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                    
-                                                                    <div className="flex justify-between items-center mb-4">
-                                                                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                                            <span className="font-bold">{post.authorName}</span>
-                                                                            <span className="text-slate-300">|</span>
-                                                                            <span>{dayjs(post.createdAt).format('YYYY.MM.DD HH:mm')}</span>
-                                                                        </div>
-                                                                        <div className="flex gap-2">
-                                                                            <button onClick={(e) => { e.stopPropagation(); handleEditPost(post); }} className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200 hover:border-indigo-200 transition-colors"><Icon d={PATHS.edit} size={12}/></button>
-                                                                            <button onClick={(e) => { e.stopPropagation(); handleDeletePost(post); }} className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200 hover:border-rose-200 transition-colors"><Icon d={PATHS.trash} size={12}/></button>
-                                                                            <button onClick={(e) => { e.stopPropagation(); handleLikePost(post.id); }} className={`text-xs flex items-center gap-1 px-2 py-1 rounded border transition-colors ${likedPosts.includes(post.id) ? 'text-rose-500 font-bold bg-rose-50 border-rose-200' : 'text-slate-400 hover:text-rose-500 bg-white border-slate-200'}`}>
-                                                                                <Icon d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current" : ""} /> {post.likes ? post.likes.length : 0}
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="space-y-2 mb-3 max-h-60 overflow-y-auto custom-scroll pr-1">
-                                                                        {loadingComments ? (
-                                                                            <div className="text-center text-xs text-slate-400 py-2"><Icon d={PATHS.spinner} className="animate-spin inline mr-1"/> 로딩 중...</div>
-                                                                        ) : comments.length > 0 ? (
-                                                                            comments.filter(c => !c.parentId).map(comment => {
-                                                                                const isMyComment = firebase.auth().currentUser?.uid === comment.uid;
-                                                                                const replies = comments.filter(r => r.parentId === comment.id);
-                                                                                return (
-                                                                                    <div key={comment.id} className="space-y-2">
-                                                                                        <div className="bg-white p-2.5 rounded-xl text-xs border border-slate-200 group/comment">
-                                                                                            <div className="flex justify-between items-center mb-1">
-                                                                                                <div className="flex items-center gap-2">
-                                                                                                    <span className="font-bold text-slate-700">{comment.author || comment.authorName}</span>
-                                                                                                    <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
-                                                                                                </div>
-                                                                                                <div className="flex items-center gap-1">
-                                                                                                    <button onClick={(e) => { e.stopPropagation(); setReplyingToId(replyingToId === comment.id ? null : comment.id); }} className="text-slate-400 hover:text-indigo-500 p-1 rounded transition-colors text-[10px] font-bold">답글</button>
-                                                                                                    {(isAdmin || isMyComment) && (
-                                                                                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteComment(post.id, comment.id, comment.uid); }} className="text-slate-300 hover:text-rose-500 p-1 rounded-full hover:bg-rose-50 transition-colors opacity-0 group-hover/comment:opacity-100" title="삭제"><Icon d={PATHS.trash} size={12} /></button>
-                                                                                                    )}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
-                                                                                        </div>
-                                                                                        
-                                                                                        {replies.map(reply => {
-                                                                                            const isMyReply = firebase.auth().currentUser?.uid === reply.uid;
-                                                                                            return (
-                                                                                                <div key={reply.id} className="ml-4 bg-slate-50 p-2.5 rounded-xl text-xs border border-slate-200 group/reply relative">
-                                                                                                    <div className="absolute top-[-10px] left-[-10px] w-3 h-4 border-l border-b border-slate-200 rounded-bl-lg"></div>
-                                                                                                    <div className="flex justify-between items-center mb-1">
-                                                                                                        <div className="flex items-center gap-2">
-                                                                                                            <span className="font-bold text-slate-700">{reply.author || reply.authorName}</span>
-                                                                                                            <span className="text-[10px] text-slate-400">{dayjs(reply.createdAt).format('MM.DD HH:mm')}</span>
-                                                                                                        </div>
-                                                                                                        {(isAdmin || isMyReply) && (
-                                                                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteComment(post.id, reply.id, reply.uid); }} className="text-slate-300 hover:text-rose-500 p-1 rounded-full hover:bg-rose-50 transition-colors opacity-0 group-hover/reply:opacity-100" title="삭제"><Icon d={PATHS.trash} size={12} /></button>
-                                                                                                        )}
-                                                                                                    </div>
-                                                                                                    <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{reply.content}</p>
-                                                                                                </div>
-                                                                                            );
-                                                                                        })}
-
-                                                                                        {replyingToId === comment.id && (
-                                                                                            <div className="ml-4 flex gap-2 animate-fade-in">
-                                                                                                <input value={replyContent} onChange={e => setReplyContent(e.target.value)} placeholder="답글을 입력하세요..." className="flex-1 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 bg-white" autoFocus onKeyDown={e => { if(e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddComment(post.id, comment.id); }} />
-                                                                                                <button onClick={() => handleAddComment(post.id, comment.id)} className="p-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 shadow-sm shrink-0 flex items-center justify-center"><Icon d={PATHS.send} size={14} /></button>
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                );
-                                                                            })
-                                                                        ) : (
-                                                                            <div className="text-center text-xs text-slate-400 py-4 border border-dashed border-slate-300 rounded-xl">첫 번째 댓글을 남겨보세요!</div>
-                                                                        )}
-                                                                    </div>
-                                                                    
-                                                                    <div className="flex gap-2">
-                                                                        <input value={commentContent} onChange={e => setCommentContent(e.target.value)} placeholder="댓글..." className="flex-1 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 bg-white min-w-0" onKeyDown={e => { if(e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddComment(post.id); }} />
-                                                                        <button onClick={() => handleAddComment(post.id)} className="p-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 shadow-sm shrink-0 flex items-center justify-center"><Icon d={PATHS.send} size={16} /></button>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                }
-
-                                                if (postViewMode === 'gallery' && expandedPostId !== post.id) {
-                                                    return (
-                                                        <div key={post.id} id={`post-${post.id}`} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col h-full" onClick={() => toggleComments(post.id)}>
-                                                            <div className="aspect-square bg-slate-100 relative overflow-hidden">
-                                                                {images.length > 0 ? (
-                                                                    <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 cursor-pointer" loading="lazy" onClick={(e) => { e.stopPropagation(); openLightbox(images, 0); }} />
-                                                                ) : (
-                                                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
-                                                                        <span className="text-4xl opacity-50">📝</span>
-                                                                        <span className="text-[10px] font-bold">이미지 없음</span>
-                                                                    </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <button onClick={() => setReplyingToId(replyingToId === comment.id ? null : comment.id)} className="text-slate-500 hover:text-indigo-600 bg-white px-2 py-1 rounded-lg border border-slate-200 transition-colors text-[10px] font-bold">답글</button>
+                                                                {(isAdmin || isMyComment) && (
+                                                                    <button onClick={() => handleDeleteComment(selectedPost.id, comment.id, comment.uid)} className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg bg-white border border-slate-200 transition-colors" title="삭제"><Icon d={PATHS.trash} size={12} /></button>
                                                                 )}
-                                                                {images.length > 1 && <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{images.length - 1}</div>}
-                                                                <div className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
-                                                                {post.postPassword && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
-                                                            </div>
-                                                            <div className="p-3 flex flex-col flex-1">
-                                                                <h4 className="text-sm font-bold text-slate-800 mb-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">{post.title}</h4>
-                                                                <div className="text-xs text-slate-500 line-clamp-2 mb-2 flex-1">{renderPostContent(post.content, false)}</div>
-                                                                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-auto">
-                                                                    <span className="truncate max-w-[60px]">{post.authorName}</span>
-                                                                    <div className="flex items-center gap-2 shrink-0">
-                                                                        <div className="flex items-center gap-0.5">
-                                                                            <Icon d={PATHS.heart} size={10} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
-                                                                            <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
-                                                                        </div>
-                                                                        <span>{dayjs(post.createdAt).format('MM.DD')}</span>
-                                                                    </div>
-                                                                </div>
                                                             </div>
                                                         </div>
-                                                    );
-                                                }
-
-                                                return (
-                                                    <div key={post.id} id={`post-${post.id}`} className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group ${postViewMode === 'gallery' ? 'col-span-full' : ''}`}>
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] text-slate-400 font-medium">{dayjs(post.createdAt).format('YYYY.MM.DD HH:mm')}</span>
-                                                                <button 
-                                                                    onClick={(e) => { e.stopPropagation(); handleEditPost(post); }}
-                                                                    className="text-slate-300 hover:text-indigo-500 transition-colors p-1 rounded-full hover:bg-indigo-50"
-                                                                    title="수정"
-                                                                >
-                                                                    <Icon d={PATHS.edit} size={14} />
-                                                                </button>
-                                                                <button 
-                                                                    onClick={(e) => { e.stopPropagation(); handleDeletePost(post); }}
-                                                                    className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded-full hover:bg-rose-50"
-                                                                    title="삭제"
-                                                                >
-                                                                    <Icon d={PATHS.trash} size={14} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-4">
-                                                            <div className="flex-1 min-w-0">
-                                                                <h4 className="text-base font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">{post.title}</h4>
-                                                                {renderPostContent(post.content, false)}
-                                                            </div>
-                                                            {images.length > 0 && (
-                                                                <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0 relative cursor-pointer hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); openLightbox(images, 0); }}>
-                                                                    <img src={images[0]} alt="첨부 이미지" className="w-full h-full object-cover" loading="lazy"/>
-                                                                    {images.length > 1 && <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 rounded-full font-bold">+{images.length - 1}</div>}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs">👤</div>
-                                                                <span 
-                                                                    className="text-xs font-bold text-slate-500 hover:text-indigo-600 hover:underline cursor-pointer transition-colors"
-                                                                    onClick={(e) => { e.stopPropagation(); setFilterAuthor(post.authorName); }}
-                                                                    title="작성자 글 모아보기"
-                                                                >
-                                                                    {post.authorName} 선생님
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <button 
-                                                                    onClick={(e) => { e.stopPropagation(); toggleComments(post.id); }}
-                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${expandedPostId === post.id ? 'text-indigo-500 bg-indigo-50' : 'text-slate-400 hover:text-indigo-500 hover:bg-indigo-50'}`}
-                                                                >
-                                                                    <Icon d={PATHS.message} size={14} />
-                                                                    <span className="text-xs font-bold">댓글</span>
-                                                                </button>
-                                                                <button 
-                                                                    onClick={(e) => { e.stopPropagation(); handleLikePost(post.id); }}
-                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${likedPosts.includes(post.id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
-                                                                >
-                                                                    <Icon d={PATHS.heart} size={14} className={likedPosts.includes(post.id) ? "fill-current" : ""} />
-                                                                    <span className="text-xs font-bold">{post.likes ? post.likes.length : 0}</span>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {expandedPostId === post.id && (
-                                                            <div className="mt-3 pt-3 border-t border-slate-100 animate-fade-in cursor-default" onClick={e => e.stopPropagation()}>
-                                                                <div className="mb-4">{renderPostContent(post.content, true)}</div>
-                                                                <div className="space-y-2 mb-3 max-h-60 overflow-y-auto custom-scroll pr-1 border-t border-slate-100 pt-3">
-                                                                    {loadingComments ? (
-                                                                        <div className="text-center text-xs text-slate-400 py-2"><Icon d={PATHS.spinner} className="animate-spin inline mr-1"/> 로딩 중...</div>
-                                                                    ) : comments.length > 0 ? (
-                                                                        comments.map(comment => {
-                                                                            const isMyComment = firebase.auth().currentUser?.uid === comment.uid;
-                                                                            return (
-                                                                                <div key={comment.id} className="bg-slate-50 p-2.5 rounded-xl text-xs border border-slate-100 group/comment">
-                                                                                    <div className="flex justify-between items-center mb-1">
-                                                                                        <div className="flex items-center gap-2">
-                                                                                            <span className="font-bold text-slate-700">{comment.author || comment.authorName}</span>
-                                                                                            <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
-                                                                                        </div>
-                                                                                        {(isAdmin || isMyComment) && (
-                                                                                            <button 
-                                                                                                onClick={(e) => { e.stopPropagation(); handleDeleteComment(post.id, comment.id, comment.uid); }}
-                                                                                                className="text-slate-300 hover:text-rose-500 p-1 rounded-full hover:bg-rose-50 transition-colors opacity-0 group-hover/comment:opacity-100"
-                                                                                                title="삭제"
-                                                                                            >
-                                                                                                <Icon d={PATHS.trash} size={12} />
-                                                                                            </button>
-                                                                                        )}
-                                                                                    </div>
-                                                                                    <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
-                                                                                </div>
-                                                                            );
-                                                                        })
-                                                                    ) : (
-                                                                        <div className="text-center text-xs text-slate-400 py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">첫 번째 댓글을 남겨보세요!</div>
-                                                                    )}
-                                                                </div>
-                                                                
-                                                                <div className="flex flex-col gap-2">
-                                                                    <div className="flex gap-2">
-                                                                        <input value={commentAuthor} onChange={e => setCommentAuthor(e.target.value)} placeholder="이름" className="w-14 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 bg-white shrink-0" />
-                                                                        <input value={commentContent} onChange={e => setCommentContent(e.target.value)} placeholder="댓글..." className="flex-1 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 bg-white min-w-0" onKeyDown={e => { if(e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddComment(post.id); }} />
-                                                                        <button onClick={() => handleAddComment(post.id)} className="p-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 shadow-sm shrink-0 flex items-center justify-center"><Icon d={PATHS.send} size={16} /></button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                        <p className="text-slate-600 whitespace-pre-wrap leading-relaxed text-sm">{comment.content}</p>
                                                     </div>
-                                                );
-                                            })}
-                                        
-                                        {isLoadingPosts && Array.from({ length: communityPosts.length === 0 ? 3 : 1 }).map((_, i) => (
-                                            <div key={`skeleton-${i}`} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-pulse">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div className="h-5 w-16 bg-slate-100 rounded-lg"></div>
-                                                    <div className="h-3 w-24 bg-slate-100 rounded"></div>
+                                                    {replies.map(reply => (
+                                                        <div key={reply.id} className="ml-6 bg-white p-3 rounded-2xl text-xs border border-slate-200 group/reply relative">
+                                                            <div className="absolute top-[-10px] left-[-10px] w-3 h-4 border-l-2 border-b-2 border-slate-300 rounded-bl-lg"></div>
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-bold text-slate-700">{reply.author || reply.authorName}</span>
+                                                                    <span className="text-[10px] text-slate-400">{dayjs(reply.createdAt).format('MM.DD HH:mm')}</span>
+                                                                </div>
+                                                                {(isAdmin || (firebase.auth().currentUser?.uid === reply.uid)) && (
+                                                                    <button onClick={() => handleDeleteComment(selectedPost.id, reply.id, reply.uid)} className="text-slate-300 hover:text-rose-500 p-1 rounded-full hover:bg-rose-50 transition-colors" title="삭제"><Icon d={PATHS.trash} size={12} /></button>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{reply.content}</p>
+                                                        </div>
+                                                    ))}
+                                                    {replyingToId === comment.id && (
+                                                        <div className="ml-6 flex gap-2 animate-fade-in">
+                                                            <input value={replyContent} onChange={e => setReplyContent(e.target.value)} placeholder="답글을 입력하세요..." className="flex-1 p-3 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 bg-white shadow-sm" autoFocus onKeyDown={e => { if(e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddComment(selectedPost.id, comment.id); }} />
+                                                            <button onClick={() => handleAddComment(selectedPost.id, comment.id)} className="p-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 shadow-md shrink-0 flex items-center justify-center"><Icon d={PATHS.send} size={14} /></button>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="h-6 w-3/4 bg-slate-100 rounded mb-3"></div>
-                                                <div className="space-y-2 mb-4">
-                                                    <div className="h-3 w-full bg-slate-100 rounded"></div>
-                                                    <div className="h-3 w-full bg-slate-100 rounded"></div>
-                                                    <div className="h-3 w-2/3 bg-slate-100 rounded"></div>
-                                                </div>
-                                                <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 rounded-full bg-slate-100"></div>
-                                                        <div className="h-3 w-20 bg-slate-100 rounded"></div>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <div className="h-6 w-12 bg-slate-100 rounded-lg"></div>
-                                                        <div className="h-6 w-12 bg-slate-100 rounded-lg"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        {filterAuthor && communityPosts.filter(p => p.authorName === filterAuthor).length === 0 && !isLoadingPosts && (
-                                            <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                                                <div className="text-4xl mb-2 opacity-50">🔍</div>
-                                                <p className="text-sm font-bold">불러온 글 중에 '{filterAuthor}' 선생님의 글이 없습니다.</p>
-                                                <p className="text-xs mt-1">아래 '이전 꿀팁 더 보기'를 눌러 더 찾아보세요.</p>
-                                            </div>
-                                        )}
-
-                                        {communityPosts.length === 0 && !isLoadingPosts && (
-                                            <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                                                <div className="text-4xl mb-2 opacity-50">📭</div>
-                                                <p className="text-sm font-bold">아직 등록된 꿀팁이 없습니다.</p>
-                                                <p className="text-xs mt-1">첫 번째 꿀팁을 공유해보세요!</p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {hasMorePosts && !isLoadingPosts && communityPosts.length > 0 && (
-                                        <div className="flex justify-center pt-4">
-                                            <button onClick={loadMorePosts} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all">
-                                                이전 꿀팁 더 보기 ⬇️
-                                            </button>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                                            <div className="text-2xl mb-1 opacity-50">✍️</div>
+                                            <p className="text-sm font-bold">첫 번째 댓글을 남겨보세요!</p>
                                         </div>
                                     )}
                                 </div>
-                            )}
+                                <div className="flex gap-2 bg-white pt-2 pb-1">
+                                    <input value={commentContent} onChange={e => setCommentContent(e.target.value)} placeholder="따뜻한 댓글을 남겨주세요..." className="flex-1 p-3.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-slate-50 transition-all" onKeyDown={e => { if(e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddComment(selectedPost.id); }} />
+                                    <button onClick={() => handleAddComment(selectedPost.id)} className="px-5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md shrink-0 flex items-center justify-center transition-transform active:scale-95"><Icon d={PATHS.send} size={18} /> <span className="hidden sm:inline ml-2">등록</span></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 하단 이전/다음 글 네비게이션 */}
+                        {(() => {
+                            const currentIndex = filteredCommunityPosts.findIndex(p => p.id === selectedPost.id);
+                            const prevPost = filteredCommunityPosts[currentIndex - 1];
+                            const nextPost = filteredCommunityPosts[currentIndex + 1];
+                            return (
+                                <div className="mt-auto pt-4 border-t border-slate-200 flex gap-3">
+                                    <button onClick={() => handleNavigatePost(-1)} disabled={!prevPost} className={`flex-1 p-3 sm:p-4 rounded-xl border flex items-center justify-start gap-3 transition-all text-left ${prevPost ? 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-md cursor-pointer group' : 'bg-slate-50 border-slate-100 opacity-50 cursor-not-allowed'}`}>
+                                        <div className={`p-1.5 sm:p-2 rounded-full flex-shrink-0 ${prevPost ? 'bg-indigo-50 text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors' : 'bg-slate-200 text-slate-400'}`}><Icon d={PATHS.left} size={16}/></div>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[10px] font-bold text-slate-400 mb-0.5">이전 글</span>
+                                            <span className="text-xs sm:text-sm font-bold text-slate-700 truncate">{prevPost ? prevPost.title : '이전 글이 없습니다'}</span>
+                                        </div>
+                                    </button>
+                                    <button onClick={() => handleNavigatePost(1)} disabled={!nextPost} className={`flex-1 p-3 sm:p-4 rounded-xl border flex items-center justify-end gap-3 transition-all text-right ${nextPost ? 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-md cursor-pointer group' : 'bg-slate-50 border-slate-100 opacity-50 cursor-not-allowed'}`}>
+                                        <div className="flex flex-col items-end min-w-0">
+                                            <span className="text-[10px] font-bold text-slate-400 mb-0.5">다음 글</span>
+                                            <span className="text-xs sm:text-sm font-bold text-slate-700 truncate">{nextPost ? nextPost.title : '다음 글이 없습니다'}</span>
+                                        </div>
+                                        <div className={`p-1.5 sm:p-2 rounded-full flex-shrink-0 ${nextPost ? 'bg-indigo-50 text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors' : 'bg-slate-200 text-slate-400'}`}><Icon d={PATHS.right} size={16}/></div>
+                                    </button>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                )}
+            </div>
+
+        </div>
+    </div>
+)}
                         </div>
                         <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden flex items-center justify-center py-3 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors bg-slate-50 border-t border-slate-200 -mx-4 mt-4 mb-6">{CURRENT_VERSION} | spk </footer>
                     {/* 📛 [별칭 시스템] 별칭 등록 모달 */}
