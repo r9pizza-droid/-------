@@ -13395,7 +13395,7 @@ const firebaseConfig = {
                                                         </div>
 
                                                         {showAdminDashboard && (
-                                                            <div className="fixed inset-0 bg-black/50 z-[5000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowAdminDashboard(false)}>
+                                                            <div className="fixed inset-0 bg-slate-500/30 z-[5000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowAdminDashboard(false)}>
                                                                 <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative" onClick={e => e.stopPropagation()}>
                                                                     <button onClick={() => setShowAdminDashboard(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
                                                                         <Icon d={PATHS.x} size={20} />
@@ -13432,6 +13432,19 @@ const firebaseConfig = {
                                                                                     <span className="text-sm font-bold text-slate-600">오늘 알림 발송</span>
                                                                                 </div>
                                                                                 <span className="text-2xl font-black text-amber-500">{adminStats.notis}건</span>
+                                                                            </div>
+                                                                            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between">
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl shadow-sm">💾</div>
+                                                                                    <div className="flex flex-col">
+                                                                                        <span className="text-sm font-bold text-slate-600">데이터 용량</span>
+                                                                                        <span className="text-[10px] text-slate-400">로컬/캐시 기준</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="text-right">
+                                                                                    <span className="text-2xl font-black text-emerald-600">{dataUsage.kb}KB</span>
+                                                                                    <span className="text-xs font-bold text-emerald-500 block">({dataUsage.percent}%)</span>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     )}
