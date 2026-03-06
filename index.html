@@ -8812,7 +8812,10 @@ const firebaseConfig = {
             const [uploadProgress, setUploadProgress] = useState(0);
             const [tags, setTags] = useState([]);
             const [tagInput, setTagInput] = useState("");
+            const [resourceLink, setResourceLink] = useState("");
+            const [resourceTitle, setResourceTitle] = useState("");
             const quillRef = useRef(null);
+            const draftContentRef = useRef("");
 
             useEffect(() => {
                 if (isOpen) {
@@ -8824,17 +8827,58 @@ const firebaseConfig = {
                         setPostPassword(initialPost.postPassword);
                         setImageUrls(initialPost.imageUrls || (initialPost.imageUrl ? [initialPost.imageUrl] : []));
                         setTags(initialPost.tags || []);
+                        setResourceLink(initialPost.resourceLink || "");
+                        setResourceTitle(initialPost.resourceTitle || "");
                     } else {
-                        setCategory('생활지도팁');
-                        setTitle("");
-                        setAuthorName(userNickname || "");
-                        setContent("");
-                        setPostPassword("");
-                        setImageUrls([]);
-                        setTags([]);
+                        // [New] 임시 저장 불러오기 로직
+                        const savedDraft = localStorage.getItem('cls_post_draft');
+                        let loaded = false;
+                        if (savedDraft) {
+                            if (confirm("작성 중이던 임시 저장 글이 있습니다. 불러오시겠습니까?")) {
+                                try {
+                                    const p = JSON.parse(savedDraft);
+                                    setCategory(p.category || '생활지도팁');
+                                    setTitle(p.title || "");
+                                    setAuthorName(p.authorName || userNickname || "");
+                                    setContent(p.content || "");
+                                    setPostPassword(p.postPassword || "");
+                                    setImageUrls(p.imageUrls || []);
+                                    setTags(p.tags || []);
+                                    setResourceLink(p.resourceLink || "");
+                                    setResourceTitle(p.resourceTitle || "");
+                                    draftContentRef.current = p.content || "";
+                                    loaded = true;
+                                } catch(e) { console.error(e); }
+                            } else {
+                                localStorage.removeItem('cls_post_draft');
+                            }
+                        }
+                        
+                        if (!loaded) {
+                            setCategory('생활지도팁');
+                            setTitle("");
+                            setAuthorName(userNickname || "");
+                            setContent("");
+                            setPostPassword("");
+                            setImageUrls([]);
+                            setTags([]);
+                            setResourceLink("");
+                            setResourceTitle("");
+                            draftContentRef.current = "";
+                        }
                     }
                 }
             }, [isOpen, initialPost, userNickname]);
+
+            // [New] 임시 저장 자동 저장 로직
+            useEffect(() => {
+                if (isOpen && !initialPost) {
+                    if (title.trim() || content.trim() || tags.length > 0 || imageUrls.length > 0 || resourceLink.trim()) {
+                        const draft = { category, title, authorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+                        localStorage.setItem('cls_post_draft', JSON.stringify(draft));
+                    }
+                }
+            }, [category, title, authorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
 
             useEffect(() => {
                 if (isOpen) {
@@ -8853,7 +8897,7 @@ const firebaseConfig = {
                                     ]
                                 }
                             });
-                            const initialContent = initialPost ? initialPost.content : "";
+                            const initialContent = initialPost ? initialPost.content : draftContentRef.current;
                             const isHtml = /<[a-z][\s\S]*>/i.test(initialContent);
                             if (isHtml) quillRef.current.clipboard.dangerouslyPasteHTML(initialContent);
                             else quillRef.current.setText(initialContent);
@@ -8979,7 +9023,7 @@ const firebaseConfig = {
                     return;
                 }
                 localStorage.setItem('community_authorName', authorName);
-                onSave(title, content, authorName, category, postPassword, imageUrls, tags);
+                onSave(title, content, authorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle);
             };
 
             if (!isOpen) return null;
@@ -9030,6 +9074,13 @@ const firebaseConfig = {
                                     </span>
                                 ))}
                                 <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} className="flex-1 min-w-[100px] text-sm outline-none bg-transparent" placeholder="태그 입력 (엔터)" />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">📎 학습 자료(파일/링크) 공유 (선택)</label>
+                            <div className="flex gap-2">
+                                <input value={resourceTitle} onChange={(e) => setResourceTitle(e.target.value)} className="w-1/3 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="버튼 이름 (예: 학습지)" />
+                                <input value={resourceLink} onChange={(e) => setResourceLink(e.target.value)} className="flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="https://..." />
                             </div>
                         </div>
                         <div className="space-y-1">
@@ -9462,6 +9513,7 @@ const firebaseConfig = {
             const [lastPostDoc, setLastPostDoc] = useState(null);
             const [hasMorePosts, setHasMorePosts] = useState(true);
             const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+            const [isLoadingMore, setIsLoadingMore] = useState(false);
             const [postViewMode, setPostViewMode] = useState('list');
             const [postSearchTerm, setPostSearchTerm] = useState("");
             const [filterCategory, setFilterCategory] = useState(null);
@@ -9471,6 +9523,7 @@ const firebaseConfig = {
             const [showMyPosts, setShowMyPosts] = useState(false);
             const [showViewModeMenu, setShowViewModeMenu] = useState(false);
             const [showSortOrderMenu, setShowSortOrderMenu] = useState(false);
+            const [showCategoryMenu, setShowCategoryMenu] = useState(false);
 
             const filteredPosts = useMemo(() => {
                 return communityPosts
@@ -9552,7 +9605,7 @@ const firebaseConfig = {
         // onSnapshot: 데이터가 바뀔 때마다 자동으로 화면을 새로고침해줍니다.
         const unsubscribe = sharedDb.collection('community')
             .orderBy('createdAt', 'desc')
-            .limit(30)
+            .limit(10)
             .onSnapshot(snapshot => {
                 const posts = snapshot.docs.map(doc => {
                     const data = doc.data();
@@ -9568,7 +9621,7 @@ const firebaseConfig = {
                 if (snapshot.docs.length > 0) {
                     setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
                 }
-                setHasMorePosts(snapshot.docs.length === 30);
+                setHasMorePosts(snapshot.docs.length === 10);
                 setIsLoadingPosts(false);
             }, error => {
                 console.error(error);
@@ -9582,13 +9635,13 @@ const firebaseConfig = {
 
     // ➕ 2. 옛날 글 더보기 함수 (기존과 비슷하지만 중복 방지 로직 추가)
     const loadMorePosts = async () => {
-        if (!sharedDb || !lastPostDoc || !hasMorePosts) return;
-        setIsLoadingPosts(true);
+        if (!sharedDb || !lastPostDoc || !hasMorePosts || isLoadingMore) return;
+        setIsLoadingMore(true);
         try {
             const snapshot = await sharedDb.collection('community')
                 .orderBy('createdAt', 'desc')
                 .startAfter(lastPostDoc)
-                .limit(30)
+                .limit(10)
                 .get();
 
             const newPosts = snapshot.docs.map(doc => {
@@ -9607,13 +9660,15 @@ const firebaseConfig = {
                 return [...prev, ...filteredNewPosts];
             });
             
-            setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
-            setHasMorePosts(snapshot.docs.length === 30);
+            if (snapshot.docs.length > 0) {
+                setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
+            }
+            setHasMorePosts(snapshot.docs.length === 10);
         } catch (e) {
             console.error(e);
             setToastMessage("더 불러오기 실패: " + e.message);
         } finally {
-            setIsLoadingPosts(false);
+            setIsLoadingMore(false);
         }
     };
 
@@ -9840,17 +9895,17 @@ const firebaseConfig = {
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false });
 
             // [New] Community Logic
-            const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags) => {
+            const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags, resourceLink, resourceTitle) => {
                 try {
                      // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
                      setCommentAuthor(userNickname);
 
                      if (editingPost) {
                         await sharedDb.collection('community').doc(editingPost.id).update({
-                            title, content, authorName: userNickname, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || []
+                            title, content, authorName: userNickname, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
                         });
                         setToastMessage("게시글이 수정되었습니다.");
-                        setCommunityPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, title, content, authorName: userNickname, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [] } : p));
+                        setCommunityPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, title, content, authorName: userNickname, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || "" } : p));
                         setEditingPost(null);
                     } else {
                         await sharedDb.collection('community').add({
@@ -9864,9 +9919,12 @@ const firebaseConfig = {
                             comments: [],
                             imageUrls: imageUrls || [],
                             commentCount: 0,
-                            tags: tags || []
+                            tags: tags || [],
+                            resourceLink: resourceLink || "",
+                            resourceTitle: resourceTitle || ""
                         });
                         setToastMessage("게시글이 등록되었습니다.");
+                        localStorage.removeItem('cls_post_draft'); // [New] 등록 성공 시 임시 저장 삭제
                     }
                     setShowPostModal(false);
                 } catch (e) {
@@ -13633,24 +13691,8 @@ const firebaseConfig = {
                                                 )}
 
                                                 {/* Category & View Mode */}
-                                                <div className="flex flex-col lg:flex-row justify-between items-end mb-2 px-1 gap-2">
-                                                    <div className="flex gap-1 overflow-x-auto custom-scroll pb-1 w-full lg:w-auto no-scrollbar">
-                                                        <button onClick={() => setFilterCategory(null)} className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${!filterCategory ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>전체</button>
-                                                        {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map(cat => {
-                                                            let activeClass = "bg-indigo-600 text-white border-indigo-600 shadow-md";
-                                                            if (cat === '생활지도팁') activeClass = "bg-pink-500 text-white border-pink-500 shadow-md";
-                                                            else if (cat === '수업팁') activeClass = "bg-blue-500 text-white border-blue-500 shadow-md";
-                                                            else if (cat === '업무팁') activeClass = "bg-green-500 text-white border-green-500 shadow-md";
-                                                            else if (cat === '기타(잡담)') activeClass = "bg-amber-500 text-white border-amber-500 shadow-md";
-                                                            
-                                                            return (
-                                                                <button key={cat} onClick={() => setFilterCategory(cat === filterCategory ? null : cat)} className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${filterCategory === cat ? activeClass : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
-                                                                    {cat}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                    <div className="flex gap-2 shrink-0 flex-wrap justify-end w-full lg:w-auto">
+                                                <div className="flex justify-end items-center mb-2 px-1 gap-2">
+                                                    <div className="flex gap-2 shrink-0 flex-wrap justify-end w-full">
                                                         <button 
                                                             onClick={() => {
                                                                 if (!firebase.auth().currentUser) {
@@ -13663,6 +13705,33 @@ const firebaseConfig = {
                                                         >
                                                             <Icon d={PATHS.users} size={14} />
                                                         </button>
+
+                                                        {/* Category Dropdown */}
+                                                        <div className="relative">
+                                                            <button 
+                                                                onClick={() => setShowCategoryMenu(!showCategoryMenu)}
+                                                                className={`px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 flex items-center gap-1.5 shadow-sm transition-all h-full ${filterCategory ? 'text-indigo-600 border-indigo-200 bg-indigo-50' : ''}`}
+                                                                title="카테고리 필터"
+                                                            >
+                                                                <span className="text-xs font-bold">{filterCategory || '전체'}</span>
+                                                                <Icon d={PATHS.down} size={10} />
+                                                            </button>
+                                                            {showCategoryMenu && (
+                                                                <>
+                                                                    <div className="fixed inset-0 z-40" onClick={() => setShowCategoryMenu(false)}></div>
+                                                                    <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in flex flex-col">
+                                                                        <button onClick={() => { setFilterCategory(null); setShowCategoryMenu(false); }} className={`px-3 py-2.5 text-xs font-bold text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 ${!filterCategory ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'}`}>
+                                                                            전체
+                                                                        </button>
+                                                                        {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map(cat => (
+                                                                            <button key={cat} onClick={() => { setFilterCategory(cat); setShowCategoryMenu(false); }} className={`px-3 py-2.5 text-xs font-bold text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 ${filterCategory === cat ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'}`}>
+                                                                                {cat}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                         
                                                         {/* View Mode Dropdown */}
                                                         <div className="relative">
@@ -13738,6 +13807,7 @@ const firebaseConfig = {
                                                                         <div className="flex-1 min-w-0 flex items-center gap-2">
                                                                             <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
                                                                             {images.length > 0 && <Icon d={PATHS.image} size={12} className="text-slate-400" />}
+                                                                            {post.resourceLink && <Icon d={PATHS.link} size={12} className="text-slate-400" />}
                                                                             {post.tags && post.tags.length > 0 && (
                                                                                 <div className="flex gap-1 overflow-hidden">
                                                                                     {post.tags.slice(0, 2).map((tag, i) => <span key={i} className="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">#{tag}</span>)}
@@ -13777,6 +13847,7 @@ const firebaseConfig = {
                                                                         {images.length > 1 && <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{images.length - 1}</div>}
                                                                         <div className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
                                                                         {post.postPassword && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
+                                                                        {post.resourceLink && <div className={`absolute top-2 ${post.postPassword ? 'right-8' : 'right-2'} text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full`}>🔗</div>}
                                                                     </div>
                                                                     <div className="p-3 flex flex-col flex-1">
                                                                         <h4 className="text-sm font-bold text-slate-800 mb-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">{post.title}</h4>
@@ -13812,7 +13883,10 @@ const firebaseConfig = {
                                                                 </div>
                                                                 <div className="flex gap-4">
                                                                     <div className="flex-1 min-w-0">
-                                                                        <h4 className="text-base font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">{post.title}</h4>
+                                                                        <h4 className="text-base font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                                                                            {post.title}
+                                                                            {post.resourceLink && <span className="ml-2 text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded align-middle font-normal">🔗 자료</span>}
+                                                                        </h4>
                                                                         {renderPostContent(post.content, false)}
                                                                     </div>
                                                                     {images.length > 0 && (
@@ -13871,10 +13945,21 @@ const firebaseConfig = {
                                                 </div>
 
                                                 {/* Load More */}
-                                                {hasMorePosts && !isLoadingPosts && sortedPosts.length > 0 && (
+                                                {hasMorePosts && sortedPosts.length > 0 && (
                                                     <div className="flex justify-center pt-4">
-                                                        <button onClick={loadMorePosts} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all">
-                                                            이전 꿀팁 더 보기 ⬇️
+                                                        <button 
+                                                            onClick={loadMorePosts} 
+                                                            disabled={isLoadingMore}
+                                                            className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                                                        >
+                                                            {isLoadingMore ? (
+                                                                <>
+                                                                    <Icon d={PATHS.spinner} className="animate-spin" size={16} />
+                                                                    데이터를 불러오는 중...
+                                                                </>
+                                                            ) : (
+                                                                <>이전 꿀팁 더 보기 ⬇️</>
+                                                            )}
                                                         </button>
                                                     </div>
                                                 )}
@@ -13941,6 +14026,21 @@ const firebaseConfig = {
                                                                             <img src={url} alt={`첨부 ${idx+1}`} className="w-full h-full object-cover" />
                                                                         </div>
                                                                     ))}
+                                                                </div>
+                                                            )}
+
+                                                            {selectedPost.resourceLink && (
+                                                                <div className="mb-8">
+                                                                    <a 
+                                                                        href={selectedPost.resourceLink} 
+                                                                        target="_blank" 
+                                                                        rel="noopener noreferrer"
+                                                                        className="block w-full py-4 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl font-bold text-center transition-all flex items-center justify-center gap-2 border border-slate-200 hover:border-slate-300 group shadow-sm"
+                                                                    >
+                                                                        <span className="text-xl group-hover:scale-110 transition-transform">🔗</span>
+                                                                        <span>{selectedPost.resourceTitle || "자료 보러가기"}</span>
+                                                                        <Icon d={PATHS.right} size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                                                                    </a>
                                                                 </div>
                                                             )}
 
