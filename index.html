@@ -13407,7 +13407,7 @@ const firebaseConfig = {
                                                         </div>
 
                                                         {showAdminDashboard && (
-                                                            <div className="fixed inset-0 bg-slate-500/30 z-[5000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowAdminDashboard(false)}>
+                                                            <div className="fixed inset-0 bg-white/40 backdrop-blur-md z-[5000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowAdminDashboard(false)}>
                                                                 <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative" onClick={e => e.stopPropagation()}>
                                                                     <button onClick={() => setShowAdminDashboard(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
                                                                         <Icon d={PATHS.x} size={20} />
@@ -13423,7 +13423,8 @@ const firebaseConfig = {
                                                                             <span className="text-sm font-bold">데이터를 집계 중입니다...</span>
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="grid grid-cols-1 gap-4">
+                                                                        <>
+                                                                            <div className="grid grid-cols-1 gap-4">
                                                                             <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-center justify-between">
                                                                                 <div className="flex items-center gap-3">
                                                                                     <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl shadow-sm">📝</div>
@@ -13458,7 +13459,19 @@ const firebaseConfig = {
                                                                                     <span className="text-xs font-bold text-emerald-500 block">({adminStats.percent}%)</span>
                                                                                 </div>
                                                                             </div>
-                                                                        </div>
+                                                                            </div>
+                                                                            <div className="mt-4 bg-slate-100 p-4 rounded-xl border border-slate-200">
+                                                                                <p className="text-sm text-slate-600">데이터는 관리자의 Firebase에 안전하게 보관됩니다. (기본 1GB 무료 제공)</p>
+                                                                                <a 
+                                                                                    href="https://console.firebase.google.com/project/homework-14674/firestore/usage" 
+                                                                                    target="_blank" 
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="mt-3 block w-full text-center py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors"
+                                                                                >
+                                                                                    📊 실시간 사용 용량(%) 확인하기
+                                                                                </a>
+                                                                            </div>
+                                                                        </>
                                                                     )}
                                                                     
                                                                     <div className="mt-6 pt-4 border-t border-slate-100">
