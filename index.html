@@ -7008,11 +7008,12 @@
                                                 <span className="text-sm font-bold text-notion-text flex items-center gap-1">
                                                     {s.name} <span className="text-xs">{getStreakBadge(s.id)}</span>
                                                 </span>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="text-[10px] text-notion-text-light whitespace-nowrap">{s.order}번</span>
+                                                <div className="flex items-end gap-2 mt-0.5">
+                                                    <span className="text-[10px] text-notion-text-light whitespace-nowrap mb-0.5">{s.order}번</span>
                                                     <div className="flex gap-1">
                                                         {(() => {
                                                             const monday = dayjs(date).startOf('week').add(1, 'day');
+                                                            const dayLabels = ['월', '화', '수', '목', '금'];
                                                             return Array.from({ length: 5 }).map((_, i) => {
                                                                 const d = monday.add(i, 'day');
                                                                 const dStr = d.format('YYYY-MM-DD');
@@ -7033,16 +7034,17 @@
                                                                     ratio = done / tasks.length;
                                                                 }
 
-                                                                if (!hasTask) {
-                                                                    return (
-                                                                        <div key={i} className="w-2.5 h-2.5 flex items-center justify-center" title={`${dStr}: 과제 없음`}>
-                                                                            <div className="w-1 h-1 rounded-full bg-slate-300"></div>
-                                                                        </div>
-                                                                    );
-                                                                }
-
                                                                 return (
-                                                                    <div key={i} className="w-2.5 h-2.5 rounded-full" style={getPieStyle(ratio)} title={`${dStr}: ${Math.round(ratio * 100)}%`}></div>
+                                                                    <div key={i} className="flex flex-col items-center gap-0.5">
+                                                                        <span className="text-[8px] text-slate-400 leading-none">{dayLabels[i]}</span>
+                                                                        {!hasTask ? (
+                                                                            <div className="w-2.5 h-2.5 flex items-center justify-center" title={`${dStr}: 과제 없음`}>
+                                                                                <div className="w-1 h-1 rounded-full bg-slate-300"></div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="w-2.5 h-2.5 rounded-full" style={getPieStyle(ratio)} title={`${dStr}: ${Math.round(ratio * 100)}%`}></div>
+                                                                        )}
+                                                                    </div>
                                                                 );
                                                             });
                                                         })()}
