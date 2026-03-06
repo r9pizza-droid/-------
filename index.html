@@ -8801,7 +8801,7 @@ const firebaseConfig = {
                 </BaseModal>
             );
         };
-        const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNickname }) => {
+        const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNickname, showToast }) => {
             const [category, setCategory] = useState('생활지도팁');
             const [title, setTitle] = useState("");
             const [authorName, setAuthorName] = useState(initialPost ? initialPost.authorName : (userNickname || ""));
@@ -9017,6 +9017,13 @@ const firebaseConfig = {
                 }
             };
 
+            const handleManualSaveDraft = () => {
+                const draft = { category, title, authorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+                localStorage.setItem('cls_post_draft', JSON.stringify(draft));
+                if (showToast) showToast("임시 저장되었습니다.");
+                else alert("임시 저장되었습니다.");
+            };
+
             const handleSubmit = () => {
                 if (!title.trim() || !authorName.trim() || !content.trim() || !postPassword.trim()) {
                     alert("모든 항목을 입력해주세요.");
@@ -9115,6 +9122,9 @@ const firebaseConfig = {
                         </div>
                         <div className="flex gap-2 pt-2">
                             <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">취소</Btn>
+                            {!initialPost && (
+                                <Btn onClick={handleManualSaveDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50">임시 저장</Btn>
+                            )}
                             <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">{initialPost ? "수정" : "등록"}</Btn>
                         </div>
                     </div>
@@ -14656,7 +14666,7 @@ const firebaseConfig = {
                     {showGlobalRecord && (
                         <GlobalRecordModal isOpen={showGlobalRecord} onClose={()=>setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} appConfig={appConfig} db={db} appId={appId} />
                     )}
-                    {showPostModal && <PostModal isOpen={showPostModal} onClose={() => { setShowPostModal(false); setEditingPost(null); }} onSave={handleSavePost} initialPost={editingPost} imgbbApiKey={imgbbApiKey} userNickname={userNickname} />}
+                    {showPostModal && <PostModal isOpen={showPostModal} onClose={() => { setShowPostModal(false); setEditingPost(null); }} onSave={handleSavePost} initialPost={editingPost} imgbbApiKey={imgbbApiKey} userNickname={userNickname} showToast={setToastMessage} />}
                     <CommunityHelpModal isOpen={showCommunityHelp} onClose={() => setShowCommunityHelp(false)} />
                     <AiSecurityCheckModal isOpen={aiCheckState.isOpen} onClose={handleAiCheckCancel} prompt={aiCheckState.prompt} onConfirm={handleAiCheckConfirm} />
                     {appConfig.showFloatingButton !== false && (
