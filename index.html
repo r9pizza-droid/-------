@@ -9281,10 +9281,22 @@ const firebaseConfig = {
                             .get()
                     ]);
 
+                    // [Fix] 데이터 용량 계산 추가 (App 컴포넌트 내 dataUsage 변수 부재 해결)
+                    const totalBytes = new Blob([JSON.stringify({
+                        students, records, groupsByDate, avoidancePairs, mustPairs, 
+                        dailyTasks, weeklyTasks, tags, appConfig, groupNames, 
+                        groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig
+                    })]).size;
+                    const MAX_SIZE = isLocalMode ? 5242880 : 1048576; 
+                    const kb = (totalBytes / 1024).toFixed(1);
+                    const percent = ((totalBytes / MAX_SIZE) * 100).toFixed(1);
+
                     setAdminStats({
                         posts: postsSnap.size,
                         comments: commentsSnap.size,
-                        notis: notisSnap.size
+                        notis: notisSnap.size,
+                        kb: kb,
+                        percent: percent
                     });
                 } catch (e) {
                     console.error("통계 로딩 실패:", e);
@@ -13442,8 +13454,8 @@ const firebaseConfig = {
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="text-right">
-                                                                                    <span className="text-2xl font-black text-emerald-600">{dataUsage.kb}KB</span>
-                                                                                    <span className="text-xs font-bold text-emerald-500 block">({dataUsage.percent}%)</span>
+                                                                                    <span className="text-2xl font-black text-emerald-600">{adminStats.kb}KB</span>
+                                                                                    <span className="text-xs font-bold text-emerald-500 block">({adminStats.percent}%)</span>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
