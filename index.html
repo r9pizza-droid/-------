@@ -7009,7 +7009,7 @@
                                                     {s.name} <span className="text-xs">{getStreakBadge(s.id)}</span>
                                                 </span>
                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="text-[10px] text-notion-text-light">{s.order}번</span>
+                                                    <span className="text-[10px] text-notion-text-light whitespace-nowrap">{s.order}번</span>
                                                     <div className="flex gap-1">
                                                         {(() => {
                                                             const monday = dayjs(date).startOf('week').add(1, 'day');
@@ -12911,7 +12911,7 @@ const firebaseConfig = {
         </div>
     )}
 </header>
-                    <main className="flex-1 flex flex-col p-4 md:p-6 pb-20 md:pb-6 bg-white"
+                    <main className="flex-1 flex flex-col p-4 md:p-6 pb-0 md:pb-6 bg-white"
                     >
                         <div key={date} className="flex-1">
                             {mode === 'record' && (
@@ -13909,7 +13909,7 @@ const firebaseConfig = {
                                 </div>
                             )}
                         </div>
-                        <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden flex items-center justify-center py-3 text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors bg-slate-50 border-t border-slate-200 -mx-4 mt-4 mb-6">{CURRENT_VERSION} | spk </footer>
+                        <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden flex items-start justify-center pt-3 pb-[calc(3.5rem+env(safe-area-inset-bottom)+0.01rem)] text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors bg-slate-50 border-t border-slate-200 -mx-4 mt-4">{CURRENT_VERSION} | spk </footer>
                     {/* 📛 [별칭 시스템] 별칭 등록 모달 */}
             {showNicknameModal && mode === 'community' && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
