@@ -13878,7 +13878,7 @@ const firebaseConfig = {
                                                                         <div className="flex-1 min-w-0 flex items-center gap-2">
                                                                             <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
                                                                             {images.length > 0 && <Icon d={PATHS.image} size={12} className="text-slate-400" />}
-                                                                            {post.resourceLink && <Icon d={PATHS.link} size={12} className="text-slate-400" />}
+                                                                            {post.resourceLink && <span className="text-[10px]">💾</span>}
                                                                             {post.tags && post.tags.length > 0 && (
                                                                                 <div className="flex gap-1 overflow-hidden">
                                                                                     {post.tags.slice(0, 2).map((tag, i) => <span key={i} className="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">#{tag}</span>)}
@@ -13918,7 +13918,7 @@ const firebaseConfig = {
                                                                         {images.length > 1 && <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{images.length - 1}</div>}
                                                                         <div className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
                                                                         {post.postPassword && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
-                                                                        {post.resourceLink && <div className={`absolute top-2 ${post.postPassword ? 'right-8' : 'right-2'} text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full`}>🔗</div>}
+                                                                        {post.resourceLink && <div className={`absolute top-2 ${post.postPassword ? 'right-8' : 'right-2'} text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full`}>💾</div>}
                                                                     </div>
                                                                     <div className="p-3 flex flex-col flex-1">
                                                                         <h4 className="text-sm font-bold text-slate-800 mb-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">{post.title}</h4>
@@ -13956,7 +13956,7 @@ const firebaseConfig = {
                                                                     <div className="flex-1 min-w-0">
                                                                         <h4 className="text-base font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">
                                                                             {post.title}
-                                                                            {post.resourceLink && <span className="ml-2 text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded align-middle font-normal">🔗 자료</span>}
+                                                                            {post.resourceLink && <span className="ml-2 text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded align-middle font-normal">💾 자료</span>}
                                                                         </h4>
                                                                         {renderPostContent(post.content, false)}
                                                                     </div>
@@ -14108,7 +14108,7 @@ const firebaseConfig = {
                                                                         rel="noopener noreferrer"
                                                                         className="block w-full py-4 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl font-bold text-center transition-all flex items-center justify-center gap-2 border border-slate-200 hover:border-slate-300 group shadow-sm"
                                                                     >
-                                                                        <span className="text-xl group-hover:scale-110 transition-transform">🔗</span>
+                                                                        <span className="text-xl group-hover:scale-110 transition-transform">💾</span>
                                                                         <span>{selectedPost.resourceTitle || "자료 보러가기"}</span>
                                                                         <Icon d={PATHS.right} size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
                                                                     </a>
@@ -14763,7 +14763,7 @@ const firebaseConfig = {
                                                 
                                                 {/* 파이어베이스 용량 확인 버튼 영역 */}
                                                 <div className="bg-slate-100 p-4 rounded-xl border border-slate-200">
-                                                    <p className="text-sm text-slate-600 font-medium text-center">데이터는 관리자의 Firebase에 안전하게 보관됩니다. (기본 1GB 무료 제공)</p>
+                                                    <p className="text-sm text-slate-600 font-medium text-center">데이터는 관리자의 Firebase에 안전하게 보관됩니다.<br/>(기본 1GB 무료 제공)</p>
                                                     <a href="https://console.firebase.google.com/project/homework-14674/firestore/usage" target="_blank" rel="noopener noreferrer" className="mt-3 block w-full text-center py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors">
                                                         📊 실시간 사용 용량(%) 확인하기
                                                     </a>
