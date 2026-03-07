@@ -2712,7 +2712,7 @@
                                                     else if (title.includes("가정 내")) { cardStyle = "bg-rose-50 border-rose-100"; titleStyle = "text-rose-800"; }
 
                                                     return (
-                                                        <div key={idx} className={`p-6 rounded-2xl border ${cardStyle} shadow-sm transition-all hover:-translate-y-1 hover:shadow-md`}>
+                                                        <div key={idx} className={`p-6 rounded-2xl border ${cardStyle} shadow-sm`}>
                                                             <h4 className={`text-lg font-extrabold mb-3 ${titleStyle}`}>{title}</h4>
                                                             <div className="text-base text-slate-700 leading-relaxed whitespace-pre-wrap">
                                                                 {content}
@@ -12768,20 +12768,80 @@ const firebaseConfig = {
             const handleAssignRoles = () => {
                 const currentGroups = groupsByDate[date] || [];
                 if (currentGroups.length === 0) return setToastMessage("편성된 모둠이 없습니다.");
-                
-                const newRolesForDate = calculateRoles(currentGroups);
-                const newRoles = { ...groupRoles, [date]: newRolesForDate };
-                setGroupRoles(newRoles);
-                if (!isLocalMode) saveData('cls_group_roles', newRoles);
-                setToastMessage("모둠 역할이 자리에 배정되었습니다.");
+
+                const futureDates = Object.keys(groupsByDate).filter(d => d > date && groupsByDate[d] && groupsByDate[d].length > 0).sort();
+
+                const applyRoles = (applyFuture) => {
+                    const newRolesForDate = calculateRoles(currentGroups);
+                    const newRoles = { ...groupRoles, [date]: newRolesForDate };
+                    let appliedCount = 0;
+
+                    if (applyFuture) {
+                        futureDates.forEach(fDate => {
+                            if (groupsByDate[fDate] && groupsByDate[fDate].length > 0) {
+                                newRoles[fDate] = calculateRoles(groupsByDate[fDate]);
+                                appliedCount++;
+                            }
+                        });
+                    }
+
+                    setGroupRoles(newRoles);
+                    if (!isLocalMode) saveData('cls_group_roles', newRoles);
+                    
+                    if (applyFuture && appliedCount > 0) {
+                        setToastMessage(`모둠 역할이 배정되었습니다. (이후 ${appliedCount}일간의 기록도 적용됨)`);
+                    } else {
+                        setToastMessage("모둠 역할이 자리에 배정되었습니다.");
+                    }
+                };
+
+                if (futureDates.length > 0) {
+                    openConfirm(
+                        `이후 날짜(${futureDates.length}일)에도 모둠이 편성되어 있습니다.\n역할 배정을 이후 날짜에도 동일하게 적용하시겠습니까?\n(취소 시 오늘만 적용됩니다)`,
+                        () => applyRoles(true),
+                        () => applyRoles(false)
+                    );
+                } else {
+                    applyRoles(false);
+                }
             };
 
             const handleClearRoles = () => {
-                const newRoles = { ...groupRoles };
-                delete newRoles[date];
-                setGroupRoles(newRoles);
-                if (!isLocalMode) saveData('cls_group_roles', newRoles);
-                setToastMessage("역할 배정이 해제되었습니다.");
+                const futureDates = Object.keys(groupRoles).filter(d => d > date && groupRoles[d] && Object.keys(groupRoles[d]).length > 0).sort();
+
+                const clearRoles = (clearFuture) => {
+                    const newRoles = { ...groupRoles };
+                    delete newRoles[date];
+                    
+                    let clearedCount = 0;
+                    if (clearFuture) {
+                        futureDates.forEach(fDate => {
+                            delete newRoles[fDate];
+                            clearedCount++;
+                        });
+                    }
+
+                    setGroupRoles(newRoles);
+                    if (!isLocalMode) saveData('cls_group_roles', newRoles);
+                    
+                    if (clearFuture && clearedCount > 0) {
+                        setToastMessage(`역할 배정이 해제되었습니다. (이후 ${clearedCount}일간의 기록도 해제됨)`);
+                    } else {
+                        setToastMessage("역할 배정이 해제되었습니다.");
+                    }
+                };
+
+                if (futureDates.length > 0) {
+                    setTimeout(() => {
+                        openConfirm(
+                            `이후 날짜(${futureDates.length}일)에도 역할이 배정되어 있습니다.\n역할 배정을 이후 날짜에도 함께 해제하시겠습니까?\n(취소 시 오늘만 해제됩니다)`,
+                            () => clearRoles(true),
+                            () => clearRoles(false)
+                        );
+                    }, 200);
+                } else {
+                    clearRoles(false);
+                }
             };
 
             const handleSaveRoles = (newRoles) => {
