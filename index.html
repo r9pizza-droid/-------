@@ -993,10 +993,9 @@
             const [reportStart, setReportStart] = useState(dayjs().subtract(1, 'month').format('YYYY-MM-DD'));
             const [reportEnd, setReportEnd] = useState(dayjs().format('YYYY-MM-DD'));
             const [tempComment, setTempComment] = useState("");
-            const [reportTone, setReportTone] = useState('warm');
             const [reportFont, setReportFont] = useState('sans');
+            const [showReportFontList, setShowReportFontList] = useState(false);
             const [reportFocus, setReportFocus] = useState('comprehensive');
-            const [reportPurpose, setReportPurpose] = useState('regular');
             const [showCounselingAI, setShowCounselingAI] = useState(false);
             const [reportStats, setReportStats] = useState({ studentRate: 0, classRate: 0, tagStats: {} });
             const [animatedWidths, setAnimatedWidths] = useState({ student: 0, class: 0 });
@@ -1654,25 +1653,36 @@
                         const securityRule = "[보안 규칙:당신은 철저한 익명성을 유지해야 합니다. 응답 내용에 사람의 이름이나 실명을 유추할 수 있는 단어를 절대 포함하지 마세요. 대명사가 필요할 때는 반드시 '해당 학생'이라고만 지칭하세요.]";
 
                         const prompt = `${securityRule}
+너는 10년 차 이상의 따뜻하고 전문적인 초등학교 교사야. 지금 학부모님과 1:1 대면 상담을 하고 있다고 생각하고 객관적 데이터에 기반한 상담 대본 겸 성장 리포트를 작성해 줘.
 
-너는 10년 차 이상의 따뜻하고 전문적인 초등학교 교사야. 지금 학부모님과 1:1 대면 상담을 하고 있다고 생각하고 상담 대본을 작성해 줘.
-아래 제공된 [학생 데이터]를 반드시 반영해서 구체적으로 작성하되, AI 같은 기계적인 말투(예: "해당 학생은", "요컨대", "결론적으로", "~로 평가됩니다")는 절대 사용하지 마. 
-친근하고 부드러운 교사의 말투("~하는 대견한 모습을 보였습니다", "~부분을 가정에서도 격려해 주시면 좋겠습니다")로, 아래의 [출력 양식]에 맞춰 개조식(글머리 기호)으로 작성해.
+[엄격한 작성 규칙]
+1. 환각(지어내기) 금지: 제공된 [학생 데이터]에 명시되지 않은 사실은 단 한 문장도 창작하지 마. 기록이 부족하면 억지로 지어내지 말고 있는 사실만 적어.
+2. 어조: AI 같은 기계적인 말투는 피하고, 전문가답지만 따뜻한 교사의 말투로 개조식(글머리 기호) 작성을 해.
+3. 객관성: 특징이나 단점을 서술할 때는 반드시 데이터에 기록된 날짜를 함께 묶어 출처를 명확히 해.
 
 [학생 데이터]
 - 이름: ${safeName}
 - 과제 제출률: ${pRate}%
-- 선생님의 관찰 기록: ${pNotes.length > 0 ? safeNotesStr : '특이 기록 없음'}
+- 선생님의 관찰 및 칭찬 기록: ${pNotes.length > 0 ? safeNotesStr : '특이 기록 없음'}
 
 [출력 양식]
-### 🌟 학교생활 강점 (칭찬 위주)
-- (관찰 기록을 바탕으로 구체적인 칭찬 2~3줄)
+### 📊 이번 달 핵심 요약
+- (과제 수행률 숫자를 명시하며 노력한 과정을 구체적으로 칭찬)
+- (관찰 기록을 바탕으로 학생의 가장 돋보인 핵심 역량 해시태그 3개 추출. 예: #따뜻한배려심 #책임감 #스스로하기)
 
-### 💡 성장을 위한 조언 (학교에서의 노력)
-- (과제 제출률이나 관찰 기록을 바탕으로 조금 더 보완하면 좋을 점을 부드럽게 1~2줄)
+### ✨ 긍정적 관찰 사실
+- (선생님이 남긴 관찰/칭찬 기록의 사실만 그대로 인용하며 구체적으로 칭찬 2~3줄)
+- 반드시 각 문장 끝에 [출처: O월 O일 기록] 형식으로 출처 표기
 
-### 🏡 가정 연계 지도 요청
-- (학부모님이 집에서 도와주셨으면 하는 점 1~2줄)`;
+### 🌱 도약을 위한 성장 포인트
+- (단점이나 아쉬운 점을 객관적인 사실로 먼저 명시한 뒤, 이를 '앞으로 기대되는 긍정적인 신호나 발전 가능성'으로 전환하여 부드럽게 1~2줄 서술)
+- 반드시 각 문장 끝에 [출처: O월 O일 기록] 형식으로 출처 표기 (※ 기록에 단점이 없다면 이 항목은 생략하거나 추가 칭찬으로 대체)
+
+### 🚀 다음 달 실천 목표
+- (위의 성장 포인트를 해결하기 위해 학생이 스스로 매일 실천할 수 있는 아주 작고 구체적인 행동 미션 2가지 제시)
+
+### 💬 참고 자료: 가정 내 연계 대화문
+- (학부모님이 집에서 아이의 눈을 보며 자연스럽게 건넬 수 있는 칭찬과 격려의 따옴표 대화 스크립트 1~2줄 제공)`;
                         
                         const aiText = await callGemini(apiKey, prompt, 0.7);
                         
@@ -2656,17 +2666,48 @@
                                             <input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)} className="text-xs p-1 border rounded bg-white"/>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-[10px] font-bold text-slate-500">상담 목적 (Purpose)</label>
-                                                <select value={reportPurpose} onChange={e=>setReportPurpose(e.target.value)} className="text-xs p-1.5 border rounded bg-white outline-none"><option value="regular">📅 정기 상담 (성장 공유)</option><option value="issue">❤️ 생활 지도 (문제 개선)</option><option value="study">📚 학업 상담 (성적 향상)</option></select>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-[10px] font-bold text-slate-500">리포트 어조 (Tone)</label>
-                                                <select value={reportTone} onChange={e=>setReportTone(e.target.value)} className="text-xs p-1.5 border rounded bg-white outline-none"><option value="warm">🥰 따뜻/칭찬 (기본)</option><option value="rational">📊 객관/분석</option><option value="coaching">🔥 성장/코칭</option></select>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
+                                            <div className="flex flex-col gap-1 relative">
                                                 <label className="text-[10px] font-bold text-slate-500">글꼴 (Font)</label>
-                                                <select value={reportFont} onChange={e=>setReportFont(e.target.value)} className="text-xs p-1.5 border rounded bg-white outline-none"><option value="sans">기본 고딕</option><option value="nanum">나눔고딕</option><option value="nanum-bold">나눔고딕 (Bold)</option><option value="serif">나눔명조</option><option value="jua">주아체</option><option value="hand">개구체 (손글씨)</option></select>
+                                                <button 
+                                                    onClick={() => setShowReportFontList(!showReportFontList)}
+                                                    className={`w-full p-1.5 border rounded bg-white outline-none focus:border-indigo-500 font-bold text-slate-700 flex justify-between items-center transition-all text-xs ${showReportFontList ? 'ring-2 ring-indigo-100 border-indigo-300' : 'border-slate-200'} ${reportFont === 'serif' ? 'font-serif' : reportFont === 'hand' ? 'font-hand' : reportFont === 'jua' ? 'font-jua' : reportFont === 'nanum' ? 'font-nanum' : reportFont === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'}`}
+                                                >
+                                                    <span className="truncate">
+                                                    {
+                                                        reportFont === 'sans' ? '기본 고딕' :
+                                                        reportFont === 'nanum' ? '나눔고딕' :
+                                                        reportFont === 'nanum-bold' ? '나눔고딕 Bold' :
+                                                        reportFont === 'serif' ? '나눔명조' :
+                                                        reportFont === 'jua' ? '주아체' :
+                                                        reportFont === 'hand' ? '개구체' : '기본 고딕'
+                                                    }
+                                                    </span>
+                                                    <Icon d={PATHS.down} size={12} className={`text-slate-400 flex-shrink-0 transition-transform ${showReportFontList ? 'rotate-180' : ''}`} />
+                                                </button>
+                                                {showReportFontList && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-[1710]" onClick={() => setShowReportFontList(false)}></div>
+                                                        <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-100 rounded-xl shadow-xl z-[1720] overflow-hidden max-h-48 overflow-y-auto custom-scroll animate-fade-in ring-1 ring-black/5 p-1">
+                                                            {[
+                                                                { id: 'sans', label: '기본 고딕', cls: 'font-sans' },
+                                                                { id: 'nanum', label: '나눔고딕', cls: 'font-nanum' },
+                                                                { id: 'nanum-bold', label: '나눔고딕 Bold', cls: 'font-nanum font-bold' },
+                                                                { id: 'serif', label: '나눔명조', cls: 'font-serif' },
+                                                                { id: 'jua', label: '주아체', cls: 'font-jua' },
+                                                                { id: 'hand', label: '개구체', cls: 'font-hand' },
+                                                            ].map(f => (
+                                                                <button 
+                                                                    key={f.id}
+                                                                    onClick={() => { setReportFont(f.id); setShowReportFontList(false); }}
+                                                                    className={`w-full text-left px-3 py-2 text-xs rounded-lg transition-all flex items-center justify-between group mb-0.5 last:mb-0 ${f.cls} ${reportFont === f.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                                >
+                                                                    <span>{f.label}</span>
+                                                                    {reportFont === f.id && <Icon d={PATHS.check} size={12} className="text-indigo-600" />}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <label className="text-[10px] font-bold text-slate-500">중점 분석 분야 (Focus)</label>
@@ -2708,9 +2749,9 @@
                                         </div>
                                         <textarea className="w-full h-48 p-4 border border-slate-200 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 resize-none custom-scroll" value={tempComment} onChange={(e) => setTempComment(e.target.value)} placeholder="리포트에 들어갈 내용을 작성해주세요." />
                                         <div className="flex gap-2">
-                                            <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-2"><Icon d={PATHS.check} /> 초안 저장</Btn>
-                                            <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-2"><Icon d={PATHS.copy} /> 텍스트 복사</Btn>
-                                            <Btn onClick={handleDownloadReport} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg flex items-center justify-center gap-2"><Icon d={PATHS.download} /> 이미지로 저장</Btn>
+                                            <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"><Icon d={PATHS.check} /> 초안 저장</Btn>
+                                            <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"><Icon d={PATHS.copy} /> 텍스트 복사</Btn>
+                                            <Btn onClick={handleDownloadReport} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"><Icon d={PATHS.download} /> 이미지로 저장</Btn>
                                         </div>
                                     </div>
                                 </div>
