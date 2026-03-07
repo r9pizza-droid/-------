@@ -411,7 +411,7 @@
                             <h3 className={`text-lg font-bold flex items-center gap-2 text-notion-text ${onTitleClick ? 'cursor-pointer select-none' : ''}`} onClick={onTitleClick}>{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light"><Icon d={PATHS.x} /></button>
                         </div>
-                        <div className="overflow-y-auto custom-scroll flex-1 pr-2 space-y-6">{children}</div>
+                        <div className="overflow-y-auto overflow-x-hidden custom-scroll flex-1 pr-2 space-y-6">{children}</div>
                         {footer && <div className="pt-4 border-t mt-4 flex-shrink-0">{footer}</div>}
                     </div>
                 </div>
@@ -9259,9 +9259,9 @@ const firebaseConfig = {
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-500">📎 학습 자료(파일/링크) 공유 (선택)</label>
-                            <div className="flex gap-2">
-                                <input value={resourceTitle} onChange={(e) => setResourceTitle(e.target.value)} className="w-1/3 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="버튼 이름 (예: 학습지)" />
-                                <input value={resourceLink} onChange={(e) => setResourceLink(e.target.value)} className="flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="https://..." />
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <input value={resourceTitle} onChange={(e) => setResourceTitle(e.target.value)} className="w-full sm:w-1/3 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="버튼 이름 (예: 학습지)" />
+                                <input value={resourceLink} onChange={(e) => setResourceLink(e.target.value)} className="w-full sm:flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="https://..." />
                             </div>
                         </div>
                         <div className="space-y-1">
@@ -9406,6 +9406,7 @@ const firebaseConfig = {
         const App = () => {
             // [New] 레벨 시스템 설정 (관리자 밸런스 패치용)
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
+            const [showLevelGuide, setShowLevelGuide] = useState(false);
 
             // [New] 레벨 설정 불러오기
             useEffect(() => {
@@ -9824,6 +9825,14 @@ const firebaseConfig = {
             const [showViewModeMenu, setShowViewModeMenu] = useState(false);
             const [showSortOrderMenu, setShowSortOrderMenu] = useState(false);
             const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+            const [expandedInPlacePosts, setExpandedInPlacePosts] = useState({});
+
+            const toggleInPlacePost = (postId) => {
+                setExpandedInPlacePosts(prev => ({
+                    ...prev,
+                    [postId]: !prev[postId]
+                }));
+            };
 
             const filteredPosts = useMemo(() => {
                 return communityPosts
@@ -9851,6 +9860,10 @@ const firebaseConfig = {
                         const likesA = a.likes ? a.likes.length : 0;
                         const likesB = b.likes ? b.likes.length : 0;
                         if (likesA !== likesB) return likesB - likesA;
+                    } else if (postSortOrder === 'views') {
+                        const viewsA = a.viewCount || 0;
+                        const viewsB = b.viewCount || 0;
+                        if (viewsA !== viewsB) return viewsB - viewsA;
                     }
                     // default latest
                     return new Date(b.createdAt) - new Date(a.createdAt);
@@ -10410,6 +10423,14 @@ const firebaseConfig = {
     const handleOpenPostDetail = (post) => {
         setSelectedPost(post);
         setIsPostDetailOpen(true);
+        
+        // [New] 조회수 증가
+        if (sharedDb) {
+             sharedDb.collection('community').doc(post.id).update({
+                 viewCount: firebase.firestore.FieldValue.increment(1)
+             }).catch(e => console.log("View count update failed", e));
+        }
+
         // 상세 뷰 진입 시 댓글 데이터가 로드되지 않았다면 불러오기
         if (expandedPostId !== post.id) {
             toggleComments(post.id);
@@ -14114,7 +14135,7 @@ const firebaseConfig = {
                                                                 className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 flex items-center gap-1.5 shadow-sm transition-all h-full"
                                                                 title="정렬 순서 변경"
                                                             >
-                                                                <span className="text-xs font-bold">{postSortOrder === 'latest' ? '최신순' : '좋아요순'}</span>
+                                                                <span className="text-xs font-bold">{postSortOrder === 'latest' ? '최신순' : postSortOrder === 'likes' ? '좋아요순' : '조회수순'}</span>
                                                                 <Icon d={PATHS.down} size={10} />
                                                             </button>
                                                             {showSortOrderMenu && (
@@ -14126,6 +14147,9 @@ const firebaseConfig = {
                                                                         </button>
                                                                         <button onClick={() => { setPostSortOrder('likes'); setShowSortOrderMenu(false); }} className={`px-3 py-2.5 text-xs font-bold text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 ${postSortOrder === 'likes' ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'}`}>
                                                                             좋아요순
+                                                                        </button>
+                                                                        <button onClick={() => { setPostSortOrder('views'); setShowSortOrderMenu(false); }} className={`px-3 py-2.5 text-xs font-bold text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 ${postSortOrder === 'views' ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'}`}>
+                                                                            조회수순
                                                                         </button>
                                                                     </div>
                                                                 </>
@@ -14144,35 +14168,51 @@ const firebaseConfig = {
                                                         else if (post.category === '기타(잡담)') badgeColor = "bg-amber-50 text-amber-600 border-amber-100";
 
                                                         const images = post.imageUrls || (post.imageUrl ? [post.imageUrl] : []);
+                                                        const isExpanded = expandedInPlacePosts[post.id];
 
                                                         if (postViewMode === 'list') {
                                                             return (
                                                                 <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden" onClick={() => handleOpenPostDetail(post)}>
-                                                                    <div className="p-3 flex items-center gap-3">
-                                                                        <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}</span>
-                                                                        <div className="flex-1 min-w-0 flex items-center gap-2">
-                                                                            <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
-                                                                            {images.length > 0 && <Icon d={PATHS.image} size={12} className="text-slate-400" />}
-                                                                            {post.resourceLink && <span className="text-[10px]">💾</span>}
+                                                                    <div className="p-4 flex justify-between items-start gap-4">
+                                                                        <div className="flex-1 min-w-0 flex flex-col gap-2">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}</span>
+                                                                                <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
+                                                                                {post.resourceLink && <span className="text-[10px]">💾</span>}
+                                                                                {post.postPassword && <span className="text-[10px] text-slate-300">🔒</span>}
+                                                                            </div>
+                                                                            
+                                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+                                                                                <span className="font-medium text-slate-500">{post.authorName} <span className="text-[10px] align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
+                                                                                <span className="w-px h-2 bg-slate-200"></span>
+                                                                                <span>{dayjs(post.createdAt).format('MM.DD')}</span>
+                                                                                <span className="w-px h-2 bg-slate-200"></span>
+                                                                                <span>조회 {post.viewCount || 0}</span>
+                                                                                
+                                                                                <div className="flex items-center gap-3 ml-auto sm:ml-0">
+                                                                                    <div className="flex items-center gap-1">
+                                                                                        <Icon d={PATHS.message} size={12} />
+                                                                                        <span>{post.commentCount || 0}</span>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-1">
+                                                                                        <Icon d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
+                                                                                        <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+
                                                                             {post.tags && post.tags.length > 0 && (
-                                                                                <div className="flex gap-1 overflow-hidden">
-                                                                                    {post.tags.slice(0, 2).map((tag, i) => <span key={i} className="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">#{tag}</span>)}
+                                                                                <div className="flex gap-1 overflow-hidden mt-1">
+                                                                                    {post.tags.slice(0, 3).map((tag, i) => <span key={i} className="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">#{tag}</span>)}
                                                                                 </div>
                                                                             )}
-                                                                            {post.postPassword && <span className="text-[10px] text-slate-300">🔒</span>}
                                                                         </div>
-                                                                        <div className="flex items-center gap-3 text-xs text-slate-400 shrink-0">
-                                                                            <span className="hidden sm:inline font-medium">{post.authorName} <span className="text-[10px] align-middle">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
-                                                                            <span className="hidden sm:inline text-[10px]">{dayjs(post.createdAt).format('MM.DD')}</span>
-                                                                            <div className="flex items-center gap-1">
-                                                                                <Icon d={PATHS.message} size={12} />
-                                                                                <span>{post.commentCount || 0}</span>
+                                                                        
+                                                                        {images.length > 0 && (
+                                                                            <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 shrink-0">
+                                                                                <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover" loading="lazy" />
                                                                             </div>
-                                                                            <div className="flex items-center gap-1">
-                                                                                <Icon d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
-                                                                                <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
-                                                                            </div>
-                                                                        </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             );
@@ -14180,31 +14220,51 @@ const firebaseConfig = {
 
                                                         if (postViewMode === 'gallery') {
                                                             return (
-                                                                <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group overflow-hidden flex flex-col h-full" onClick={() => handleOpenPostDetail(post)}>
-                                                                    <div className="aspect-square bg-slate-100 relative overflow-hidden">
-                                                                        {images.length > 0 ? (
-                                                                            <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
-                                                                        ) : (
-                                                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
-                                                                                <span className="text-4xl opacity-50">📝</span>
-                                                                                <span className="text-[10px] font-bold">이미지 없음</span>
+                                                                <div key={post.id} className={`bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-500 ease-in-out cursor-pointer group overflow-hidden flex ${isExpanded ? 'col-span-full flex-col h-auto' : 'flex-col h-full'}`} onClick={() => toggleInPlacePost(post.id)}>
+                                                                    {!isExpanded && (
+                                                                        <div className="aspect-square bg-slate-100 relative overflow-hidden">
+                                                                            {images.length > 0 ? (
+                                                                                <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                                                                            ) : (
+                                                                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
+                                                                                    <span className="text-4xl opacity-50">📝</span>
+                                                                                    <span className="text-[10px] font-bold">이미지 없음</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {images.length > 1 && <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{images.length - 1}</div>}
+                                                                            <div className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
+                                                                            {post.postPassword && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
+                                                                            {post.resourceLink && <div className={`absolute top-2 ${post.postPassword ? 'right-8' : 'right-2'} text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full`}>💾</div>}
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="p-3 flex flex-col flex-1">
+                                                                        {isExpanded && (
+                                                                            <div className="flex justify-between items-start mb-3">
+                                                                                <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
+                                                                                <div className="flex gap-1">
+                                                                                    {post.postPassword && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-full">🔒</span>}
+                                                                                    {post.resourceLink && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full">💾</span>}
+                                                                                </div>
                                                                             </div>
                                                                         )}
-                                                                        {images.length > 1 && <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{images.length - 1}</div>}
-                                                                        <div className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
-                                                                        {post.postPassword && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
-                                                                        {post.resourceLink && <div className={`absolute top-2 ${post.postPassword ? 'right-8' : 'right-2'} text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full`}>💾</div>}
-                                                                    </div>
-                                                                    <div className="p-3 flex flex-col flex-1">
                                                                         <h4 className="text-sm font-bold text-slate-800 mb-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">{post.title}</h4>
                                                                         {post.tags && post.tags.length > 0 && (
                                                                             <div className="flex flex-wrap gap-1 mb-2">
-                                                                                {post.tags.slice(0, 3).map((tag, i) => <span key={i} className="text-[9px] text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full font-bold">#{tag}</span>)}
+                                                                                {post.tags.slice(0, isExpanded ? undefined : 3).map((tag, i) => <span key={i} className="text-[9px] text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full font-bold">#{tag}</span>)}
                                                                             </div>
                                                                         )}
-                                                                        <div className="text-xs text-slate-500 line-clamp-2 mb-2 flex-1">{renderPostContent(post.content, false)}</div>
+                                                                        <div className={`text-xs text-slate-500 mb-2 flex-1 ${isExpanded ? '' : 'line-clamp-2'}`}>{renderPostContent(post.content, isExpanded)}</div>
+                                                                        {isExpanded && images.length > 0 && (
+                                                                            <div className="flex gap-2 overflow-x-auto py-2 mt-2 mb-2 custom-scroll">
+                                                                                {images.map((img, idx) => (
+                                                                                    <div key={idx} className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border border-slate-200 cursor-pointer" onClick={(e) => { e.stopPropagation(); openLightbox(images, idx); }}>
+                                                                                        <img src={img} alt={`attachment-${idx}`} className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" />
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
                                                                         <div className="flex justify-between items-center text-[10px] text-slate-400 mt-auto">
-                                                                            <span className="truncate max-w-[60px]">{post.authorName} <span className="text-[10px] align-middle">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
+                                                                            <span className="truncate max-w-[60px]">{post.authorName} <span className="text-[10px] align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
                                                                             <div className="flex items-center gap-2 shrink-0">
                                                                                 <div className="flex items-center gap-0.5">
                                                                                     <Icon d={PATHS.heart} size={10} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
@@ -14213,6 +14273,16 @@ const firebaseConfig = {
                                                                                 <span>{dayjs(post.createdAt).format('MM.DD')}</span>
                                                                             </div>
                                                                         </div>
+                                                                        {isExpanded && (
+                                                                            <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100 animate-fade-in" onClick={e => e.stopPropagation()}>
+                                                                                <button onClick={(e) => { e.stopPropagation(); handleEditPost(post); }} className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-200 transition-colors font-bold">
+                                                                                    <Icon d={PATHS.edit} size={14}/> 수정
+                                                                                </button>
+                                                                                <button onClick={(e) => { e.stopPropagation(); handleDeletePost(post); }} className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-rose-200 transition-colors font-bold">
+                                                                                    <Icon d={PATHS.trash} size={14}/> 삭제
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             );
@@ -14220,7 +14290,7 @@ const firebaseConfig = {
 
                                                         // Card View (Default)
                                                         return (
-                                                            <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group" onClick={() => handleOpenPostDetail(post)}>
+                                                            <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group" onClick={() => toggleInPlacePost(post.id)}>
                                                                 <div className="flex justify-between items-start mb-2">
                                                                     <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
                                                                     <div className="flex items-center gap-2">
@@ -14233,7 +14303,7 @@ const firebaseConfig = {
                                                                             {post.title}
                                                                             {post.resourceLink && <span className="ml-2 text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded align-middle font-normal">💾 자료</span>}
                                                                         </h4>
-                                                                        {renderPostContent(post.content, false)}
+                                                                        {renderPostContent(post.content, isExpanded)}
                                                                     </div>
                                                                     {images.length > 0 && (
                                                                         <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0 relative">
@@ -14250,10 +14320,10 @@ const firebaseConfig = {
                                                                 <div className="flex items-center justify-between pt-3 border-t border-slate-50 mt-3">
                                                                     <div className="flex items-center gap-2">
                                                                         <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs">👤</div>
-                                                                        <span className="text-xs font-bold text-slate-500">{post.authorName} 선생님 <span className="text-[10px] align-middle">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
+                                                                        <span className="text-xs font-bold text-slate-500">{post.authorName} 선생님 <span className="text-[10px] align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 text-slate-500">
+                                                                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors" onClick={(e) => { e.stopPropagation(); handleOpenPostDetail(post); }}>
                                                                             <Icon d={PATHS.message} size={14} />
                                                                             <span className="text-xs font-bold">{post.commentCount || 0}</span>
                                                                         </div>
@@ -14263,6 +14333,16 @@ const firebaseConfig = {
                                                                         </div>
                                                                     </div>
                                                                 </div>
+                                                                {isExpanded && (
+                                                                    <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100 animate-fade-in" onClick={e => e.stopPropagation()}>
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleEditPost(post); }} className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-200 transition-colors font-bold">
+                                                                            <Icon d={PATHS.edit} size={14}/> 수정
+                                                                        </button>
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleDeletePost(post); }} className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-rose-200 transition-colors font-bold">
+                                                                            <Icon d={PATHS.trash} size={14}/> 삭제
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         );
                                                     })}
@@ -14348,11 +14428,13 @@ const firebaseConfig = {
                                                                 <div className="flex items-center gap-2 mb-2">
                                                                     <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-bold border border-indigo-100">{selectedPost.category}</span>
                                                                     <span className="text-xs text-slate-400">{dayjs(selectedPost.createdAt).format('YYYY.MM.DD HH:mm')}</span>
+                                                                    <span className="w-px h-2 bg-slate-200"></span>
+                                                                    <span className="text-xs text-slate-400">조회 {(communityPosts.find(p => p.id === selectedPost.id) || selectedPost).viewCount || 0}</span>
                                                                 </div>
                                                                 <h2 className="text-2xl font-bold text-slate-800 mb-4 leading-tight">{selectedPost.title}</h2>
                                                                 <div className="flex items-center gap-2 pb-4 border-b border-slate-100">
                                                                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm">👤</div>
-                                                                    <span className="font-bold text-slate-700 text-sm">{selectedPost.authorName} 선생님 <span className="text-xs align-middle">{selectedPost.isAnonymous ? '🔒' : (selectedPost.authorBadge || '🌱')}</span></span>
+                                                                    <span className="font-bold text-slate-700 text-sm">{selectedPost.authorName} 선생님 <span className="text-xs align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{selectedPost.isAnonymous ? '🔒' : (selectedPost.authorBadge || '🌱')}</span></span>
                                                                 </div>
                                                             </div>
                                                             {selectedPost.tags && selectedPost.tags.length > 0 && (
@@ -14418,7 +14500,7 @@ const firebaseConfig = {
                                                                                     <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                                                                                         <div className="flex justify-between items-start mb-1">
                                                                                             <div className="flex items-center gap-2">
-                                                                                                <span className="font-bold text-slate-700 text-sm">{comment.author || comment.authorName} <span className="text-xs font-normal align-middle">{comment.isAnonymous ? '🔒' : (comment.authorBadge || '🌱')}</span></span>
+                                                                                                <span className="font-bold text-slate-700 text-sm">{comment.author || comment.authorName} <span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{comment.isAnonymous ? '🔒' : (comment.authorBadge || '🌱')}</span></span>
                                                                                                 <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
                                                                                             </div>
                                                                                             <div className="flex items-center gap-1">
@@ -14439,7 +14521,7 @@ const firebaseConfig = {
                                                                                                 <div className="absolute top-[-10px] left-[-10px] w-4 h-6 border-l-2 border-b-2 border-slate-200 rounded-bl-xl"></div>
                                                                                                 <div className="flex justify-between items-start mb-1">
                                                                                                     <div className="flex items-center gap-2">
-                                                                                                        <span className="font-bold text-slate-700 text-sm">{reply.author || reply.authorName} <span className="text-xs font-normal align-middle">{reply.isAnonymous ? '🔒' : (reply.authorBadge || '🌱')}</span></span>
+                                                                                                        <span className="font-bold text-slate-700 text-sm">{reply.author || reply.authorName} <span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{reply.isAnonymous ? '🔒' : (reply.authorBadge || '🌱')}</span></span>
                                                                                                         <span className="text-[10px] text-slate-400">{dayjs(reply.createdAt).format('MM.DD HH:mm')}</span>
                                                                                                     </div>
                                                                                                     {(isAdmin || isMyReply) && (
@@ -14458,7 +14540,7 @@ const firebaseConfig = {
                                                                                                 value={replyContent} 
                                                                                                 onChange={e => setReplyContent(e.target.value)} 
                                                                                                 placeholder="답글을 입력하세요..." 
-                                                                                                className="flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 bg-white shadow-sm" 
+                                                                                                className="flex-1 min-w-0 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 bg-white shadow-sm" 
                                                                                                 autoFocus 
                                                                                                 onKeyDown={e => { if(e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddComment(selectedPost.id, comment.id); }} 
                                                                                             />
@@ -14494,7 +14576,7 @@ const firebaseConfig = {
                                                                             value={commentContent} 
                                                                             onChange={e => setCommentContent(e.target.value)} 
                                                                             placeholder="따뜻한 댓글을 남겨주세요..." 
-                                                                            className="flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 bg-white shadow-sm transition-shadow focus:shadow-md" 
+                                                                            className="flex-1 min-w-0 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 bg-white shadow-sm transition-shadow focus:shadow-md" 
                                                                             onKeyDown={e => { if(e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddComment(selectedPost.id); }} 
                                                                         />
                                                                         <button 
@@ -14676,6 +14758,34 @@ const firebaseConfig = {
                     </div>
                 </div>
             )}
+            <BaseModal isOpen={showLevelGuide} onClose={() => setShowLevelGuide(false)} title="레벨 시스템 안내" icon={PATHS.trophy} maxWidth="max-w-sm">
+                <div className="space-y-4">
+                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-800">
+                        <p className="font-bold mb-1">🌱 활동 점수 기준</p>
+                        <p className="text-xs opacity-80">게시글 작성 시 1점, 댓글 작성 시 0.01점이 부여됩니다.</p>
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { badge: '🌱', name: '새싹', range: `0 ~ ${levelConfig.grass - 1}점` },
+                            { badge: '🌿', name: '풀잎', range: `${levelConfig.grass} ~ ${levelConfig.tree - 1}점` },
+                            { badge: '🌼', name: '꽃', range: `${levelConfig.tree} ~ ${levelConfig.forest - 1}점` },
+                            { badge: '🌳', name: '나무', range: `${levelConfig.forest} ~ ${levelConfig.king - 1}점` },
+                            { badge: '🧸', name: '숲의 왕', range: `${levelConfig.king}점 이상` },
+                        ].map((l, i) => (
+                            <div key={i} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-2xl">{l.badge}</span>
+                                    <span className="font-bold text-slate-700">{l.name}</span>
+                                </div>
+                                <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg">{l.range}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="text-center text-[10px] text-slate-400 mt-2">
+                        * 관리자 설정에 따라 기준 점수는 변경될 수 있습니다.
+                    </div>
+                </div>
+            </BaseModal>
                     <Toast message={toastMessage} action={toastAction} onClose={()=>{ setToastMessage(null); setToastAction(null); }} />
                     {!!grassStudentId && <StatsGrassModal 
                         isOpen={!!grassStudentId} 
