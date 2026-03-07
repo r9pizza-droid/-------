@@ -3746,10 +3746,17 @@
                     <div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">⚠️</div>
                     <div className="flex flex-wrap items-center gap-3 mb-6 relative z-10">
                         <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2"><span className="text-xl">⚠️</span> 과제 미제출 명단</h3>
-                        <div className="flex bg-slate-100 p-1 rounded-xl">
-                            <button onClick={() => setFilter('today')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filter === 'today' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>오늘</button>
-                            <button onClick={() => setFilter('recent3')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filter === 'recent3' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>최근 3일</button>
-                            <button onClick={() => setFilter('week')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filter === 'week' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>1주</button>
+                        <div className="flex relative bg-slate-100 p-1 rounded-xl">
+                            <div 
+                                className="absolute top-1 bottom-1 left-1 bg-white rounded-lg shadow-sm transition-all duration-300 ease-in-out"
+                                style={{ 
+                                    width: 'calc((100% - 0.5rem) / 3)', 
+                                    transform: `translateX(${filter === 'today' ? '0%' : filter === 'recent3' ? '100%' : '200%'})` 
+                                }}
+                            ></div>
+                            <button onClick={() => setFilter('today')} className={`relative z-10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-20 ${filter === 'today' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>오늘</button>
+                            <button onClick={() => setFilter('recent3')} className={`relative z-10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-20 ${filter === 'recent3' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>최근 3일</button>
+                            <button onClick={() => setFilter('week')} className={`relative z-10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-20 ${filter === 'week' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>1주</button>
                         </div>
                     </div>
                     <div className="relative z-10 space-y-4">
@@ -13390,9 +13397,22 @@ const firebaseConfig = {
                 <button onClick={() => { setShowTutorial(true); setTutorialStep(0); }} className="ml-2 w-7 h-7 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors shadow-sm ring-1 ring-indigo-100" title="사용 설명서 보기">💡</button>
                 {!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}
             </div>
-            <div className="hidden md:flex gap-1">
+            <div className="hidden md:flex relative bg-slate-100 p-1 rounded-xl">
+                <div 
+                    className="absolute top-1 bottom-1 left-1 bg-white rounded-lg shadow-sm transition-all duration-300 ease-in-out"
+                    style={{ 
+                        width: 'calc((100% - 0.5rem) / 4)', 
+                        transform: `translateX(${mode === 'record' ? '0%' : mode === 'group' ? '100%' : mode === 'stats' ? '200%' : '300%'})` 
+                    }}
+                ></div>
                 {[{id:'record',label:'기록',icon:PATHS.edit},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart},{id:'community',label:'게시판',icon:PATHS.list}].map(m => (
-                    <button key={m.id} onClick={()=>setMode(m.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all active:scale-95 ${mode===m.id?'bg-notion-bg-hover text-notion-text':'text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text'}`}><Icon d={m.icon} size={14}/><span>{m.label}</span></button>
+                    <button 
+                        key={m.id} 
+                        onClick={()=>setMode(m.id)} 
+                        className={`relative z-10 flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold transition-colors w-24 ${mode===m.id ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <Icon d={m.icon} size={16}/><span>{m.label}</span>
+                    </button>
                 ))}
             </div>
         </div>
@@ -15260,10 +15280,17 @@ const firebaseConfig = {
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d={PATHS.down} size={12} /></div>
                     </div>
-                    <div className="hidden md:flex bg-slate-100 p-1 rounded-xl shadow-inner">
-                        <button onClick={() => onChange('weekly')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${value === 'weekly' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>주간</button>
-                        <button onClick={() => onChange('monthly')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${value === 'monthly' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>월간</button>
-                        <button onClick={() => onChange('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${value === 'all' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>전체</button>
+                    <div className="hidden md:flex relative bg-slate-100 p-1 rounded-xl shadow-inner">
+                        <div 
+                            className="absolute top-1 bottom-1 left-1 bg-white rounded-lg shadow-sm transition-all duration-300 ease-in-out"
+                            style={{ 
+                                width: 'calc((100% - 0.5rem) / 3)', 
+                                transform: `translateX(${value === 'weekly' ? '0%' : value === 'monthly' ? '100%' : '200%'})` 
+                            }}
+                        ></div>
+                        <button onClick={() => onChange('weekly')} className={`relative z-10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-14 ${value === 'weekly' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>주간</button>
+                        <button onClick={() => onChange('monthly')} className={`relative z-10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-14 ${value === 'monthly' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>월간</button>
+                        <button onClick={() => onChange('all')} className={`relative z-10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-14 ${value === 'all' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>전체</button>
                     </div>
                 </>
         );
