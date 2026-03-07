@@ -838,7 +838,7 @@
             };
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="🤖 AI 은샘이 상담소" icon={PATHS.heart}>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="🤖 AI 은샘이 상담소">
                     <div className="space-y-4">
                         <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 text-sm text-rose-800">
                             <p className="font-bold mb-1">💡 선생님을 위한 AI 상담 조언</p>
@@ -994,6 +994,7 @@
             const [reportEnd, setReportEnd] = useState(dayjs().format('YYYY-MM-DD'));
             const [tempComment, setTempComment] = useState("");
             const [reportFont, setReportFont] = useState('sans');
+            const [reportTheme, setReportTheme] = useState('simple');
             const [showReportFontList, setShowReportFontList] = useState(false);
             const [reportFocus, setReportFocus] = useState('comprehensive');
             const [showCounselingAI, setShowCounselingAI] = useState(false);
@@ -1634,12 +1635,31 @@
                     }
                     const weakSubjectsStr = weakSubjects.length > 0 ? weakSubjects.join(', ') : '없음';
                     if (apiKey) {
-                        const isInsufficientData = pNotes.length < 2;
                         if(showToast) showToast("AI가 리포트를 작성 중입니다...");
                         
                         // [보안] 데이터 익명화 처리
                         const safeName = "[STUDENT_TOKEN]";
                         
+                        // [New] 성장 추이 분석
+                        const startObj = dayjs(reportStart);
+                        const endObj = dayjs(reportEnd);
+                        const duration = endObj.diff(startObj, 'day');
+                        const prevStart = startObj.subtract(duration + 1, 'day').format('YYYY-MM-DD');
+                        const prevEnd = startObj.subtract(1, 'day').format('YYYY-MM-DD');
+                        const prevStats = calculateStatsForPeriod(prevStart, prevEnd);
+                        let growthText = "";
+                        if (prevStats.pTotal > 0) {
+                            const diff = pRate - prevStats.pRate;
+                            growthText = `(지난 기간 ${prevStats.pRate}% 대비 ${diff >= 0 ? '+' : ''}${diff}%p ${diff >= 0 ? '상승📈' : '하락📉'})`;
+                        }
+
+                        // [New] 중점 분석 분야 프롬프트
+                        let focusGuide = "";
+                        if (reportFocus === 'study') focusGuide = "특히 '학습 태도'와 '학업 성취'를 중점적으로 분석하고, 학습 습관 개선을 위한 구체적인 조언을 포함해.";
+                        else if (reportFocus === 'relationship') focusGuide = "특히 '교우 관계'와 '사회성'을 중점적으로 분석하고, 또래와의 상호작용에 대한 조언을 포함해.";
+                        else if (reportFocus === 'habit') focusGuide = "특히 '기본 생활 습관'과 '규칙 준수' 여부를 중점적으로 분석해.";
+                        else focusGuide = "학교 생활 전반(학습, 생활, 관계)을 균형 있게 종합적으로 분석해.";
+
                         // [보안 강화] 대상 학생 외에 다른 학생들의 이름도 모두 익명화
                         let safeNotesStr = pNotes.map(n => `[${n.date}] ${n.content}`).join('\n');
                         safeNotesStr = anonymizeText(safeNotesStr, student.name);
@@ -1659,15 +1679,16 @@
 1. 환각(지어내기) 금지: 제공된 [학생 데이터]에 명시되지 않은 사실은 단 한 문장도 창작하지 마. 기록이 부족하면 억지로 지어내지 말고 있는 사실만 적어.
 2. 어조: AI 같은 기계적인 말투는 피하고, 전문가답지만 따뜻한 교사의 말투로 개조식(글머리 기호) 작성을 해.
 3. 객관성: 특징이나 단점을 서술할 때는 반드시 데이터에 기록된 날짜를 함께 묶어 출처를 명확히 해.
+4. 분석 초점: ${focusGuide}
 
 [학생 데이터]
 - 이름: ${safeName}
-- 과제 제출률: ${pRate}%
+- 과제 수행률: ${pRate}% ${growthText}
 - 선생님의 관찰 및 칭찬 기록: ${pNotes.length > 0 ? safeNotesStr : '특이 기록 없음'}
 
 [출력 양식]
 ### 📊 이번 달 핵심 요약
-- (과제 수행률 숫자를 명시하며 노력한 과정을 구체적으로 칭찬)
+- (과제 수행률 숫자를 명시하며 노력한 과정을 구체적으로 칭찬. 성장 추이가 있다면 언급)
 - (관찰 기록을 바탕으로 학생의 가장 돋보인 핵심 역량 해시태그 3개 추출. 예: #따뜻한배려심 #책임감 #스스로하기)
 
 ### ✨ 긍정적 관찰 사실
@@ -2600,8 +2621,9 @@
 
                         {/* 숨겨진 리포트 모달, AI 모달 등 모두 유지 */}
                         <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-                            <div ref={reportRef} className={`w-[800px] bg-white p-12 border border-slate-200 text-slate-800 ${reportFont === 'serif' ? 'font-serif' : reportFont === 'hand' ? 'font-hand' : reportFont === 'jua' ? 'font-jua' : reportFont === 'nanum' ? 'font-nanum' : reportFont === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'}`}>
-                                <div className="text-center border-b-2 border-slate-800 pb-6 mb-8">
+                            <div ref={reportRef} className={`w-[800px] p-12 text-slate-800 relative ${reportFont === 'serif' ? 'font-serif' : reportFont === 'hand' ? 'font-hand' : reportFont === 'jua' ? 'font-jua' : reportFont === 'nanum' ? 'font-nanum' : reportFont === 'nanum-bold' ? 'font-nanum font-bold' : 'font-sans'} ${reportTheme === 'fancy' ? 'bg-orange-50 border-4 border-orange-200' : reportTheme === 'formal' ? 'bg-slate-50 border-double border-4 border-slate-300' : 'bg-white border border-slate-200'}`}>
+                                {reportTheme === 'fancy' && <div className="absolute top-0 left-0 w-full h-4 bg-orange-200"></div>}
+                                <div className={`text-center border-b-2 pb-6 mb-8 ${reportTheme === 'fancy' ? 'border-orange-300' : 'border-slate-800'}`}>
                                     <h1 className="text-4xl font-extrabold text-slate-900 mb-2">🌱 학습 성장 리포트</h1>
                                     <p className="text-slate-500 text-lg">{dayjs().format('YY.MM.DD')}</p>
                                 </div>
@@ -2615,13 +2637,13 @@
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-8 mb-8">
-                                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                                        <h3 className="font-bold text-lg text-slate-700 mb-4 border-b border-slate-200 pb-2">📊 활동 분석</h3>
+                                    <div className={`p-6 rounded-2xl border ${reportTheme === 'fancy' ? 'bg-white border-orange-100' : 'bg-slate-50 border-slate-200'}`}>
+                                        <h3 className={`font-bold text-lg text-slate-700 mb-4 border-b pb-2 ${reportTheme === 'fancy' ? 'border-orange-100' : 'border-slate-200'}`}>📊 활동 분석</h3>
                                         <div className="space-y-3">
                                             <div className="flex justify-between items-center"><span className="text-slate-600">최근 30일 활동</span><span className="font-bold text-indigo-600">{student.history.length}일 중 {student.history.filter(h=>h.ratio===1).length}일 완료</span></div>
                                             <div><span className="text-slate-600 block mb-1">자주 놓치는 과목</span>{missedTags.length > 0 ? (<div className="flex gap-2 flex-wrap">{missedTags.map(([t, c]) => <span key={t} className="text-xs bg-white border border-slate-200 px-2 py-1 rounded-md text-rose-500 font-bold">{t} ({c}회)</span>)}</div>) : <span className="text-sm text-green-600 font-bold">없음 (훌륭해요!)</span>}</div>
                                         </div>
-                                        <div className="mt-4 pt-4 border-t border-slate-100">
+                                        <div className={`mt-4 pt-4 border-t ${reportTheme === 'fancy' ? 'border-orange-100' : 'border-slate-100'}`}>
                                             <h4 className="text-sm font-bold text-slate-600 mb-2">📊 학급 평균 비교</h4>
                                             <div className="space-y-2">
                                                 <div>
@@ -2635,8 +2657,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                                        <h3 className="font-bold text-lg text-slate-700 mb-4 border-b border-slate-200 pb-2">📝 선생님의 한마디</h3>
+                                    <div className={`p-6 rounded-2xl border ${reportTheme === 'fancy' ? 'bg-white border-orange-100' : 'bg-slate-50 border-slate-200'}`}>
+                                        <h3 className={`font-bold text-lg text-slate-700 mb-4 border-b pb-2 ${reportTheme === 'fancy' ? 'border-orange-100' : 'border-slate-200'}`}>📝 선생님의 한마디</h3>
                                         <p className="text-slate-700 leading-relaxed whitespace-pre-wrap text-sm">{aiComment || "분석 중..."}</p>
                                     </div>
                                 </div>
@@ -2713,6 +2735,14 @@
                                                 <label className="text-[10px] font-bold text-slate-500">중점 분석 분야 (Focus)</label>
                                                 <select value={reportFocus} onChange={e=>setReportFocus(e.target.value)} className="text-xs p-1.5 border rounded bg-white outline-none"><option value="comprehensive">🏫 학교생활 종합</option><option value="study">📝 학습 태도</option><option value="relationship">🤝 교우 관계</option><option value="habit">⏰ 생활 습관</option></select>
                                             </div>
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-[10px] font-bold text-slate-500">테마 (Theme)</label>
+                                                <select value={reportTheme} onChange={e=>setReportTheme(e.target.value)} className="text-xs p-1.5 border rounded bg-white outline-none">
+                                                    <option value="simple">🤍 심플 (기본)</option>
+                                                    <option value="fancy">🎨 팬시 (장식)</option>
+                                                    <option value="formal">📜 포멀 (격식)</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <Btn onClick={generateReportContent} disabled={isGenerating} className={`w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 ${apiKey ? 'bg-violet-100 text-violet-700 hover:bg-violet-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
                                             {isGenerating ? '작성 중...' : apiKey ? '✨ AI로 리포트 새로 작성하기' : '🔄 기간 설정 적용하여 다시 쓰기'}
@@ -2749,9 +2779,9 @@
                                         </div>
                                         <textarea className="w-full h-48 p-4 border border-slate-200 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 resize-none custom-scroll" value={tempComment} onChange={(e) => setTempComment(e.target.value)} placeholder="리포트에 들어갈 내용을 작성해주세요." />
                                         <div className="flex gap-2">
-                                            <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"><Icon d={PATHS.check} /> 초안 저장</Btn>
-                                            <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"><Icon d={PATHS.copy} /> 텍스트 복사</Btn>
-                                            <Btn onClick={handleDownloadReport} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"><Icon d={PATHS.download} /> 이미지로 저장</Btn>
+                                            <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap"><Icon d={PATHS.check} size={14} /> 초안 저장</Btn>
+                                            <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap"><Icon d={PATHS.copy} size={14} /> 텍스트 복사</Btn>
+                                            <Btn onClick={handleDownloadReport} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap"><Icon d={PATHS.download} size={14} /> 이미지 저장</Btn>
                                         </div>
                                     </div>
                                 </div>
