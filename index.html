@@ -82,7 +82,7 @@
                     keyframes: {
                         bounceIn: { '0%': { transform: 'scale(0.9)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         fadeIn: { 'from': { opacity: 0 }, 'to': { opacity: 1 } },
-                        popUp: { 'from': { transform: 'translate(-50%, -40%) scale(0.9)', opacity: 0 }, 'to': { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 } },
+                        popUp: { 'from': { transform: 'scale(0.9)', opacity: 0 }, 'to': { transform: 'scale(1)', opacity: 1 } },
                         modalEnter: { '0%': { opacity: 0, transform: 'scale(0.95) translateY(10px)' }, '100%': { opacity: 1, transform: 'scale(1) translateY(0)' } },
                         slideInRight: { '0%': { transform: 'translateX(20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
                         slideInLeft: { '0%': { transform: 'translateX(-20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
@@ -5724,7 +5724,15 @@
 - [총평 초안]: 1년간의 기록을 바탕으로 생활기록부(행발, 교과) 초안을 생성해줍니다.
 
 ----------------------------------------------------------------
-5. 🔗 외부 연동 & 데이터 관리
+5. 🍯 꿀팁 게시판 (선생님 커뮤니티)
+----------------------------------------------------------------
+- [공유]: 수업 자료, 학급 경영 꿀팁을 다른 선생님들과 공유해보세요.
+- [소통]: 좋아요와 댓글로 감사를 표현하고 소통할 수 있습니다.
+- [알림]: 내 글에 반응이 있으면 종 모양 아이콘(🔔)으로 알려줍니다.
+- [검색]: 해시태그(#)나 키워드로 필요한 자료를 쉽게 찾을 수 있습니다.
+
+----------------------------------------------------------------
+6. 🔗 외부 연동 & 데이터 관리
 ----------------------------------------------------------------
 - [노션 연동]: 기록을 개인 노션 페이지에 자동으로 저장할 수 있습니다.
   (기록 모드 / 포트폴리오 모드 지원)
@@ -5733,7 +5741,7 @@
 - [데이터 정리]: 오래된 기록을 정리하여 앱 속도를 최적화할 수 있습니다.
 
 ----------------------------------------------------------------
-6. 🧰 학급 도구 상자
+7. 🧰 학급 도구 상자
 ----------------------------------------------------------------
 - [발표자 뽑기]: 무작위로 발표자를 선정할 때 사용하세요.
 - [타이머]: 수업 시간 관리에 유용한 타이머 기능이 내장되어 있습니다.
@@ -10227,6 +10235,7 @@ const firebaseConfig = {
     const tutorialSlides = [
         { emoji: '👋', title: '선생님, 환영합니다!', desc: '퇴근 시간을 앞당겨 줄 스마트한 학급 경영 도구입니다. 놀라운 핵심 기능을 빠르게 알아볼까요?' },
         { emoji: '⚡', title: '빠른 다중 기록', desc: '우측 하단의 [빠른 기록 펜] 버튼을 눌러보세요. 한 번에 여러 명의 관찰/칭찬 기록을 순식간에 남길 수 있습니다.' },
+        { emoji: '🍯', title: '꿀팁 게시판 (NEW)', desc: '선생님들만의 커뮤니티가 생겼습니다! 수업 자료와 학급 경영 꿀팁을 공유하고, 좋아요와 댓글로 소통해보세요.' },
         { emoji: '🚀', title: '초고속 외부 연동 (누락 0%)', desc: '입력한 기록은 구글 시트와 노션으로 전송됩니다. 수십 명을 선택해도 데이터를 하나의 박스(Batch)로 묶어 0.1초 만에 안전하고 빠르게 일괄 전송합니다.' },
         { emoji: '🤖', title: '전문가 수준의 AI 상담소', desc: '학생 이름표를 더블클릭하면 인사이트 창이 열립니다. [AI 상담소]의 톱니바퀴 버튼을 누르면 ABA, PDC, 감정코칭 등 맞춤형 전문가 프롬프트를 바로 불러옵니다.' },
         { emoji: '📊', title: '클릭 한 번에 생기부 초안 완성', desc: '기록이 쌓이면 [AI 총평 초안] 탭을 활용해 보세요. 행발, 교과 등 자동 추천 템플릿에 맞춰 학생의 종합 의견 초안을 뚝딱 만들어줍니다.' }
@@ -10685,10 +10694,19 @@ const firebaseConfig = {
 
                 const lastVersion = localStorage.getItem('cls_last_version');
                 if (lastVersion !== CURRENT_VERSION) {
-                    //setShowUpdateNotes(true);
-                    localStorage.setItem('cls_last_version', CURRENT_VERSION);
+            setShowUpdateNotes(true);
                 }
             }, [CURRENT_VERSION]);
+
+    // [New] 버전 변경 시 튜토리얼 자동 표시
+    useEffect(() => {
+        if (CURRENT_VERSION === "로딩 중...") return;
+        const lastTutorialVersion = localStorage.getItem('cls_last_tutorial_version');
+        if (lastTutorialVersion !== CURRENT_VERSION) {
+            setShowTutorial(true);
+            setTutorialStep(0);
+        }
+    }, [CURRENT_VERSION]);
 
             const [isRoleEditOpen, setIsRoleEditOpen] = useState(false);
             const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(window.innerWidth >= 768);
@@ -14744,7 +14762,10 @@ const firebaseConfig = {
                         {/* 하단 버튼 */}
                         <div className="p-4 bg-slate-50 flex items-center justify-between border-t border-slate-100">
                             <button 
-                                onClick={() => setShowTutorial(false)} 
+                                onClick={() => {
+                                    setShowTutorial(false);
+                                    localStorage.setItem('cls_last_tutorial_version', CURRENT_VERSION);
+                                }} 
                                 className="text-slate-400 hover:text-slate-600 text-sm font-bold px-3 py-2"
                             >
                                 건너뛰기
@@ -14767,7 +14788,10 @@ const firebaseConfig = {
                                     </button>
                                 ) : (
                                     <button 
-                                        onClick={() => setShowTutorial(false)} 
+                                        onClick={() => {
+                                            setShowTutorial(false);
+                                            localStorage.setItem('cls_last_tutorial_version', CURRENT_VERSION);
+                                        }} 
                                         className="px-6 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold hover:from-indigo-700 hover:to-purple-700 shadow-md transition-all transform hover:scale-105"
                                     >
                                         시작하기!
@@ -15132,7 +15156,7 @@ const firebaseConfig = {
                             확인 ({autoCloseTimer}초 후 닫힘)
                         </Btn>
                     </BaseModal>
-                    <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => setShowUpdateNotes(false)} showToast={setToastMessage} notes={UPDATE_NOTES} />
+                    <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => { setShowUpdateNotes(false); localStorage.setItem('cls_last_version', CURRENT_VERSION); }} showToast={setToastMessage} notes={UPDATE_NOTES} />
                     {showAdminDashboard && (
                         <div 
                             className="fixed inset-0 z-[5000] bg-black/30 backdrop-blur-sm overflow-y-auto" 
