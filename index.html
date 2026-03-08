@@ -4728,6 +4728,54 @@
             );
         };
 
+        const ScoreSettingsModal = ({ isOpen, onClose, scoreConfig, setScoreConfig, updateAppConfig }) => {
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="통계 점수 설정" icon={PATHS.trophy} maxWidth="max-w-md" zIndex="z-[2100]">
+                    <div className="space-y-6">
+                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
+                            <h5 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-yellow-500">●</span> 명예의 전당 (획득 점수)</h5>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-400">제출 완료</label>
+                                    <input type="number" step="0.1" value={scoreConfig.submit} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, submit: val}); updateAppConfig({ scoreSubmit: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-400">지각 제출</label>
+                                    <input type="number" step="0.1" value={scoreConfig.late} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, late: val}); updateAppConfig({ scoreLate: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-400">미제출</label>
+                                    <input type="number" step="0.1" value={scoreConfig.miss} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, miss: val}); updateAppConfig({ scoreMiss: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
+                            <h5 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-rose-500">●</span> 도움이 필요해요 (페널티)</h5>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-400">당일 미제출</label>
+                                    <input type="number" step="0.1" value={scoreConfig.penaltyBase} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyBase: val}); updateAppConfig({ penaltyBase: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-400">하루 지날 때마다</label>
+                                    <input type="number" step="0.1" value={scoreConfig.penaltyPerDay} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyPerDay: val}); updateAppConfig({ penaltyPerDay: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-400">최대 페널티</label>
+                                    <input type="number" step="0.1" value={scoreConfig.penaltyMax} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyMax: val}); updateAppConfig({ penaltyMax: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-2">* 지각 제출 시 페널티는 (지각 점수 - 제출 점수)로 자동 계산됩니다.</p>
+                        </div>
+                        <div className="flex justify-end">
+                            <Btn onClick={onClose} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">확인</Btn>
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        };
+
         const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
@@ -4775,6 +4823,7 @@
             const [isVacStartCalOpen, setIsVacStartCalOpen] = useState(false);
             const [isVacEndCalOpen, setIsVacEndCalOpen] = useState(false);
             const [isVacationSectionOpen, setIsVacationSectionOpen] = useState(false);
+            const [showScoreSettings, setShowScoreSettings] = useState(false);
             
             // [New] 사용자 관리 (관리자 전용)
             const [userList, setUserList] = useState([]);
@@ -5515,7 +5564,6 @@
                                         <button onClick={() => setAppSubTab('basic')} className={`relative z-10 flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center ${appSubTab === 'basic' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>앱 기본 설정</button>
                                         <button onClick={() => setAppSubTab('display')} className={`relative z-10 flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center ${appSubTab === 'display' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>화면 및 기능 설정</button>
                                         <button onClick={() => setAppSubTab('notification')} className={`relative z-10 flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center ${appSubTab === 'notification' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>알림 설정</button>
-                                        <button onClick={() => setAppSubTab('score')} className={`relative z-10 flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center ${appSubTab === 'score' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>점수 설정</button>
                                     </div>
 
                                     {appSubTab === 'basic' && (
@@ -5643,6 +5691,15 @@
                                                             </div>
                                                         </div>
                                                     )}
+
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors cursor-pointer" onClick={() => setShowScoreSettings(true)}>
+                                                        <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500 flex-shrink-0"><Icon d={PATHS.trophy} size={20}/></div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <span className="text-sm font-bold text-slate-700">통계 점수 설정</span>
+                                                            <span className="text-[10px] text-slate-400 block">명예의 전당 및 도움이 필요해요 점수 기준</span>
+                                                        </div>
+                                                        <Icon d={PATHS.right} size={16} className="text-slate-400"/>
+                                                    </div>
 
                                                     <div className="grid grid-cols-1 gap-2">
                                                         <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
@@ -6111,54 +6168,6 @@
                                                             </label>
                                                         </div>
                                                         <p className="text-xs text-slate-500">앱이 켜져 있을 때 브라우저 알림을 보냅니다. (OS 설정에 따라 다를 수 있음)</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {appSubTab === 'score' && (
-                                        <div className="animate-fade-in space-y-6">
-                                            <div className="group">
-                                                <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5 cursor-default select-none">
-                                                    <div className="w-10 h-10 rounded-2xl bg-yellow-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🏆</div> 
-                                                    통계 점수 설정
-                                                </h4>
-                                                <div className="space-y-6">
-                                                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
-                                                        <h5 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-yellow-500">●</span> 명예의 전당 (획득 점수)</h5>
-                                                        <div className="grid grid-cols-3 gap-4">
-                                                            <div className="flex flex-col gap-1">
-                                                                <label className="text-[10px] font-bold text-slate-400">제출 완료</label>
-                                                                <input type="number" step="0.1" value={scoreConfig.submit} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, submit: val}); updateAppConfig({ scoreSubmit: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
-                                                            </div>
-                                                            <div className="flex flex-col gap-1">
-                                                                <label className="text-[10px] font-bold text-slate-400">지각 제출</label>
-                                                                <input type="number" step="0.1" value={scoreConfig.late} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, late: val}); updateAppConfig({ scoreLate: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
-                                                            </div>
-                                                            <div className="flex flex-col gap-1">
-                                                                <label className="text-[10px] font-bold text-slate-400">미제출</label>
-                                                                <input type="number" step="0.1" value={scoreConfig.miss} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, miss: val}); updateAppConfig({ scoreMiss: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
-                                                        <h5 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-rose-500">●</span> 도움이 필요해요 (페널티)</h5>
-                                                        <div className="grid grid-cols-3 gap-4">
-                                                            <div className="flex flex-col gap-1">
-                                                                <label className="text-[10px] font-bold text-slate-400">당일 미제출</label>
-                                                                <input type="number" step="0.1" value={scoreConfig.penaltyBase} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyBase: val}); updateAppConfig({ penaltyBase: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
-                                                            </div>
-                                                            <div className="flex flex-col gap-1">
-                                                                <label className="text-[10px] font-bold text-slate-400">하루 지날 때마다</label>
-                                                                <input type="number" step="0.1" value={scoreConfig.penaltyPerDay} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyPerDay: val}); updateAppConfig({ penaltyPerDay: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
-                                                            </div>
-                                                            <div className="flex flex-col gap-1">
-                                                                <label className="text-[10px] font-bold text-slate-400">최대 페널티</label>
-                                                                <input type="number" step="0.1" value={scoreConfig.penaltyMax} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyMax: val}); updateAppConfig({ penaltyMax: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-[10px] text-slate-400 mt-2">* 지각 제출 시 페널티는 (지각 점수 - 제출 점수)로 자동 계산됩니다.</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -9055,6 +9064,7 @@ const firebaseConfig = {
 
         const App = () => {
             // [New] 레벨 시스템 설정 (관리자 밸런스 패치용)
+            const [scoreDetailTarget, setScoreDetailTarget] = useState(null);
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
             const [showLevelGuide, setShowLevelGuide] = useState(false);
 
@@ -10347,7 +10357,8 @@ const firebaseConfig = {
 
                 const lastVersion = localStorage.getItem('cls_last_version');
                 if (lastVersion !== CURRENT_VERSION) {
-            setShowUpdateNotes(true);
+                    // setShowUpdateNotes(true);
+                    localStorage.setItem('cls_last_version', CURRENT_VERSION);
                 }
             }, [CURRENT_VERSION]);
 
@@ -15038,6 +15049,13 @@ const firebaseConfig = {
                             details={scoreDetailTarget.details} 
                         />
                     )}
+                    <ScoreSettingsModal 
+                        isOpen={showScoreSettings} 
+                        onClose={() => setShowScoreSettings(false)} 
+                        scoreConfig={scoreConfig} 
+                        setScoreConfig={setScoreConfig} 
+                        updateAppConfig={updateAppConfig} 
+                    />
                 </div>
                     )}
                 </>
