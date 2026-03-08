@@ -9115,81 +9115,6 @@ const firebaseConfig = {
                 return () => unsubscribe();
             }, [sharedDb]);
 
-            // ==========================================
-    // 📛 [별칭 시스템] 상태 및 확인 로직 (기억력 강화 버전)
-    // ==========================================
-    // 1. 켤 때부터 내 컴퓨터(브라우저)가 기억하는 이름이 있는지 먼저 찾아봅니다.
-    const [userNickname, setUserNickname] = useState(() => localStorage.getItem('myBoardName') || "");
-    const [showNicknameModal, setShowNicknameModal] = useState(false);
-    const [scoreDetailTarget, setScoreDetailTarget] = useState(null);
-    const [tempNickname, setTempNickname] = useState("");
-
-    // 게시판(community) 입장 시 별칭 확인
-    useEffect(() => {
-        if (mode === 'community') {
-            // 내 컴퓨터에 이미 저장된 이름이 있다면 묻지도 따지지도 않고 통과!
-            const savedName = localStorage.getItem('myBoardName');
-            if (savedName) {
-                setUserNickname(savedName);
-                setShowNicknameModal(false);
-                return; 
-            }
-
-            // 내 컴퓨터에 없다면 파이어베이스 서버에 물어봅니다. (지연 시간 대비)
-            const checkFirebase = () => {
-                const user = firebase.auth().currentUser;
-                if (user && sharedDb) {
-                    sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
-                        if (doc.exists && doc.data().name) {
-                            const fetchedName = doc.data().name;
-                            setUserNickname(fetchedName);
-                            localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
-                            setShowNicknameModal(false);
-                        } else {
-                            setShowNicknameModal(true);
-                        }
-                    }).catch(e => console.error("별칭 확인 오류:", e));
-                } else {
-                    // 로그인이 아직 확인 안 된 찰나의 순간에는 잠시 모달을 띄웁니다.
-                    setShowNicknameModal(true); 
-                }
-            };
-
-            // 파이어베이스가 로그인 상태를 확인하는 시간을 조금 기다려줍니다.
-            setTimeout(checkFirebase, 500); 
-        } else {
-            setShowNicknameModal(false);
-        }
-    }, [mode, sharedDb]);
-
-    // 별칭 저장 버튼 눌렀을 때 실행되는 함수
-    const handleSaveNickname = async () => {
-        if (tempNickname.trim().length < 2) {
-            alert("별칭은 2글자 이상 입력해주세요.");
-            return;
-        }
-        try {
-            const user = firebase.auth().currentUser;
-            if (user && sharedDb) {
-                // 1. 파이어베이스 서버에 저장
-                await sharedDb.collection('userProfiles').doc(user.uid).set({
-                    uid: user.uid,
-                    name: tempNickname.trim(),
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            }
-            
-            // 2. 내 컴퓨터(브라우저)에도 강력하게 저장!! (이게 핵심입니다)
-            localStorage.setItem('myBoardName', tempNickname.trim());
-            
-            setUserNickname(tempNickname.trim());
-            setShowNicknameModal(false);
-        } catch (e) {
-            console.error("별칭 저장 실패:", e);
-            alert("별칭 저장에 실패했습니다.");
-        }
-    };
-    // ==========================================
             // 🔔 [알림 기능] 상태 및 로직 시작
             const [notifications, setNotifications] = useState([]);
             const [showNotifications, setShowNotifications] = useState(false);
@@ -9777,6 +9702,83 @@ const firebaseConfig = {
             const [mode, setMode] = useState("record");
             const [date, setDate] = useState(getToday());
 
+            // ==========================================
+    // 📛 [별칭 시스템] 상태 및 확인 로직 (기억력 강화 버전)
+    // ==========================================
+    // 1. 켤 때부터 내 컴퓨터(브라우저)가 기억하는 이름이 있는지 먼저 찾아봅니다.
+    const [userNickname, setUserNickname] = useState(() => localStorage.getItem('myBoardName') || "");
+    const [showNicknameModal, setShowNicknameModal] = useState(false);
+    const [scoreDetailTarget, setScoreDetailTarget] = useState(null);
+    const [showScoreSettings, setShowScoreSettings] = useState(false);
+    const [tempNickname, setTempNickname] = useState("");
+
+    // 게시판(community) 입장 시 별칭 확인
+    useEffect(() => {
+        if (mode === 'community') {
+            // 내 컴퓨터에 이미 저장된 이름이 있다면 묻지도 따지지도 않고 통과!
+            const savedName = localStorage.getItem('myBoardName');
+            if (savedName) {
+                setUserNickname(savedName);
+                setShowNicknameModal(false);
+                return; 
+            }
+
+            // 내 컴퓨터에 없다면 파이어베이스 서버에 물어봅니다. (지연 시간 대비)
+            const checkFirebase = () => {
+                const user = firebase.auth().currentUser;
+                if (user && sharedDb) {
+                    sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
+                        if (doc.exists && doc.data().name) {
+                            const fetchedName = doc.data().name;
+                            setUserNickname(fetchedName);
+                            localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
+                            setShowNicknameModal(false);
+                        } else {
+                            setShowNicknameModal(true);
+                        }
+                    }).catch(e => console.error("별칭 확인 오류:", e));
+                } else {
+                    // 로그인이 아직 확인 안 된 찰나의 순간에는 잠시 모달을 띄웁니다.
+                    setShowNicknameModal(true); 
+                }
+            };
+
+            // 파이어베이스가 로그인 상태를 확인하는 시간을 조금 기다려줍니다.
+            setTimeout(checkFirebase, 500); 
+        } else {
+            setShowNicknameModal(false);
+        }
+    }, [mode, sharedDb]);
+
+    // 별칭 저장 버튼 눌렀을 때 실행되는 함수
+    const handleSaveNickname = async () => {
+        if (tempNickname.trim().length < 2) {
+            alert("별칭은 2글자 이상 입력해주세요.");
+            return;
+        }
+        try {
+            const user = firebase.auth().currentUser;
+            if (user && sharedDb) {
+                // 1. 파이어베이스 서버에 저장
+                await sharedDb.collection('userProfiles').doc(user.uid).set({
+                    uid: user.uid,
+                    name: tempNickname.trim(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            
+            // 2. 내 컴퓨터(브라우저)에도 강력하게 저장!! (이게 핵심입니다)
+            localStorage.setItem('myBoardName', tempNickname.trim());
+            
+            setUserNickname(tempNickname.trim());
+            setShowNicknameModal(false);
+        } catch (e) {
+            console.error("별칭 저장 실패:", e);
+            alert("별칭 저장에 실패했습니다.");
+        }
+    };
+    // ==========================================
+
             /* --- 포트폴리오 모드 설정 시작 --- */
             const [isPortfolioMode, setIsPortfolioMode] = React.useState(false);
             const [studentMap, setStudentMap] = React.useState({});
@@ -9886,6 +9888,18 @@ const firebaseConfig = {
         { emoji: '📊', title: '클릭 한 번에 생기부 초안 완성', desc: '기록이 쌓이면 [AI 총평 초안] 탭을 활용해 보세요. 행발, 교과 등 자동 추천 템플릿에 맞춰 학생의 종합 의견 초안을 뚝딱 만들어줍니다.' }
     ];
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false });
+            const [scoreConfig, setScoreConfig] = useState({ submit: 1, late: 0.5, miss: 0, penaltyBase: -1, penaltyPerDay: -1, penaltyMax: -3 });
+
+            useEffect(() => {
+                setScoreConfig({
+                    submit: appConfig.scoreSubmit ?? 1,
+                    late: appConfig.scoreLate ?? 0.5,
+                    miss: appConfig.scoreMiss ?? 0,
+                    penaltyBase: appConfig.penaltyBase ?? -1,
+                    penaltyPerDay: appConfig.penaltyPerDay ?? -1,
+                    penaltyMax: appConfig.penaltyMax ?? -3
+                });
+            }, [appConfig]);
 
             // [New] Community Logic
             const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags, resourceLink, resourceTitle) => {
