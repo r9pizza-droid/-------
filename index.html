@@ -9186,6 +9186,14 @@ const firebaseConfig = {
         };
 
         const App = () => {
+            // [New] 노션 연동 상태 (최상단 선언 - ReferenceError 방지)
+            const [hasNotionConfig, setHasNotionConfig] = useState(() => {
+                const key = localStorage.getItem('cls_notion_key');
+                const dbId = localStorage.getItem('cls_notion_db_id');
+                const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
+                return !!(key && (dbId || portDbId));
+            });
+
             // [New] 레벨 시스템 설정 (관리자 밸런스 패치용)
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
             const [showLevelGuide, setShowLevelGuide] = useState(false);
@@ -9991,6 +9999,17 @@ const firebaseConfig = {
             const [honorTag, setHonorTag] = useState('전체'); const [helpTag, setHelpTag] = useState('전체'); const [grassStudentId, setGrassStudentId] = useState(null);
             const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
             const [isSettingOpen, setIsSettingOpen] = useState(false); const [isSetupOpen, setIsSetupOpen] = useState(false); const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+            
+            // [Fix] 설정 창이 닫힐 때 노션 연동 상태 최신화
+            useEffect(() => {
+                if (!isSettingOpen) {
+                    const key = localStorage.getItem('cls_notion_key');
+                    const dbId = localStorage.getItem('cls_notion_db_id');
+                    const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
+                    setHasNotionConfig(!!(key && (dbId || portDbId)));
+                }
+            }, [isSettingOpen]);
+            
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null, onCancel: null }); const [toastMessage, setToastMessage] = useState(null); const [toastAction, setToastAction] = useState(null);
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
@@ -14744,7 +14763,7 @@ const firebaseConfig = {
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} 
-                        hasNotionConfig={hasNotionConfig} />}
+                         />}
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)} 
