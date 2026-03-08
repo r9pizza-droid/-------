@@ -1059,7 +1059,7 @@
             );
         };
 
-        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, hasNotionConfig, hasGoogleSheetConfig }) => {
+        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, hasNotionConfig, hasGoogleSheetConfig, selectedStudents }) => {
             if (!isOpen || !student || !student.history) return null;
             
             useEffect(() => {
@@ -9197,6 +9197,8 @@ const firebaseConfig = {
             const [hasGoogleSheetConfig, setHasGoogleSheetConfig] = useState(() => {
                 return !!localStorage.getItem('cls_google_sheet_url');
             });
+            // [New] 선택된 학생 목록 (전역 관리)
+            const [selectedStudents, setSelectedStudents] = useState([]);
 
             // [New] 레벨 시스템 설정 (관리자 밸런스 패치용)
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
@@ -10014,7 +10016,7 @@ const firebaseConfig = {
                     setHasGoogleSheetConfig(!!localStorage.getItem('cls_google_sheet_url'));
                 }
             }, [isSettingOpen]);
-
+            
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null, onCancel: null }); const [toastMessage, setToastMessage] = useState(null); const [toastAction, setToastAction] = useState(null);
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
@@ -14769,7 +14771,9 @@ const firebaseConfig = {
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} 
                         hasNotionConfig={hasNotionConfig}
-                        hasGoogleSheetConfig={hasGoogleSheetConfig} />}
+                        hasGoogleSheetConfig={hasGoogleSheetConfig}
+                        selectedStudents={selectedStudents}
+                         />}
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)} 
