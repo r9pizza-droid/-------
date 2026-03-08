@@ -1059,7 +1059,7 @@
             );
         };
 
-        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload }) => {
+        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, hasNotionConfig }) => {
             if (!isOpen || !student || !student.history) return null;
             
             useEffect(() => {
@@ -5119,6 +5119,7 @@
             useEffect(() => { prevTabRef.current = activeTab; }, [activeTab]);
             
             const isNotionConnected = !!(localStorage.getItem('cls_notion_key') && localStorage.getItem('cls_notion_db_id'));
+            const hasNotionConfig = !!(localStorage.getItem('cls_notion_key') && (localStorage.getItem('cls_notion_db_id') || localStorage.getItem('cls_notion_portfolio_db_id')));
             const isAiConnected = !!apiKey;
 
             const dataUsage = useMemo(() => {
@@ -14743,7 +14744,8 @@ const firebaseConfig = {
                         setStudents={setStudents}
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
-                        onPhotoUpload={handlePhotoUpload} />}
+                        onPhotoUpload={handlePhotoUpload} 
+                        hasNotionConfig={hasNotionConfig} />}
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)} 
