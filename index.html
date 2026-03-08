@@ -4776,7 +4776,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike }) => {
+        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, onOpenScoreSettings }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -4823,7 +4823,6 @@
             const [isVacStartCalOpen, setIsVacStartCalOpen] = useState(false);
             const [isVacEndCalOpen, setIsVacEndCalOpen] = useState(false);
             const [isVacationSectionOpen, setIsVacationSectionOpen] = useState(false);
-            const [showScoreSettings, setShowScoreSettings] = useState(false);
             
             // [New] 사용자 관리 (관리자 전용)
             const [userList, setUserList] = useState([]);
@@ -5692,7 +5691,7 @@
                                                         </div>
                                                     )}
 
-                                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors cursor-pointer" onClick={() => setShowScoreSettings(true)}>
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors cursor-pointer" onClick={onOpenScoreSettings}>
                                                         <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500 flex-shrink-0"><Icon d={PATHS.trophy} size={20}/></div>
                                                         <div className="flex-1 min-w-0">
                                                             <span className="text-sm font-bold text-slate-700">통계 점수 설정</span>
@@ -14681,6 +14680,7 @@ const firebaseConfig = {
                         imgbbApiKey={imgbbApiKey}
                         onSyncPhotos={handleLoadAllData}
                         isAdmin={isAdmin}
+                        onOpenScoreSettings={() => setShowScoreSettings(true)}
                     />
                     {showImgbbModal && (
                         <ImgbbSetupModal 
