@@ -10538,6 +10538,13 @@ const firebaseConfig = {
             }
             setComments(prev => [...prev, { id: docRef.id, ...newCommentData, createdAt: new Date() }]);
             
+            // [New] 댓글 작성 시 스크롤 하단 이동
+            if (!parentId) {
+                setTimeout(() => {
+                    commentsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
+            
             // [알림] 댓글 알림 전송
             const post = communityPosts.find(p => p.id === postId);
             if (post && post.uid) {
@@ -10760,6 +10767,7 @@ const firebaseConfig = {
             const [showAnimMenu, setShowAnimMenu] = useState(false);
             const [viewHallOfFameList, setViewHallOfFameList] = useState(false);
             const isNotiFirstLoad = useRef(true);
+            const commentsEndRef = useRef(null);
 
             useEffect(() => {
                 window.triggerAiSecurityCheck = (prompt) => {
@@ -14497,7 +14505,18 @@ const firebaseConfig = {
                                                                 </div>
                                                             )}
 
-                                                            <div className="prose prose-sm max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap mb-8">
+                                                            <div 
+                                                                className="prose prose-sm max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap mb-8 [&_img]:cursor-pointer [&_img]:rounded-lg [&_img]:shadow-sm hover:[&_img]:opacity-90 [&_img]:transition-opacity"
+                                                                onClick={(e) => {
+                                                                    if (e.target.tagName === 'IMG') {
+                                                                        const container = e.currentTarget;
+                                                                        const imgs = Array.from(container.querySelectorAll('img'));
+                                                                        const imgUrls = imgs.map(img => img.src);
+                                                                        const index = imgs.indexOf(e.target);
+                                                                        if (index !== -1) openLightbox(imgUrls, index);
+                                                                    }
+                                                                }}
+                                                            >
                                                                 {renderPostContent(selectedPost.content, true)}
                                                             </div>
 
@@ -14612,6 +14631,7 @@ const firebaseConfig = {
                                                                             <p className="text-xs mt-1">첫 번째 댓글을 남겨보세요!</p>
                                                                         </div>
                                                                     )}
+                                                                    <div ref={commentsEndRef} />
                                                                 </div>
 
                                                                 {/* Comment Input */}
