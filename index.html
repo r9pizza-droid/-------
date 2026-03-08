@@ -1555,7 +1555,7 @@
                                         <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2"><Icon d={PATHS.users} size={16} className="text-blue-500"/> 학급 평균 비교</h4>
                                         <div className="flex items-center gap-1 text-xs font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">
                                             <span>{showDetailStats ? '접기' : '자세히 보기'}</span>
-                                            <Icon d={showDetailStats ? PATHS.down : PATHS.right} size={14} />
+                                            <Icon d={PATHS.right} size={14} className={`transition-transform duration-300 ${showDetailStats ? 'rotate-90' : ''}`} />
                                         </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative overflow-hidden">
@@ -3670,7 +3670,7 @@
                         
                         <div className="flex justify-end">
                             <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
-                                <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                                <Icon d={PATHS.right} size={10} className={`transition-transform duration-300 ${showManual ? 'rotate-90' : ''}`} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
                             </button>
                         </div>
 
@@ -4032,7 +4032,7 @@
                         </div>
                         <div className="flex justify-end">
                             <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
-                                <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                                <Icon d={PATHS.right} size={10} className={`transition-transform duration-300 ${showManual ? 'rotate-90' : ''}`} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
                             </button>
                         </div>
                         {showManual && (
@@ -4672,7 +4672,7 @@
                         
                         <div className="flex justify-end">
                             <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
-                                <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                                <Icon d={PATHS.right} size={10} className={`transition-transform duration-300 ${showManual ? 'rotate-90' : ''}`} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
                             </button>
                         </div>
 
@@ -4823,6 +4823,7 @@
             const [isVacStartCalOpen, setIsVacStartCalOpen] = useState(false);
             const [isVacEndCalOpen, setIsVacEndCalOpen] = useState(false);
             const [isVacationSectionOpen, setIsVacationSectionOpen] = useState(false);
+            const [isScoreSettingsOpen, setIsScoreSettingsOpen] = useState(false);
             
             // [New] 사용자 관리 (관리자 전용)
             const [userList, setUserList] = useState([]);
@@ -5482,7 +5483,7 @@
                                         <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center mb-3 flex-shrink-0 cursor-pointer select-none gap-2 md:gap-0" onClick={() => setIsStudentListOpen(!isStudentListOpen)}>
                                             <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm w-full md:w-auto">
                                                 <span className="text-lg">📋</span> 등록된 학생 ({students.length}명)
-                                                <Icon d={isStudentListOpen ? PATHS.down : PATHS.right} size={16} className="text-slate-400 ml-auto md:ml-0" />
+                                                <Icon d={PATHS.right} size={16} className={`text-slate-400 ml-auto md:ml-0 transition-transform duration-300 ${isStudentListOpen ? 'rotate-90' : ''}`} />
                                             </h4>
                                             <div className="flex gap-2 self-end md:self-auto" onClick={(e) => e.stopPropagation()}>
                                                 <div className="relative">
@@ -5691,16 +5692,7 @@
                                                         </div>
                                                     )}
 
-                                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors cursor-pointer" onClick={onOpenScoreSettings}>
-                                                        <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500 flex-shrink-0"><Icon d={PATHS.trophy} size={20}/></div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <span className="text-sm font-bold text-slate-700">통계 점수 설정</span>
-                                                            <span className="text-[10px] text-slate-400 block">명예의 전당 및 도움이 필요해요 점수 기준</span>
-                                                        </div>
-                                                        <Icon d={PATHS.right} size={16} className="text-slate-400"/>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-1 gap-2">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                                         <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
                                                             <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0"><Icon d={PATHS.edit} size={20}/></div>
                                                             <div className="flex-1 min-w-0">
@@ -5713,6 +5705,13 @@
                                                             <div className="flex-1 min-w-0">
                                                                 <label className="text-[10px] font-bold text-slate-400 block mb-0.5">완료 메시지</label>
                                                                 <input value={appConfig.recordMsg} onChange={e => updateAppConfig({ recordMsg: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="모두 제출 완료! 🎉" />
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
+                                                            <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 flex-shrink-0"><Icon d={PATHS.users} size={20}/></div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <label className="text-[10px] font-bold text-slate-400 block mb-0.5">학급명 (파일 저장용)</label>
+                                                                <input value={appConfig.className || ""} onChange={e => updateAppConfig({ className: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="예: 3학년 2반" />
                                                             </div>
                                                         </div>
                                                         <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
@@ -5731,25 +5730,52 @@
                                                                 </select>
                                                             </div>
                                                         </div>
-                                                        <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-3 hover:border-indigo-300 transition-colors">
-                                                            <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 flex-shrink-0"><Icon d={PATHS.users} size={20}/></div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <label className="text-[10px] font-bold text-slate-400 block mb-0.5">학급명 (파일 저장용)</label>
-                                                                <input value={appConfig.className || ""} onChange={e => updateAppConfig({ className: e.target.value })} className="w-full text-sm font-bold text-slate-700 outline-none bg-transparent placeholder-slate-300" placeholder="예: 3학년 2반" />
-                                                            </div>
-                                                        </div>
                                                     </div>
 
-                                                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-start">
+                                                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors h-full">
+                                                            <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setIsScoreSettingsOpen(!isScoreSettingsOpen)}>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500 flex-shrink-0"><Icon d={PATHS.trophy} size={20}/></div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <span className="text-sm font-bold text-slate-700 block">통계 점수 설정</span>
+                                                                        <span className="text-[10px] text-slate-400 block">명예의 전당 및 도움이 필요해요 점수 기준</span>
+                                                                    </div>
+                                                                </div>
+                                                                <Icon d={PATHS.right} size={16} className={`text-slate-400 transition-transform duration-300 ${isScoreSettingsOpen ? 'rotate-90' : ''}`}/>
+                                                            </div>
+                                                            <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isScoreSettingsOpen ? 'max-h-[1000px] opacity-100 mt-4 pt-4 border-t border-slate-100' : 'max-h-0 opacity-0 mt-0 pt-0 border-t-0 border-transparent'}`}>
+                                                                <div className="space-y-4">
+                                                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                                                        <h5 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2"><span className="text-yellow-500">●</span> 명예의 전당 (획득 점수)</h5>
+                                                                        <div className="grid grid-cols-3 gap-2">
+                                                                            <div className="flex flex-col gap-1"><label className="text-[10px] font-bold text-slate-400">제출 완료</label><input type="number" step="0.1" value={scoreConfig.submit} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, submit: val}); updateAppConfig({ scoreSubmit: val }); }} className="w-full p-2 border rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-indigo-500" /></div>
+                                                                            <div className="flex flex-col gap-1"><label className="text-[10px] font-bold text-slate-400">지각 제출</label><input type="number" step="0.1" value={scoreConfig.late} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, late: val}); updateAppConfig({ scoreLate: val }); }} className="w-full p-2 border rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-indigo-500" /></div>
+                                                                            <div className="flex flex-col gap-1"><label className="text-[10px] font-bold text-slate-400">미제출</label><input type="number" step="0.1" value={scoreConfig.miss} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, miss: val}); updateAppConfig({ scoreMiss: val }); }} className="w-full p-2 border rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-indigo-500" /></div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                                                        <h5 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2"><span className="text-rose-500">●</span> 도움이 필요해요 (페널티)</h5>
+                                                                        <div className="grid grid-cols-3 gap-2">
+                                                                            <div className="flex flex-col gap-1"><label className="text-[10px] font-bold text-slate-400">당일 미제출</label><input type="number" step="0.1" value={scoreConfig.penaltyBase} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyBase: val}); updateAppConfig({ penaltyBase: val }); }} className="w-full p-2 border rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-indigo-500" /></div>
+                                                                            <div className="flex flex-col gap-1"><label className="text-[10px] font-bold text-slate-400">하루 지날 때마다</label><input type="number" step="0.1" value={scoreConfig.penaltyPerDay} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyPerDay: val}); updateAppConfig({ penaltyPerDay: val }); }} className="w-full p-2 border rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-indigo-500" /></div>
+                                                                            <div className="flex flex-col gap-1"><label className="text-[10px] font-bold text-slate-400">최대 페널티</label><input type="number" step="0.1" value={scoreConfig.penaltyMax} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyMax: val}); updateAppConfig({ penaltyMax: val }); }} className="w-full p-2 border rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-indigo-500" /></div>
+                                                                        </div>
+                                                                        <p className="text-[10px] text-slate-400 mt-2">* 지각 제출 시 페널티는 (지각 점수 - 제출 점수)로 자동 계산됩니다.</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors h-full">
                                                         <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setIsVacationSectionOpen(!isVacationSectionOpen)}>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-lg">🏖️</span>
                                                                 <span className="text-sm font-bold text-slate-700">방학 기간 설정</span>
                                                             </div>
-                                                            <Icon d={isVacationSectionOpen ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
+                                                            <Icon d={PATHS.right} size={16} className={`text-slate-400 transition-transform duration-300 ${isVacationSectionOpen ? 'rotate-90' : ''}`} />
                                                         </div>
-                                                        {isVacationSectionOpen && (
-                                                            <div className="mt-4 pt-4 border-t border-slate-100 animate-fade-in">
+                                                        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isVacationSectionOpen ? 'max-h-[1000px] opacity-100 mt-4 pt-4 border-t border-slate-100' : 'max-h-0 opacity-0 mt-0 pt-0 border-t-0 border-transparent'}`}>
                                                                 <div className="space-y-3">
                                                                     {currentVacations.length > 0 ? (
                                                                         <div className="space-y-2 max-h-32 overflow-y-auto custom-scroll pr-1">
@@ -5794,8 +5820,8 @@
                                                                 <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
                                                                     <Icon d={PATHS.help} size={10} /> 방학 기간에는 달력에서 날짜 선택이 제한됩니다.
                                                                 </div>
-                                                            </div>
-                                                        )}
+                                                        </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -6240,7 +6266,7 @@
                                                         <h4 className="font-bold text-slate-700 flex items-center gap-2 text-xs">
                                                             <span className="text-base">🔄</span> 연동 상태 점검
                                                         </h4>
-                                                        <Icon d={isSyncPanelOpen ? PATHS.down : PATHS.right} size={14} className="text-slate-400" />
+                                                        <Icon d={PATHS.right} size={14} className={`text-slate-400 transition-transform duration-300 ${isSyncPanelOpen ? 'rotate-90' : ''}`} />
                                                     </div>
                                                     <button
                                                         type="button"
@@ -6315,7 +6341,7 @@
                                                         <div className="flex justify-between items-center">
                                                             <div className="flex items-center gap-1 cursor-pointer hover:opacity-80" onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }}>
                                                                 <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
-                                                                <Icon d={showStorageHelp ? PATHS.down : PATHS.right} size={24} className="text-slate-400 hover:text-indigo-500 transition-colors" />
+                                                                <Icon d={PATHS.right} size={24} className={`text-slate-400 hover:text-indigo-500 transition-transform duration-300 ${showStorageHelp ? 'rotate-90' : ''}`} />
                                                             </div>
                                                             {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("연결을 해제하시겠습니까?", () => { localStorage.removeItem('checklist_config'); window.location.reload(); }) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">해제</Btn>}
                                                         </div>
@@ -6487,7 +6513,7 @@
                                             <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-inner">
                                                 <div className="flex justify-between items-center py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors select-none" onClick={() => setShowCodeUpdater(!showCodeUpdater)}>
                                                     <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">🛠️ 코드 업데이트 시스템</h3>
-                                                    <Icon d={showCodeUpdater ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
+                                                    <Icon d={PATHS.right} size={16} className={`text-slate-400 transition-transform duration-300 ${showCodeUpdater ? 'rotate-90' : ''}`} />
                                                 </div>
                                                 
                                                 {showCodeUpdater && (
@@ -6634,7 +6660,7 @@
                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-auto transition-all duration-300">
                         <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
                             <h4 className="font-bold text-slate-700 flex items-center gap-2"><Icon d={PATHS.chart} size={18} className="text-indigo-500" /> 모둠 분석 결과 <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">클릭하여 상세보기</span></h4>
-                            <Icon d={isExpanded ? PATHS.down : PATHS.right} size={20} className="text-slate-400" />
+                            <Icon d={PATHS.right} size={20} className={`text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
                         </div>
                         {isExpanded && (
                             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
@@ -7921,7 +7947,7 @@
                 <BaseModal isOpen={isOpen} onClose={onClose} title="⛅️ Firebase 연결 설정" icon={null}>
                     <div className="flex justify-end mb-2">
                         <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
-                            <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                            <Icon d={PATHS.right} size={10} className={`transition-transform duration-300 ${showManual ? 'rotate-90' : ''}`} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
                         </button>
                     </div>
                     {showManual && (
@@ -8542,7 +8568,7 @@ const firebaseConfig = {
                                                 </div>
                                                 <span className="text-sm font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200 group-hover:bg-slate-200 transition-colors flex items-center gap-2">
                                                     {dayjs(date).format('YYYY년 M월 D일 (ddd)')}
-                                                    <Icon d={isExpanded ? PATHS.down : PATHS.right} size={14} className="text-slate-400" />
+                                                    <Icon d={PATHS.right} size={14} className={`text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
                                                 </span>
                                             </div>
 
@@ -13437,7 +13463,7 @@ const firebaseConfig = {
                                                     <span className="text-xl">🛠️</span> 모둠 도구
                                                     <button onClick={(e) => { e.stopPropagation(); setShowRoleHelp(true); }} className="text-slate-400 hover:text-indigo-500"><Icon d={PATHS.help} size={16} /></button>
                                                 </h3>
-                                                <Icon d={isGroupToolsOpen ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
+                                                <Icon d={PATHS.right} size={16} className={`text-slate-400 transition-transform duration-300 ${isGroupToolsOpen ? 'rotate-90' : ''}`} />
                                             </div>
                                             {isGroupToolsOpen && (
                                                 <div className="mt-4 grid grid-cols-1 gap-2 animate-fade-in">
