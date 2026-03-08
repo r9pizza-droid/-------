@@ -756,6 +756,45 @@
             slate: { bg: 'bg-slate-100', border: 'border-slate-400', ring: 'ring-slate-300', text: 'text-slate-700', dot: 'bg-slate-500' },
         };
 
+        const HonorInfoModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="명예의 전당 점수 기준" icon={PATHS.trophy} maxWidth="max-w-sm">
+                    <div className="space-y-4 text-sm text-slate-600">
+                        <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100">
+                            <h4 className="font-bold text-yellow-700 mb-2">🏆 점수 계산법</h4>
+                            <ul className="list-disc pl-5 space-y-1">
+                                <li><strong>제출 완료:</strong> +1점</li>
+                                <li><strong>지각 제출:</strong> +0.5점</li>
+                                <li><strong>미제출:</strong> 0점</li>
+                            </ul>
+                        </div>
+                        <p>성실하게 과제를 수행한 학생들을 칭찬해주세요!</p>
+                    </div>
+                </BaseModal>
+            );
+        };
+
+        const HelpInfoModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="도움이 필요해요 점수 기준" icon={PATHS.warning} maxWidth="max-w-sm">
+                    <div className="space-y-4 text-sm text-slate-600">
+                        <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
+                            <h4 className="font-bold text-rose-700 mb-2">📣 점수 계산법 (페널티)</h4>
+                            <ul className="list-disc pl-5 space-y-1">
+                                <li><strong>당일 미제출:</strong> -1점</li>
+                                <li><strong>하루 지날 때마다:</strong> -1점 추가</li>
+                                <li><strong>최대 페널티:</strong> 과제당 -3점</li>
+                                <li><strong>지각 제출:</strong> -1점</li>
+                            </ul>
+                        </div>
+                        <p>점수가 낮을수록 선생님의 도움이 필요한 학생입니다.</p>
+                    </div>
+                </BaseModal>
+            );
+        };
+
         const CounselingAIModal = ({ isOpen, onClose, student, students, apiKey, showToast, onSave, notes }) => {
             const [advice, setAdvice] = useState("");
             const [isGenerating, setIsGenerating] = useState(false);
@@ -1021,6 +1060,8 @@
             const [isDetailViewOpen, setIsDetailViewOpen] = useState(false); // [New] 슬라이드 상태 분리
             const [grassTheme, setGrassTheme] = useState(() => localStorage.getItem('cls_grass_theme') || 'indigo');
             const [showThemePicker, setShowThemePicker] = useState(false);
+            const [showHonorInfo, setShowHonorInfo] = useState(false);
+            const [showHelpInfo, setShowHelpInfo] = useState(false);
             
             // [New] 연동 상태 확인 및 기본값 설정 (초기화)
             const [hasNotionRecord, setHasNotionRecord] = useState(false);
@@ -8987,6 +9028,8 @@ const firebaseConfig = {
                             appConfig={appConfig}
                         />
                     )}
+                    <HonorInfoModal isOpen={showHonorInfo} onClose={() => setShowHonorInfo(false)} />
+                    <HelpInfoModal isOpen={showHelpInfo} onClose={() => setShowHelpInfo(false)} />
                 </BaseModal>
             );
         };
@@ -13030,12 +13073,55 @@ const firebaseConfig = {
                 return map;
             }, [groupsByDate, groupRoles, date]);
 
-            const stats = useMemo(() => { const dates = Object.keys(records).sort(); const isWithinPeriod = (dStr, period) => { const d = dayjs(dStr); const now = dayjs(); if (period === 'weekly') return d.isAfter(now.subtract(7, 'day')) && d.isBefore(now.add(1, 'day')); if (period === 'monthly') return d.isAfter(now.subtract(30, 'day')) && d.isBefore(now.add(1, 'day')); return true; }; const calcStatsForStudent = (s, period, tag) => { let score = 0; let totalCount = 0; for(let i=34; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; if (!isWithinPeriod(d, period)) continue; const dayRecord = records[d]; const dayTasks = dailyTasks[d] || []; if (tag === '전체') { if (dayRecord) 
-            { const tasksForDay = dailyTasks[d] || []; if (tasksForDay.length > 0) { totalCount += tasksForDay.length; const sRec = dayRecord[s.id]; if (sRec) { tasksForDay.forEach((_, idx) => { const isDone = sRec.tasks ? sRec.tasks[idx] : sRec.done; const isLate = sRec.lateTasks ? sRec.lateTasks[idx] : false; if (isDone) { score += isLate ? 0.5 : 1; } }); } } else { totalCount++;
-            if (dayRecord[s.id]?.done) score += 1; } } } else { const tagTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
-            if (tagTasks.length > 0) { totalCount += tagTasks.length; tagTasks.forEach((t, idx) => { const originalIdx = dayTasks.indexOf(t); const sRec = dayRecord?.[s.id]; const isTaskDone = sRec?.done || sRec?.tasks?.[originalIdx]; const isLate = sRec?.lateTasks?.[originalIdx]; if(isTaskDone) { score += isLate ? 0.5 : 1; } });
-            } } } return { count: score, total: totalCount, rate: totalCount > 0 ?
-            (score / totalCount) * 100 : 0 }; }; const computedStudents = students.map(s => { let count = 0, currentStreak = 0; const history = []; const datesSorted = Object.keys(records).sort(); for(let i=29; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; let dailyDoneCount = 0; let dailyTotalCount = 0; const dayTasks = dailyTasks[d] || []; const dayRecord = records[d]; if(dayTasks.length > 0) { dailyTotalCount = dayTasks.length; if(dayRecord && dayRecord[s.id]) { dayTasks.forEach((_, idx) => { if(dayRecord[s.id].tasks && dayRecord[s.id].tasks[idx]) dailyDoneCount++; else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++; }); } } else { if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; } } const 
+            const stats = useMemo(() => { 
+                const dates = Object.keys(records).sort(); 
+                const isWithinPeriod = (dStr, period) => { 
+                    const d = dayjs(dStr); const now = dayjs(); 
+                    if (period === 'weekly') return d.isAfter(now.subtract(7, 'day')) && d.isBefore(now.add(1, 'day')); 
+                    if (period === 'monthly') return d.isAfter(now.subtract(30, 'day')) && d.isBefore(now.add(1, 'day')); 
+                    return true; 
+                }; 
+                const calcStatsForStudent = (s, period, tag) => { 
+                    let honorScore = 0; 
+                    let helpScore = 0;
+                    let totalCount = 0; 
+                    for(let i=34; i>=0; i--) { 
+                        const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); 
+                        const dayIdx = dayjs(d).day(); 
+                        if(dayIdx===0 || dayIdx===6) continue; 
+                        if (!isWithinPeriod(d, period)) continue; 
+                        const dayRecord = records[d]; 
+                        const dayTasks = dailyTasks[d] || []; 
+                        let tasksToCheck = [];
+                        if (tag === '전체') { 
+                            if (dayTasks.length > 0) { tasksToCheck = dayTasks.map((t, idx) => ({ idx, ...((typeof t === 'object') ? t : {title: t}) })); } 
+                            else { tasksToCheck = [{ idx: -1, title: 'Simple Check' }]; } 
+                        } else { 
+                            tasksToCheck = dayTasks.map((t, idx) => ({ idx, ...((typeof t === 'object') ? t : {title: t, tag: '기타'}) })).filter(t => t.tag === tag); 
+                        }
+                        if (tasksToCheck.length === 0) continue;
+                        totalCount += tasksToCheck.length;
+                        tasksToCheck.forEach(task => {
+                            let isDone = false; let isLate = false;
+                            const sRec = dayRecord ? dayRecord[s.id] : null;
+                            if (task.idx === -1) { isDone = sRec?.done || false; } 
+                            else { isDone = sRec?.tasks ? sRec.tasks[task.idx] : (sRec?.done && !sRec?.tasks); isLate = sRec?.lateTasks ? sRec.lateTasks[task.idx] : false; }
+                            
+                            if (isDone) { honorScore += isLate ? 0.5 : 1; }
+                            
+                            if (isDone) {
+                                if (isLate) helpScore += -1;
+                            } else {
+                                const diff = dayjs().diff(dayjs(d), 'day');
+                                let penalty = -1 - diff;
+                                if (penalty < -3) penalty = -3;
+                                helpScore += penalty;
+                            }
+                        });
+                    } 
+                    return { count: honorScore, helpScore: helpScore, total: totalCount, rate: totalCount > 0 ? (honorScore / totalCount) * 100 : 0 }; 
+                }; 
+                const computedStudents = students.map(s => { let count = 0, currentStreak = 0; const history = []; const datesSorted = Object.keys(records).sort(); for(let i=29; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; let dailyDoneCount = 0; let dailyTotalCount = 0; const dayTasks = dailyTasks[d] || []; const dayRecord = records[d]; if(dayTasks.length > 0) { dailyTotalCount = dayTasks.length; if(dayRecord && dayRecord[s.id]) { dayTasks.forEach((_, idx) => { if(dayRecord[s.id].tasks && dayRecord[s.id].tasks[idx]) dailyDoneCount++; else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++; }); } } else { if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; } } const 
             ratio = dailyTotalCount > 0 ? dailyDoneCount / dailyTotalCount : 0; history.push({ date: d, ratio: ratio, count: dailyDoneCount, total: dailyTotalCount, done: dailyDoneCount === dailyTotalCount && dailyTotalCount > 0 }); if(ratio === 1) count++; } for(let i=0; i<365;
             i++) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const rec = records[d]?.[s.id]; let isDoneDay = false;
             if(rec) { if(rec.tasks) { if(rec.done) isDoneDay = true; } else if(rec.done) { isDoneDay = true; } } if(isDoneDay) currentStreak++;
@@ -13049,7 +13135,7 @@ const firebaseConfig = {
                 sortedByHonor[i].rank = currentRank;
             }
             const top5 = sortedByHonor.slice(0, 5);
-            const bottom5 = [...computedStudents].sort((a,b) => a.helpStats.rate - b.helpStats.rate).slice(0, 5); return { students: computedStudents, top5, bottom5, allRanked: sortedByHonor };
+            const bottom5 = [...computedStudents].sort((a,b) => a.helpStats.helpScore - b.helpStats.helpScore).slice(0, 5); return { students: computedStudents, top5, bottom5, allRanked: sortedByHonor };
             }, [students, records, dailyTasks, honorPeriod, honorTag, helpPeriod, helpTag]);
             
             const handleFirebaseConnect = (config) => { localStorage.setItem('checklist_config', JSON.stringify(config)); setIsSetupOpen(false);
@@ -13899,7 +13985,10 @@ const firebaseConfig = {
                                         <div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">🏆</div>
                                         <div className="flex flex-col gap-3 mb-4">
                                             <div className="flex justify-between items-center">
-                                                <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">🏆 명예의 전당</h3>
+                                                <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">
+                                                    🏆 명예의 전당
+                                                    <button onClick={(e) => { e.stopPropagation(); setShowHonorInfo(true); }} className="text-slate-400 hover:text-indigo-500"><Icon d={PATHS.help} size={16} /></button>
+                                                </h3>
                                                 <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                                                     <div className="relative"><select value={honorTag} onChange={(e) => setHonorTag(e.target.value)} className="appearance-none bg-slate-100 text-slate-600 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 border-none cursor-pointer hover:bg-slate-200 transition-colors">{['전체', ...tags].map(t => <option key={t} value={t}>{t}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d="M6 9l6 6 6-6" size={12} /></div></div>
                                                     <SwitchToggle value={honorPeriod} onChange={setHonorPeriod} />
@@ -13942,7 +14031,14 @@ const firebaseConfig = {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden"><div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">📣</div><div className="flex flex-col gap-3 mb-4"><div className="flex justify-between items-center"><h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">📣 도움이 필요해요</h3><div className="flex items-center gap-2"><div className="relative"><select value={helpTag} onChange={(e) => setHelpTag(e.target.value)} className="appearance-none bg-slate-100 text-slate-600 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 border-none cursor-pointer hover:bg-slate-200 transition-colors">{['전체', ...tags].map(t => <option key={t} value={t}>{t}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d="M6 9l6 6 6-6" size={12} /></div></div><SwitchToggle value={helpPeriod} onChange={setHelpPeriod} /></div></div></div><div className="space-y-3">{stats.bottom5.filter(s => s.helpStats.rate < 100).map((s, i) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><div className="flex items-center gap-2"><div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-rose-400" style={{width:`${s.helpStats.rate}%`}}></div></div><span className="font-bold text-rose-500 text-sm">{Math.round(s.helpStats.rate)}%</span></div></div>))}{stats.bottom5.filter(s => s.helpStats.rate < 100).length === 0 && <div className="text-center text-slate-400 py-4">모두 잘하고 있어요! 🎉</div>}</div></div>
+                                    <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden">
+                                        <div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">📣</div>
+                                        <div className="flex flex-col gap-3 mb-4"><div className="flex justify-between items-center">
+                                            <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">
+                                                📣 도움이 필요해요
+                                                <button onClick={(e) => { e.stopPropagation(); setShowHelpInfo(true); }} className="text-slate-400 hover:text-indigo-500"><Icon d={PATHS.help} size={16} /></button>
+                                            </h3>
+                                            <div className="flex items-center gap-2"><div className="relative"><select value={helpTag} onChange={(e) => setHelpTag(e.target.value)} className="appearance-none bg-slate-100 text-slate-600 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 border-none cursor-pointer hover:bg-slate-200 transition-colors">{['전체', ...tags].map(t => <option key={t} value={t}>{t}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d="M6 9l6 6 6-6" size={12} /></div></div><SwitchToggle value={helpPeriod} onChange={setHelpPeriod} /></div></div></div><div className="space-y-3">{stats.bottom5.filter(s => s.helpStats.helpScore < 0).map((s, i) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><div className="flex items-center gap-2"><span className="font-bold text-rose-500 text-sm">{s.helpStats.helpScore}점</span></div></div>))}{stats.bottom5.filter(s => s.helpStats.helpScore < 0).length === 0 && <div className="text-center text-slate-400 py-4">모두 잘하고 있어요! 🎉</div>}</div></div>
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                                     <MissingView students={students} records={records} dailyTasks={dailyTasks} />
