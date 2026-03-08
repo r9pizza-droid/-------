@@ -1059,7 +1059,7 @@
             );
         };
 
-        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, hasNotionConfig }) => {
+        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, hasNotionConfig, hasGoogleSheetConfig }) => {
             if (!isOpen || !student || !student.history) return null;
             
             useEffect(() => {
@@ -9193,6 +9193,10 @@ const firebaseConfig = {
                 const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
                 return !!(key && (dbId || portDbId));
             });
+            // [New] 구글 시트 연동 상태
+            const [hasGoogleSheetConfig, setHasGoogleSheetConfig] = useState(() => {
+                return !!localStorage.getItem('cls_google_sheet_url');
+            });
 
             // [New] 레벨 시스템 설정 (관리자 밸런스 패치용)
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
@@ -10007,6 +10011,7 @@ const firebaseConfig = {
                     const dbId = localStorage.getItem('cls_notion_db_id');
                     const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
                     setHasNotionConfig(!!(key && (dbId || portDbId)));
+                    setHasGoogleSheetConfig(!!localStorage.getItem('cls_google_sheet_url'));
                 }
             }, [isSettingOpen]);
             
@@ -14763,6 +14768,8 @@ const firebaseConfig = {
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} 
+                        hasNotionConfig={hasNotionConfig}
+                        hasGoogleSheetConfig={hasGoogleSheetConfig}
                          />}
                     <SettingsModal 
                         isOpen={isSettingOpen} 
