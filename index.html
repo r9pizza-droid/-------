@@ -756,17 +756,20 @@
             slate: { bg: 'bg-slate-100', border: 'border-slate-400', ring: 'ring-slate-300', text: 'text-slate-700', dot: 'bg-slate-500' },
         };
 
-        const HonorInfoModal = ({ isOpen, onClose }) => {
+        const HonorInfoModal = ({ isOpen, onClose, config }) => {
             if (!isOpen) return null;
+            const submit = config?.scoreSubmit ?? 1;
+            const late = config?.scoreLate ?? 0.5;
+            const miss = config?.scoreMiss ?? 0;
             return (
                 <BaseModal isOpen={isOpen} onClose={onClose} title="명예의 전당 점수 기준" icon={PATHS.trophy} maxWidth="max-w-sm" zIndex="z-[2000]">
                     <div className="space-y-4 text-sm text-slate-600">
                         <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100">
                             <h4 className="font-bold text-yellow-700 mb-2">🏆 점수 계산법</h4>
                             <ul className="list-disc pl-5 space-y-1">
-                                <li><strong>제출 완료:</strong> +1점</li>
-                                <li><strong>지각 제출:</strong> +0.5점</li>
-                                <li><strong>미제출:</strong> 0점</li>
+                                <li><strong>제출 완료:</strong> +{submit}점</li>
+                                <li><strong>지각 제출:</strong> +{late}점</li>
+                                <li><strong>미제출:</strong> {miss}점</li>
                             </ul>
                         </div>
                         <p>성실하게 과제를 수행한 학생들을 칭찬해주세요!</p>
@@ -775,17 +778,20 @@
             );
         };
 
-        const HelpInfoModal = ({ isOpen, onClose }) => {
+        const HelpInfoModal = ({ isOpen, onClose, config }) => {
             if (!isOpen) return null;
+            const base = config?.penaltyBase ?? -1;
+            const perDay = config?.penaltyPerDay ?? -1;
+            const max = config?.penaltyMax ?? -3;
             return (
                 <BaseModal isOpen={isOpen} onClose={onClose} title="도움이 필요해요 점수 기준" icon={PATHS.warning} maxWidth="max-w-sm" zIndex="z-[2000]">
                     <div className="space-y-4 text-sm text-slate-600">
                         <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
                             <h4 className="font-bold text-rose-700 mb-2">📣 점수 계산법 (페널티)</h4>
                             <ul className="list-disc pl-5 space-y-1">
-                                <li><strong>당일 미제출:</strong> -1점</li>
-                                <li><strong>하루 지날 때마다:</strong> -1점 추가</li>
-                                <li><strong>최대 페널티:</strong> 과제당 -3점</li>
+                                <li><strong>당일 미제출:</strong> {base}점</li>
+                                <li><strong>하루 지날 때마다:</strong> {perDay}점 추가</li>
+                                <li><strong>최대 페널티:</strong> 과제당 {max}점</li>
                             </ul>
                         </div>
                         <p>점수가 낮을수록 선생님의 도움이 필요한 학생입니다.</p>
@@ -1094,517 +1100,6 @@
             const [showHonorInfo, setShowHonorInfo] = useState(false);
             const [showHelpInfo, setShowHelpInfo] = useState(false);
             const [scoreDetailTarget, setScoreDetailTarget] = useState(null);
-            
-            // [New] 연동 상태 확인 및 기본값 설정 (초기화)
-            const [hasNotionRecord, setHasNotionRecord] = useState(false);
-            const [hasNotionPortfolio, setHasNotionPortfolio] = useState(false);
-            const [hasGoogleSheet, setHasGoogleSheet] = useState(false);
-
-            const [saveTargets, setSaveTargets] = useState(() => {
-                // [Fix] 저장된 설정 우선 불러오기
-                const savedPref = localStorage.getItem('cls_save_targets_pref');
-                if (savedPref) {
-                    try { return new Set(JSON.parse(savedPref)); } catch(e) {}
-                }
-
-                const key = localStorage.getItem('cls_notion_key');
-                const dbId = localStorage.getItem('cls_notion_db_id');
-                const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
-                const sheetUrl = localStorage.getItem('cls_google_sheet_url');
-                const targets = new Set();
-                if (isPortfolioMode && key && portDbId) targets.add('notion_portfolio');
-                if (key && dbId) targets.add('notion_record');
-                if (sheetUrl) targets.add('google_sheet');
-                return targets;
-            });
-            
-            const [notionDate, setNotionDate] = useState(dayjs().format('YYYY-MM-DD'));
-            const [notionContent, setNotionContent] = useState('');
-            const [notionCategory, setNotionCategory] = useState('관찰');
-            const [searchText, setSearchText] = useState("");
-            const [selectedStudents, setSelectedStudents] = useState([]);
-            const [searchQuery, setSearchQuery] = useState("");
-            const [showStudentDropdown, setShowStudentDropdown] = useState(false);
-            const [notionStatus, setNotionStatus] = useState('idle');
-            const [hasNotionConfig, setHasNotionConfig] = useState(false);
-            const [hasGoogleSheetConfig, setHasGoogleSheetConfig] = useState(false);
-            const [saveProgress, setSaveProgress] = useState(0);
-            
-            useEffect(() => {
-                if (isOpen) {
-                    const key = localStorage.getItem('cls_notion_key');
-                    const dbId = localStorage.getItem('cls_notion_db_id');
-                    const portDbId = localStorage.getItem('cls_notion_portfolio_db_id');
-                    const sheetUrl = localStorage.getItem('cls_google_sheet_url');
-
-                    const rec = !!(key && dbId);
-                    const port = !!(key && portDbId);
-                    const sheet = !!sheetUrl;
-
-                    setHasNotionRecord(rec);
-                    setHasNotionPortfolio(port);
-                    setHasGoogleSheet(sheet);
-                    
-                    // 배지용 상태 업데이트 (호환성 유지)
-                    setHasNotionConfig(rec || port);
-                    setHasGoogleSheetConfig(sheet);
-                    
-                    // [Fix] 저장된 설정이 있으면 불러오고, 없으면 기본값 설정
-                    const savedPref = localStorage.getItem('cls_save_targets_pref');
-                    if (savedPref) {
-                        try {
-                            setSaveTargets(new Set(JSON.parse(savedPref)));
-                        } catch (e) {}
-                    } else {
-                        setSaveTargets(prev => {
-                            const next = new Set();
-                            if (isPortfolioMode && port) next.add('notion_portfolio');
-                            else if (rec) next.add('notion_record');
-                            if (sheet) next.add('google_sheet');
-                            return next;
-                        });
-                    }
-                }
-            }, [isOpen, isPortfolioMode]);
-
-            // [New] 선택 상태 변경 시 저장
-            useEffect(() => {
-                localStorage.setItem('cls_save_targets_pref', JSON.stringify([...saveTargets]));
-            }, [saveTargets]);
-
-            // [New] 상세 뷰 데이터 캐싱 (닫힐 때 애니메이션 유지용)
-            useEffect(() => {
-                if (selectedGrassDate) setCachedDetailDate(selectedGrassDate);
-            }, [selectedGrassDate]);
-
-            useEffect(() => {
-                if (isOpen && isPortfolioMode && student) {
-                    setSearchText("");
-                    setSelectedStudents([student]);
-                }
-            }, [isOpen, isPortfolioMode, student]);
-
-            useEffect(() => { 
-                if (!student) return;
-                setStickerCount(student.stickers || 0);
-                if (!isLocalMode && db && appId) {
-                    const unsubscribe = db.collection('classes').doc(appId).collection('studentData').doc(String(student.id))
-                        .onSnapshot(doc => {
-                            if (doc.exists) {
-                                const data = doc.data();
-                                if (data.counseling) setNotes(data.counseling);
-                            }
-                        }, err => console.error("개별 데이터 로드 실패:", err));
-                    return () => unsubscribe();
-                } else {
-                    const data = student.counseling;
-                    if (Array.isArray(data)) setNotes(data);
-                    else if (data) setNotes([{ id: Date.now(), date: dayjs().format('YYYY-MM-DD'), content: data }]);
-                    else setNotes([]);
-                }
-                setAiComment("");
-                setSelectedStudents([student]);
-                setNotionDate(dayjs().format('YYYY-MM-DD'));
-                setNotionContent('');
-                setNotionCategory('관찰');
-                setNotionStatus('idle');
-                setExpandedDates({});
-
-                const key = localStorage.getItem('cls_notion_key');
-                const dbId = localStorage.getItem('cls_notion_db_id');
-                setHasNotionConfig(!!(key && dbId));
-            }, [student, isLocalMode, db, appId]);
-
-            useEffect(() => {
-                setNotionDate(selectedDate || dayjs().format('YYYY-MM-DD'));
-            }, [selectedDate]);
-
-            const level = Math.floor(stickerCount / 5) + 1;
-            
-            const handleSticker = (delta) => { 
-                const newCount = Math.max(0, stickerCount + delta);
-                setStickerCount(newCount); 
-                onSaveStickers(student.id, newCount); 
-                if(delta > 0) {
-                    setStickerEffect(true);
-                    setTimeout(() => setStickerEffect(false), 200);
-                    if (navigator.vibrate) navigator.vibrate(15);
-                    if (newCount % 5 === 0) { 
-                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 });
-                        if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`);
-                    }
-                    else { 
-                        confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 });
-                    }
-                }
-            };
-            
-            const handleDeleteNote = (id) => {
-                const noteToDelete = notes.find(n => n.id === id);
-                if (!noteToDelete) return;
-
-                const hasRelated = noteToDelete.relatedStudents && noteToDelete.relatedStudents.length > 0;
-
-                const deleteSingle = () => {
-                    const newNotes = notes.filter(n => n.id !== id);
-                    setNotes(newNotes);
-                    onSaveCounseling(student.id, newNotes, "기록이 삭제되었습니다.");
-                };
-
-                const deleteAll = async () => {
-                    const targetIds = [student.id, ...noteToDelete.relatedStudents.map(s => s.id)];
-                    let updatedStudentsList = [...students];
-                    
-                    if (isLocalMode) {
-                        updatedStudentsList = updatedStudentsList.map(s => {
-                            if (targetIds.includes(s.id)) {
-                                const sNotes = s.id === student.id ? notes : (s.counseling || []);
-                                const newSNotes = sNotes.filter(n => n.id !== id);
-                                return { ...s, counseling: newSNotes };
-                            }
-                            return s;
-                        });
-                        setStudents(updatedStudentsList);
-                        saveData('cls_students', updatedStudentsList);
-                        setNotes(notes.filter(n => n.id !== id));
-                        showToast("관련된 모든 학생의 기록이 삭제되었습니다.");
-                    } else if (db && appId) {
-                        try {
-                            const batch = db.batch();
-                            const promises = targetIds.map(async (tId) => {
-                                const ref = db.collection('classes').doc(appId).collection('studentData').doc(String(tId));
-                                let tNotes = [];
-                                if (tId === student.id) {
-                                    tNotes = notes;
-                                } else {
-                                    const doc = await ref.get();
-                                    if (doc.exists) tNotes = doc.data().counseling || [];
-                                }
-                                const newTNotes = tNotes.filter(n => n.id !== id);
-                                batch.set(ref, { counseling: newTNotes }, { merge: true });
-                                
-                                const sIndex = updatedStudentsList.findIndex(s => s.id === tId);
-                                if (sIndex >= 0) {
-                                    updatedStudentsList[sIndex] = { ...updatedStudentsList[sIndex], counseling: newTNotes };
-                                }
-                            });
-                            
-                            await Promise.all(promises);
-                            await batch.commit();
-                            
-                            setStudents(updatedStudentsList);
-                            saveData('cls_students', updatedStudentsList);
-                            setNotes(notes.filter(n => n.id !== id));
-                            showToast("관련된 모든 학생의 기록이 삭제되었습니다.");
-                        } catch (e) {
-                            console.error("Batch delete failed", e);
-                            showToast("삭제 중 오류가 발생했습니다: " + e.message);
-                        }
-                    }
-                };
-
-                openConfirm("이 기록을 삭제하시겠습니까?", () => {
-                    if (hasRelated) {
-                        setTimeout(() => {
-                            openConfirm(
-                                `이 기록은 ${noteToDelete.relatedStudents.length}명의 다른 학생들과 함께 저장되었습니다.\n함께 기록된 학생들의 기록도 모두 삭제하시겠습니까?\n(취소 시 현재 학생의 기록만 삭제됩니다)`,
-                                deleteAll,
-                                deleteSingle
-                            );
-                        }, 200);
-                    } else {
-                        deleteSingle();
-                    }
-                });
-            };
-            
-            const startEditing = (note) => {
-                setEditingNoteId(note.id);
-                setEditNoteContent(note.content);
-                setEditRelatedStudents(note.relatedStudents ? note.relatedStudents.filter(s => s.id !== student.id) : []);
-            };
-
-            const saveEditing = async () => {
-                if (!editNoteContent.trim()) return;
-                
-                const originalNote = notes.find(n => n.id === editingNoteId);
-                if (!originalNote) return;
-
-                const finalRelated = [{ id: student.id, name: student.name }, ...editRelatedStudents];
-                const updatedNote = {
-                    ...originalNote,
-                    content: editNoteContent.trim(),
-                    relatedStudents: finalRelated.length > 1 ? finalRelated : null
-                };
-
-                // 1. 현재 화면의 notes 상태 즉시 업데이트 (UI 반응성)
-                const newNotes = notes.map(n => n.id === editingNoteId ? updatedNote : n);
-                setNotes(newNotes);
-
-                // 2. 동기화 대상 학생 ID 목록 계산 (현재 설정된 관련 학생들 + 본인)
-                const targetStudentIds = new Set(editRelatedStudents.map(s => s.id));
-                targetStudentIds.add(student.id);
-
-                // 3. 제외된 학생 ID 목록 계산 (원래 있었는데 빠진 학생들)
-                const originalRelatedIds = originalNote.relatedStudents ? originalNote.relatedStudents.map(s => s.id) : [];
-                const removedIds = originalRelatedIds.filter(id => !targetStudentIds.has(id));
-
-                if (isLocalMode) {
-                    let updatedStudentsList = [...students];
-
-                    // 업데이트 대상 (추가/수정)
-                    targetStudentIds.forEach(tId => {
-                        const tStudent = updatedStudentsList.find(s => s.id === tId);
-                        if (tStudent) {
-                            const tNotes = tStudent.counseling || [];
-                            const noteIndex = tNotes.findIndex(n => n.id === editingNoteId);
-                            let newTNotes;
-                            if (noteIndex >= 0) {
-                                newTNotes = [...tNotes];
-                                newTNotes[noteIndex] = updatedNote;
-                            } else {
-                                newTNotes = [updatedNote, ...tNotes];
-                            }
-                            updatedStudentsList = updatedStudentsList.map(s => s.id === tId ? { ...s, counseling: newTNotes } : s);
-                        }
-                    });
-
-                    // 삭제 대상 (제외된 학생)
-                    removedIds.forEach(rId => {
-                        const rStudent = updatedStudentsList.find(s => s.id === rId);
-                        if (rStudent) {
-                            const rNotes = rStudent.counseling || [];
-                            const newRNotes = rNotes.filter(n => n.id !== editingNoteId);
-                            updatedStudentsList = updatedStudentsList.map(s => s.id === rId ? { ...s, counseling: newRNotes } : s);
-                        }
-                    });
-
-                    setStudents(updatedStudentsList);
-                    saveData('cls_students', updatedStudentsList);
-                    showToast("기록이 수정 및 동기화되었습니다.");
-                } else if (db && appId) {
-                    try {
-                        const promises = [];
-                        targetStudentIds.forEach(tId => {
-                            promises.push(db.collection('classes').doc(appId).collection('studentData').doc(String(tId)).get().then(doc => {
-                                let tNotes = [];
-                                if (doc.exists) {
-                                    const data = doc.data();
-                                    tNotes = data.counseling || [];
-                                }
-                                const noteIndex = tNotes.findIndex(n => n.id === editingNoteId);
-                                if (noteIndex >= 0) tNotes[noteIndex] = updatedNote;
-                                else tNotes = [updatedNote, ...tNotes];
-                                return { ref: doc.ref, counseling: tNotes };
-                            }));
-                        });
-                        removedIds.forEach(rId => {
-                            promises.push(db.collection('classes').doc(appId).collection('studentData').doc(String(rId)).get().then(doc => {
-                                if (doc.exists) {
-                                    const data = doc.data();
-                                    let rNotes = data.counseling || [];
-                                    const newRNotes = rNotes.filter(n => n.id !== editingNoteId);
-                                    return { ref: doc.ref, counseling: newRNotes };
-                                }
-                                return null;
-                            }));
-                        });
-                        const results = await Promise.all(promises);
-                        const batch = db.batch();
-                        let updateCount = 0;
-                        results.forEach(res => {
-                            if (res) {
-                                batch.set(res.ref, { counseling: res.counseling }, { merge: true });
-                                updateCount++;
-                            }
-                        });
-                        if (updateCount > 0) {
-                            await batch.commit();
-                            showToast("기록이 수정 및 동기화되었습니다.");
-                        }
-                    } catch (e) {
-                        console.error("동기화 저장 실패:", e);
-                        showToast("저장 중 오류가 발생했습니다: " + e.message);
-                    }
-                }
-
-                setEditingNoteId(null);
-                setEditNoteContent("");
-                setEditRelatedStudents([]);
-            };
-
-            const handleAddEditStudent = (s) => {
-                if (!editRelatedStudents.some(rs => rs.id === s.id) && s.id !== student.id) {
-                    setEditRelatedStudents([...editRelatedStudents, { id: s.id, name: s.name }]);
-                }
-                setEditSearchText("");
-                setShowEditStudentDropdown(false);
-            };
-
-            const handleRemoveEditStudent = (id) => {
-                setEditRelatedStudents(editRelatedStudents.filter(s => s.id !== id));
-            };
-
-            const handleStudentSelect = (name) => {
-                const s = students.find(st => st.name === name);
-                if (s && !selectedStudents.find(sel => sel.id === s.id)) {
-                    setSelectedStudents(prev => [...prev, s]);
-                }
-            };
-            
-            const removeSelectedStudent = (id) => {
-                setSelectedStudents(prev => prev.filter(s => s.id !== id));
-            };
-
-            const handleIntegratedSave = async (targetCategory) => {
-                const category = targetCategory || '관찰';
-                const content = notionContent.trim();
-                const date = notionDate || dayjs().format('YYYY-MM-DD');
-
-                if (!content) return showToast("내용을 입력해주세요.");
-                setNotionStatus('saving');
-                setSaveProgress(0);
-
-                let totalOps = 0;
-                if (saveTargets.has('google_sheet')) totalOps += 1;
-                if (saveTargets.has('notion_portfolio')) totalOps += 1;
-                if (saveTargets.has('notion_record')) totalOps += selectedStudents.length;
-                if (totalOps === 0) totalOps = 1;
-                let completedOps = 0;
-                const updateProgress = () => { completedOps++; setSaveProgress(Math.min(Math.round((completedOps / totalOps) * 100), 99)); };
-                
-                let tags = [];
-                if (saveTargets.has('notion_record')) tags.push("노션(기록)");
-                if (saveTargets.has('notion_portfolio')) tags.push("노션(포폴)");
-                if (saveTargets.has('google_sheet')) tags.push("구글 시트");
-
-                // [New] 함께 기록된 학생 정보 저장
-                const relatedStudents = selectedStudents.length > 1 
-                    ? selectedStudents.map(s => ({ id: s.id, name: s.name })) 
-                    : null;
-
-                const newNote = { id: Date.now(), date: date, content: content, destTags: tags, relatedStudents: relatedStudents };
-                const targetIds = selectedStudents.map(s => s.id);
-                
-                let updatedStudentsList = [...students];
-
-                for (const targetId of targetIds) {
-                    const studentObj = students.find(s => s.id === targetId);
-                    if (!studentObj) continue;
-
-                    let prevNotes = [];
-                    // 🌟 클라우드 모드: 보이지 않는 하위 금고(studentData)에서 옛날 기록을 먼저 꺼내옵니다.
-                    if (!isLocalMode && db && appId) {
-                        try {
-                            const doc = await db.collection('classes').doc(appId).collection('studentData').doc(String(targetId)).get();
-                            if (doc.exists && doc.data().counseling) {
-                                prevNotes = doc.data().counseling;
-                            }
-                        } catch (e) { console.error("과거 기록 불러오기 실패:", e); }
-                    } else {
-                        prevNotes = studentObj.counseling || [];
-                    }
-
-                    const updatedNotes = [newNote, ...prevNotes];
-                    let updatedStickers = studentObj.stickers || 0;
-                    if (category === '칭찬') updatedStickers += 1;
-
-                    // 🌟 클라우드 모드: 옛날 기록과 새 기록을 합쳐서 다시 금고에 안전하게 넣습니다!
-                    if (!isLocalMode && db && appId) {
-                        await db.collection('classes').doc(appId).collection('studentData').doc(String(targetId)).set({ counseling: updatedNotes }, { merge: true });
-                        updatedStudentsList = updatedStudentsList.map(s => s.id === targetId ? { ...s, stickers: updatedStickers } : s);
-                    } else {
-                        updatedStudentsList = updatedStudentsList.map(s => s.id === targetId ? { ...s, counseling: updatedNotes, stickers: updatedStickers } : s);
-                    }
-                }
-
-                setStudents(updatedStudentsList);
-                if (!isLocalMode) saveData('cls_students', updatedStudentsList);
-                else localStorage.setItem('cls_students', JSON.stringify(updatedStudentsList));
-
-                if (targetIds.includes(student.id)) {
-                    setNotes(prev => [newNote, ...prev]);
-                    if (category === '칭찬') {
-                        setStickerCount(prev => prev + 1);
-                        setShowButtonEffect(true); setTimeout(() => setShowButtonEffect(false), 800);
-                        setStickerEffect(true); setTimeout(() => setStickerEffect(false), 200);
-                        if (navigator.vibrate) navigator.vibrate(15);
-                        if ((stickerCount + 1) % 5 === 0) { 
-                            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 });
-                            if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor((stickerCount + 1) / 5) + 1} 달성!`);
-                        } else { 
-                            confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 });
-                        }
-                    }
-                }
-
-                if (saveTargets.has('google_sheet')) {
-                    let successCount = 0;
-                    // 🌟 줄 세우지 않고, 배열 통째로 전송!
-                    if (await saveToGoogleSheet(selectedStudents, category, content, date)) {
-                        successCount = selectedStudents.length;
-                    }
-                    updateProgress();
-                    if (successCount > 0) {
-                        setNotionStatus('success'); 
-                        if (!keepContent) setNotionContent(''); 
-                        setTimeout(() => setNotionStatus('idle'), 3000); 
-                        showToast("✅ 기록이 저장되었습니다!");
-                        if (closeAfterSave) onClose();
-                    }
-                }
-
-                try {
-                    const rawKey = localStorage.getItem('cls_notion_key') || "";
-                    const personalKey = rawKey.replace(/["']/g, '').trim();
-                    const targets = [];
-                    if (saveTargets.has('notion_record')) targets.push('notion_record');
-                    if (saveTargets.has('notion_portfolio')) targets.push('notion_portfolio');
-
-                    for (const target of targets) {
-                        const rawDbId = (target === 'notion_portfolio') ? (localStorage.getItem('cls_notion_portfolio_db_id') || "") : (localStorage.getItem('cls_notion_db_id') || "");
-                        const targetDbId = rawDbId.replace(/["']/g, '').trim();
-                        if (!personalKey || !targetDbId) continue;
-
-                        const bodyData = { category: category, content: content, personalKey: personalKey, personalDbId: targetDbId };
-                        
-                        if (target === 'notion_portfolio') {
-    const map = JSON.parse(localStorage.getItem('cls_student_map') || '{}');
-    const ids = []; selectedStudents.forEach(s => { if (map[s.name]) ids.push(map[s.name]); });
-    
-    // 🌟 선택된 아이들의 이름을 쉼표로 모두 연결합니다. (예: "김철수, 이영희, 박지민")
-    const joinedNames = selectedStudents.map(s => s.name).join(', ');
-    
-    bodyData.mode = 'relation'; 
-    bodyData.studentIds = ids;
-    bodyData.studentName = joinedNames; // 노션의 '제목' 또는 '이름' 칸에 한 번에 전송!
-    
-    await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
-    updateProgress();
-} else {
-    // [Fix] 노션(기록) 모드일 때 선택된 모든 학생에 대해 개별 저장
-    for (const s of selectedStudents) {
-        const individualBody = { 
-            ...bodyData, 
-            mode: 'normal', 
-            studentName: s.name, 
-            date: dayjs(date).format('YYYY-MM-DD') 
-        };
-        await fetch('/api/save-notion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(individualBody) });
-        
-        // 🌟 핵심 해결책: 노션 서버가 튕겨내지 못하게 1명 저장할 때마다 0.35초(350ms)씩 부드럽게 숨을 고릅니다!
-        await new Promise(resolve => setTimeout(resolve, 350)); 
-        updateProgress();
-    }
-}
-                    }
-                    setSaveProgress(100);
-                    setNotionStatus('success'); if(typeof showToast !== 'undefined') showToast("✨ 외부 서비스 연동이 안전하게 완료되었습니다!"); if (!keepContent) setNotionContent(''); setTimeout(() => setNotionStatus('idle'), 3000);
-                    showToast("✅ 기록이 저장되었습니다!");
-                } catch (e) {
-                    console.error(e); setNotionStatus('error'); setTimeout(() => setNotionStatus('idle'), 3000);
-                }
-            };
             
             const calculateStatsForPeriod = (startStr, endStr) => {
                 let pTotal = 0, pDone = 0;
@@ -5261,6 +4756,7 @@
             const [isStudentListOpen, setIsStudentListOpen] = useState(true);
             const [activeTab, setActiveTab] = useState('app');
             const [appSubTab, setAppSubTab] = useState('basic');
+            const [scoreConfig, setScoreConfig] = useState({ submit: 1, late: 0.5, miss: 0, penaltyBase: -1, penaltyPerDay: -1, penaltyMax: -3 });
             const prevTabRef = useRef(activeTab);
             const isGoogleSheetConnected = !!localStorage.getItem('cls_google_sheet_url');
             const [aiSafetyCheck, setAiSafetyCheck] = useState(() => localStorage.getItem('cls_ai_safety_check') === 'true');
@@ -5411,6 +4907,19 @@
                     setTimeout(() => setTestAllSuccess(false), 3000);
                 }
             };
+
+            useEffect(() => {
+                if (isOpen) {
+                    setScoreConfig({
+                        submit: appConfig.scoreSubmit ?? 1,
+                        late: appConfig.scoreLate ?? 0.5,
+                        miss: appConfig.scoreMiss ?? 0,
+                        penaltyBase: appConfig.penaltyBase ?? -1,
+                        penaltyPerDay: appConfig.penaltyPerDay ?? -1,
+                        penaltyMax: appConfig.penaltyMax ?? -3
+                    });
+                }
+            }, [isOpen, appConfig]);
 
             const handleTestCommentLikeNotification = async () => {
                 const user = firebase.auth().currentUser;
@@ -6006,6 +5515,7 @@
                                         <button onClick={() => setAppSubTab('basic')} className={`relative z-10 flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center ${appSubTab === 'basic' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>앱 기본 설정</button>
                                         <button onClick={() => setAppSubTab('display')} className={`relative z-10 flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center ${appSubTab === 'display' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>화면 및 기능 설정</button>
                                         <button onClick={() => setAppSubTab('notification')} className={`relative z-10 flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center ${appSubTab === 'notification' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>알림 설정</button>
+                                        <button onClick={() => setAppSubTab('score')} className={`relative z-10 flex-1 whitespace-nowrap px-3 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center ${appSubTab === 'score' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>점수 설정</button>
                                     </div>
 
                                     {appSubTab === 'basic' && (
@@ -6601,6 +6111,54 @@
                                                             </label>
                                                         </div>
                                                         <p className="text-xs text-slate-500">앱이 켜져 있을 때 브라우저 알림을 보냅니다. (OS 설정에 따라 다를 수 있음)</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {appSubTab === 'score' && (
+                                        <div className="animate-fade-in space-y-6">
+                                            <div className="group">
+                                                <h4 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-5 cursor-default select-none">
+                                                    <div className="w-10 h-10 rounded-2xl bg-yellow-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🏆</div> 
+                                                    통계 점수 설정
+                                                </h4>
+                                                <div className="space-y-6">
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
+                                                        <h5 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-yellow-500">●</span> 명예의 전당 (획득 점수)</h5>
+                                                        <div className="grid grid-cols-3 gap-4">
+                                                            <div className="flex flex-col gap-1">
+                                                                <label className="text-[10px] font-bold text-slate-400">제출 완료</label>
+                                                                <input type="number" step="0.1" value={scoreConfig.submit} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, submit: val}); updateAppConfig({ scoreSubmit: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <label className="text-[10px] font-bold text-slate-400">지각 제출</label>
+                                                                <input type="number" step="0.1" value={scoreConfig.late} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, late: val}); updateAppConfig({ scoreLate: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <label className="text-[10px] font-bold text-slate-400">미제출</label>
+                                                                <input type="number" step="0.1" value={scoreConfig.miss} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, miss: val}); updateAppConfig({ scoreMiss: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition-colors">
+                                                        <h5 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-rose-500">●</span> 도움이 필요해요 (페널티)</h5>
+                                                        <div className="grid grid-cols-3 gap-4">
+                                                            <div className="flex flex-col gap-1">
+                                                                <label className="text-[10px] font-bold text-slate-400">당일 미제출</label>
+                                                                <input type="number" step="0.1" value={scoreConfig.penaltyBase} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyBase: val}); updateAppConfig({ penaltyBase: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <label className="text-[10px] font-bold text-slate-400">하루 지날 때마다</label>
+                                                                <input type="number" step="0.1" value={scoreConfig.penaltyPerDay} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyPerDay: val}); updateAppConfig({ penaltyPerDay: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <label className="text-[10px] font-bold text-slate-400">최대 페널티</label>
+                                                                <input type="number" step="0.1" value={scoreConfig.penaltyMax} onChange={e => { const val = parseFloat(e.target.value); setScoreConfig({...scoreConfig, penaltyMax: val}); updateAppConfig({ penaltyMax: val }); }} className="w-full p-2 border rounded-lg text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-400 mt-2">* 지각 제출 시 페널티는 (지각 점수 - 제출 점수)로 자동 계산됩니다.</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -9062,6 +8620,8 @@ const firebaseConfig = {
                     )}
                     <HonorInfoModal isOpen={showHonorInfo} onClose={() => setShowHonorInfo(false)} />
                     <HelpInfoModal isOpen={showHelpInfo} onClose={() => setShowHelpInfo(false)} />
+                    <HonorInfoModal isOpen={showHonorInfo} onClose={() => setShowHonorInfo(false)} config={appConfig} />
+                    <HelpInfoModal isOpen={showHelpInfo} onClose={() => setShowHelpInfo(false)} config={appConfig} />
                 </BaseModal>
             );
         };
@@ -13141,21 +12701,26 @@ const firebaseConfig = {
                             if (task.idx === -1) { isDone = sRec?.done || false; } 
                             else { isDone = sRec?.tasks ? sRec.tasks[task.idx] : (sRec?.done && !sRec?.tasks); isLate = sRec?.lateTasks ? sRec.lateTasks[task.idx] : false; }
                             
-                            if (isDone) { 
-                                const score = isLate ? 0.5 : 1;
+                            if (isDone) {
+                                const score = isLate ? (appConfig.scoreLate ?? 0.5) : (appConfig.scoreSubmit ?? 1);
                                 honorScore += score;
-                                if (isLate) honorDetails.push({ date: d, title: task.title, score: 0.5, reason: '지각 제출' });
+                                honorDetails.push({ date: d, title: task.title, score: score, reason: isLate ? '지각 제출' : '제출 완료' });
                             }
                             
                             if (isDone) {
                                 if (isLate) {
-                                    helpScore += -0.5;
-                                    helpDetails.push({ date: d, title: task.title, score: -0.5, reason: '지각 제출' });
+                                    // 지각 제출 시 페널티: (지각 점수 - 정상 점수) 만큼 감점 (예: 0.5 - 1 = -0.5)
+                                    const penalty = (appConfig.scoreLate ?? 0.5) - (appConfig.scoreSubmit ?? 1);
+                                    helpScore += penalty;
+                                    helpDetails.push({ date: d, title: task.title, score: penalty, reason: '지각 제출' });
                                 }
                             } else {
                                 const diff = dayjs().diff(dayjs(d), 'day');
-                                let penalty = -1 - diff;
-                                if (penalty < -3) penalty = -3;
+                                const base = appConfig.penaltyBase ?? -1;
+                                const perDay = appConfig.penaltyPerDay ?? -1;
+                                const max = appConfig.penaltyMax ?? -3;
+                                let penalty = base + (diff * perDay);
+                                if (penalty < max) penalty = max;
                                 helpScore += penalty;
                                 helpDetails.push({ date: d, title: task.title, score: penalty, reason: `${diff}일 지남` });
                             }
@@ -13178,7 +12743,7 @@ const firebaseConfig = {
             }
             const top5 = sortedByHonor.slice(0, 5);
             const bottom5 = [...computedStudents].sort((a,b) => a.helpStats.helpScore - b.helpStats.helpScore).slice(0, 5); return { students: computedStudents, top5, bottom5, allRanked: sortedByHonor };
-            }, [students, records, dailyTasks, honorPeriod, honorTag, helpPeriod, helpTag]);
+            }, [students, records, dailyTasks, honorPeriod, honorTag, helpPeriod, helpTag, appConfig]);
             
             const handleFirebaseConnect = (config) => { localStorage.setItem('checklist_config', JSON.stringify(config)); setIsSetupOpen(false);
             setToastMessage("연결 정보가 저장되었습니다. 새로고침합니다."); setTimeout(() => window.location.reload(), 1500); };
@@ -15446,13 +15011,6 @@ const firebaseConfig = {
                     {appConfig.showFloatingButton !== false && (
                     <button 
                         onMouseEnter={() => { setIsHidden(false); if(hideTimer.current) clearTimeout(hideTimer.current); }}
-                        onMouseDown={handleButtonDragStart}
-                        onTouchStart={handleButtonDragStart}
-                        onDoubleClick={() => {
-                            setButtonPos({ x: window.innerWidth - 80, y: window.innerHeight - 80 });
-                            setIsHidden(false);
-                        }}
-                        onClick={() => { if (!isDragGesture.current) { setShowGlobalRecord(true); resetButtonIdleTimer(); } }}
                         style={{ 
                             left: buttonPos.x, 
                             top: buttonPos.y,
@@ -15460,6 +15018,13 @@ const firebaseConfig = {
                         }}
                         className={`fixed z-[1500] ${appConfig.floatingButtonSize === 'small' ? 'w-10 h-10' : appConfig.floatingButtonSize === 'large' ? 'w-16 h-16' : appConfig.floatingButtonSize === 'xlarge' ? 'w-20 h-20' : 'w-14 h-14'} bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center group ${isDraggingButton ? '' : 'transition-all duration-300 hover:bg-indigo-700 hover:scale-105'} ${isHidden ? 'opacity-50' : (isButtonIdle ? 'opacity-30 hover:opacity-100' : 'opacity-100')}`}
                         title="빠른 관찰 기록"
+                        onMouseDown={handleButtonDragStart}
+                        onTouchStart={handleButtonDragStart}
+                        onDoubleClick={() => {
+                            setButtonPos({ x: window.innerWidth - 80, y: window.innerHeight - 80 });
+                            setIsHidden(false);
+                        }}
+                        onClick={() => { if (!isDragGesture.current) { setShowGlobalRecord(true); resetButtonIdleTimer(); } }}
                     >
                         <Icon d={PATHS.edit} size={appConfig.floatingButtonSize === 'small' ? 20 : appConfig.floatingButtonSize === 'large' ? 28 : appConfig.floatingButtonSize === 'xlarge' ? 36 : 24} />
                         <span className={`absolute bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none ${buttonPos.x < window.innerWidth / 2 ? 'left-full ml-3' : 'right-full mr-3'}`}>빠른 기록</span>
