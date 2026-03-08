@@ -1059,8 +1059,12 @@
             );
         };
 
-        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, hasNotionConfig, hasGoogleSheetConfig, selectedStudents }) => {
+        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, hasNotionRecord, hasNotionPortfolio, hasGoogleSheet, selectedStudents }) => {
             if (!isOpen || !student || !student.history) return null;
+            
+            // [Compatibility] 기존 코드 호환성 유지
+            const hasNotionConfig = hasNotionRecord || hasNotionPortfolio;
+            const hasGoogleSheetConfig = hasGoogleSheet;
             
             useEffect(() => {
                 document.body.style.overflow = 'hidden';
@@ -14770,8 +14774,9 @@ const firebaseConfig = {
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} 
-                        hasNotionConfig={hasNotionConfig}
-                        hasGoogleSheetConfig={hasGoogleSheetConfig}
+                        hasNotionRecord={hasNotionRecord}
+                        hasNotionPortfolio={hasNotionPortfolio}
+                        hasGoogleSheet={hasGoogleSheet}
                         selectedStudents={selectedStudents}
                          />}
                     <SettingsModal 
