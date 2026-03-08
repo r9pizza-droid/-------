@@ -1059,12 +1059,12 @@
             );
         };
 
-        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, hasNotionRecord, hasNotionPortfolio, hasGoogleSheet, selectedStudents }) => {
+        const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, hasNotionConfig = false, hasGoogleSheetConfig = false, selectedStudents = [] }) => {
             if (!isOpen || !student || !student.history) return null;
             
-            // [Compatibility] 기존 코드 호환성 유지
-            const hasNotionConfig = hasNotionRecord || hasNotionPortfolio;
-            const hasGoogleSheetConfig = hasGoogleSheet;
+            const hasNotionRecord = !!hasNotionConfig;
+            const hasNotionPortfolio = !!isPortfolioMode && !!hasNotionConfig;
+            const hasGoogleSheet = !!hasGoogleSheetConfig;
             
             useEffect(() => {
                 document.body.style.overflow = 'hidden';
@@ -9201,6 +9201,7 @@ const firebaseConfig = {
             const [hasGoogleSheetConfig, setHasGoogleSheetConfig] = useState(() => {
                 return !!localStorage.getItem('cls_google_sheet_url');
             });
+            
             // [New] 선택된 학생 목록 (전역 관리)
             const [selectedStudents, setSelectedStudents] = useState([]);
 
@@ -14774,9 +14775,8 @@ const firebaseConfig = {
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} 
-                        hasNotionRecord={hasNotionRecord}
-                        hasNotionPortfolio={hasNotionPortfolio}
-                        hasGoogleSheet={hasGoogleSheet}
+                        hasNotionConfig={hasNotionConfig}
+                        hasGoogleSheetConfig={hasGoogleSheetConfig}
                         selectedStudents={selectedStudents}
                          />}
                     <SettingsModal 
