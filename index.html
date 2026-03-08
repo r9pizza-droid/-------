@@ -10249,11 +10249,17 @@ const firebaseConfig = {
                      setCommentAuthor(userNickname);
 
                      if (editingPost) {
-                        await sharedDb.collection('community').doc(editingPost.id).update({
+                        const updatedData = {
                             title, content, authorName: userNickname, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
-                        });
+                        };
+                        await sharedDb.collection('community').doc(editingPost.id).update(updatedData);
                         setToastMessage("게시글이 수정되었습니다.");
-                        setCommunityPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, title, content, authorName: userNickname, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || "" } : p));
+                        setCommunityPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, ...updatedData } : p));
+                        
+                        // [Fix] 상세 보기 중인 글이 수정되면 상세 보기 데이터도 업데이트
+                        if (selectedPost && selectedPost.id === editingPost.id) {
+                            setSelectedPost(prev => ({ ...prev, ...updatedData }));
+                        }
                         setEditingPost(null);
                     } else {
                         // [New] 뱃지 시스템: 글 작성 시 통계 업데이트 및 뱃지 획득
@@ -10333,6 +10339,11 @@ const firebaseConfig = {
             await sharedDb.collection('community').doc(post.id).delete();
             setToastMessage("게시글이 삭제되었습니다.");
             setCommunityPosts(prev => prev.filter(p => p.id !== post.id)); // 화면 즉시 반영
+            
+            // [Fix] 상세 보기 중인 글이 삭제되면 목록으로 돌아가기
+            if (selectedPost && selectedPost.id === post.id) {
+                handleClosePostDetail();
+            }
         } catch (e) {
             console.error(e);
             alert("삭제 실패: " + e.message);
