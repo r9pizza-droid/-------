@@ -9064,7 +9064,6 @@ const firebaseConfig = {
 
         const App = () => {
             // [New] 레벨 시스템 설정 (관리자 밸런스 패치용)
-            const [scoreDetailTarget, setScoreDetailTarget] = useState(null);
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
             const [showLevelGuide, setShowLevelGuide] = useState(false);
 
@@ -9122,6 +9121,7 @@ const firebaseConfig = {
     // 1. 켤 때부터 내 컴퓨터(브라우저)가 기억하는 이름이 있는지 먼저 찾아봅니다.
     const [userNickname, setUserNickname] = useState(() => localStorage.getItem('myBoardName') || "");
     const [showNicknameModal, setShowNicknameModal] = useState(false);
+    const [scoreDetailTarget, setScoreDetailTarget] = useState(null);
     const [tempNickname, setTempNickname] = useState("");
 
     // 게시판(community) 입장 시 별칭 확인
