@@ -10014,7 +10014,7 @@ const firebaseConfig = {
                     setHasGoogleSheetConfig(!!localStorage.getItem('cls_google_sheet_url'));
                 }
             }, [isSettingOpen]);
-            
+
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null, onCancel: null }); const [toastMessage, setToastMessage] = useState(null); const [toastAction, setToastAction] = useState(null);
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
@@ -14769,8 +14769,7 @@ const firebaseConfig = {
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} 
                         hasNotionConfig={hasNotionConfig}
-                        hasGoogleSheetConfig={hasGoogleSheetConfig}
-                         />}
+                        hasGoogleSheetConfig={hasGoogleSheetConfig} />}
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)} 
