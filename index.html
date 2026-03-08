@@ -759,7 +759,7 @@
         const HonorInfoModal = ({ isOpen, onClose }) => {
             if (!isOpen) return null;
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="명예의 전당 점수 기준" icon={PATHS.trophy} maxWidth="max-w-sm">
+                <BaseModal isOpen={isOpen} onClose={onClose} title="명예의 전당 점수 기준" icon={PATHS.trophy} maxWidth="max-w-sm" zIndex="z-[2000]">
                     <div className="space-y-4 text-sm text-slate-600">
                         <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100">
                             <h4 className="font-bold text-yellow-700 mb-2">🏆 점수 계산법</h4>
@@ -778,7 +778,7 @@
         const HelpInfoModal = ({ isOpen, onClose }) => {
             if (!isOpen) return null;
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="도움이 필요해요 점수 기준" icon={PATHS.warning} maxWidth="max-w-sm">
+                <BaseModal isOpen={isOpen} onClose={onClose} title="도움이 필요해요 점수 기준" icon={PATHS.warning} maxWidth="max-w-sm" zIndex="z-[2000]">
                     <div className="space-y-4 text-sm text-slate-600">
                         <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
                             <h4 className="font-bold text-rose-700 mb-2">📣 점수 계산법 (페널티)</h4>
@@ -786,10 +786,41 @@
                                 <li><strong>당일 미제출:</strong> -1점</li>
                                 <li><strong>하루 지날 때마다:</strong> -1점 추가</li>
                                 <li><strong>최대 페널티:</strong> 과제당 -3점</li>
-                                <li><strong>지각 제출:</strong> -1점</li>
                             </ul>
                         </div>
                         <p>점수가 낮을수록 선생님의 도움이 필요한 학생입니다.</p>
+                    </div>
+                </BaseModal>
+            );
+        };
+
+        const ScoreDetailModal = ({ isOpen, onClose, title, details }) => {
+            if (!isOpen) return null;
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title={title} icon={PATHS.chart} zIndex="z-[2000]" maxWidth="max-w-md">
+                    <div className="space-y-4">
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 max-h-[60vh] overflow-y-auto custom-scroll">
+                            {details && details.length > 0 ? (
+                                <div className="space-y-2">
+                                    {details.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-center p-2 bg-white border border-slate-100 rounded-lg shadow-sm">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-slate-700">{item.title}</span>
+                                                <span className="text-[10px] text-slate-400">{item.date} ({item.reason})</span>
+                                            </div>
+                                            <span className={`text-xs font-bold ${item.score > 0 ? 'text-indigo-600' : 'text-rose-500'}`}>
+                                                {item.score > 0 ? '+' : ''}{item.score}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-slate-400 text-xs py-4">특이 사항(지각/미제출)이 없습니다.</div>
+                            )}
+                        </div>
+                        <div className="text-center">
+                            <Btn onClick={onClose} className="w-full py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">닫기</Btn>
+                        </div>
                     </div>
                 </BaseModal>
             );
@@ -1062,6 +1093,7 @@
             const [showThemePicker, setShowThemePicker] = useState(false);
             const [showHonorInfo, setShowHonorInfo] = useState(false);
             const [showHelpInfo, setShowHelpInfo] = useState(false);
+            const [scoreDetailTarget, setScoreDetailTarget] = useState(null);
             
             // [New] 연동 상태 확인 및 기본값 설정 (초기화)
             const [hasNotionRecord, setHasNotionRecord] = useState(false);
@@ -13085,6 +13117,8 @@ const firebaseConfig = {
                     let honorScore = 0; 
                     let helpScore = 0;
                     let totalCount = 0; 
+                    const honorDetails = [];
+                    const helpDetails = [];
                     for(let i=34; i>=0; i--) { 
                         const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); 
                         const dayIdx = dayjs(d).day(); 
@@ -13107,19 +13141,27 @@ const firebaseConfig = {
                             if (task.idx === -1) { isDone = sRec?.done || false; } 
                             else { isDone = sRec?.tasks ? sRec.tasks[task.idx] : (sRec?.done && !sRec?.tasks); isLate = sRec?.lateTasks ? sRec.lateTasks[task.idx] : false; }
                             
-                            if (isDone) { honorScore += isLate ? 0.5 : 1; }
+                            if (isDone) { 
+                                const score = isLate ? 0.5 : 1;
+                                honorScore += score;
+                                if (isLate) honorDetails.push({ date: d, title: task.title, score: 0.5, reason: '지각 제출' });
+                            }
                             
                             if (isDone) {
-                                if (isLate) helpScore += -1;
+                                if (isLate) {
+                                    helpScore += -0.5;
+                                    helpDetails.push({ date: d, title: task.title, score: -0.5, reason: '지각 제출' });
+                                }
                             } else {
                                 const diff = dayjs().diff(dayjs(d), 'day');
                                 let penalty = -1 - diff;
                                 if (penalty < -3) penalty = -3;
                                 helpScore += penalty;
+                                helpDetails.push({ date: d, title: task.title, score: penalty, reason: `${diff}일 지남` });
                             }
                         });
                     } 
-                    return { count: honorScore, helpScore: helpScore, total: totalCount, rate: totalCount > 0 ? (honorScore / totalCount) * 100 : 0 }; 
+                    return { count: honorScore, helpScore: helpScore, total: totalCount, rate: totalCount > 0 ? (honorScore / totalCount) * 100 : 0, honorDetails, helpDetails }; 
                 }; 
                 const computedStudents = students.map(s => { let count = 0, currentStreak = 0; const history = []; const datesSorted = Object.keys(records).sort(); for(let i=29; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; let dailyDoneCount = 0; let dailyTotalCount = 0; const dayTasks = dailyTasks[d] || []; const dayRecord = records[d]; if(dayTasks.length > 0) { dailyTotalCount = dayTasks.length; if(dayRecord && dayRecord[s.id]) { dayTasks.forEach((_, idx) => { if(dayRecord[s.id].tasks && dayRecord[s.id].tasks[idx]) dailyDoneCount++; else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++; }); } } else { if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; } } const 
             ratio = dailyTotalCount > 0 ? dailyDoneCount / dailyTotalCount : 0; history.push({ date: d, ratio: ratio, count: dailyDoneCount, total: dailyTotalCount, done: dailyDoneCount === dailyTotalCount && dailyTotalCount > 0 }); if(ratio === 1) count++; } for(let i=0; i<365;
@@ -13997,7 +14039,7 @@ const firebaseConfig = {
                                         </div>
                                         {viewHallOfFameList ? (
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
-                                                {stats.allRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank===1?'bg-yellow-500 text-white':s.rank===2?'bg-slate-400 text-white':s.rank===3?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.rank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span className="font-bold text-indigo-600">{s.honorStats.count}점</span></div>))}
+                                                {stats.allRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank===1?'bg-yellow-500 text-white':s.rank===2?'bg-slate-400 text-white':s.rank===3?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.rank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span className="font-bold text-indigo-600 cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ title: `${s.name} 명예의 전당 상세`, details: s.honorStats.honorDetails }); }}>{s.honorStats.count}점</span></div>))}
                                                 {stats.allRanked.length === 0 && <div className="text-center text-slate-400 py-4">데이터가 없습니다.</div>}
                                             </div>
                                         ) : (
@@ -14022,7 +14064,7 @@ const firebaseConfig = {
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                        <div className="text-xs font-black text-indigo-500 bg-white/80 px-2 py-1 rounded-lg border border-indigo-100 shadow-sm whitespace-nowrap ml-2">
+                                                        <div className="text-xs font-black text-indigo-500 bg-white/80 px-2 py-1 rounded-lg border border-indigo-100 shadow-sm whitespace-nowrap ml-2 cursor-pointer hover:bg-indigo-50" onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ title: `${students[0].name} 외 명예의 전당 상세`, details: students[0].honorStats.honorDetails }); }}>
                                                             {students[0].honorStats.count}점
                                                         </div>
                                                     </div>
@@ -14033,12 +14075,13 @@ const firebaseConfig = {
                                     </div>
                                     <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-lg relative overflow-hidden">
                                         <div className="absolute -right-4 -bottom-4 text-9xl opacity-10 select-none pointer-events-none">📣</div>
-                                        <div className="flex flex-col gap-3 mb-4"><div className="flex justify-between items-center">
+                                        <div className="flex flex-col gap-3 mb-4">
+                                            <div className="flex justify-between items-center">
                                             <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">
                                                 📣 도움이 필요해요
                                                 <button onClick={(e) => { e.stopPropagation(); setShowHelpInfo(true); }} className="text-slate-400 hover:text-indigo-500"><Icon d={PATHS.help} size={16} /></button>
                                             </h3>
-                                            <div className="flex items-center gap-2"><div className="relative"><select value={helpTag} onChange={(e) => setHelpTag(e.target.value)} className="appearance-none bg-slate-100 text-slate-600 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 border-none cursor-pointer hover:bg-slate-200 transition-colors">{['전체', ...tags].map(t => <option key={t} value={t}>{t}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d="M6 9l6 6 6-6" size={12} /></div></div><SwitchToggle value={helpPeriod} onChange={setHelpPeriod} /></div></div></div><div className="space-y-3">{stats.bottom5.filter(s => s.helpStats.helpScore < 0).map((s, i) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><div className="flex items-center gap-2"><span className="font-bold text-rose-500 text-sm">{s.helpStats.helpScore}점</span></div></div>))}{stats.bottom5.filter(s => s.helpStats.helpScore < 0).length === 0 && <div className="text-center text-slate-400 py-4">모두 잘하고 있어요! 🎉</div>}</div></div>
+                                            <div className="flex items-center gap-2"><div className="relative"><select value={helpTag} onChange={(e) => setHelpTag(e.target.value)} className="appearance-none bg-slate-100 text-slate-600 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 border-none cursor-pointer hover:bg-slate-200 transition-colors">{['전체', ...tags].map(t => <option key={t} value={t}>{t}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><Icon d="M6 9l6 6 6-6" size={12} /></div></div><SwitchToggle value={helpPeriod} onChange={setHelpPeriod} /></div></div></div><div className="space-y-3">{stats.bottom5.filter(s => s.helpStats.helpScore < 0).map((s, i) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><div className="flex items-center gap-2"><span className="font-bold text-rose-500 text-sm cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ title: `${s.name} 도움이 필요해요 상세`, details: s.helpStats.helpDetails }); }}>{s.helpStats.helpScore}점</span></div></div>))}{stats.bottom5.filter(s => s.helpStats.helpScore < 0).length === 0 && <div className="text-center text-slate-400 py-4">모두 잘하고 있어요! 🎉</div>}</div></div>
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                                     <MissingView students={students} records={records} dailyTasks={dailyTasks} />
@@ -15421,6 +15464,14 @@ const firebaseConfig = {
                         <Icon d={PATHS.edit} size={appConfig.floatingButtonSize === 'small' ? 20 : appConfig.floatingButtonSize === 'large' ? 28 : appConfig.floatingButtonSize === 'xlarge' ? 36 : 24} />
                         <span className={`absolute bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none ${buttonPos.x < window.innerWidth / 2 ? 'left-full ml-3' : 'right-full mr-3'}`}>빠른 기록</span>
                     </button>
+                    )}
+                    {scoreDetailTarget && (
+                        <ScoreDetailModal 
+                            isOpen={!!scoreDetailTarget} 
+                            onClose={() => setScoreDetailTarget(null)} 
+                            title={scoreDetailTarget.title} 
+                            details={scoreDetailTarget.details} 
+                        />
                     )}
                 </div>
                     )}
