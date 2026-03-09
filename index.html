@@ -7169,7 +7169,7 @@ const firebaseConfig = {
 
             useEffect(() => {
                 if (!sharedDb) return;
-                if (firebase.apps.length > 0) {
+                if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
                     const unsubscribe = firebase.auth().onAuthStateChanged(user => {
                         if (user) {
                             const unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
@@ -7205,7 +7205,7 @@ const firebaseConfig = {
 
             // 내 컴퓨터에 없다면 파이어베이스 서버에 물어봅니다. (지연 시간 대비)
             const checkFirebase = () => {
-                if (firebase.apps.length > 0) {
+                if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
                     const user = firebase.auth().currentUser;
                     if (user && sharedDb) {
                         sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
@@ -7396,7 +7396,7 @@ const firebaseConfig = {
 
             useEffect(() => {
                 try {
-                    if (firebase.apps.length > 0) {
+                    if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
                         const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
                             setIsAdmin(!!user && user.uid === ADMIN_UID);
                         });
@@ -7408,7 +7408,7 @@ const firebaseConfig = {
             // [New] 알림 구독 및 처리 로직
             useEffect(() => {
                 if (!sharedDb) return;
-                if (firebase.apps.length > 0) {
+                if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
                     const unsubscribeAuth = firebase.auth().onAuthStateChanged(user => {
                         if (user) {
                             isNotiFirstLoad.current = true;
@@ -7454,7 +7454,7 @@ const firebaseConfig = {
     // 🔔 알림 테스트 발송 함수 (하얀 화면 해결용)
     // ==========================================
             const handleTestCommentLikeNotification = async () => {
-                if (firebase.apps.length > 0) {
+                if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
                     const user = firebase.auth().currentUser;
                     if (!user) {
                         alert("로그인이 필요합니다.");
@@ -7580,7 +7580,7 @@ const firebaseConfig = {
                     .filter(post => !filterCategory || post.category === filterCategory)
                     .filter(post => {
                         if (showMyPosts) {
-                            const user = firebase.auth().currentUser;
+                            const user = firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser : null;
                             if (!user || post.uid !== user.uid) return false;
                         }
                         if (!postSearchTerm) return true;
@@ -8080,7 +8080,7 @@ const firebaseConfig = {
         const post = communityPosts.find(p => p.id === postId);
         if (!post) return;
 
-        const uid = firebase.auth().currentUser?.uid || "anonymous";
+        const uid = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) || "anonymous";
         const currentLikes = post.likes || [];
         
         // 좋아요 상태 판단 (서버 데이터 우선, 없으면 로컬 스토리지 확인)
@@ -8218,11 +8218,11 @@ const firebaseConfig = {
                     return;
                 }
 
-        const uid = firebase.auth().currentUser?.uid || "anonymous";
+        const uid = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) || "anonymous";
         
         // [New] 뱃지 시스템: 댓글 작성 시 통계 업데이트 및 뱃지 획득
         let currentBadge = '🌱';
-        const user = firebase.auth().currentUser;
+        const user = firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser : null;
         if (user) {
             const statsRef = sharedDb.collection('userStats').doc(user.uid);
             const doc = await statsRef.get();
@@ -8310,7 +8310,7 @@ const firebaseConfig = {
 
     // ❌ 댓글 삭제 함수
     const handleDeleteComment = async (postId, commentId, commentUid) => {
-        const currentUid = firebase.auth().currentUser?.uid;
+        const currentUid = firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null;
         if (!isAdmin && currentUid !== commentUid) {
             alert("본인이 작성한 댓글만 삭제할 수 있습니다.");
             return;
@@ -11950,7 +11950,7 @@ const firebaseConfig = {
                                                     <div className="flex gap-2 shrink-0 flex-wrap justify-end w-full">
                                                         <button 
                                                             onClick={() => {
-                                                                if (!firebase.auth().currentUser) {
+                                                                if (!(firebase.apps.some(app => app.name === '[DEFAULT]') && firebase.auth().currentUser)) {
                                                                     setToastMessage("로그인이 필요한 기능입니다.");
                                                                     return;
                                                                 }
@@ -12286,7 +12286,7 @@ const firebaseConfig = {
                                                 const currentIndex = sortedPosts.findIndex(p => p.id === selectedPost.id);
                                                 const prevPost = currentIndex > 0 ? sortedPosts[currentIndex - 1] : null;
                                                 const nextPost = currentIndex < sortedPosts.length - 1 ? sortedPosts[currentIndex + 1] : null;
-                                                const isMyPost = firebase.auth().currentUser?.uid === selectedPost.uid; // Assuming uid is stored, or use authorName/password check logic if uid not available. 
+                                                const isMyPost = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) === selectedPost.uid; // Assuming uid is stored, or use authorName/password check logic if uid not available. 
                                                 // Note: In handleEditPost/handleDeletePost we check password or admin. Here we just show buttons.
                                                 // I'll show buttons always and let the handler check permissions/password.
 
@@ -12393,7 +12393,7 @@ const firebaseConfig = {
                                                                         <div className="text-center text-slate-400 py-4"><Icon d={PATHS.spinner} className="animate-spin inline mr-2"/> 댓글을 불러오는 중...</div>
                                                                     ) : comments.length > 0 ? (
                                                                         comments.filter(c => !c.parentId).map(comment => {
-                                                                            const isMyComment = firebase.auth().currentUser?.uid === comment.uid;
+                                                                            const isMyComment = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) === comment.uid;
                                                                             const replies = comments.filter(r => r.parentId === comment.id);
                                                                             return (
                                                                                 <div key={comment.id} className="space-y-2">
@@ -12415,7 +12415,7 @@ const firebaseConfig = {
 
                                                                                     {/* Replies */}
                                                                                     {replies.map(reply => {
-                                                                                        const isMyReply = firebase.auth().currentUser?.uid === reply.uid;
+                                                                                        const isMyReply = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) === reply.uid;
                                                                                         return (
                                                                                             <div key={reply.id} className="ml-6 bg-slate-100/50 p-3 rounded-xl border border-slate-200 relative">
                                                                                                 <div className="absolute top-[-10px] left-[-10px] w-4 h-6 border-l-2 border-b-2 border-slate-200 rounded-bl-xl"></div>
