@@ -45,18 +45,18 @@ const RadarChart = ({ data }) => {
                         </g>
                     );
                 })}
-                <polygon points={classPoints} fill="rgba(148, 163, 184, 0.3)" stroke="#94a3b8" strokeWidth="2" />
-                <polygon points={studentPoints} fill="rgba(99, 102, 241, 0.3)" stroke="#6366f1" strokeWidth="4" />
+                <polygon points={classPoints} fill="rgba(203, 213, 225, 0.4)" stroke="#cbd5e1" strokeWidth="2" />
+                <polygon points={studentPoints} fill="rgba(129, 140, 248, 0.4)" stroke="#818cf8" strokeWidth="3" />
                 {tags.map((tag, i) => {
                         const stat = data[tag];
                         const sRate = stat.sTotal > 0 ? (stat.sDone / stat.sTotal) * 100 : 0;
                         const [sx, sy] = getCoordinates(sRate, i);
-                        return <circle key={`s-${i}`} cx={sx} cy={sy} r="3" fill="#6366f1" />;
+                        return <circle key={`s-${i}`} cx={sx} cy={sy} r="4" fill="#818cf8" />;
                 })}
             </svg>
             <div className="flex gap-4 mt-2 text-[10px]">
-                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-indigo-500"></div><span className="text-slate-600 font-bold">나</span></div>
-                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-400"></div><span className="text-slate-400 font-bold">학급 평균</span></div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-indigo-400"></div><span className="text-slate-600 font-bold">나</span></div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-300"></div><span className="text-slate-400 font-bold">학급 평균</span></div>
             </div>
         </div>
     );
@@ -984,11 +984,11 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
     };
     
     const getLevelColor = (lv) => {
-        if (lv >= 5) return 'bg-orange-500';
-        if (lv === 4) return 'bg-purple-500';
-        if (lv === 3) return 'bg-indigo-500';
-        if (lv === 2) return 'bg-blue-500';
-        return 'bg-green-500';
+        if (lv >= 5) return 'bg-orange-400';
+        if (lv === 4) return 'bg-purple-400';
+        if (lv === 3) return 'bg-indigo-400';
+        if (lv === 2) return 'bg-blue-400';
+        return 'bg-green-400';
     };
     
     const getLevelTextColor = (lv) => {
@@ -1125,7 +1125,7 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                         <div className="flex items-baseline gap-1 mt-1">
                                             <span className="text-xs font-bold text-slate-500">수행률:</span>
                                             <span className={`text-sm font-black ${reportStats.studentRate >= reportStats.classRate ? 'text-indigo-500' : 'text-rose-500'}`}>{reportStats.studentRate}%</span>
-                                            <span className="text-[10px] text-slate-400">vs {reportStats.classRate}%</span>
+                                            <span className="text-[10px] text-slate-400">(학급 {reportStats.classRate}%)</span>
                                         </div>
                                     </div>
                                     <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 ${reportStats.studentScore >= reportStats.classScore ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-rose-50 border-rose-100 text-rose-500'}`}>
@@ -1153,7 +1153,7 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                             <span>학급 평균</span>
                                         </div>
                                         <div className="h-3 bg-white rounded-full overflow-hidden shadow-sm border border-slate-100">
-                                            <div className="h-full bg-slate-400 transition-all duration-1000 relative" style={{ width: `${animatedWidths.class}%` }}>
+                                            <div className="h-full bg-slate-300 transition-all duration-1000 relative" style={{ width: `${animatedWidths.class}%` }}>
                                                 <div className="absolute top-0 right-0 bottom-0 w-1 bg-white/30"></div>
                                             </div>
                                         </div>
@@ -1184,8 +1184,8 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                                         <div className="flex gap-3"><span className={isLow ? "text-rose-500" : getLevelTextColor(level)}>나 {sRate}%</span><span className="text-slate-400">반 {cRate}%</span></div>
                                                     </div>
                                                     <div className="flex flex-col gap-1.5">
-                                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden w-full"><div className={`h-full ${isLow ? "bg-rose-500" : getLevelColor(level)}`} style={{ width: `${sRate}%` }}></div></div>
-                                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden w-full"><div className="h-full bg-slate-400" style={{ width: `${cRate}%` }}></div></div>
+                                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden w-full"><div className={`h-full ${isLow ? "bg-rose-400" : getLevelColor(level)}`} style={{ width: `${sRate}%` }}></div></div>
+                                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden w-full"><div className="h-full bg-slate-300" style={{ width: `${cRate}%` }}></div></div>
                                                     </div>
                                                 </div>
                                             );
@@ -1769,7 +1769,7 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                                         <div className="text-sm text-slate-500 font-bold mb-3">학급 평균 비교</div>
                                         <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden mb-2">
-                                            <div className="absolute top-0 left-0 h-full bg-indigo-500" style={{ width: `${reportStats.studentRate}%` }}></div>
+                                            <div className="absolute top-0 left-0 h-full bg-indigo-400" style={{ width: `${reportStats.studentRate}%` }}></div>
                                             <div className="absolute top-0 left-0 h-full w-1 bg-black/10" style={{ left: `${reportStats.classRate}%` }}></div>
                                         </div>
                                         <div className="flex justify-between text-xs font-bold text-slate-400">
@@ -1959,7 +1959,7 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                 )}
 
                 {isCalendarOpen && (
-                    <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} currentDate={grassStart} selectionMode="range" onSelectRange={(s, e) => { setGrassStart(s); setGrassEnd(e); }} records={records} appConfig={appConfig} groupsByDate={{}} mode="record" />
+                    <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} currentDate={grassStart} selectionMode="range" onSelectRange={(s, e) => { setGrassStart(s); setGrassEnd(e); }} records={records} appConfig={appConfig} groupsByDate={{}} mode="record" dailyTasks={dailyTasks} zIndex="z-[2000]" />
                 )}
             </div>
         </div>

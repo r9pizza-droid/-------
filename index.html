@@ -1109,7 +1109,7 @@
             );
         };
 
-        const CalendarModal = ({ isOpen, onClose, currentDate, onSelectDate, records, appConfig, groupsByDate, mode, selectionMode = 'single', onSelectRange, customDots }) => {
+        const CalendarModal = ({ isOpen, onClose, currentDate, onSelectDate, records, appConfig, groupsByDate, mode, selectionMode = 'single', onSelectRange, customDots, dailyTasks, zIndex = "z-[1500]" }) => {
             const [viewDate, setViewDate] = useState(dayjs(currentDate));
             const [range, setRange] = useState({ start: null, end: null });
             const [blinkDate, setBlinkDate] = useState(null);
@@ -1161,7 +1161,7 @@
             };
 
             return (
-                <div className="fixed inset-0 bg-black/40 z-[1500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+                <div className={`fixed inset-0 bg-black/40 ${zIndex} flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in`} onClick={onClose}>
                     <div className="bg-white w-full max-w-sm md:max-w-lg rounded-3xl shadow-2xl shadow-indigo-100/50 p-4 md:p-6 transform transition-all" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
@@ -1201,11 +1201,12 @@
                                 const hasRecord = records && records[dateStr] && Object.values(records[dateStr]).some(r => r.done || (r.tasks && Object.values(r.tasks).some(t => t))); 
                                 const hasGroup = groupsByDate && groupsByDate[dateStr] && groupsByDate[dateStr].length > 0; 
                                 const hasCustomDot = customDots && customDots[dateStr];
+                                const hasTask = dailyTasks && dailyTasks[dateStr] && dailyTasks[dateStr].length > 0;
                                 
                                 let showDot = false;
                                 if (mode === 'group') showDot = hasGroup;
                                 else if (mode === 'custom') showDot = hasCustomDot;
-                                else showDot = hasRecord;
+                                else showDot = hasRecord || hasTask;
                                 
                                 let isSelected = false;
                                 let isInRange = false;
@@ -1342,10 +1343,11 @@
                 </div>
             );
         };
-        const TaskModal = ({ isOpen, onClose, date, dailyTasks, setDailyTasks, weeklyTasks, setWeeklyTasks, saveData, isLocalMode, showToast, tags, setTags, openConfirm, saveTasksToFirestore }) => {
+        const TaskModal = ({ isOpen, onClose, date, dailyTasks, setDailyTasks, weeklyTasks, setWeeklyTasks, saveData, isLocalMode, showToast, tags, setTags, openConfirm, saveTasksToFirestore, appConfig, records }) => {
             const [tasks, setTempTasks] = useState([]); const [newTask, setNewTask] = useState(""); const [selectedTag, setSelectedTag] = useState("국어"); const [wTasks, setWTasks] = useState({}); const [wSelectedDays, setWSelectedDays] = useState([]); const [wNewTask, setWNewTask] = useState(""); const [wSelectedTag, setWSelectedTag] = useState("국어");
             const [dueDate, setDueDate] = useState(date); // 🌟 제출일 상태 추가
             
+            const [showCalendar, setShowCalendar] = useState(false);
             // [New] 과제 수정 상태
             const [editingIndex, setEditingIndex] = useState(null);
             const [editTitle, setEditTitle] = useState("");
@@ -1483,13 +1485,14 @@
                                 {/* 입력 폼 */}
                                 <div className="flex flex-col gap-2">
                                     <div className="flex gap-2 items-center">
-                                        <div className="relative group">
+                                        <div className="relative group flex items-center">
                                             <input 
                                                 type="date" 
                                                 value={dueDate} 
                                                 onChange={e => setDueDate(e.target.value)} 
                                                 className="w-32 p-2 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded border border-transparent hover:border-slate-200 transition-all outline-none cursor-pointer" 
                                             />
+                                            <button onClick={() => setShowCalendar(true)} className="ml-1 p-2 bg-slate-100 rounded-lg text-slate-500 hover:bg-slate-200 transition-colors" title="달력 보기"><Icon d={PATHS.calendar} size={16}/></button>
                                         </div>
                                         <div className="flex-1 relative">
                                             <input 
@@ -1624,6 +1627,18 @@
                                 </div>
                             </div>
                         </section>
+                        {showCalendar && (
+                            <CalendarModal 
+                                isOpen={showCalendar} 
+                                onClose={() => setShowCalendar(false)} 
+                                currentDate={dueDate} 
+                                onSelectDate={(d) => { setDueDate(d); setShowCalendar(false); }} 
+                                records={records} 
+                                appConfig={appConfig} 
+                                dailyTasks={dailyTasks}
+                                zIndex="z-[2500]"
+                            />
+                        )}
                     </div>
                 </BaseModal>
             );
@@ -12760,10 +12775,10 @@ const firebaseConfig = {
                     <GoogleSheetSetupModal isOpen={isGoogleSheetSetupOpen} onClose={() => setIsGoogleSheetSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} />
                     <ApiKeySetupModal isOpen={isApiKeySetupOpen} onClose={() => setIsApiKeySetupOpen(false)} apiKey={apiKey} setApiKey={setApiKey} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} validateApiKey={validateApiKey} />
                     <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} onInstall={confirmInstall} isIOS={isIOS} />
-                    <TaskModal isOpen={isTaskModalOpen} onClose={()=>setIsTaskModalOpen(false)} date={date} dailyTasks={dailyTasks} setDailyTasks={setDailyTasks} weeklyTasks={weeklyTasks} setWeeklyTasks={setWeeklyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} tags={tags} setTags={setTags} openConfirm={openConfirm} saveTasksToFirestore={saveTasksToFirestore} />
-                    <CalendarModal isOpen={isCalendarOpen} onClose={()=>setIsCalendarOpen(false)} currentDate={date} onSelectDate={setDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
-                    <CalendarModal isOpen={isRangeCalendarOpen} onClose={()=>setIsRangeCalendarOpen(false)} currentDate={date} selectionMode="range" onSelectRange={handleRangeSelect} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} />
-                    <CalendarModal isOpen={isLoadGroupCalendarOpen} onClose={()=>setIsLoadGroupCalendarOpen(false)} currentDate={date} onSelectDate={loadGroupsFromDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode="group" />
+                    <TaskModal isOpen={isTaskModalOpen} onClose={()=>setIsTaskModalOpen(false)} date={date} dailyTasks={dailyTasks} setDailyTasks={setDailyTasks} weeklyTasks={weeklyTasks} setWeeklyTasks={setWeeklyTasks} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} tags={tags} setTags={setTags} openConfirm={openConfirm} saveTasksToFirestore={saveTasksToFirestore} appConfig={appConfig} records={records} />
+                    <CalendarModal isOpen={isCalendarOpen} onClose={()=>setIsCalendarOpen(false)} currentDate={date} onSelectDate={setDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} dailyTasks={dailyTasks} />
+                    <CalendarModal isOpen={isRangeCalendarOpen} onClose={()=>setIsRangeCalendarOpen(false)} currentDate={date} selectionMode="range" onSelectRange={handleRangeSelect} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} dailyTasks={dailyTasks} />
+                    <CalendarModal isOpen={isLoadGroupCalendarOpen} onClose={()=>setIsLoadGroupCalendarOpen(false)} currentDate={date} onSelectDate={loadGroupsFromDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode="group" dailyTasks={dailyTasks} />
                     <RoleHelpModal isOpen={showRoleHelp} onClose={()=>setShowRoleHelp(false)} roleDescriptions={roleDescriptions} />
                     <RoleEditModal isOpen={isRoleEditOpen} onClose={() => setIsRoleEditOpen(false)} roles={rolesList} onSave={handleSaveRoles} roleDescriptions={roleDescriptions} onSaveDescriptions={handleSaveRoleDescriptions} />
                     <RoleSelectModal isOpen={!!editingRoleTarget} onClose={() => setEditingRoleTarget(null)} roles={rolesList} currentRole={editingRoleTarget?.currentRole} onSelect={(newRole) => handleRoleChange(editingRoleTarget.gIdx, editingRoleTarget.sIdx, newRole)} />
