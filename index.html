@@ -7624,6 +7624,11 @@ const firebaseConfig = {
             const [expandedInPlacePosts, setExpandedInPlacePosts] = useState({});
 
             const toggleInPlacePost = (postId) => {
+                if (!isLoggedIn) {
+                    setToastMessage("글 내용을 보려면 로그인이 필요합니다.");
+                    setIsSetupOpen(true);
+                    return;
+                }
                 setExpandedInPlacePosts(prev => ({
                     ...prev,
                     [postId]: !prev[postId]
@@ -7678,6 +7683,11 @@ const firebaseConfig = {
             }, [communityPosts]);
 
             const handleWriteClick = () => {
+                if (!isLoggedIn) {
+                    setToastMessage("글을 쓰려면 로그인이 필요합니다.");
+                    setIsSetupOpen(true);
+                    return;
+                }
                 if (!userNickname) {
                     setShowNicknameModal(true);
                     return;
@@ -8229,6 +8239,11 @@ const firebaseConfig = {
 
     // [New] 게시글 상세 뷰 열기/닫기 함수
     const handleOpenPostDetail = (post) => {
+        if (!isLoggedIn) {
+            setToastMessage("글 내용을 보려면 로그인이 필요합니다.");
+            setIsSetupOpen(true);
+            return;
+        }
         setSelectedPost(post);
         setIsPostDetailOpen(true);
         
@@ -11885,16 +11900,6 @@ const firebaseConfig = {
                                 </div>
                             )}
                             {mode === 'community' && (
-                                !isLoggedIn ? (
-                                    <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4 animate-fade-in">
-                                        <div className="text-6xl mb-2">🔒</div>
-                                        <h3 className="text-xl font-bold text-slate-800">로그인이 필요합니다</h3>
-                                        <p className="text-slate-500 text-sm">게시판을 이용(글쓰기, 조회)하려면<br/>Firebase 로그인이 필요합니다.</p>
-                                        <button onClick={() => setIsSetupOpen(true)} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-transform active:scale-95">
-                                            로그인 / 연결 설정
-                                        </button>
-                                    </div>
-                                ) : (
                                 <div className="max-w-3xl mx-auto pb-10 relative min-h-[80vh]">
                                     <div className="grid grid-cols-1 grid-rows-1 transition-all duration-300">
                                         
@@ -12595,7 +12600,6 @@ const firebaseConfig = {
                                         </div>
                                     </div>
                                 </div>
-                                )
                             )}
                         </div>
                         <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden flex items-start justify-center pt-3 pb-[calc(3.5rem+env(safe-area-inset-bottom)+0.01rem)] text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors bg-slate-50 border-t border-slate-200 -mx-4 mt-4">{CURRENT_VERSION} | spk </footer>
