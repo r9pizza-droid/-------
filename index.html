@@ -3225,50 +3225,8 @@
                 if (!sharedDb) return;
                 setIsLoadingUsers(true);
                 try {
-                    const snapshot = await sharedDb.collection('userProfiles').get();
-                    const usersMap = {};
-                    snapshot.docs.forEach(doc => {
-                        usersMap[doc.id] = { uid: doc.id, ...doc.data() };
-                    });
-
-                    const postsSnap = await sharedDb.collection('community').get();
-                    const batch = sharedDb.batch();
-                    let addedCount = 0;
-                    let updatedCount = 0;
-                    let missingUidCount = 0;
-
-                    postsSnap.docs.forEach(doc => {
-                        const post = doc.data();
-                        if (post.uid) {
-                            if (!usersMap[post.uid]) {
-                                const newUser = { uid: post.uid, name: post.authorName || "알 수 없음", createdAt: post.createdAt || new Date(), recovered: true };
-                                batch.set(sharedDb.collection('userProfiles').doc(post.uid), newUser);
-                                usersMap[post.uid] = newUser;
-                                addedCount++;
-                            } else if ((!usersMap[post.uid].name || usersMap[post.uid].name === "(이름 없음)") && post.authorName) {
-                                batch.set(sharedDb.collection('userProfiles').doc(post.uid), { name: post.authorName }, { merge: true });
-                                usersMap[post.uid].name = post.authorName;
-                                updatedCount++;
-                            }
-                        } else {
-                            missingUidCount++;
-                        }
-                    });
-
-                    if (addedCount > 0 || updatedCount > 0 || missingUidCount > 0) { 
-                        await batch.commit(); 
-                        let msg = `게시글 기반으로 ${addedCount}명을 복구하고, ${updatedCount}명의 정보를 갱신했습니다.`;
-                        if (missingUidCount > 0) msg += ` (UID 누락 게시글 ${missingUidCount}건 제외)`;
-                        showToast(msg); 
-                    }
-
-                    const users = Object.values(usersMap);
-                    users.sort((a, b) => {
-                        const getMillis = (t) => t ? (t.toMillis ? t.toMillis() : (t instanceof Date ? t.getTime() : 0)) : 0;
-                        const tA = getMillis(a.createdAt);
-                        const tB = getMillis(b.createdAt);
-                        return tB - tA;
-                    });
+                    const snapshot = await sharedDb.collection('userProfiles').orderBy('createdAt', 'desc').get();
+                    const users = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
                     setUserList(users);
                 } catch (e) { console.error(e); showToast("사용자 목록 로딩 실패"); }
                 finally { setIsLoadingUsers(false); }
@@ -3392,45 +3350,41 @@
             };
 
             const handleTestCommentLikeNotification = async () => {
-                if (firebase.apps.length > 0) {
-                    const user = firebase.auth().currentUser;
-                    if (!user) {
-                        setToastMessage("알림 테스트를 위해서는 로그인이 필요합니다. (게시판 등에서 로그인)");
-                        return;
-                    }
-                    if (!sharedDb) {
-                        setToastMessage("서버 연결 상태를 확인해주세요.");
-                        return;
-                    }
+                const user = firebase.auth().currentUser;
+                if (!user) {
+                    setToastMessage("알림 테스트를 위해서는 로그인이 필요합니다. (게시판 등에서 로그인)");
+                    return;
+                }
+                if (!sharedDb) {
+                    setToastMessage("서버 연결 상태를 확인해주세요.");
+                    return;
+                }
 
-                    try {
-                        await sharedDb.collection('notifications').add({
-                            targetUid: user.uid,
-                            type: 'like',
-                            postId: 'test-post',
-                            postTitle: '테스트 게시글',
-                            senderName: '테스트 봇',
-                            message: "누군가 회원님의 글에 좋아요를 눌렀습니다. (테스트)",
-                            isRead: false,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        await sharedDb.collection('notifications').add({
-                            targetUid: user.uid,
-                            type: 'comment',
-                            postId: 'test-post',
-                            postTitle: '테스트 게시글',
-                            senderName: '테스트 봇',
-                            message: `테스트 봇님이 댓글을 남겼습니다: "알림 테스트입니다."`,
-                            isRead: false,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        setToastMessage("테스트 알림을 발송했습니다. (종 모양 아이콘 확인)");
-                    } catch (e) {
-                        console.error(e);
-                        setToastMessage("알림 발송 실패: " + e.message);
-                    }
-                } else {
-                    setToastMessage("Firebase 연결을 확인해주세요.");
+                try {
+                    await sharedDb.collection('notifications').add({
+                        targetUid: user.uid,
+                        type: 'like',
+                        postId: 'test-post',
+                        postTitle: '테스트 게시글',
+                        senderName: '테스트 봇',
+                        message: "누군가 회원님의 글에 좋아요를 눌렀습니다. (테스트)",
+                        isRead: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    await sharedDb.collection('notifications').add({
+                        targetUid: user.uid,
+                        type: 'comment',
+                        postId: 'test-post',
+                        postTitle: '테스트 게시글',
+                        senderName: '테스트 봇',
+                        message: `테스트 봇님이 댓글을 남겼습니다: "알림 테스트입니다."`,
+                        isRead: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    setToastMessage("테스트 알림을 발송했습니다. (종 모양 아이콘 확인)");
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("알림 발송 실패: " + e.message);
                 }
             };
 
@@ -4607,8 +4561,8 @@
                                         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-fade-in mt-6">
                                             <div className="flex justify-between items-center mb-4">
                                                 <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm"><span className="text-lg">👑</span> 관리자 메뉴: 사용자 관리</h4>
-                                                <Btn onClick={fetchUserList} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100" title="게시글 기반으로 누락된 사용자를 찾아 복구합니다.">
-                                                    {isLoadingUsers ? "로딩 중..." : "명단 불러오기(복구)"}
+                                                <Btn onClick={fetchUserList} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100">
+                                                    {isLoadingUsers ? "로딩 중..." : "목록 불러오기"}
                                                 </Btn>
                                             </div>
                                             <div className="max-h-60 overflow-y-auto custom-scroll space-y-2">
@@ -6265,7 +6219,6 @@
             const [rememberMe, setRememberMe] = useState(false);
             const [showManual, setShowManual] = useState(false);
             const [isTesting, setIsTesting] = useState(false);
-            const [isConnecting, setIsConnecting] = useState(false);
 
             useEffect(() => {
                 if (isOpen) {
@@ -6299,11 +6252,10 @@
 
                 if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
 
-                setIsConnecting(true);
                 try {
-                    const oldDefaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
-                    if (oldDefaultApp) { await oldDefaultApp.delete(); }
-                    firebase.initializeApp(config);
+                    if (!firebase.apps.some(app => app.name === '[DEFAULT]')) {
+                        firebase.initializeApp(config);
+                    }
                     await firebase.auth().signInWithEmailAndPassword(authId, authPw); 
                     if (rememberMe) { localStorage.setItem('cls_fb_id', authId); localStorage.setItem('cls_fb_pw', authPw); localStorage.setItem('cls_fb_config', inputConfig); } 
                     else { localStorage.removeItem('cls_fb_id'); localStorage.removeItem('cls_fb_pw'); localStorage.removeItem('cls_fb_config'); }
@@ -6312,9 +6264,7 @@
                     let errMsg = "연결 실패: " + e.message;
                     if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
                     showToast(errMsg); logSystemEvent(errMsg, 'error');
-                } finally {
-                    setIsConnecting(false);
-                }
+                } 
             };
 
             const handleTest = async () => {
@@ -6325,9 +6275,9 @@
 
                 setIsTesting(true);
                 try {
-                    const oldDefaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
-                    if (oldDefaultApp) { await oldDefaultApp.delete(); }
-                    firebase.initializeApp(config);
+                    if (!firebase.apps.some(app => app.name === '[DEFAULT]')) {
+                        firebase.initializeApp(config);
+                    }
                     await firebase.auth().signInWithEmailAndPassword(authId, authPw);
                     showToast("✅ 연결 테스트 성공! (로그인 확인됨)");
                 } catch (e) {
@@ -6382,13 +6332,13 @@
                                 <ol className="list-decimal pl-4 space-y-1">
                                     <li>좌측 메뉴 <strong>Build &gt; Firestore Database</strong> &gt; Create database</li>
                                     <li><strong>Rules</strong> 탭 클릭 &gt; 아래 코드로 교체 &gt; <strong>Publish</strong></li>
-                                    <li>(주의) 코드 내 <code>'선생님의_고유_UID'</code> 부분은 <strong>Authentication &gt; Users</strong> 탭에서 방금 생성한 이메일의 <strong>User UID</strong> 값을 복사하여 붙여넣으세요. (UID에 마우스를 올리면 복사 아이콘이 뜹니다)</li>
+                                    <li>(주의) 코드 내 <code>'개인UID를 넣어주세요'</code> 부분은 <strong>Authentication &gt; Users</strong> 탭에서 방금 생성한 이메일의 <strong>User UID</strong> 값을 복사하여 붙여넣으세요. (UID에 마우스를 올리면 복사 아이콘이 뜹니다)</li>
                                 </ol>
                                 <div className="relative mt-2 group">
                                     <div className="bg-slate-800 text-green-400 p-3 rounded-lg font-mono text-[10px] overflow-x-auto whitespace-pre border border-slate-700 shadow-inner selection:bg-green-900 selection:text-white">
-{`rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      // 로그인도 되어야 하고, 그 사람의 UID가 아래와 정확히 일치해야 함!\n      allow read, write: if request.auth != null && request.auth.uid == '선생님의_고유_UID';\n    }\n  }\n}`}
+{`rules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // 모든 문서({document=**})에 대하여\n    match /{document=**} {\n      \n      // 1. 반드시 로그인이 되어 있어야 하며\n      // 2. 로그인한 사용자의 UID가 사용자님의 UID와 일치할 때만 모든 읽기/쓰기를 허용합니다.\n      allow read, write: if request.auth != null && request.auth.uid == '개인UID를 넣어주세요';\n      \n    }\n  }\n}`}
                                     </div>
-                                    <button onClick={() => { const code = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      // 로그인도 되어야 하고, 그 사람의 UID가 아래와 정확히 일치해야 함!\n      allow read, write: if request.auth != null && request.auth.uid == '선생님의_고유_UID';\n    }\n  }\n}"; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                                    <button onClick={() => { const code = "rules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // 모든 문서({document=**})에 대하여\n    match /{document=**} {\n      \n      // 1. 반드시 로그인이 되어 있어야 하며\n      // 2. 로그인한 사용자의 UID가 사용자님의 UID와 일치할 때만 모든 읽기/쓰기를 허용합니다.\n      allow read, write: if request.auth != null && request.auth.uid == '개인UID를 넣어주세요';\n      \n    }\n  }\n}"; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
                                         <Icon d={PATHS.copy} size={12} /> 코드 복사
                                     </button>
                                 </div>
@@ -7106,15 +7056,14 @@ const firebaseConfig = {
         let sharedApp;
         let sharedDb;
         try {
-            // 1. "sharedBoard"라는 이름의 앱이 이미 있는지 확인합니다.
-            const existingApp = firebase.apps.find(app => app.name === "sharedBoard");
-
-            if (existingApp) {
-                sharedApp = existingApp;
-            } else {
-                // 2. 없으면 "sharedBoard" 이름으로 초기화하여 기본 앱([DEFAULT]) 자리를 뺏지 않도록 합니다.
-                sharedApp = firebase.initializeApp(sharedFirebaseConfig, "sharedBoard");
-            }
+        // 1. 이미 초기화된 앱이 있는지 확인합니다.
+         if (!firebase.apps.length) {
+        // 2. 이름을 넣지 않고 초기화하여 '기본 앱([DEFAULT])'으로 만듭니다.
+        sharedApp = firebase.initializeApp(sharedFirebaseConfig);
+        } else {
+        // 3. 이미 있다면 기본 앱을 그대로 가져옵니다.
+        sharedApp = firebase.app();
+        }
     
     // 4. 게시판에서 사용할 데이터베이스(Firestore)를 연결합니다.
     sharedDb = sharedApp.firestore();
@@ -7213,19 +7162,17 @@ const firebaseConfig = {
 
             useEffect(() => {
                 if (!sharedDb) return;
-                if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
-                    const unsubscribe = firebase.auth().onAuthStateChanged(user => {
-                        if (user) {
-                            const unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
-                                if (doc.exists) setCurrentUserStats(doc.data());
-                                else setCurrentUserStats({ postCount: 0, commentCount: 0 });
-                            });
-                        } else {
-                            setCurrentUserStats({ postCount: 0, commentCount: 0 });
-                        }
-                    });
-                    return () => unsubscribe();
-                }
+                const unsubscribe = firebase.auth().onAuthStateChanged(user => {
+                    if (user) {
+                        const unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
+                            if (doc.exists) setCurrentUserStats(doc.data());
+                            else setCurrentUserStats({ postCount: 0, commentCount: 0 });
+                        });
+                    } else {
+                        setCurrentUserStats({ postCount: 0, commentCount: 0 });
+                    }
+                });
+                return () => unsubscribe();
             }, [sharedDb]);
 
             // ==========================================
@@ -7239,35 +7186,52 @@ const firebaseConfig = {
     // 게시판(community) 입장 시 별칭 확인
     useEffect(() => {
         if (mode === 'community') {
+            // [New] 접속 기록 업데이트 함수
+            const updateStats = (name) => {
+                const user = firebase.auth().currentUser;
+                if (user && sharedDb) {
+                    sharedDb.collection('userStats').doc(user.uid).set({
+                        uid: user.uid,
+                        lastActive: new Date(),
+                        nickname: name
+                    }, { merge: true }).catch(e => console.error("Stats update failed", e));
+
+                    // [New] 사용자 프로필에도 등록 (관리자 목록용)
+                    sharedDb.collection('userProfiles').doc(user.uid).set({
+                        uid: user.uid,
+                        name: name,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true }).catch(e => console.error("Profile update failed", e));
+                }
+            };
+
             // 내 컴퓨터에 이미 저장된 이름이 있다면 묻지도 따지지도 않고 통과!
             const savedName = localStorage.getItem('myBoardName');
             if (savedName) {
                 setUserNickname(savedName);
                 setShowNicknameModal(false);
+                updateStats(savedName); // [New] 접속 기록 업데이트
                 return; 
             }
 
             // 내 컴퓨터에 없다면 파이어베이스 서버에 물어봅니다. (지연 시간 대비)
             const checkFirebase = () => {
-                if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
-                    const user = firebase.auth().currentUser;
-                    if (user && sharedDb) {
-                        sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
-                            if (doc.exists && doc.data().name) {
-                                const fetchedName = doc.data().name;
-                                setUserNickname(fetchedName);
-                                localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
-                                setShowNicknameModal(false);
-                            } else {
-                                setShowNicknameModal(true);
-                            }
-                        }).catch(e => console.error("별칭 확인 오류:", e));
-                    } else {
-                        // 로그인이 아직 확인 안 된 찰나의 순간에는 잠시 모달을 띄웁니다.
-                        setShowNicknameModal(true); 
-                    }
+                const user = firebase.auth().currentUser;
+                if (user && sharedDb) {
+                    sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
+                        if (doc.exists && doc.data().name) {
+                            const fetchedName = doc.data().name;
+                            setUserNickname(fetchedName);
+                            localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
+                            setShowNicknameModal(false);
+                            updateStats(fetchedName); // [New] 접속 기록 업데이트
+                        } else {
+                            setShowNicknameModal(true);
+                        }
+                    }).catch(e => console.error("별칭 확인 오류:", e));
                 } else {
-                    setShowNicknameModal(true);
+                    // 로그인이 아직 확인 안 된 찰나의 순간에는 잠시 모달을 띄웁니다.
+                    setShowNicknameModal(true); 
                 }
             };
 
@@ -7293,6 +7257,13 @@ const firebaseConfig = {
                     name: tempNickname.trim(),
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+
+                // [New] 접속 통계에도 저장
+                await sharedDb.collection('userStats').doc(user.uid).set({
+                    uid: user.uid,
+                    lastActive: new Date(),
+                    nickname: tempNickname.trim()
+                }, { merge: true });
             }
             
             // 2. 내 컴퓨터(브라우저)에도 강력하게 저장!! (이게 핵심입니다)
@@ -7320,116 +7291,11 @@ const firebaseConfig = {
 
             const ADMIN_UID = 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2';
             const [isAdmin, setIsAdmin] = useState(false);
-            const [isLoggedIn, setIsLoggedIn] = useState(false);
-            const [isCurrentUserBlocked, setIsCurrentUserBlocked] = useState(false);
             
             // [New] 관리자 대시보드 상태 및 함수
             const [showAdminDashboard, setShowAdminDashboard] = useState(false);
             const [adminStats, setAdminStats] = useState({ posts: 0, comments: 0, notis: 0 });
             const [isLoadingStats, setIsLoadingStats] = useState(false);
-            
-            // [New] 게시판 사용자 관리 (관리자 전용)
-            const [showUserManagementModal, setShowUserManagementModal] = useState(false);
-            const [manageUserList, setManageUserList] = useState([]);
-            const [isLoadingManageUsers, setIsLoadingManageUsers] = useState(false);
-
-            const fetchManageUsers = async () => {
-                if (!sharedDb) return;
-                setIsLoadingManageUsers(true);
-                try {
-                    const profilesSnap = await sharedDb.collection('userProfiles').get();
-                    const usersMap = {};
-                    profilesSnap.docs.forEach(doc => {
-                        usersMap[doc.id] = {
-                            uid: doc.id,
-                            name: doc.data().name || "(이름 없음)",
-                            createdAt: doc.data().createdAt,
-                            blocked: doc.data().blocked || false
-                        };
-                    });
-                    
-                    const postsSnap = await sharedDb.collection('community').get();
-                    const batch = sharedDb.batch();
-                    let addedCount = 0;
-                    let updatedCount = 0;
-                    let missingUidCount = 0;
-
-                    postsSnap.docs.forEach(doc => {
-                        const post = doc.data();
-                        if (post.uid) {
-                            if (!usersMap[post.uid]) {
-                                const newUser = { uid: post.uid, name: post.authorName || "알 수 없음", createdAt: post.createdAt || new Date(), recovered: true };
-                                batch.set(sharedDb.collection('userProfiles').doc(post.uid), newUser);
-                                usersMap[post.uid] = { uid: post.uid, name: newUser.name, createdAt: newUser.createdAt, blocked: false };
-                                addedCount++;
-                            } else if ((!usersMap[post.uid].name || usersMap[post.uid].name === "(이름 없음)") && post.authorName) {
-                                batch.set(sharedDb.collection('userProfiles').doc(post.uid), { name: post.authorName }, { merge: true });
-                                usersMap[post.uid].name = post.authorName;
-                                updatedCount++;
-                            }
-                        } else {
-                            missingUidCount++;
-                        }
-                    });
-
-                    if (addedCount > 0 || updatedCount > 0 || missingUidCount > 0) { 
-                        await batch.commit(); 
-                        let msg = `게시글 기반으로 ${addedCount}명을 복구하고, ${updatedCount}명의 정보를 갱신했습니다.`;
-                        if (missingUidCount > 0) msg += ` (UID 누락 게시글 ${missingUidCount}건 제외)`;
-                        setToastMessage(msg); 
-                    }
-
-                    const users = Object.values(usersMap);
-                    users.sort((a, b) => {
-                        const getMillis = (t) => t ? (t.toMillis ? t.toMillis() : (t instanceof Date ? t.getTime() : 0)) : 0;
-                        const tA = getMillis(a.createdAt);
-                        const tB = getMillis(b.createdAt);
-                        return tB - tA;
-                    });
-                    setManageUserList(users);
-                } catch (e) {
-                    console.error(e);
-                    setToastMessage("사용자 목록 로딩 실패: " + e.message);
-                } finally {
-                    setIsLoadingManageUsers(false);
-                }
-            };
-
-            const handleAdminUpdateNickname = async (uid, currentName) => {
-                const newName = prompt("새로운 닉네임을 입력하세요:", currentName);
-                if (newName && newName.trim() !== "" && newName !== currentName) {
-                    try {
-                        await sharedDb.collection('userProfiles').doc(uid).update({ name: newName.trim() });
-                        setToastMessage("닉네임이 수정되었습니다.");
-                        fetchManageUsers();
-                    } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
-                }
-            };
-
-            const handleAdminToggleBlock = async (uid, name, currentStatus) => {
-                const action = currentStatus ? "차단 해제" : "차단";
-                if (confirm(`'${name}' 사용자를 ${action}하시겠습니까?\n(차단 시 글쓰기와 댓글 작성이 제한됩니다.)`)) {
-                    try {
-                        await sharedDb.collection('userProfiles').doc(uid).set({ blocked: !currentStatus }, { merge: true });
-                        setToastMessage(`사용자가 ${action}되었습니다.`);
-                        fetchManageUsers();
-                    } catch (e) { console.error(e); setToastMessage("처리 실패: " + e.message); }
-                }
-            };
-
-            const handleAdminResetUser = async (uid, name) => {
-                if (confirm(`'${name}' 사용자의 데이터를 초기화하시겠습니까?\n(닉네임 정보와 활동 통계가 삭제되어, 재접속 시 닉네임을 다시 설정해야 합니다.)`)) {
-                    try {
-                        const batch = sharedDb.batch();
-                        batch.delete(sharedDb.collection('userProfiles').doc(uid));
-                        batch.delete(sharedDb.collection('userStats').doc(uid));
-                        await batch.commit();
-                        setToastMessage("사용자 데이터가 초기화되었습니다.");
-                        fetchManageUsers();
-                    } catch (e) { console.error(e); setToastMessage("초기화 실패: " + e.message); }
-                }
-            };
-
             const [adminLevelConfig, setAdminLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60 });
 
             const handleOpenAdminDashboard = async () => {
@@ -7443,14 +7309,12 @@ const firebaseConfig = {
                     const todayStart = new Date();
                     todayStart.setHours(0, 0, 0, 0);
 
-                    const [postsSnap, commentsSnap, notisSnap, usersSnap, blockedUsersSnap] = await Promise.all([
+                    const [postsSnap, commentsSnap, notisSnap] = await Promise.all([
                         sharedDb.collection('community').get(),
                         sharedDb.collectionGroup('comments').get(),
                         sharedDb.collection('notifications')
                             .where('createdAt', '>=', todayStart)
-                            .get(),
-                        sharedDb.collection('userProfiles').get(),
-                        sharedDb.collection('userProfiles').where('blocked', '==', true).get()
+                            .get()
                     ]);
 
                     // [Fix] 데이터 용량 계산 추가 (App 컴포넌트 내 dataUsage 변수 부재 해결)
@@ -7467,8 +7331,6 @@ const firebaseConfig = {
                         posts: postsSnap.size,
                         comments: commentsSnap.size,
                         notis: notisSnap.size,
-                        users: usersSnap.size,
-                        blockedUsers: blockedUsersSnap.size,
                         kb: kb,
                         percent: percent
                     });
@@ -7549,100 +7411,80 @@ const firebaseConfig = {
 
             useEffect(() => {
                 try {
-                    if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
-                        const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
-                            setIsLoggedIn(!!user);
-                            setIsAdmin(!!user && user.uid === ADMIN_UID);
-                            if (user) {
-                                sharedDb.collection('userProfiles').doc(user.uid).onSnapshot(doc => {
-                                    if (doc.exists) setIsCurrentUserBlocked(!!doc.data().blocked);
-                                    else setIsCurrentUserBlocked(false);
-                                });
-                            } else {
-                                setIsCurrentUserBlocked(false);
-                            }
-                        });
-                        return () => unsubscribe();
-                    } else {
-                        setIsLoggedIn(false);
-                        setIsAdmin(false);
-                    }
-                } catch (e) { setIsLoggedIn(false); setIsAdmin(false); setIsCurrentUserBlocked(false); }
+                    const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+                        setIsAdmin(!!user && user.uid === ADMIN_UID);
+                    });
+                    return () => unsubscribe();
+                } catch (e) {}
             }, [isLocalMode]);
 
             // [New] 알림 구독 및 처리 로직
             useEffect(() => {
                 if (!sharedDb) return;
-                if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
-                    const unsubscribeAuth = firebase.auth().onAuthStateChanged(user => {
-                        if (user) {
-                            isNotiFirstLoad.current = true;
-                            const unsubscribeNoti = sharedDb.collection('notifications')
-                                .where('targetUid', '==', user.uid)
-                                .orderBy('createdAt', 'desc')
-                                .limit(50)
-                                .onSnapshot(snapshot => {
-                                    const notis = snapshot.docs.map(doc => ({
-                                        id: doc.id,
-                                        ...doc.data(),
-                                        createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
-                                    }));
-                                    setNotifications(notis);
+                const unsubscribeAuth = firebase.auth().onAuthStateChanged(user => {
+                    if (user) {
+                        isNotiFirstLoad.current = true;
+                        const unsubscribeNoti = sharedDb.collection('notifications')
+                            .where('targetUid', '==', user.uid)
+                            .orderBy('createdAt', 'desc')
+                            .limit(50)
+                            .onSnapshot(snapshot => {
+                                const notis = snapshot.docs.map(doc => ({
+                                    id: doc.id,
+                                    ...doc.data(),
+                                    createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
+                                }));
+                                setNotifications(notis);
 
-                                    if (!isNotiFirstLoad.current && appConfig && appConfig.enablePushNotifications && appConfig.enableNotifications !== false) {
-                                        snapshot.docChanges().forEach(change => {
-                                            if (change.type === 'added') {
-                                                const newNoti = change.doc.data();
-                                                if (!newNoti.isRead && Notification.permission === 'granted') {
-                                                    try {
-                                                        new Notification("다했나요? 알림", {
-                                                            body: newNoti.message,
-                                                            icon: appConfig.favicon || undefined
-                                                        });
-                                                    } catch (e) { console.error(e); }
-                                                }
+                                if (!isNotiFirstLoad.current && appConfig && appConfig.enablePushNotifications && appConfig.enableNotifications !== false) {
+                                    snapshot.docChanges().forEach(change => {
+                                        if (change.type === 'added') {
+                                            const newNoti = change.doc.data();
+                                            if (!newNoti.isRead && Notification.permission === 'granted') {
+                                                try {
+                                                    new Notification("다했나요? 알림", {
+                                                        body: newNoti.message,
+                                                        icon: appConfig.favicon || undefined
+                                                    });
+                                                } catch (e) { console.error(e); }
                                             }
-                                        });
-                                    }
-                                    isNotiFirstLoad.current = false;
-                                }, err => console.error("알림 동기화 오류:", err));
-                            return () => unsubscribeNoti();
-                        } else {
-                            setNotifications([]);
-                        }
-                    });
-                    return () => unsubscribeAuth();
-                }
+                                        }
+                                    });
+                                }
+                                isNotiFirstLoad.current = false;
+                            }, err => console.error("알림 동기화 오류:", err));
+                        return () => unsubscribeNoti();
+                    } else {
+                        setNotifications([]);
+                    }
+                });
+                return () => unsubscribeAuth();
             }, [sharedDb, appConfig]);
 
             // ==========================================
     // 🔔 알림 테스트 발송 함수 (하얀 화면 해결용)
     // ==========================================
             const handleTestCommentLikeNotification = async () => {
-                if (firebase.apps.some(app => app.name === '[DEFAULT]')) {
-                    const user = firebase.auth().currentUser;
-                    if (!user) {
-                        alert("로그인이 필요합니다.");
-                        return;
-                    }
-                    if (!sharedDb) return;
-            
-                    try {
-                        await sharedDb.collection('notifications').add({
-                            targetUid: user.uid,
-                            type: 'test',
-                            postId: 'test-post',
-                            message: "🔔 테스트: 알림 기능이 정상적으로 작동하고 있습니다!",
-                            isRead: false,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    setToastMessage("테스트 알림이 발송되었습니다!");
-                    } catch (e) {
-                        console.error("알림 발송 실패:", e);
-                    }
-                } else {
-                    setToastMessage("Firebase 연결을 확인해주세요.");
+                const user = firebase.auth().currentUser;
+                if (!user) {
+                    alert("로그인이 필요합니다.");
+                    return;
                 }
+                if (!sharedDb) return;
+        
+                try {
+                    await sharedDb.collection('notifications').add({
+                        targetUid: user.uid,
+                        type: 'test',
+                        postId: 'test-post',
+                        message: "🔔 테스트: 알림 기능이 정상적으로 작동하고 있습니다!",
+                        isRead: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                setToastMessage("테스트 알림이 발송되었습니다!");
+            } catch (e) {
+                console.error("알림 발송 실패:", e);
+            }
             };
     // ==========================================
 
@@ -7733,11 +7575,6 @@ const firebaseConfig = {
             const [expandedInPlacePosts, setExpandedInPlacePosts] = useState({});
 
             const toggleInPlacePost = (postId) => {
-                if (!isLoggedIn) {
-                    setToastMessage("글 내용을 보려면 로그인이 필요합니다.");
-                    setIsSetupOpen(true);
-                    return;
-                }
                 setExpandedInPlacePosts(prev => ({
                     ...prev,
                     [postId]: !prev[postId]
@@ -7750,7 +7587,7 @@ const firebaseConfig = {
                     .filter(post => !filterCategory || post.category === filterCategory)
                     .filter(post => {
                         if (showMyPosts) {
-                            const user = firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser : null;
+                            const user = firebase.auth().currentUser;
                             if (!user || post.uid !== user.uid) return false;
                         }
                         if (!postSearchTerm) return true;
@@ -7792,15 +7629,6 @@ const firebaseConfig = {
             }, [communityPosts]);
 
             const handleWriteClick = () => {
-                if (!isLoggedIn) {
-                    setToastMessage("글을 쓰려면 로그인이 필요합니다.");
-                    setIsSetupOpen(true);
-                    return;
-                }
-                if (isCurrentUserBlocked) {
-                    setToastMessage("관리자에 의해 글쓰기가 제한되었습니다.");
-                    return;
-                }
                 if (!userNickname) {
                     setShowNicknameModal(true);
                     return;
@@ -8151,28 +7979,8 @@ const firebaseConfig = {
                 try {
                      // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
                      setCommentAuthor(userNickname);
-
-                     // [New] 사용자 프로필 동기화 (글 작성/수정 시 항상 실행하여 누락 방지)
+                     
                      const user = firebase.auth().currentUser;
-
-                     if (!user || !user.uid) {
-                         setToastMessage("사용자 식별 정보(UID)가 확인되지 않습니다.\n안전한 이용을 위해 다시 로그인해주세요.");
-                         return;
-                     }
-
-                     if (user) {
-                         const profileRef = sharedDb.collection('userProfiles').doc(user.uid);
-                         const profileDoc = await profileRef.get();
-                         if (!profileDoc.exists) {
-                             await profileRef.set({
-                                 uid: user.uid,
-                                 name: userNickname,
-                                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                             });
-                         } else {
-                             await profileRef.set({ name: userNickname, lastActiveAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-                         }
-                     }
 
                      if (editingPost) {
                         const updatedData = {
@@ -8190,7 +7998,6 @@ const firebaseConfig = {
                     } else {
                         // [New] 뱃지 시스템: 글 작성 시 통계 업데이트 및 뱃지 획득
                         let currentBadge = '🌱';
-                        // const user = firebase.auth().currentUser; // 위에서 정의함
                         if (user) {
                             const statsRef = sharedDb.collection('userStats').doc(user.uid);
                             const doc = await statsRef.get();
@@ -8223,8 +8030,24 @@ const firebaseConfig = {
                             resourceTitle: resourceTitle || "",
                             uid: user ? user.uid : null
                         });
+
                         setToastMessage("게시글이 등록되었습니다.");
                         localStorage.removeItem('cls_post_draft'); // [New] 등록 성공 시 임시 저장 삭제
+                    }
+
+                    // [New] 글 작성자 사용자 명단 등록 (수정 시에도 갱신)
+                    if (user) {
+                        await sharedDb.collection('userStats').doc(user.uid).set({ 
+                            nickname: userNickname, 
+                            lastActive: new Date(), 
+                            uid: user.uid 
+                        }, { merge: true });
+
+                        // [New] 사용자 프로필에도 등록 (관리자 목록용)
+                        await sharedDb.collection('userProfiles').doc(user.uid).set({
+                            uid: user.uid,
+                            name: userNickname
+                        }, { merge: true });
                     }
                     setShowPostModal(false);
                 } catch (e) {
@@ -8282,7 +8105,7 @@ const firebaseConfig = {
         const post = communityPosts.find(p => p.id === postId);
         if (!post) return;
 
-        const uid = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) || "anonymous";
+        const uid = firebase.auth().currentUser?.uid || "anonymous";
         const currentLikes = post.likes || [];
         
         // 좋아요 상태 판단 (서버 데이터 우선, 없으면 로컬 스토리지 확인)
@@ -8375,11 +8198,6 @@ const firebaseConfig = {
 
     // [New] 게시글 상세 뷰 열기/닫기 함수
     const handleOpenPostDetail = (post) => {
-        if (!isLoggedIn) {
-            setToastMessage("글 내용을 보려면 로그인이 필요합니다.");
-            setIsSetupOpen(true);
-            return;
-        }
         setSelectedPost(post);
         setIsPostDetailOpen(true);
         
@@ -8420,21 +8238,16 @@ const firebaseConfig = {
                     return;
                 }
 
-                if (isCurrentUserBlocked) {
-                    setToastMessage("관리자에 의해 댓글 작성이 제한되었습니다.");
-                    return;
-                }
-
                 if (!contentToUse.trim()) {
                     setToastMessage("내용을 입력해주세요.");
                     return;
                 }
 
-        const uid = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) || "anonymous";
+        const uid = firebase.auth().currentUser?.uid || "anonymous";
         
         // [New] 뱃지 시스템: 댓글 작성 시 통계 업데이트 및 뱃지 획득
         let currentBadge = '🌱';
-        const user = firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser : null;
+        const user = firebase.auth().currentUser;
         if (user) {
             const statsRef = sharedDb.collection('userStats').doc(user.uid);
             const doc = await statsRef.get();
@@ -8448,19 +8261,6 @@ const firebaseConfig = {
             cCount++;
             await statsRef.set({ postCount: pCount, commentCount: cCount }, { merge: true });
             currentBadge = getLevelBadge(pCount, cCount);
-
-            // [Fix] 사용자 관리 명단에 뜨도록 프로필 정보 갱신 (없으면 생성)
-            const profileRef = sharedDb.collection('userProfiles').doc(user.uid);
-            const profileDoc = await profileRef.get();
-            if (!profileDoc.exists) {
-                await profileRef.set({
-                    uid: user.uid,
-                    name: userNickname,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            } else {
-                await profileRef.set({ name: userNickname, lastActiveAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-            }
         }
 
         const newCommentData = {
@@ -8535,7 +8335,7 @@ const firebaseConfig = {
 
     // ❌ 댓글 삭제 함수
     const handleDeleteComment = async (postId, commentId, commentUid) => {
-        const currentUid = firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null;
+        const currentUid = firebase.auth().currentUser?.uid;
         if (!isAdmin && currentUid !== commentUid) {
             alert("본인이 작성한 댓글만 삭제할 수 있습니다.");
             return;
@@ -9591,152 +9391,150 @@ const firebaseConfig = {
                 } catch (e) { console.error("Cache load error", e); }
                 
                 if (savedConfig) {
-                    (async () => {
-                        try {
-                            const config = JSON.parse(savedConfig);
-                            const oldDefaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
-                            if (oldDefaultApp) { await oldDefaultApp.delete(); }
+                    try {
+                        const config = JSON.parse(savedConfig);
+                        if (!firebase.apps.some(app => app.name === '[DEFAULT]')) {
                             firebase.initializeApp(config);
-                            
-                            // [Fix] 명시적으로 기본 앱의 Firestore 가져오기
-                            const defaultApp = firebase.app('[DEFAULT]');
-                            const firestore = defaultApp.firestore();
-                            setDb(firestore);
-                            setAppId(config.projectId);
-                            setIsLocalMode(false);
+                        }
+                        
+                        // [Fix] 명시적으로 기본 앱의 Firestore 가져오기
+                        const defaultApp = firebase.app('[DEFAULT]');
+                        const firestore = defaultApp.firestore();
+                        setDb(firestore);
+                        setAppId(config.projectId);
+                        setIsLocalMode(false);
 
-                            logSystemEvent(`Firebase 연결 시도: ${config.projectId}`);
-                            firebase.auth().onAuthStateChanged((user) => {
-                                if (user) {
-                                    logSystemEvent(`Firebase 로그인 성공: ${user.email}`);
-                                    firestore.collection('artifacts').doc(config.projectId).collection('public').doc('data').onSnapshot(doc => {
-                                        if (doc.exists) {
-                                            const d = doc.data();
-                                            if (d.students) setStudents(d.students);
-                                            if (d.records) setRecords(prev => ({ ...d.records, ...prev })); // [Fix] 메인 문서 기록은 하위 호환용으로 로드하되, 로컬/하위컬렉션 데이터 우선
-                                            if (d.groupsByDate) {
-                                                // [Fix] d.students가 없거나 비어있을 경우 로컬 최신 상태(studentsRef)를 사용하여 복구 시도
-                                                // 로컬 상태와 서버 상태를 병합하여 최대한 많은 학생 정보를 확보
-                                                const serverStudents = d.students || [];
-                                                const localStudents = studentsRef.current || [];
-                                                const mergedStudents = [...localStudents];
-                                                serverStudents.forEach(s => {
-                                                    if (!mergedStudents.find(ls => String(ls.id) === String(s.id))) {
-                                                        mergedStudents.push(s);
-                                                    }
-                                                });
-
-                                                // [Fix] 모둠 데이터 동기화 시 로컬 데이터 유실 방지 (방금 생성한 데이터 보호)
-                                                const serverGroups = d.groupsByDate || {};
-                                                const localGroups = groupsByDateRef.current || {};
-                                                const mergedGroups = { ...serverGroups };
-
-                                                // 로컬에만 있고 서버에 없는(비어있는) 날짜의 데이터는 로컬 데이터 유지 (방금 편성한 경우)
-                                                Object.keys(localGroups).forEach(date => {
-                                                    if (localGroups[date] && localGroups[date].length > 0) {
-                                                        // 서버 데이터가 아예 없거나 빈 배열인 경우 로컬 데이터 사용
-                                                        if (!serverGroups[date] || serverGroups[date].length === 0) {
-                                                            mergedGroups[date] = localGroups[date];
-                                                        }
-                                                    }
-                                                });
-
-                                                const hydrated = hydrateGroups(mergedGroups, mergedStudents);
-                                                setGroupsByDate(hydrated);
-                                            }
-                                            if (d.avoidance) setAvoidancePairs(d.avoidance);
-                                            if (d.mustPairs) setMustPairs(d.mustPairs);
-                        if (d.config) setAppConfig({ ...d.config, version: CURRENT_VERSION });
-                                            if (d.dailyTasks) setDailyTasks(d.dailyTasks);
-                                            if (d.weeklyTasks) setWeeklyTasks(d.weeklyTasks);
-                                            if (d.tags) setTags(d.tags);
-                                            if (d.groupNames) setGroupNames(d.groupNames);
-                                            if (d.groupRoles) setGroupRoles(d.groupRoles);
-                                            if (d.rolesList) setRolesList(d.rolesList);
-
-                                            // [New] AI Key 및 Notion 설정 자동 동기화
-                                            if (d.aiKey) {
-                                                setApiKey(d.aiKey);
-                                                localStorage.setItem('cls_ai_key', d.aiKey);
-                                            }
-                                            if (d.notionKey) localStorage.setItem('cls_notion_key', d.notionKey);
-                                            if (d.notionDbId) localStorage.setItem('cls_notion_db_id', d.notionDbId);
-                                            // [Fix] snake_case 키 지원 및 포트폴리오 ID 로딩
-                                            if (d.notion_key) localStorage.setItem('cls_notion_key', d.notion_key);
-                                            if (d.notion_db_id) localStorage.setItem('cls_notion_db_id', d.notion_db_id);
-                                            if (d.notion_portfolio_db_id) { localStorage.setItem('cls_notion_portfolio_db_id', d.notion_portfolio_db_id); setPortfolioDbId(d.notion_portfolio_db_id); }
-                                            if (d.studentMap) { setStudentMap(d.studentMap); localStorage.setItem('cls_student_map', JSON.stringify(d.studentMap)); }
-                                            if (d.portfolio_mode !== undefined) { 
-                                                setIsPortfolioMode(d.portfolio_mode); 
-                                                localStorage.setItem('cls_portfolio_mode', d.portfolio_mode); 
-                                            }
-                                            
-                                            // [추가됨] 로딩 완료 처리
-                                            setIsLoading(false);
-                                            if (!localStorage.getItem('cls_intro_shown')) {
-                                                setShowOfflineModal(true);
-                                                setAutoCloseTimer(3);
-                                                localStorage.setItem('cls_intro_shown', 'true');
-                                            }
-                                        } else {
-                                            // [Fix] 문서가 없는 경우에도 로딩 해제 (무한 로딩 방지)
-                                            setIsLoading(false);
-                                        }
-                                    }, (error) => {
-                                        logSystemEvent(`Firestore 스냅샷 에러: ${error.message}`, 'error');
-                                        setIsLoading(false); // [Fix] 에러 발생 시 로딩 해제
-                                        setToastMessage("데이터 로딩 오류: " + error.message);
-                                    });
-
-                                    // [New] 모둠 결과 하위 컬렉션 리스너 (1MB 제한 회피)
-                                    firestore.collection('classes').doc(config.projectId).collection('groupResults').onSnapshot(snapshot => {
-                                        const newGroups = {};
-                                        snapshot.docs.forEach(doc => {
-                                            newGroups[doc.id] = doc.data().list;
-                                        });
-                                        // 기존 데이터와 병합 (서버 데이터 우선)
-                                        setGroupsByDate(prev => hydrateGroups({ ...prev, ...newGroups }, studentsRef.current));
-                                    });
-
-                                    // [New] 활동 기록 하위 컬렉션 리스너 (1MB 제한 회피)
-                                    firestore.collection('classes').doc(config.projectId).collection('records').onSnapshot(snapshot => {
-                                        setRecords(prev => {
-                                            const next = { ...prev };
-                                            snapshot.docChanges().forEach(change => {
-                                                if (change.type === 'added' || change.type === 'modified') next[change.doc.id] = change.doc.data();
-                                                if (change.type === 'removed') delete next[change.doc.id];
-                                            });
-                                            return next;
-                                        });
-                                    });
-                                    
-                                    // [New] 과제 데이터 리스너
-                                    firestore.collection('classes').doc(config.projectId).collection('tasks').onSnapshot(snapshot => {
-                                        snapshot.docChanges().forEach(change => {
-                                            if (change.doc.id === 'settings') {
-                                                const data = change.doc.data();
-                                                if (data.weekly) setWeeklyTasks(data.weekly);
-                                                if (data.tags) setTags(data.tags);
-                                            } else {
-                                                if (change.type === 'removed') {
-                                                    setDailyTasks(prev => {
-                                                        const next = { ...prev };
-                                                        delete next[change.doc.id];
-                                                        return next;
-                                                    });
-                                                } else {
-                                                    setDailyTasks(prev => ({ ...prev, [change.doc.id]: change.doc.data().list }));
+                        logSystemEvent(`Firebase 연결 시도: ${config.projectId}`);
+                        firebase.auth().onAuthStateChanged((user) => {
+                            if (user) {
+                                logSystemEvent(`Firebase 로그인 성공: ${user.email}`);
+                                firestore.collection('artifacts').doc(config.projectId).collection('public').doc('data').onSnapshot(doc => {
+                                    if (doc.exists) {
+                                        const d = doc.data();
+                                        if (d.students) setStudents(d.students);
+                                        if (d.records) setRecords(prev => ({ ...d.records, ...prev })); // [Fix] 메인 문서 기록은 하위 호환용으로 로드하되, 로컬/하위컬렉션 데이터 우선
+                                        if (d.groupsByDate) {
+                                            // [Fix] d.students가 없거나 비어있을 경우 로컬 최신 상태(studentsRef)를 사용하여 복구 시도
+                                            // 로컬 상태와 서버 상태를 병합하여 최대한 많은 학생 정보를 확보
+                                            const serverStudents = d.students || [];
+                                            const localStudents = studentsRef.current || [];
+                                            const mergedStudents = [...localStudents];
+                                            serverStudents.forEach(s => {
+                                                if (!mergedStudents.find(ls => String(ls.id) === String(s.id))) {
+                                                    mergedStudents.push(s);
                                                 }
-                                            }
-                                        });
+                                            });
+
+                                            // [Fix] 모둠 데이터 동기화 시 로컬 데이터 유실 방지 (방금 생성한 데이터 보호)
+                                            const serverGroups = d.groupsByDate || {};
+                                            const localGroups = groupsByDateRef.current || {};
+                                            const mergedGroups = { ...serverGroups };
+
+                                            // 로컬에만 있고 서버에 없는(비어있는) 날짜의 데이터는 로컬 데이터 유지 (방금 편성한 경우)
+                                            Object.keys(localGroups).forEach(date => {
+                                                if (localGroups[date] && localGroups[date].length > 0) {
+                                                    // 서버 데이터가 아예 없거나 빈 배열인 경우 로컬 데이터 사용
+                                                    if (!serverGroups[date] || serverGroups[date].length === 0) {
+                                                        mergedGroups[date] = localGroups[date];
+                                                    }
+                                                }
+                                            });
+
+                                            const hydrated = hydrateGroups(mergedGroups, mergedStudents);
+                                            setGroupsByDate(hydrated);
+                                        }
+                                        if (d.avoidance) setAvoidancePairs(d.avoidance);
+                                        if (d.mustPairs) setMustPairs(d.mustPairs);
+                    if (d.config) setAppConfig({ ...d.config, version: CURRENT_VERSION });
+                                        if (d.dailyTasks) setDailyTasks(d.dailyTasks);
+                                        if (d.weeklyTasks) setWeeklyTasks(d.weeklyTasks);
+                                        if (d.tags) setTags(d.tags);
+                                        if (d.groupNames) setGroupNames(d.groupNames);
+                                        if (d.groupRoles) setGroupRoles(d.groupRoles);
+                                        if (d.rolesList) setRolesList(d.rolesList);
+
+                                        // [New] AI Key 및 Notion 설정 자동 동기화
+                                        if (d.aiKey) {
+                                            setApiKey(d.aiKey);
+                                            localStorage.setItem('cls_ai_key', d.aiKey);
+                                        }
+                                        if (d.notionKey) localStorage.setItem('cls_notion_key', d.notionKey);
+                                        if (d.notionDbId) localStorage.setItem('cls_notion_db_id', d.notionDbId);
+                                        // [Fix] snake_case 키 지원 및 포트폴리오 ID 로딩
+                                        if (d.notion_key) localStorage.setItem('cls_notion_key', d.notion_key);
+                                        if (d.notion_db_id) localStorage.setItem('cls_notion_db_id', d.notion_db_id);
+                                        if (d.notion_portfolio_db_id) { localStorage.setItem('cls_notion_portfolio_db_id', d.notion_portfolio_db_id); setPortfolioDbId(d.notion_portfolio_db_id); }
+                                        if (d.studentMap) { setStudentMap(d.studentMap); localStorage.setItem('cls_student_map', JSON.stringify(d.studentMap)); }
+                                        if (d.portfolio_mode !== undefined) { 
+                                            setIsPortfolioMode(d.portfolio_mode); 
+                                            localStorage.setItem('cls_portfolio_mode', d.portfolio_mode); 
+                                        }
+                                        
+                                        // [추가됨] 로딩 완료 처리
+                                        setIsLoading(false);
+                                        if (!localStorage.getItem('cls_intro_shown')) {
+                                            setShowOfflineModal(true);
+                                            setAutoCloseTimer(3);
+                                            localStorage.setItem('cls_intro_shown', 'true');
+                                        }
+                                    } else {
+                                        // [Fix] 문서가 없는 경우에도 로딩 해제 (무한 로딩 방지)
+                                        setIsLoading(false);
+                                    }
+                                }, (error) => {
+                                    logSystemEvent(`Firestore 스냅샷 에러: ${error.message}`, 'error');
+                                    setIsLoading(false); // [Fix] 에러 발생 시 로딩 해제
+                                    setToastMessage("데이터 로딩 오류: " + error.message);
+                                });
+
+                                // [New] 모둠 결과 하위 컬렉션 리스너 (1MB 제한 회피)
+                                firestore.collection('classes').doc(config.projectId).collection('groupResults').onSnapshot(snapshot => {
+                                    const newGroups = {};
+                                    snapshot.docs.forEach(doc => {
+                                        newGroups[doc.id] = doc.data().list;
                                     });
-                                } else {
-                                    logSystemEvent('Firebase 로그인 상태 아님', 'warning');
-                                    setIsLoading(false);
-                                }
-                            });
-                        } catch (e) { logSystemEvent(`Firebase 초기화 실패: ${e.message}`, 'error'); setIsLocalMode(true); setIsLoading(false); }
-                    })();
+                                    // 기존 데이터와 병합 (서버 데이터 우선)
+                                    setGroupsByDate(prev => hydrateGroups({ ...prev, ...newGroups }, studentsRef.current));
+                                });
+
+                                // [New] 활동 기록 하위 컬렉션 리스너 (1MB 제한 회피)
+                                firestore.collection('classes').doc(config.projectId).collection('records').onSnapshot(snapshot => {
+                                    setRecords(prev => {
+                                        const next = { ...prev };
+                                        snapshot.docChanges().forEach(change => {
+                                            if (change.type === 'added' || change.type === 'modified') next[change.doc.id] = change.doc.data();
+                                            if (change.type === 'removed') delete next[change.doc.id];
+                                        });
+                                        return next;
+                                    });
+                                });
+                                
+                                // [New] 과제 데이터 리스너
+                                firestore.collection('classes').doc(config.projectId).collection('tasks').onSnapshot(snapshot => {
+                                    snapshot.docChanges().forEach(change => {
+                                        if (change.doc.id === 'settings') {
+                                            const data = change.doc.data();
+                                            if (data.weekly) setWeeklyTasks(data.weekly);
+                                            if (data.tags) setTags(data.tags);
+                                        } else {
+                                            if (change.type === 'removed') {
+                                                setDailyTasks(prev => {
+                                                    const next = { ...prev };
+                                                    delete next[change.doc.id];
+                                                    return next;
+                                                });
+                                            } else {
+                                                setDailyTasks(prev => ({ ...prev, [change.doc.id]: change.doc.data().list }));
+                                            }
+                                        }
+                                    });
+                                });
+                            } else {
+                                logSystemEvent('Firebase 로그인 상태 아님', 'warning');
+                                setIsLoading(false);
+                            }
+                        });
+                    } catch (e) { logSystemEvent(`Firebase 초기화 실패: ${e.message}`, 'error'); setIsLocalMode(true); setIsLoading(false); }
                 } else {
                     // 로컬 모드 (위에서 이미 로드함)
                     
@@ -12080,14 +11878,6 @@ const firebaseConfig = {
                                                             <button onClick={() => setShowCommunityHelp(true)} className="text-slate-400 hover:text-indigo-500 p-1.5 rounded-full hover:bg-slate-50 transition-colors" title="이용 안내">
                                                                 <Icon d={PATHS.help} size={18} />
                                                             </button>
-                                                            {isAdmin && (
-                                                                <button 
-                                                                    onClick={() => { setShowUserManagementModal(true); fetchManageUsers(); }}
-                                                                    className="ml-2 px-3 py-1 bg-slate-800 text-white text-xs rounded-lg font-bold hover:bg-slate-700 transition-colors shadow-sm"
-                                                                >
-                                                                    사용자 관리 ⚙️
-                                                                </button>
-                                                            )}
                                                         </h3>
                                                     </div>
                                                     <div className="flex gap-2 w-full sm:w-auto">
@@ -12184,7 +11974,7 @@ const firebaseConfig = {
                                                     <div className="flex gap-2 shrink-0 flex-wrap justify-end w-full">
                                                         <button 
                                                             onClick={() => {
-                                                                if (!(firebase.apps.some(app => app.name === '[DEFAULT]') && firebase.auth().currentUser)) {
+                                                                if (!firebase.auth().currentUser) {
                                                                     setToastMessage("로그인이 필요한 기능입니다.");
                                                                     return;
                                                                 }
@@ -12520,7 +12310,7 @@ const firebaseConfig = {
                                                 const currentIndex = sortedPosts.findIndex(p => p.id === selectedPost.id);
                                                 const prevPost = currentIndex > 0 ? sortedPosts[currentIndex - 1] : null;
                                                 const nextPost = currentIndex < sortedPosts.length - 1 ? sortedPosts[currentIndex + 1] : null;
-                                                const isMyPost = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) === selectedPost.uid; // Assuming uid is stored, or use authorName/password check logic if uid not available. 
+                                                const isMyPost = firebase.auth().currentUser?.uid === selectedPost.uid; // Assuming uid is stored, or use authorName/password check logic if uid not available. 
                                                 // Note: In handleEditPost/handleDeletePost we check password or admin. Here we just show buttons.
                                                 // I'll show buttons always and let the handler check permissions/password.
 
@@ -12627,7 +12417,7 @@ const firebaseConfig = {
                                                                         <div className="text-center text-slate-400 py-4"><Icon d={PATHS.spinner} className="animate-spin inline mr-2"/> 댓글을 불러오는 중...</div>
                                                                     ) : comments.length > 0 ? (
                                                                         comments.filter(c => !c.parentId).map(comment => {
-                                                                            const isMyComment = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) === comment.uid;
+                                                                            const isMyComment = firebase.auth().currentUser?.uid === comment.uid;
                                                                             const replies = comments.filter(r => r.parentId === comment.id);
                                                                             return (
                                                                                 <div key={comment.id} className="space-y-2">
@@ -12649,7 +12439,7 @@ const firebaseConfig = {
 
                                                                                     {/* Replies */}
                                                                                     {replies.map(reply => {
-                                                                                        const isMyReply = (firebase.apps.some(app => app.name === '[DEFAULT]') ? firebase.auth().currentUser?.uid : null) === reply.uid;
+                                                                                        const isMyReply = firebase.auth().currentUser?.uid === reply.uid;
                                                                                         return (
                                                                                             <div key={reply.id} className="ml-6 bg-slate-100/50 p-3 rounded-xl border border-slate-200 relative">
                                                                                                 <div className="absolute top-[-10px] left-[-10px] w-4 h-6 border-l-2 border-b-2 border-slate-200 rounded-bl-xl"></div>
@@ -12776,7 +12566,7 @@ const firebaseConfig = {
                             type="text" 
                             value={tempNickname} 
                             onChange={(e) => setTempNickname(e.target.value)}
-                            placeholder="예: 평강쌤, 2학년 은혜반" 
+                            placeholder="예: 평강" 
                             className="w-full p-3 border border-slate-200 rounded-xl mb-4 text-center text-base font-bold text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
                             maxLength={10}
                         />
@@ -13291,14 +13081,6 @@ const firebaseConfig = {
                                                         <span className="text-orange-800 font-bold text-sm block mb-1">🔔 오늘 알림</span>
                                                         <span className="text-2xl font-black text-orange-600">{adminStats?.notis || 0}</span>
                                                     </div>
-                                                    <div className="bg-indigo-50 p-4 rounded-xl text-center border border-indigo-100">
-                                                        <span className="text-indigo-800 font-bold text-sm block mb-1">👥 사용자</span>
-                                                        <span className="text-2xl font-black text-indigo-600">{adminStats?.users || 0}</span>
-                                                    </div>
-                                                    <div className="bg-rose-50 p-4 rounded-xl text-center border border-rose-100">
-                                                        <span className="text-rose-800 font-bold text-sm block mb-1">🚫 차단됨</span>
-                                                        <span className="text-2xl font-black text-rose-600">{adminStats?.blockedUsers || 0}</span>
-                                                    </div>
                                                 </div>
                                                 
                                                 {/* 파이어베이스 용량 확인 버튼 영역 */}
@@ -13363,49 +13145,6 @@ const firebaseConfig = {
                                             닫기
                                         </button>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {showUserManagementModal && (
-                        <div className="fixed inset-0 z-[6000] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowUserManagementModal(false)}>
-                            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-                                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">👥 사용자 관리 <span className="text-xs font-normal text-slate-500">({manageUserList.length}명)</span></h3>
-                                        <button onClick={fetchManageUsers} className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm" title="명단 새로고침 (누락된 사용자 복구)">
-                                            <Icon d={PATHS.refresh} size={14} className={isLoadingManageUsers ? "animate-spin" : ""} />
-                                        </button>
-                                    </div>
-                                    <button onClick={() => setShowUserManagementModal(false)} className="p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><Icon d={PATHS.x} /></button>
-                                </div>
-                                <div className="p-4 overflow-y-auto custom-scroll flex-1 bg-slate-50/30">
-                                    {isLoadingManageUsers ? (
-                                        <div className="text-center py-10 text-slate-500"><Icon d={PATHS.spinner} className="animate-spin inline mr-2"/> 로딩 중...</div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {manageUserList.map(user => (
-                                                <div key={user.uid} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-xl transition-colors gap-3 shadow-sm ${user.blocked ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-slate-700 text-sm truncate">{user.name}</span>
-                                                            {user.createdAt && <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{dayjs(user.createdAt.toDate()).format('YY.MM.DD')}</span>}
-                                                            {user.blocked && <span className="text-[10px] text-white bg-rose-500 px-1.5 py-0.5 rounded font-bold">차단됨</span>}
-                                                        </div>
-                                                        <span onClick={() => { navigator.clipboard.writeText(user.uid); setToastMessage("UID가 복사되었습니다."); }} className="text-[10px] text-slate-400 font-mono truncate cursor-pointer hover:text-indigo-500 hover:underline" title="클릭하여 UID 복사">
-                                                            {user.uid}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex gap-2 shrink-0">
-                                                        <button onClick={() => handleAdminToggleBlock(user.uid, user.name, user.blocked)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${user.blocked ? 'bg-slate-600 text-white border-slate-600 hover:bg-slate-700' : 'bg-white text-rose-500 border-rose-200 hover:bg-rose-50'}`}>{user.blocked ? "차단 해제" : "차단"}</button>
-                                                        <button onClick={() => handleAdminUpdateNickname(user.uid, user.name)} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 border border-indigo-100 transition-colors">닉네임 변경</button>
-                                                        <button onClick={() => handleAdminResetUser(user.uid, user.name)} className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100 border border-rose-100 transition-colors">데이터 초기화</button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {manageUserList.length === 0 && <div className="text-center text-slate-400 py-10 border-2 border-dashed border-slate-200 rounded-xl">사용자가 없습니다.</div>}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
