@@ -110,7 +110,7 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
     const [showReportFontList, setShowReportFontList] = useState(false);
     const [reportFocus, setReportFocus] = useState('comprehensive');
     const [showCounselingAI, setShowCounselingAI] = useState(false);
-    const [reportStats, setReportStats] = useState({ studentRate: 0, classRate: 0, tagStats: {} });
+    const [reportStats, setReportStats] = useState({ studentRate: 0, classRate: 0, tagStats: {}, studentScore: 0, classScore: 0 });
     const [animatedWidths, setAnimatedWidths] = useState({ student: 0, class: 0 });
     const [showDetailStats, setShowDetailStats] = useState(false);
     const [showStudentRecordAI, setShowStudentRecordAI] = useState(false);
@@ -648,17 +648,24 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
     
     const calculateStatsForPeriod = (startStr, endStr) => {
         let pTotal = 0, pDone = 0;
+        let pScore = 0;
         const pMissed = {};
         const tagStats = {};
         let curr = dayjs(startStr);
         const end = dayjs(endStr);
+        const today = dayjs().startOf('day');
         let classTotal = 0, classDone = 0;
+        let classScoreSum = 0;
+
         while(curr.isBefore(end) || curr.isSame(end, 'day')) {
             const dStr = curr.format('YYYY-MM-DD');
             if (curr.day() === 0 || curr.day() === 6) { curr = curr.add(1, 'day'); continue; }
             const tasks = dailyTasks[dStr] || [];
             const rec = records[dStr]?.[student.id];
             
+            const diffDays = today.diff(curr, 'day');
+            const isFuture = diffDays < 0;
+
             if (tasks.length > 0) {
                 pTotal += tasks.length;
                 tasks.forEach(t => {
@@ -672,8 +679,13 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                     if(isDone) {
                         pDone++;
                         tagStats[tag].sDone++;
+                        pScore += 0.5;
                     } else {
                         pMissed[tag] = (pMissed[tag] || 0) + 1;
+                        if (!isFuture) {
+                            const penalty = Math.min(3, diffDays + 1);
+                            pScore -= penalty;
+                        }
                     }
                 });
                 const recs = records[dStr] || {};
@@ -685,7 +697,16 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                         tagStats[tag].cTotal++;
                         let taskDone = false;
                         if (r && (r.tasks ? r.tasks[idx] : r.done)) taskDone = true;
-                        if (taskDone) { tagStats[tag].cDone++; classDone++; }
+                        if (taskDone) { 
+                            tagStats[tag].cDone++; 
+                            classDone++; 
+                            classScoreSum += 0.5;
+                        } else {
+                            if (!isFuture) {
+                                const penalty = Math.min(3, diffDays + 1);
+                                classScoreSum -= penalty;
+                            }
+                        }
                     });
                 });
             }
@@ -694,14 +715,15 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
         
         const pRate = pTotal > 0 ? Math.round((pDone / pTotal) * 100) : 0;
         const classAvgRate = classTotal > 0 ? Math.round((classDone / classTotal) * 100) : 0;
+        const classAvgScore = students.length > 0 ? (classScoreSum / students.length) : 0;
 
-        return { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats };
+        return { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore };
     };
     
     useEffect(() => {
         if (isOpen && student && students) {
             const stats = calculateStatsForPeriod(reportStart, reportEnd);
-            setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats });
+            setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore });
             
             // Animation logic
             const timer = setTimeout(() => {
@@ -720,8 +742,8 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
         setIsGenerating(true);
         try {
             const stats = calculateStatsForPeriod(reportStart, reportEnd);
-            const { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats } = stats;
-            setReportStats({ studentRate: pRate, classRate: classAvgRate, tagStats });
+            const { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore } = stats;
+            setReportStats({ studentRate: pRate, classRate: classAvgRate, tagStats, studentScore: pScore, classScore: classAvgScore });
             const pNotes = notes.filter(n => n.date >= reportStart && n.date <= reportEnd);
             
             // [New] 지각 제출 계산
@@ -832,7 +854,7 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
     
     const handlePrepareReport = () => {
         const stats = calculateStatsForPeriod(reportStart, reportEnd);
-        setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats });
+        setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore });
         const savedDraft = student.recordDrafts?.['growth_report'];
         if (savedDraft) {
             setTempComment(savedDraft);
@@ -1095,16 +1117,21 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative overflow-hidden">
                                 <div className="flex items-center justify-between mb-4 relative z-10">
                                     <div className="flex flex-col">
-                                        <span className="text-xs text-slate-500 font-bold mb-1">전체 수행률 비교</span>
+                                        <span className="text-xs text-slate-500 font-bold mb-1">전체 점수 비교</span>
                                         <div className="flex items-baseline gap-1">
-                                            <span className={`text-2xl font-black ${getLevelTextColor(level)}`}>{reportStats.studentRate}%</span>
-                                            <span className="text-xs text-slate-400 font-medium">vs {reportStats.classRate}% (학급)</span>
+                                            <span className={`text-2xl font-black ${getLevelTextColor(level)}`}>{reportStats.studentScore?.toFixed(1)}점</span>
+                                            <span className="text-xs text-slate-400 font-medium">vs {reportStats.classScore?.toFixed(1)}점 (학급)</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1 mt-1">
+                                            <span className="text-xs font-bold text-slate-500">수행률:</span>
+                                            <span className={`text-sm font-black ${reportStats.studentRate >= reportStats.classRate ? 'text-indigo-500' : 'text-rose-500'}`}>{reportStats.studentRate}%</span>
+                                            <span className="text-[10px] text-slate-400">vs {reportStats.classRate}%</span>
                                         </div>
                                     </div>
-                                    <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 ${reportStats.studentRate >= reportStats.classRate ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-rose-50 border-rose-100 text-rose-500'}`}>
+                                    <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 ${reportStats.studentScore >= reportStats.classScore ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-rose-50 border-rose-100 text-rose-500'}`}>
                                         <span className="text-[10px] font-bold opacity-70">GAP</span>
                                         <span className="text-lg font-black leading-none">
-                                            {reportStats.studentRate >= reportStats.classRate ? '+' : ''}{reportStats.studentRate - reportStats.classRate}
+                                            {reportStats.studentScore >= reportStats.classScore ? '+' : ''}{(reportStats.studentScore - reportStats.classScore).toFixed(1)}
                                         </span>
                                     </div>
                                 </div>
