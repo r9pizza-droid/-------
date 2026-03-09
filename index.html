@@ -3225,8 +3225,13 @@
                 if (!sharedDb) return;
                 setIsLoadingUsers(true);
                 try {
-                    const snapshot = await sharedDb.collection('userProfiles').orderBy('createdAt', 'desc').get();
+                    const snapshot = await sharedDb.collection('userProfiles').get();
                     const users = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+                    users.sort((a, b) => {
+                        const tA = a.createdAt ? a.createdAt.toMillis() : 0;
+                        const tB = b.createdAt ? b.createdAt.toMillis() : 0;
+                        return tB - tA;
+                    });
                     setUserList(users);
                 } catch (e) { console.error(e); showToast("사용자 목록 로딩 실패"); }
                 finally { setIsLoadingUsers(false); }
@@ -7295,13 +7300,19 @@ const firebaseConfig = {
                 if (!sharedDb) return;
                 setIsLoadingManageUsers(true);
                 try {
-                    const profilesSnap = await sharedDb.collection('userProfiles').orderBy('createdAt', 'desc').get();
+                    const profilesSnap = await sharedDb.collection('userProfiles').get();
                     const users = profilesSnap.docs.map(doc => ({
                         uid: doc.id,
                         name: doc.data().name || "(이름 없음)",
                         createdAt: doc.data().createdAt,
                         blocked: doc.data().blocked || false
                     }));
+                    
+                    users.sort((a, b) => {
+                        const tA = a.createdAt ? a.createdAt.toMillis() : 0;
+                        const tB = b.createdAt ? b.createdAt.toMillis() : 0;
+                        return tB - tA;
+                    });
                     setManageUserList(users);
                 } catch (e) {
                     console.error(e);
@@ -8064,6 +8075,22 @@ const firebaseConfig = {
                      // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
                      setCommentAuthor(userNickname);
 
+                     // [New] 사용자 프로필 동기화 (글 작성/수정 시 항상 실행하여 누락 방지)
+                     const user = firebase.auth().currentUser;
+                     if (user) {
+                         const profileRef = sharedDb.collection('userProfiles').doc(user.uid);
+                         const profileDoc = await profileRef.get();
+                         if (!profileDoc.exists) {
+                             await profileRef.set({
+                                 uid: user.uid,
+                                 name: userNickname,
+                                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                             });
+                         } else {
+                             await profileRef.set({ name: userNickname, lastActiveAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                         }
+                     }
+
                      if (editingPost) {
                         const updatedData = {
                             title, content, authorName: userNickname, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
@@ -8080,7 +8107,7 @@ const firebaseConfig = {
                     } else {
                         // [New] 뱃지 시스템: 글 작성 시 통계 업데이트 및 뱃지 획득
                         let currentBadge = '🌱';
-                        const user = firebase.auth().currentUser;
+                        // const user = firebase.auth().currentUser; // 위에서 정의함
                         if (user) {
                             const statsRef = sharedDb.collection('userStats').doc(user.uid);
                             const doc = await statsRef.get();
@@ -8094,19 +8121,6 @@ const firebaseConfig = {
                             pCount++;
                             await statsRef.set({ postCount: pCount, commentCount: cCount }, { merge: true });
                             currentBadge = getLevelBadge(pCount, cCount);
-
-                            // [Fix] 사용자 관리 명단에 뜨도록 프로필 정보 갱신 (없으면 생성)
-                            const profileRef = sharedDb.collection('userProfiles').doc(user.uid);
-                            const profileDoc = await profileRef.get();
-                            if (!profileDoc.exists) {
-                                await profileRef.set({
-                                    uid: user.uid,
-                                    name: userNickname,
-                                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                                });
-                            } else {
-                                await profileRef.set({ name: userNickname, lastActiveAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-                            }
                         }
 
                         await sharedDb.collection('community').add({
@@ -8123,7 +8137,8 @@ const firebaseConfig = {
                             commentCount: 0,
                             tags: tags || [],
                             resourceLink: resourceLink || "",
-                            resourceTitle: resourceTitle || ""
+                            resourceTitle: resourceTitle || "",
+                            uid: user ? user.uid : null
                         });
                         setToastMessage("게시글이 등록되었습니다.");
                         localStorage.removeItem('cls_post_draft'); // [New] 등록 성공 시 임시 저장 삭제
