@@ -22,6 +22,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" data-app-script="true"></script>
     <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js" data-app-script="true"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" data-app-script="true"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css" data-app-style="true">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -78,6 +79,9 @@
                         'slide-in-left-fwd': 'slideInLeft 0.2s ease-in-out forwards',
                         'jump-in': 'jumpIn 0.3s ease-out forwards',
                         'bell-ring': 'bellRing 1s ease-in-out infinite',
+                        'wiggle': 'wiggle 0.3s ease-in-out infinite',
+                        'spin-once': 'spinOnce 0.5s ease-in-out',
+                        'pop': 'pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                     },
                     keyframes: {
                         bounceIn: { '0%': { transform: 'scale(0.9)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
@@ -110,6 +114,19 @@
                             '40%': { transform: 'rotate(15deg)' },
                             '60%': { transform: 'rotate(-10deg)' },
                             '80%': { transform: 'rotate(10deg)' },
+                        },
+                        wiggle: {
+                            '0%, 100%': { transform: 'rotate(-3deg)' },
+                            '50%': { transform: 'rotate(3deg)' },
+                        },
+                        spinOnce: {
+                            '0%': { transform: 'rotate(0deg)' },
+                            '100%': { transform: 'rotate(360deg)' },
+                        },
+                        pop: {
+                            '0%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.5)' },
+                            '100%': { transform: 'scale(1)' },
                         },
                     }
                 }
@@ -348,7 +365,7 @@
         const PATHS = {
             calendar: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
             check: "M20 6 9 17l-5-5", users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75",
-            chart: "M3 3v18h18 M18 17V9 M13 17V5 M8 17v-3", plus: "M12 5v14 M5 12h14", trash: "M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+            chart: "M3 3v18h18 M18 17V9 M13 17V5 M8 17v-3", plus: "M12 5v14 M5 12h14", trash: ["M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v2", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"],
             left: "M15 18 L9 12 L15 6", right: "M9 18 L15 12 L9 6", upload: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12", download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3",
             bot: "M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M12 8v4 M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6 M9 16a2 2 0 0 1-2-2v-1 M15 16a2 2 0 0 0 2-2v-1 M12 16v-4",
             list: "M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01", code: "M16 18l6-6-6-6 M8 6l-6 6 6 6", edit: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
@@ -372,14 +389,25 @@
             mute: "M11 5L6 9H2v6h4l5 4V5z M23 9l-6 6 M17 9l6 6",
             play: "M5 3l14 9-14 9V3z",
             history: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
+            refresh: "M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10 M1 14l4.64 4.36A9 9 0 0 0 20.49 15",
             message: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
             image: "M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z",
             bell: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"
         };
 
-        const Icon = ({ d, size = 20, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={d} /></svg>
-        );
+        const Icon = ({ d, size = 20, className = "" }) => {
+            if (Array.isArray(d)) {
+                return (
+                    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`group ${className}`}>
+                        <path d={d[0]} style={{ transformOrigin: '12px 6px' }} className="transition-transform duration-300 group-hover:-rotate-12" />
+                        <path d={d[1]} />
+                    </svg>
+                );
+            }
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={d} /></svg>
+            );
+        };
         const Btn = ({ onClick, className, children, ...props }) => (
             <button onClick={onClick} className={`transition-all duration-200 active:scale-95 active:opacity-80 flex items-center justify-center rounded hover:bg-notion-bg-hover ${className}`} {...props}>{children}</button>
         );
@@ -409,7 +437,7 @@
                     >
                         <div className="flex justify-between items-center mb-6 flex-shrink-0">
                             <h3 className={`text-lg font-bold flex items-center gap-2 text-notion-text ${onTitleClick ? 'cursor-pointer select-none' : ''}`} onClick={onTitleClick}>{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
-                            <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light"><Icon d={PATHS.x} /></button>
+                            <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light group transition-colors"><Icon d={PATHS.x} className="transition-transform duration-300 group-hover:rotate-90" /></button>
                         </div>
                         <div className="overflow-y-auto overflow-x-hidden custom-scroll flex-1 pr-2 space-y-6">{children}</div>
                         {footer && <div className="pt-4 border-t mt-4 flex-shrink-0">{footer}</div>}
@@ -467,8 +495,8 @@
                     <div 
                         className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm animate-modal-enter relative"
                     >
-                        <button onClick={onCancel} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
-                            <Icon d={PATHS.x} size={18} />
+                        <button onClick={onCancel} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors group">
+                            <Icon d={PATHS.x} size={18} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
                         <div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-white text-slate-600 rounded border border-slate-200 font-medium hover:bg-slate-100 hover:border-slate-300 transition-colors">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:bg-red-600 shadow-sm transition-colors">확인</Btn></div></div></div>
             );
@@ -489,8 +517,8 @@
             return (
                 <div className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center animate-bounce-in relative overflow-hidden border border-white/50">
-                        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors z-20">
-                            <Icon d={PATHS.x} size={20} />
+                        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors z-20 group">
+                            <Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
                         
@@ -563,8 +591,8 @@
                      onTouchEnd={handleMouseLeave}>
                     <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-4 border border-indigo-100 flex flex-col gap-3 ring-1 ring-black/5 relative">
                         
-                        <button onClick={() => onClose()} className="absolute top-2 right-2 p-1 text-slate-300 hover:text-slate-500 rounded-full hover:bg-slate-100 transition-colors z-10">
-                            <Icon d={PATHS.x} size={14} />
+                        <button onClick={() => onClose()} className="absolute top-2 right-2 p-1 text-slate-300 hover:text-slate-500 rounded-full hover:bg-slate-100 transition-colors z-10 group">
+                            <Icon d={PATHS.x} size={14} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
 
                         <div className="flex items-start gap-3">
@@ -1938,7 +1966,7 @@
                                     <button onClick={handleOpenStudentRecordAI} className="p-2 hover:bg-blue-50 text-blue-500 rounded-xl transition-colors border border-transparent hover:border-blue-100 flex items-center gap-1 text-sm font-bold"><Icon d={PATHS.document} size={18}/> <span className="hidden md:inline">총평 초안</span></button>
                                     <button onClick={handlePrepareReport} disabled={isGenerating} className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors border border-transparent hover:border-indigo-100 flex items-center gap-1 text-sm font-bold"><Icon d={PATHS.edit} size={18}/> <span className="hidden md:inline">리포트 작성</span></button>
                                     <div className="w-px h-6 bg-slate-200 mx-1"></div>
-                                    <button onClick={onClose} className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition-colors"><Icon d={PATHS.x} size={20}/></button>
+                                    <button onClick={onClose} className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition-colors group"><Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" /></button>
                                 </div>
                             </div>
                         </div>
@@ -1987,7 +2015,7 @@
                                         <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2"><Icon d={PATHS.users} size={16} className="text-blue-500"/> 학급 평균 비교</h4>
                                         <div className="flex items-center gap-1 text-xs font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">
                                             <span>{showDetailStats ? '접기' : '자세히 보기'}</span>
-                                            <Icon d={showDetailStats ? PATHS.down : PATHS.right} size={14} />
+                                            <Icon d={PATHS.right} size={14} className={`transition-transform duration-300 ${showDetailStats ? 'rotate-90' : ''}`} />
                                         </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative overflow-hidden">
@@ -3435,7 +3463,7 @@
                             {dDayLabel && !isVacation && <div className="bg-blue-100 text-blue-600 text-xs font-bold px-3 py-1 rounded flex items-center gap-1"><span>⏳</span> {dDayLabel}</div>}
                         </div>
                     )}
-                    <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border w-fit mx-auto justify-center">{onAdd && <><Btn onClick={onAdd} className="text-notion-text p-1.5 rounded hover:bg-notion-bg-hover flex items-center justify-center"><Icon d={PATHS.plus} size={18} /></Btn><div className="w-px h-4 bg-notion-border"></div></>}<Btn onClick={() => moveDate(-1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18} /></Btn><div className="flex flex-col items-center cursor-pointer hover:bg-notion-bg-hover rounded px-3 py-1 transition-colors" onClick={onCalendar}><div className="text-base font-bold text-notion-text tracking-tight">{dayjs(date).format('YY.MM.DD')}</div><div className={`text-[10px] font-bold ${isHoliday || dayjs(date).day()===0 ? 'text-notion-red' : dayjs(date).day()===6 ? 'text-notion-blue' : 'text-notion-text-light'}`}>{dayjs(date).format('dddd')}</div></div><Btn onClick={() => moveDate(1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18} /></Btn>{onReset && <><div className="w-px h-4 bg-notion-border"></div><Btn onClick={(e) => { e.stopPropagation(); onReset(); }} className="p-1.5 text-notion-text-light hover:text-notion-red hover:bg-notion-bg-hover rounded"><Icon d={PATHS.trash} size={16} /></Btn></>}</div>
+                    <div className="flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-notion-border w-fit mx-auto justify-center">{onAdd && <><Btn onClick={onAdd} className="group text-notion-text p-1.5 rounded hover:bg-notion-bg-hover flex items-center justify-center active:animate-pop"><Icon d={PATHS.plus} size={18} className="group-hover:animate-wiggle" /></Btn><div className="w-px h-4 bg-notion-border"></div></>}<Btn onClick={() => moveDate(-1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.left} size={18} /></Btn><div className="flex flex-col items-center cursor-pointer hover:bg-notion-bg-hover rounded px-3 py-1 transition-colors" onClick={onCalendar}><div className="text-base font-bold text-notion-text tracking-tight">{dayjs(date).format('YY.MM.DD')}</div><div className={`text-[10px] font-bold ${isHoliday || dayjs(date).day()===0 ? 'text-notion-red' : dayjs(date).day()===6 ? 'text-notion-blue' : 'text-notion-text-light'}`}>{dayjs(date).format('dddd')}</div></div><Btn onClick={() => moveDate(1)} className="p-1.5 text-notion-text-light hover:text-notion-text hover:bg-notion-bg-hover rounded"><Icon d={PATHS.right} size={18} /></Btn>{onReset && <><div className="w-px h-4 bg-notion-border"></div><Btn onClick={(e) => { e.stopPropagation(); onReset(); }} className="p-1.5 text-notion-text-light hover:text-notion-red hover:bg-notion-bg-hover rounded"><Icon d={PATHS.trash} size={16} /></Btn></>}</div>
                 </div>
             );
         };
@@ -3447,7 +3475,49 @@
             const handleAdd = () => { if (newTagInput.trim()) { onAdd(newTagInput.trim()); setNewTagInput(""); } };
             const handleFinishEdit = () => { if (editingTag && editTagValue.trim() && editTagValue.trim() !== editingTag) onEdit(editingTag, editTagValue.trim()); setEditingTag(null); setEditTagValue(""); };
             return (
-                <div className="mt-2"><div className="flex flex-wrap gap-1 items-center">{tags.map(t => <Btn key={t} onClick={() => setTag(t)} className={`px-2 py-1 text-xs rounded-lg border ${current === t ? 'bg-indigo-500 text-white border-indigo-500 shadow-sm hover:bg-indigo-500' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{t}</Btn>)}<Btn onClick={() => setShowManager(!showManager)} className={`p-1 rounded-full ${showManager ? 'bg-slate-200 text-slate-600' : 'text-slate-300 hover:text-slate-500'}`}><span className="text-sm">⚙️</span></Btn></div>{showManager && (<div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 animate-fade-in relative z-10"><div className="text-[10px] font-bold text-slate-400 mb-2">태그 관리</div><div className="flex flex-wrap gap-2 mb-2">{tags.map(tag => editingTag === tag ? (<div key={tag} className="flex items-center bg-white border border-indigo-300 rounded-lg overflow-hidden shadow-sm"><input value={editTagValue} onChange={e => setEditTagValue(e.target.value)} className="w-16 px-1 py-0.5 text-xs outline-none" autoFocus onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleFinishEdit() }} /><Btn onClick={handleFinishEdit} className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 hover:bg-indigo-200"><Icon d={PATHS.check} size={10} /></Btn><Btn onClick={() => setEditingTag(null)} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 hover:bg-slate-200"><Icon d={PATHS.x} size={10} /></Btn></div>) : (<div key={tag} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center gap-1 group"><span>{tag}</span><div className="flex gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity"><Btn onClick={() => { setEditingTag(tag); setEditTagValue(tag); }} className="hover:text-indigo-500 p-0.5"><Icon d={PATHS.edit} size={10} /></Btn>{tag !== '기타' && <Btn onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(tag); }} className="text-rose-500 hover:text-rose-700 p-0.5"><Icon d={PATHS.trash} size={10} /></Btn>}</div></div>))}</div><div className="flex gap-1"><input value={newTagInput} onChange={e => setNewTagInput(e.target.value)} className="flex-1 min-w-0 p-1.5 border rounded-lg text-xs outline-none focus:border-indigo-500" placeholder="새 태그 이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd() }} /><Btn onClick={handleAdd} className="shrink-0 bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold hover:bg-indigo-600 whitespace-nowrap">추가</Btn></div></div>)}</div>
+                <div className="mt-2">
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                        {tags.map(t => (
+                            <button 
+                                key={t} 
+                                onClick={() => setTag(t)} 
+                                className={`px-2.5 py-1 text-xs rounded transition-colors ${current === t ? 'bg-slate-800 text-white font-bold shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'}`}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                        <button onClick={() => setShowManager(!showManager)} className={`p-1 rounded hover:bg-slate-100 transition-colors ${showManager ? 'bg-slate-100' : ''}`}>
+                            <span className="text-sm">⚙️</span>
+                        </button>
+                    </div>
+                    {showManager && (
+                        <div className="mt-3 p-3 bg-white rounded border border-slate-200 shadow-sm animate-fade-in relative z-10">
+                            <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">태그 관리</div>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {tags.map(tag => editingTag === tag ? (
+                                    <div key={tag} className="flex items-center bg-white border border-indigo-300 rounded overflow-hidden shadow-sm ring-2 ring-indigo-50">
+                                        <input value={editTagValue} onChange={e => setEditTagValue(e.target.value)} className="w-20 px-2 py-1 text-xs outline-none" autoFocus onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleFinishEdit() }} />
+                                        <button onClick={handleFinishEdit} className="bg-indigo-50 text-indigo-600 px-2 py-1 hover:bg-indigo-100 border-l border-indigo-100"><Icon d={PATHS.check} size={12} /></button>
+                                        <button onClick={() => setEditingTag(null)} className="bg-slate-50 text-slate-400 px-2 py-1 hover:bg-slate-100 border-l border-slate-100"><Icon d={PATHS.x} size={12} /></button>
+                                    </div>
+                                ) : (
+                                    <div key={tag} className="relative px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600 group hover:border-slate-300 transition-colors">
+                                        <span>{tag}</span>
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 ease-out transform translate-y-2 group-hover:translate-y-0 bg-white shadow-xl border border-slate-100 rounded-lg p-1 z-20">
+                                            <button onClick={() => { setEditingTag(tag); setEditTagValue(tag); }} className="hover:text-indigo-600 p-1.5 rounded hover:bg-indigo-50 text-slate-400 transition-colors"><Icon d={PATHS.edit} size={12} /></button>
+                                            {tag !== '기타' && <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(tag); }} className="text-slate-400 hover:text-rose-500 p-1.5 rounded hover:bg-rose-50 transition-colors"><Icon d={PATHS.trash} size={12} /></button>}
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-white border-b border-r border-slate-100 transform rotate-45 -mt-1"></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex gap-1">
+                                <input value={newTagInput} onChange={e => setNewTagInput(e.target.value)} className="flex-1 min-w-0 p-1.5 border border-slate-200 rounded text-xs outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition-all" placeholder="새 태그 이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd() }} />
+                                <button onClick={handleAdd} className="shrink-0 bg-slate-800 text-white px-3 rounded text-xs font-bold hover:bg-slate-700 transition-colors">추가</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             );
         };
         const TaskModal = ({ isOpen, onClose, date, dailyTasks, setDailyTasks, weeklyTasks, setWeeklyTasks, saveData, isLocalMode, showToast, tags, setTags, openConfirm, saveTasksToFirestore }) => {
@@ -3575,71 +3645,165 @@
             };
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="과제 설정" icon={PATHS.edit} footer={<Btn onClick={handleSaveAll} className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg hover:bg-slate-900">모든 설정 저장 및 닫기</Btn>}><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-indigo-500 pl-3 flex justify-between"><span>오늘의 과제 ({dayjs(date).format('YY.MM.DD')})</span><span className="text-xs font-normal text-slate-400">최대 5개</span></h4><div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div className="flex flex-col mb-3"><div className="flex flex-col sm:flex-row gap-2 mb-2 w-full">
-    <div className="flex items-center gap-1.5 shrink-0 bg-slate-100 px-3 py-2.5 rounded-xl border border-slate-200 w-full sm:w-auto">
-        <span className="text-xs font-extrabold text-slate-500 whitespace-nowrap">제출일</span>
-        <input 
-            type="date" 
-            value={dueDate} 
-            onChange={e => setDueDate(e.target.value)} 
-            className="text-sm font-bold text-slate-700 bg-transparent outline-none cursor-pointer flex-1 sm:flex-none" 
-            title="과제 제출일 변경" 
-        />
-    </div>
-    <div className="flex gap-2 w-full sm:flex-1">
-        <input 
-            value={newTask} 
-            onChange={e => setNewTask(e.target.value)} 
-            className="flex-1 min-w-0 p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:border-indigo-500 shadow-sm" 
-            placeholder="예: 수학 익힘책 풀어오기" 
-            onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addTask() }} 
-        />
-        <Btn 
-            onClick={addTask} 
-            className="shrink-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-indigo-700 whitespace-nowrap"
-        >
-            추가
-        </Btn>
-    </div>
-</div><TagSelector current={selectedTag} setTag={setSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="space-y-2">{tasks.map((t, i) => (
-    <div key={i} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-        {editingIndex === i ? (
-            <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
-                    <select 
-                        value={editTag} 
-                        onChange={(e) => setEditTag(e.target.value)} 
-                        className="p-2 border rounded-lg text-xs outline-none focus:border-indigo-500 bg-white"
-                    >
-                        {tags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
-                    </select>
-                    <input 
-                        value={editTitle} 
-                        onChange={(e) => setEditTitle(e.target.value)} 
-                        className="flex-1 p-2 border rounded-lg text-xs outline-none focus:border-indigo-500"
-                        autoFocus
-                        onKeyDown={(e) => { if (e.key === 'Enter') saveEditing(i); }}
-                    />
-                </div>
-                <div className="flex justify-end gap-2">
-                    <Btn onClick={cancelEditing} className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200">취소</Btn>
-                    <Btn onClick={() => saveEditing(i)} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">저장</Btn>
-                </div>
-            </div>
-        ) : (
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] rounded font-bold">{t.tag}</span>
-                    <span className="text-sm font-medium text-slate-700">{t.title}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <Btn onClick={() => startEditing(i, t)} className="text-slate-400 hover:text-indigo-600 p-1"><Icon d={PATHS.edit} size={14} /></Btn>
-                    <Btn onClick={() => removeTask(i)} className="text-slate-400 hover:text-rose-600 p-1"><Icon d={PATHS.trash} size={14} /></Btn>
-                </div>
-            </div>
-        )}
-    </div>
-))}{tasks.length === 0 && <div className="text-center text-slate-400 text-sm py-4">등록된 과제가 없습니다.</div>}</div></div></section><section><h4 className="font-bold text-slate-700 mb-3 border-l-4 border-green-500 pl-3"><span>요일별 고정 과제</span></h4><div className="bg-green-50/50 p-4 rounded-2xl border border-green-100"><div className="flex justify-between mb-3 bg-white p-1 rounded-xl border border-green-100">{[1, 2, 3, 4, 5].map(d => <Btn key={d} onClick={() => toggleDay(d)} className={`flex-1 py-2 rounded-lg text-sm font-bold ${wSelectedDays.includes(d) ? 'bg-green-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>{DAYS[d]}</Btn>)}</div><div className="flex flex-col mb-6"><div className="flex gap-2 items-center mb-2 w-full"><input value={wNewTask} onChange={e => setWNewTask(e.target.value)} className="flex-1 min-w-0 p-2.5 border rounded-xl text-sm outline-none focus:border-green-500" placeholder="과제 내용" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addWeeklyTask() }} /><Btn onClick={addWeeklyTask} className="shrink-0 bg-green-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-green-700 whitespace-nowrap">일괄 추가</Btn></div><TagSelector current={wSelectedTag} setTag={setWSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} /></div><div className="grid grid-cols-1 sm:grid-cols-5 gap-3">{[1, 2, 3, 4, 5].map(d => (<div key={d} className="bg-white p-3 rounded-xl border border-slate-200"><div className="text-center font-bold text-slate-500 text-xs mb-2 pb-1 border-b">{DAYS[d]}요일</div><div className="space-y-1 min-h-[60px]">{(wTasks[d] || []).map((t, i) => (<div key={i} className="flex justify-between items-start text-xs bg-slate-50 p-1.5 rounded group"><div className="flex flex-col"><span className="text-[9px] text-slate-400">{t.tag}</span><span className="break-all leading-tight">{t.title}</span></div><Btn onClick={() => removeWeeklyTask(d, i)} className="text-rose-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 ml-1">×</Btn></div>))}</div></div>))}</div></div></section></BaseModal>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="과제 설정" icon={PATHS.edit} footer={<Btn onClick={handleSaveAll} className="w-full py-3 bg-[#2383E2] text-white rounded-lg font-bold hover:bg-[#1a73c9] transition-all active:scale-[0.98] shadow-sm text-sm">모든 설정 저장 및 닫기</Btn>}>
+                    <div className="space-y-8 text-notion-text">
+                        {/* 오늘의 과제 섹션 */}
+                        <section>
+                            <div className="flex items-center justify-between mb-3 px-1">
+                                <h4 className="font-bold text-base flex items-center gap-2 text-slate-800">
+                                    오늘의 과제
+                                    <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{dayjs(date).format('YY.MM.DD')}</span>
+                                </h4>
+                                <span className="text-[10px] text-slate-400 font-medium">최대 5개</span>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                {/* 입력 폼 */}
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex gap-2 items-center">
+                                        <div className="relative group">
+                                            <input 
+                                                type="date" 
+                                                value={dueDate} 
+                                                onChange={e => setDueDate(e.target.value)} 
+                                                className="w-32 p-2 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded border border-transparent hover:border-slate-200 transition-all outline-none cursor-pointer" 
+                                            />
+                                        </div>
+                                        <div className="flex-1 relative">
+                                            <input 
+                                                value={newTask} 
+                                                onChange={e => setNewTask(e.target.value)} 
+                                                className="w-full p-2 pl-3 bg-slate-50 border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50 rounded text-sm outline-none transition-all placeholder-slate-400" 
+                                                placeholder="할 일을 입력하세요 (예: 수학 익힘책 30쪽)" 
+                                                onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addTask() }} 
+                                            />
+                                            <button 
+                                                onClick={addTask} 
+                                                className="absolute right-1 top-1 bottom-1 px-3 bg-white border border-slate-200 text-slate-500 rounded text-xs font-bold hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
+                                            >
+                                                추가
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <TagSelector current={selectedTag} setTag={setSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} />
+                                </div>
+
+                                {/* 과제 목록 */}
+                                <div className="space-y-1.5">
+                                    {tasks.map((t, i) => (
+                                        <div key={i} className="group flex items-center justify-between p-2.5 pl-3 bg-white border border-slate-100 rounded hover:border-indigo-200 hover:shadow-sm transition-all">
+                                            {editingIndex === i ? (
+                                                <div className="flex flex-1 gap-2 items-center animate-fade-in">
+                                                        <select 
+                                                            value={editTag} 
+                                                            onChange={(e) => setEditTag(e.target.value)} 
+                                                            className="p-1.5 bg-slate-50 border border-slate-200 rounded text-xs outline-none focus:border-indigo-300 text-slate-600"
+                                                        >
+                                                            {tags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+                                                        </select>
+                                                        <input 
+                                                            value={editTitle} 
+                                                            onChange={(e) => setEditTitle(e.target.value)} 
+                                                            className="flex-1 p-1.5 bg-slate-50 border border-slate-200 rounded text-sm outline-none focus:border-indigo-300 text-slate-700"
+                                                            autoFocus
+                                                            onKeyDown={(e) => { if (e.key === 'Enter') saveEditing(i); }}
+                                                        />
+                                                    <div className="flex gap-1">
+                                                        <button onClick={cancelEditing} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded"><Icon d={PATHS.x} size={14}/></button>
+                                                        <button onClick={() => saveEditing(i)} className="p-1.5 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded"><Icon d={PATHS.check} size={14}/></button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                        <span className="text-[10px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 shrink-0 font-medium">{t.tag}</span>
+                                                        <span className="text-sm text-slate-700 truncate font-medium">{t.title}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button onClick={() => startEditing(i, t)} className="p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded transition-colors"><Icon d={PATHS.edit} size={14} /></button>
+                                                        <button onClick={() => removeTask(i)} className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded transition-colors"><Icon d={PATHS.trash} size={14} /></button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {tasks.length === 0 && (
+                                        <div className="text-center text-slate-300 text-xs py-6 border border-dashed border-slate-200 rounded bg-slate-50/30">
+                                            등록된 과제가 없습니다.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </section>
+
+                        <div className="w-full h-px bg-slate-100"></div>
+
+                        {/* 요일별 고정 과제 섹션 */}
+                        <section>
+                            <div className="flex items-center justify-between mb-3 px-1">
+                                <h4 className="font-bold text-base flex items-center gap-2 text-slate-800">
+                                    요일별 고정 과제
+                                </h4>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="flex gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100">
+                                    {[1, 2, 3, 4, 5].map(d => (
+                                        <button key={d} onClick={() => toggleDay(d)} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${wSelectedDays.includes(d) ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
+                                            {DAYS[d]}
+                                        </button>
+                                    ))}
+                                </div>
+                                
+                                <div className="flex flex-col gap-2">
+                                    <div className="relative">
+                                        <input 
+                                            value={wNewTask} 
+                                            onChange={e => setWNewTask(e.target.value)} 
+                                            className="w-full p-2 pl-3 bg-slate-50 border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50 rounded text-sm outline-none transition-all placeholder-slate-400" 
+                                            placeholder="고정 과제 내용 (예: 일기 쓰기)" 
+                                            onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addWeeklyTask() }} 
+                                        />
+                                        <button 
+                                            onClick={addWeeklyTask} 
+                                            className="absolute right-1 top-1 bottom-1 px-3 bg-white border border-slate-200 text-slate-500 rounded text-xs font-bold hover:text-green-600 hover:border-green-200 transition-all shadow-sm"
+                                        >
+                                            일괄 추가
+                                        </button>
+                                    </div>
+                                    <TagSelector current={wSelectedTag} setTag={setWSelectedTag} tags={tags} onAdd={t=>handleTagAction('add',t)} onEdit={(o,n)=>handleTagAction('edit',o,n)} onDelete={t=>handleTagAction('delete',t)} />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                                    {[1, 2, 3, 4, 5].map(d => (
+                                        <div key={d} className="bg-white p-2 rounded border border-slate-100 hover:border-slate-200 transition-colors min-h-[80px]">
+                                            <div className="text-center font-bold text-slate-400 text-[10px] mb-2 pb-1 border-b border-slate-50 flex justify-between items-center px-1">
+                                                <span>{DAYS[d]}요일</span>
+                                                {(wTasks[d] || []).length > 0 && <span className="bg-indigo-50 text-indigo-400 px-1 rounded text-[9px] font-normal">{(wTasks[d] || []).length}</span>}
+                                            </div>
+                                            <div className="space-y-1">
+                                                {(wTasks[d] || []).map((t, i) => (
+                                                    <div key={i} className="flex justify-between items-start text-[11px] group">
+                                                        <div className="flex flex-col leading-tight overflow-hidden">
+                                                            <span className="text-[9px] text-slate-400">{t.tag}</span>
+                                                            <span className="text-slate-600 truncate">{t.title}</span>
+                                                        </div>
+                                                        <button onClick={() => removeWeeklyTask(d, i)} className="text-slate-200 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Icon d={PATHS.x} size={10} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {(wTasks[d] || []).length === 0 && (
+                                                    <div className="h-full flex items-center justify-center text-[10px] text-slate-200">-</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </BaseModal>
             );
         };
         
@@ -4102,7 +4266,7 @@
                         
                         <div className="flex justify-end">
                             <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
-                                <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                                <Icon d={PATHS.right} size={10} className={`transition-transform duration-300 ${showManual ? 'rotate-90' : ''}`} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
                             </button>
                         </div>
 
@@ -4464,7 +4628,7 @@
                         </div>
                         <div className="flex justify-end">
                             <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
-                                <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                                <Icon d={PATHS.right} size={10} className={`transition-transform duration-300 ${showManual ? 'rotate-90' : ''}`} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
                             </button>
                         </div>
                         {showManual && (
@@ -5104,7 +5268,7 @@
                         
                         <div className="flex justify-end">
                             <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
-                                <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                                <Icon d={PATHS.right} size={10} className={`transition-transform duration-300 ${showManual ? 'rotate-90' : ''}`} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
                             </button>
                         </div>
 
@@ -5852,7 +6016,7 @@
                                         <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center mb-3 flex-shrink-0 cursor-pointer select-none gap-2 md:gap-0" onClick={() => setIsStudentListOpen(!isStudentListOpen)}>
                                             <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm w-full md:w-auto">
                                                 <span className="text-lg">📋</span> 등록된 학생 ({students.length}명)
-                                                <Icon d={isStudentListOpen ? PATHS.down : PATHS.right} size={16} className="text-slate-400 ml-auto md:ml-0" />
+                                                <Icon d={PATHS.right} size={16} className={`text-slate-400 ml-auto md:ml-0 transition-transform duration-300 ${isStudentListOpen ? 'rotate-90' : ''}`} />
                                             </h4>
                                             <div className="flex gap-2 self-end md:self-auto" onClick={(e) => e.stopPropagation()}>
                                                 <div className="relative">
@@ -6107,7 +6271,7 @@
                                                                 <span className="text-lg">🏖️</span>
                                                                 <span className="text-sm font-bold text-slate-700">방학 기간 설정</span>
                                                             </div>
-                                                            <Icon d={isVacationSectionOpen ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
+                                                            <Icon d={PATHS.right} size={16} className={`text-slate-400 transition-transform duration-300 ${isVacationSectionOpen ? 'rotate-90' : ''}`} />
                                                         </div>
                                                         {isVacationSectionOpen && (
                                                             <div className="mt-4 pt-4 border-t border-slate-100 animate-fade-in">
@@ -6601,7 +6765,7 @@
                                                         <h4 className="font-bold text-slate-700 flex items-center gap-2 text-xs">
                                                             <span className="text-base">🔄</span> 연동 상태 점검
                                                         </h4>
-                                                        <Icon d={isSyncPanelOpen ? PATHS.down : PATHS.right} size={14} className="text-slate-400" />
+                                                        <Icon d={PATHS.right} size={14} className={`text-slate-400 transition-transform duration-300 ${isSyncPanelOpen ? 'rotate-90' : ''}`} />
                                                     </div>
                                                     <button
                                                         type="button"
@@ -6676,7 +6840,7 @@
                                                         <div className="flex justify-between items-center">
                                                             <div className="flex items-center gap-1 cursor-pointer hover:opacity-80" onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }}>
                                                                 <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
-                                                                <Icon d={showStorageHelp ? PATHS.down : PATHS.right} size={24} className="text-slate-400 hover:text-indigo-500 transition-colors" />
+                                                                <Icon d={PATHS.right} size={24} className={`text-slate-400 hover:text-indigo-500 transition-colors transition-transform duration-300 ${showStorageHelp ? 'rotate-90' : ''}`} />
                                                             </div>
                                                             {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("연결을 해제하시겠습니까?", () => { localStorage.removeItem('checklist_config'); window.location.reload(); }) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">해제</Btn>}
                                                         </div>
@@ -6848,7 +7012,7 @@
                                             <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-inner">
                                                 <div className="flex justify-between items-center py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors select-none" onClick={() => setShowCodeUpdater(!showCodeUpdater)}>
                                                     <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">🛠️ 코드 업데이트 시스템</h3>
-                                                    <Icon d={showCodeUpdater ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
+                                                    <Icon d={PATHS.right} size={16} className={`text-slate-400 transition-transform duration-300 ${showCodeUpdater ? 'rotate-90' : ''}`} />
                                                 </div>
                                                 
                                                 {showCodeUpdater && (
@@ -6995,7 +7159,7 @@
                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-auto transition-all duration-300">
                         <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
                             <h4 className="font-bold text-slate-700 flex items-center gap-2"><Icon d={PATHS.chart} size={18} className="text-indigo-500" /> 모둠 분석 결과 <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">클릭하여 상세보기</span></h4>
-                            <Icon d={isExpanded ? PATHS.down : PATHS.right} size={20} className="text-slate-400" />
+                            <Icon d={PATHS.right} size={20} className={`text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
                         </div>
                         {isExpanded && (
                             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
@@ -8282,7 +8446,7 @@
                 <BaseModal isOpen={isOpen} onClose={onClose} title="⛅️ Firebase 연결 설정" icon={null}>
                     <div className="flex justify-end mb-2">
                         <button onClick={() => setShowManual(!showManual)} className="text-xs text-indigo-500 font-bold flex items-center gap-1 hover:underline">
-                            <Icon d={showManual ? PATHS.down : PATHS.right} size={10} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
+                            <Icon d={PATHS.right} size={10} className={`transition-transform duration-300 ${showManual ? 'rotate-90' : ''}`} /> 연동 매뉴얼 {showManual ? '접기' : '보기'}
                         </button>
                     </div>
                     {showManual && (
@@ -8588,7 +8752,7 @@ const firebaseConfig = {
                             {hasGoogleSheetConfig && <span className="w-fit text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5 whitespace-nowrap"><Icon d={PATHS.check} size={10} strokeWidth={3} />구글 연동</span>}
                         </div>
                     </h3>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-400"><Icon d={PATHS.x} /></button>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-400 group transition-colors"><Icon d={PATHS.x} className="transition-transform duration-300 group-hover:rotate-90" /></button>
                 </div>
                 
                 {/* [New] 저장소 선택 탭 UI */}
@@ -9082,10 +9246,60 @@ const firebaseConfig = {
                                         ['bold', 'italic', 'underline', 'strike'],
                                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                                         [{ 'color': [] }, { 'background': [] }],
-                                        ['link', 'clean']
+                                        ['link', 'image', 'clean']
                                     ]
                                 }
                             });
+
+                            // [New] 이미지 업로드 핸들러 추가
+                            quillRef.current.getModule('toolbar').addHandler('image', () => {
+                                const input = document.createElement('input');
+                                input.setAttribute('type', 'file');
+                                input.setAttribute('accept', 'image/*');
+                                input.click();
+
+                                input.onchange = async () => {
+                                    const file = input.files[0];
+                                    if (!file) return;
+
+                                    if (!imgbbApiKey) {
+                                        alert("이미지 업로드를 위해서는 설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 설정해야 합니다.");
+                                        return;
+                                    }
+
+                                    try {
+                                        setIsUploading(true);
+                                        let uploadFile = file;
+                                        // 2MB 이상일 경우 자동 압축 (compressImage 함수 재사용)
+                                        if (file.size > 2 * 1024 * 1024) {
+                                            uploadFile = await compressImage(file);
+                                        }
+
+                                        const formData = new FormData();
+                                        formData.append("image", uploadFile);
+
+                                        const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
+                                            method: "POST",
+                                            body: formData
+                                        });
+                                        const data = await res.json();
+
+                                        if (data.success) {
+                                            const range = quillRef.current.getSelection(true);
+                                            quillRef.current.insertEmbed(range.index, 'image', data.data.url);
+                                            quillRef.current.setSelection(range.index + 1);
+                                        } else {
+                                            alert("이미지 업로드 실패: " + (data.error?.message || "알 수 없는 오류"));
+                                        }
+                                    } catch (e) {
+                                        console.error(e);
+                                        alert("이미지 업로드 중 오류가 발생했습니다.");
+                                    } finally {
+                                        setIsUploading(false);
+                                    }
+                                };
+                            });
+
                             const initialContent = initialPost ? initialPost.content : draftContentRef.current;
                             const isHtml = /<[a-z][\s\S]*>/i.test(initialContent);
                             if (isHtml) quillRef.current.clipboard.dangerouslyPasteHTML(initialContent);
@@ -9401,7 +9615,7 @@ const firebaseConfig = {
 
             return (
                 <div className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center animate-fade-in backdrop-blur-sm" onClick={onClose}>
-                    <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white p-2 z-50 rounded-full hover:bg-white/10 transition-colors"><Icon d={PATHS.x} size={32} /></button>
+                    <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white p-2 z-50 rounded-full hover:bg-white/10 transition-colors group"><Icon d={PATHS.x} size={32} className="transition-transform duration-300 group-hover:rotate-90" /></button>
                     <div className="relative w-full h-full flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
                         {images.length > 1 && (
                             <button onClick={(e) => { e.stopPropagation(); setIndex(prev => (prev > 0 ? prev - 1 : images.length - 1)); }} className="absolute left-4 text-white/70 hover:text-white p-3 bg-black/20 hover:bg-black/50 rounded-full transition-colors z-50"><Icon d={PATHS.left} size={32} /></button>
@@ -10712,7 +10926,8 @@ const firebaseConfig = {
 
                 const lastVersion = localStorage.getItem('cls_last_version');
                 if (lastVersion !== CURRENT_VERSION) {
-            setShowUpdateNotes(true);
+                    // setShowUpdateNotes(true);
+                    localStorage.setItem('cls_last_version', CURRENT_VERSION);
                 }
             }, [CURRENT_VERSION]);
 
@@ -13465,7 +13680,7 @@ const firebaseConfig = {
             {/* 🔔 알림 버튼 위치 */}
             <div className="relative">
                 <button onClick={() => setShowNotifications(!showNotifications)} className="p-1.5 text-notion-text-light hover:bg-notion-bg-hover hover:text-notion-text rounded flex items-center gap-1.5 relative">
-                    <Icon d={PATHS.bell} size={20} className={showNotifications ? "text-indigo-500 animate-bell-ring" : ""} />
+                    <Icon d={PATHS.bell} size={20} className={showNotifications ? "text-indigo-500 animate-bell-ring" : "hover:animate-wiggle"} />
                     {unreadCount > 0 && (
                         <span className="absolute top-0 right-0 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm transform translate-x-1/4 -translate-y-1/4 animate-bounce">
                             {unreadCount > 9 ? '9+' : unreadCount}
@@ -13720,7 +13935,7 @@ const firebaseConfig = {
                                                     <span className="text-xl">🛠️</span> 모둠 도구
                                                     <button onClick={(e) => { e.stopPropagation(); setShowRoleHelp(true); }} className="text-slate-400 hover:text-indigo-500"><Icon d={PATHS.help} size={16} /></button>
                                                 </h3>
-                                                <Icon d={isGroupToolsOpen ? PATHS.down : PATHS.right} size={16} className="text-slate-400" />
+                                                <Icon d={PATHS.right} size={16} className={`text-slate-400 transition-transform duration-300 ${isGroupToolsOpen ? 'rotate-90' : ''}`} />
                                             </div>
                                             {isGroupToolsOpen && (
                                                 <div className="mt-4 grid grid-cols-1 gap-2 animate-fade-in">
@@ -14143,7 +14358,7 @@ const firebaseConfig = {
                                                                 title="카테고리 필터"
                                                             >
                                                                 <span className="text-xs font-bold">{filterCategory || '전체'}</span>
-                                                                <Icon d={PATHS.down} size={10} />
+                                                                <Icon d={PATHS.down} size={10} className={`transition-transform duration-200 ${showCategoryMenu ? 'rotate-180' : ''}`} />
                                                             </button>
                                                             {showCategoryMenu && (
                                                                 <>
@@ -14170,7 +14385,7 @@ const firebaseConfig = {
                                                                 title="보기 모드 변경"
                                                             >
                                                                 <Icon d={postViewMode === 'list' ? PATHS.list : postViewMode === 'gallery' ? PATHS.image : PATHS.grid} size={14} />
-                                                                <Icon d={PATHS.down} size={10} />
+                                                                <Icon d={PATHS.down} size={10} className={`transition-transform duration-200 ${showViewModeMenu ? 'rotate-180' : ''}`} />
                                                             </button>
                                                             {showViewModeMenu && (
                                                                 <>
@@ -14198,7 +14413,7 @@ const firebaseConfig = {
                                                                 title="정렬 순서 변경"
                                                             >
                                                                 <span className="text-xs font-bold">{postSortOrder === 'latest' ? '최신순' : postSortOrder === 'likes' ? '좋아요순' : '조회수순'}</span>
-                                                                <Icon d={PATHS.down} size={10} />
+                                                                <Icon d={PATHS.down} size={10} className={`transition-transform duration-200 ${showSortOrderMenu ? 'rotate-180' : ''}`} />
                                                             </button>
                                                             {showSortOrderMenu && (
                                                                 <>
@@ -14257,7 +14472,7 @@ const firebaseConfig = {
                                                                                         <span>{post.commentCount || 0}</span>
                                                                                     </div>
                                                                                     <div className="flex items-center gap-1">
-                                                                                        <Icon d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
+                                                                                        <Icon key={likedPosts.includes(post.id)} d={PATHS.heart} size={12} className={likedPosts.includes(post.id) ? "fill-current text-rose-500 animate-pop" : ""} />
                                                                                         <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
                                                                                     </div>
                                                                                 </div>
@@ -14329,7 +14544,7 @@ const firebaseConfig = {
                                                                             <span className="truncate max-w-[60px]">{post.authorName} <span className="text-[10px] align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
                                                                             <div className="flex items-center gap-2 shrink-0">
                                                                                 <div className="flex items-center gap-0.5">
-                                                                                    <Icon d={PATHS.heart} size={10} className={likedPosts.includes(post.id) ? "fill-current text-rose-500" : ""} />
+                                                                                    <Icon key={likedPosts.includes(post.id)} d={PATHS.heart} size={10} className={likedPosts.includes(post.id) ? "fill-current text-rose-500 animate-pop" : ""} />
                                                                                     <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
                                                                                 </div>
                                                                                 <span>{dayjs(post.createdAt).format('MM.DD')}</span>
@@ -14390,7 +14605,7 @@ const firebaseConfig = {
                                                                             <span className="text-xs font-bold">{post.commentCount || 0}</span>
                                                                         </div>
                                                                         <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${likedPosts.includes(post.id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 bg-slate-50'}`}>
-                                                                            <Icon d={PATHS.heart} size={14} className={likedPosts.includes(post.id) ? "fill-current" : ""} />
+                                                                            <Icon key={likedPosts.includes(post.id)} d={PATHS.heart} size={14} className={likedPosts.includes(post.id) ? "fill-current animate-pop" : ""} />
                                                                             <span className="text-xs font-bold">{post.likes ? post.likes.length : 0}</span>
                                                                         </div>
                                                                     </div>
@@ -14509,6 +14724,7 @@ const firebaseConfig = {
                                                                 className="prose prose-sm max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap mb-8 [&_img]:cursor-pointer [&_img]:rounded-lg [&_img]:shadow-sm hover:[&_img]:opacity-90 [&_img]:transition-opacity"
                                                                 onClick={(e) => {
                                                                     if (e.target.tagName === 'IMG') {
+                                                                        e.stopPropagation();
                                                                         const container = e.currentTarget;
                                                                         const imgs = Array.from(container.querySelectorAll('img'));
                                                                         const imgUrls = imgs.map(img => img.src);
@@ -14523,7 +14739,7 @@ const firebaseConfig = {
                                                             {selectedPost.imageUrls && selectedPost.imageUrls.length > 0 && (
                                                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-8">
                                                                     {selectedPost.imageUrls.map((url, idx) => (
-                                                                        <div key={idx} className="aspect-square rounded-xl border border-slate-200 bg-slate-50 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity" onClick={() => openLightbox(selectedPost.imageUrls, idx)}>
+                                                                        <div key={idx} className="aspect-square rounded-xl border border-slate-200 bg-slate-50 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); openLightbox(selectedPost.imageUrls, idx); }}>
                                                                             <img src={url} alt={`첨부 ${idx+1}`} className="w-full h-full object-cover" />
                                                                         </div>
                                                                     ))}
@@ -14550,7 +14766,7 @@ const firebaseConfig = {
                                                                     onClick={() => handleLikePost(selectedPost.id)}
                                                                     className={`flex items-center gap-2 px-6 py-3 rounded-full border transition-all transform active:scale-95 ${likedPosts.includes(selectedPost.id) ? 'bg-rose-50 border-rose-200 text-rose-500 shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                                                                 >
-                                                                    <Icon d={PATHS.heart} size={20} className={likedPosts.includes(selectedPost.id) ? "fill-current" : ""} />
+                                                                    <Icon key={likedPosts.includes(selectedPost.id)} d={PATHS.heart} size={20} className={likedPosts.includes(selectedPost.id) ? "fill-current animate-pop" : ""} />
                                                                     <span className="font-bold text-lg">{selectedPost.likes ? selectedPost.likes.length : 0}</span>
                                                                 </button>
                                                             </div>
@@ -14700,8 +14916,8 @@ const firebaseConfig = {
             {showNicknameModal && mode === 'community' && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-bounce-in border border-slate-100 relative">
-                        <button onClick={() => setShowNicknameModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors">
-                            <Icon d={PATHS.x} size={20} />
+                        <button onClick={() => setShowNicknameModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors group">
+                            <Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
                         <div className="text-center mb-5">
                             <div className="text-4xl mb-3">👋</div>
@@ -15207,7 +15423,7 @@ const firebaseConfig = {
                                     {/* --- 모달 헤더 (X 버튼 포함) --- */}
                                     <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                                         <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">👑 관리자 전용 대시보드</h3>
-                                        <button onClick={() => setShowAdminDashboard(false)} className="text-slate-400 hover:text-rose-500 font-bold text-xl">✕</button>
+                                        <button onClick={() => setShowAdminDashboard(false)} className="text-slate-400 hover:text-rose-500 p-1 rounded-full hover:bg-slate-100 transition-colors group"><Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" /></button>
                                     </div>
                                     
                                     {/* --- 모달 본문 (기존 콘텐츠 그대로 유지) --- */}
