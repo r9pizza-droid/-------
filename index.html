@@ -3350,41 +3350,45 @@
             };
 
             const handleTestCommentLikeNotification = async () => {
-                const user = firebase.auth().currentUser;
-                if (!user) {
-                    setToastMessage("알림 테스트를 위해서는 로그인이 필요합니다. (게시판 등에서 로그인)");
-                    return;
-                }
-                if (!sharedDb) {
-                    setToastMessage("서버 연결 상태를 확인해주세요.");
-                    return;
-                }
+                if (firebase.apps.length > 0) {
+                    const user = firebase.auth().currentUser;
+                    if (!user) {
+                        setToastMessage("알림 테스트를 위해서는 로그인이 필요합니다. (게시판 등에서 로그인)");
+                        return;
+                    }
+                    if (!sharedDb) {
+                        setToastMessage("서버 연결 상태를 확인해주세요.");
+                        return;
+                    }
 
-                try {
-                    await sharedDb.collection('notifications').add({
-                        targetUid: user.uid,
-                        type: 'like',
-                        postId: 'test-post',
-                        postTitle: '테스트 게시글',
-                        senderName: '테스트 봇',
-                        message: "누군가 회원님의 글에 좋아요를 눌렀습니다. (테스트)",
-                        isRead: false,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    await sharedDb.collection('notifications').add({
-                        targetUid: user.uid,
-                        type: 'comment',
-                        postId: 'test-post',
-                        postTitle: '테스트 게시글',
-                        senderName: '테스트 봇',
-                        message: `테스트 봇님이 댓글을 남겼습니다: "알림 테스트입니다."`,
-                        isRead: false,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    setToastMessage("테스트 알림을 발송했습니다. (종 모양 아이콘 확인)");
-                } catch (e) {
-                    console.error(e);
-                    setToastMessage("알림 발송 실패: " + e.message);
+                    try {
+                        await sharedDb.collection('notifications').add({
+                            targetUid: user.uid,
+                            type: 'like',
+                            postId: 'test-post',
+                            postTitle: '테스트 게시글',
+                            senderName: '테스트 봇',
+                            message: "누군가 회원님의 글에 좋아요를 눌렀습니다. (테스트)",
+                            isRead: false,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        await sharedDb.collection('notifications').add({
+                            targetUid: user.uid,
+                            type: 'comment',
+                            postId: 'test-post',
+                            postTitle: '테스트 게시글',
+                            senderName: '테스트 봇',
+                            message: `테스트 봇님이 댓글을 남겼습니다: "알림 테스트입니다."`,
+                            isRead: false,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        setToastMessage("테스트 알림을 발송했습니다. (종 모양 아이콘 확인)");
+                    } catch (e) {
+                        console.error(e);
+                        setToastMessage("알림 발송 실패: " + e.message);
+                    }
+                } else {
+                    setToastMessage("Firebase 연결을 확인해주세요.");
                 }
             };
 
@@ -7165,17 +7169,19 @@ const firebaseConfig = {
 
             useEffect(() => {
                 if (!sharedDb) return;
-                const unsubscribe = firebase.auth().onAuthStateChanged(user => {
-                    if (user) {
-                        const unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
-                            if (doc.exists) setCurrentUserStats(doc.data());
-                            else setCurrentUserStats({ postCount: 0, commentCount: 0 });
-                        });
-                    } else {
-                        setCurrentUserStats({ postCount: 0, commentCount: 0 });
-                    }
-                });
-                return () => unsubscribe();
+                if (firebase.apps.length > 0) {
+                    const unsubscribe = firebase.auth().onAuthStateChanged(user => {
+                        if (user) {
+                            const unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
+                                if (doc.exists) setCurrentUserStats(doc.data());
+                                else setCurrentUserStats({ postCount: 0, commentCount: 0 });
+                            });
+                        } else {
+                            setCurrentUserStats({ postCount: 0, commentCount: 0 });
+                        }
+                    });
+                    return () => unsubscribe();
+                }
             }, [sharedDb]);
 
             // ==========================================
@@ -7199,21 +7205,25 @@ const firebaseConfig = {
 
             // 내 컴퓨터에 없다면 파이어베이스 서버에 물어봅니다. (지연 시간 대비)
             const checkFirebase = () => {
-                const user = firebase.auth().currentUser;
-                if (user && sharedDb) {
-                    sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
-                        if (doc.exists && doc.data().name) {
-                            const fetchedName = doc.data().name;
-                            setUserNickname(fetchedName);
-                            localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
-                            setShowNicknameModal(false);
-                        } else {
-                            setShowNicknameModal(true);
-                        }
-                    }).catch(e => console.error("별칭 확인 오류:", e));
+                if (firebase.apps.length > 0) {
+                    const user = firebase.auth().currentUser;
+                    if (user && sharedDb) {
+                        sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
+                            if (doc.exists && doc.data().name) {
+                                const fetchedName = doc.data().name;
+                                setUserNickname(fetchedName);
+                                localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
+                                setShowNicknameModal(false);
+                            } else {
+                                setShowNicknameModal(true);
+                            }
+                        }).catch(e => console.error("별칭 확인 오류:", e));
+                    } else {
+                        // 로그인이 아직 확인 안 된 찰나의 순간에는 잠시 모달을 띄웁니다.
+                        setShowNicknameModal(true); 
+                    }
                 } else {
-                    // 로그인이 아직 확인 안 된 찰나의 순간에는 잠시 모달을 띄웁니다.
-                    setShowNicknameModal(true); 
+                    setShowNicknameModal(true);
                 }
             };
 
@@ -7386,80 +7396,88 @@ const firebaseConfig = {
 
             useEffect(() => {
                 try {
-                    const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
-                        setIsAdmin(!!user && user.uid === ADMIN_UID);
-                    });
-                    return () => unsubscribe();
+                    if (firebase.apps.length > 0) {
+                        const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+                            setIsAdmin(!!user && user.uid === ADMIN_UID);
+                        });
+                        return () => unsubscribe();
+                    }
                 } catch (e) {}
             }, [isLocalMode]);
 
             // [New] 알림 구독 및 처리 로직
             useEffect(() => {
                 if (!sharedDb) return;
-                const unsubscribeAuth = firebase.auth().onAuthStateChanged(user => {
-                    if (user) {
-                        isNotiFirstLoad.current = true;
-                        const unsubscribeNoti = sharedDb.collection('notifications')
-                            .where('targetUid', '==', user.uid)
-                            .orderBy('createdAt', 'desc')
-                            .limit(50)
-                            .onSnapshot(snapshot => {
-                                const notis = snapshot.docs.map(doc => ({
-                                    id: doc.id,
-                                    ...doc.data(),
-                                    createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
-                                }));
-                                setNotifications(notis);
+                if (firebase.apps.length > 0) {
+                    const unsubscribeAuth = firebase.auth().onAuthStateChanged(user => {
+                        if (user) {
+                            isNotiFirstLoad.current = true;
+                            const unsubscribeNoti = sharedDb.collection('notifications')
+                                .where('targetUid', '==', user.uid)
+                                .orderBy('createdAt', 'desc')
+                                .limit(50)
+                                .onSnapshot(snapshot => {
+                                    const notis = snapshot.docs.map(doc => ({
+                                        id: doc.id,
+                                        ...doc.data(),
+                                        createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
+                                    }));
+                                    setNotifications(notis);
 
-                                if (!isNotiFirstLoad.current && appConfig && appConfig.enablePushNotifications && appConfig.enableNotifications !== false) {
-                                    snapshot.docChanges().forEach(change => {
-                                        if (change.type === 'added') {
-                                            const newNoti = change.doc.data();
-                                            if (!newNoti.isRead && Notification.permission === 'granted') {
-                                                try {
-                                                    new Notification("다했나요? 알림", {
-                                                        body: newNoti.message,
-                                                        icon: appConfig.favicon || undefined
-                                                    });
-                                                } catch (e) { console.error(e); }
+                                    if (!isNotiFirstLoad.current && appConfig && appConfig.enablePushNotifications && appConfig.enableNotifications !== false) {
+                                        snapshot.docChanges().forEach(change => {
+                                            if (change.type === 'added') {
+                                                const newNoti = change.doc.data();
+                                                if (!newNoti.isRead && Notification.permission === 'granted') {
+                                                    try {
+                                                        new Notification("다했나요? 알림", {
+                                                            body: newNoti.message,
+                                                            icon: appConfig.favicon || undefined
+                                                        });
+                                                    } catch (e) { console.error(e); }
+                                                }
                                             }
-                                        }
-                                    });
-                                }
-                                isNotiFirstLoad.current = false;
-                            }, err => console.error("알림 동기화 오류:", err));
-                        return () => unsubscribeNoti();
-                    } else {
-                        setNotifications([]);
-                    }
-                });
-                return () => unsubscribeAuth();
+                                        });
+                                    }
+                                    isNotiFirstLoad.current = false;
+                                }, err => console.error("알림 동기화 오류:", err));
+                            return () => unsubscribeNoti();
+                        } else {
+                            setNotifications([]);
+                        }
+                    });
+                    return () => unsubscribeAuth();
+                }
             }, [sharedDb, appConfig]);
 
             // ==========================================
     // 🔔 알림 테스트 발송 함수 (하얀 화면 해결용)
     // ==========================================
             const handleTestCommentLikeNotification = async () => {
-                const user = firebase.auth().currentUser;
-                if (!user) {
-                    alert("로그인이 필요합니다.");
-                    return;
+                if (firebase.apps.length > 0) {
+                    const user = firebase.auth().currentUser;
+                    if (!user) {
+                        alert("로그인이 필요합니다.");
+                        return;
+                    }
+                    if (!sharedDb) return;
+            
+                    try {
+                        await sharedDb.collection('notifications').add({
+                            targetUid: user.uid,
+                            type: 'test',
+                            postId: 'test-post',
+                            message: "🔔 테스트: 알림 기능이 정상적으로 작동하고 있습니다!",
+                            isRead: false,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    setToastMessage("테스트 알림이 발송되었습니다!");
+                    } catch (e) {
+                        console.error("알림 발송 실패:", e);
+                    }
+                } else {
+                    setToastMessage("Firebase 연결을 확인해주세요.");
                 }
-                if (!sharedDb) return;
-        
-                try {
-                    await sharedDb.collection('notifications').add({
-                        targetUid: user.uid,
-                        type: 'test',
-                        postId: 'test-post',
-                        message: "🔔 테스트: 알림 기능이 정상적으로 작동하고 있습니다!",
-                        isRead: false,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                setToastMessage("테스트 알림이 발송되었습니다!");
-            } catch (e) {
-                console.error("알림 발송 실패:", e);
-            }
             };
     // ==========================================
 
