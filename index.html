@@ -6340,13 +6340,13 @@
                                 <ol className="list-decimal pl-4 space-y-1">
                                     <li>좌측 메뉴 <strong>Build &gt; Firestore Database</strong> &gt; Create database</li>
                                     <li><strong>Rules</strong> 탭 클릭 &gt; 아래 코드로 교체 &gt; <strong>Publish</strong></li>
-                                    <li>(주의) 코드 내 <code>'개인UID를 넣어주세요'</code> 부분은 <strong>Authentication &gt; Users</strong> 탭에서 방금 생성한 이메일의 <strong>User UID</strong> 값을 복사하여 붙여넣으세요. (UID에 마우스를 올리면 복사 아이콘이 뜹니다)</li>
+                                    <li>(주의) 코드 내 <code>'선생님의_고유_UID'</code> 부분은 <strong>Authentication &gt; Users</strong> 탭에서 방금 생성한 이메일의 <strong>User UID</strong> 값을 복사하여 붙여넣으세요. (UID에 마우스를 올리면 복사 아이콘이 뜹니다)</li>
                                 </ol>
                                 <div className="relative mt-2 group">
                                     <div className="bg-slate-800 text-green-400 p-3 rounded-lg font-mono text-[10px] overflow-x-auto whitespace-pre border border-slate-700 shadow-inner selection:bg-green-900 selection:text-white">
-{`rules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // 모든 문서({document=**})에 대하여\n    match /{document=**} {\n      \n      // 1. 반드시 로그인이 되어 있어야 하며\n      // 2. 로그인한 사용자의 UID가 사용자님의 UID와 일치할 때만 모든 읽기/쓰기를 허용합니다.\n      allow read, write: if request.auth != null && request.auth.uid == '개인UID를 넣어주세요';\n      \n    }\n  }\n}`}
+{`rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      // 로그인도 되어야 하고, 그 사람의 UID가 아래와 정확히 일치해야 함!\n      allow read, write: if request.auth != null && request.auth.uid == '선생님의_고유_UID';\n    }\n  }\n}`}
                                     </div>
-                                    <button onClick={() => { const code = "rules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // 모든 문서({document=**})에 대하여\n    match /{document=**} {\n      \n      // 1. 반드시 로그인이 되어 있어야 하며\n      // 2. 로그인한 사용자의 UID가 사용자님의 UID와 일치할 때만 모든 읽기/쓰기를 허용합니다.\n      allow read, write: if request.auth != null && request.auth.uid == '개인UID를 넣어주세요';\n      \n    }\n  }\n}"; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                                    <button onClick={() => { const code = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      // 로그인도 되어야 하고, 그 사람의 UID가 아래와 정확히 일치해야 함!\n      allow read, write: if request.auth != null && request.auth.uid == '선생님의_고유_UID';\n    }\n  }\n}"; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
                                         <Icon d={PATHS.copy} size={12} /> 코드 복사
                                     </button>
                                 </div>
@@ -7283,6 +7283,55 @@ const firebaseConfig = {
             const [showAdminDashboard, setShowAdminDashboard] = useState(false);
             const [adminStats, setAdminStats] = useState({ posts: 0, comments: 0, notis: 0 });
             const [isLoadingStats, setIsLoadingStats] = useState(false);
+            
+            // [New] 게시판 사용자 관리 (관리자 전용)
+            const [showUserManagementModal, setShowUserManagementModal] = useState(false);
+            const [manageUserList, setManageUserList] = useState([]);
+            const [isLoadingManageUsers, setIsLoadingManageUsers] = useState(false);
+
+            const fetchManageUsers = async () => {
+                if (!sharedDb) return;
+                setIsLoadingManageUsers(true);
+                try {
+                    const profilesSnap = await sharedDb.collection('userProfiles').orderBy('createdAt', 'desc').get();
+                    const users = profilesSnap.docs.map(doc => ({
+                        uid: doc.id,
+                        name: doc.data().name || "(이름 없음)",
+                        createdAt: doc.data().createdAt
+                    }));
+                    setManageUserList(users);
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("사용자 목록 로딩 실패: " + e.message);
+                } finally {
+                    setIsLoadingManageUsers(false);
+                }
+            };
+
+            const handleAdminUpdateNickname = async (uid, currentName) => {
+                const newName = prompt("새로운 닉네임을 입력하세요:", currentName);
+                if (newName && newName.trim() !== "" && newName !== currentName) {
+                    try {
+                        await sharedDb.collection('userProfiles').doc(uid).update({ name: newName.trim() });
+                        setToastMessage("닉네임이 수정되었습니다.");
+                        fetchManageUsers();
+                    } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
+                }
+            };
+
+            const handleAdminResetUser = async (uid, name) => {
+                if (confirm(`'${name}' 사용자의 데이터를 초기화하시겠습니까?\n(닉네임 정보와 활동 통계가 삭제되어, 재접속 시 닉네임을 다시 설정해야 합니다.)`)) {
+                    try {
+                        const batch = sharedDb.batch();
+                        batch.delete(sharedDb.collection('userProfiles').doc(uid));
+                        batch.delete(sharedDb.collection('userStats').doc(uid));
+                        await batch.commit();
+                        setToastMessage("사용자 데이터가 초기화되었습니다.");
+                        fetchManageUsers();
+                    } catch (e) { console.error(e); setToastMessage("초기화 실패: " + e.message); }
+                }
+            };
+
             const [adminLevelConfig, setAdminLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60 });
 
             const handleOpenAdminDashboard = async () => {
@@ -11857,6 +11906,14 @@ const firebaseConfig = {
                                                             <button onClick={() => setShowCommunityHelp(true)} className="text-slate-400 hover:text-indigo-500 p-1.5 rounded-full hover:bg-slate-50 transition-colors" title="이용 안내">
                                                                 <Icon d={PATHS.help} size={18} />
                                                             </button>
+                                                            {isAdmin && (
+                                                                <button 
+                                                                    onClick={() => { setShowUserManagementModal(true); fetchManageUsers(); }}
+                                                                    className="ml-2 px-3 py-1 bg-slate-800 text-white text-xs rounded-lg font-bold hover:bg-slate-700 transition-colors shadow-sm"
+                                                                >
+                                                                    사용자 관리
+                                                                </button>
+                                                            )}
                                                         </h3>
                                                     </div>
                                                     <div className="flex gap-2 w-full sm:w-auto">
@@ -13124,6 +13181,37 @@ const firebaseConfig = {
                                             닫기
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {showUserManagementModal && (
+                        <div className="fixed inset-0 z-[6000] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowUserManagementModal(false)}>
+                            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+                                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">👥 사용자 관리 <span className="text-xs font-normal text-slate-500">({manageUserList.length}명)</span></h3>
+                                    <button onClick={() => setShowUserManagementModal(false)} className="p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><Icon d={PATHS.x} /></button>
+                                </div>
+                                <div className="p-4 overflow-y-auto custom-scroll flex-1 bg-slate-50/30">
+                                    {isLoadingManageUsers ? (
+                                        <div className="text-center py-10 text-slate-500"><Icon d={PATHS.spinner} className="animate-spin inline mr-2"/> 로딩 중...</div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {manageUserList.map(user => (
+                                                <div key={user.uid} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 transition-colors gap-3 shadow-sm">
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="font-bold text-slate-700 text-sm truncate">{user.name}</span>
+                                                        <span className="text-[10px] text-slate-400 font-mono truncate">{user.uid}</span>
+                                                    </div>
+                                                    <div className="flex gap-2 shrink-0">
+                                                        <button onClick={() => handleAdminUpdateNickname(user.uid, user.name)} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 border border-indigo-100 transition-colors">닉네임 변경</button>
+                                                        <button onClick={() => handleAdminResetUser(user.uid, user.name)} className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100 border border-rose-100 transition-colors">데이터 초기화</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {manageUserList.length === 0 && <div className="text-center text-slate-400 py-10 border-2 border-dashed border-slate-200 rounded-xl">사용자가 없습니다.</div>}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
