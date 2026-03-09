@@ -6260,9 +6260,7 @@
                 setIsConnecting(true);
                 try {
                     const oldDefaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
-                    if (oldDefaultApp) {
-                        await oldDefaultApp.delete();
-                    }
+                    if (oldDefaultApp) { await oldDefaultApp.delete(); }
                     firebase.initializeApp(config);
                     await firebase.auth().signInWithEmailAndPassword(authId, authPw); 
                     if (rememberMe) { localStorage.setItem('cls_fb_id', authId); localStorage.setItem('cls_fb_pw', authPw); localStorage.setItem('cls_fb_config', inputConfig); } 
@@ -6286,9 +6284,7 @@
                 setIsTesting(true);
                 try {
                     const oldDefaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
-                    if (oldDefaultApp) {
-                        await oldDefaultApp.delete();
-                    }
+                    if (oldDefaultApp) { await oldDefaultApp.delete(); }
                     firebase.initializeApp(config);
                     await firebase.auth().signInWithEmailAndPassword(authId, authPw);
                     showToast("✅ 연결 테스트 성공! (로그인 확인됨)");
@@ -9376,9 +9372,7 @@ const firebaseConfig = {
                         try {
                             const config = JSON.parse(savedConfig);
                             const oldDefaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
-                            if (oldDefaultApp) {
-                                await oldDefaultApp.delete();
-                            }
+                            if (oldDefaultApp) { await oldDefaultApp.delete(); }
                             firebase.initializeApp(config);
                             
                             // [Fix] 명시적으로 기본 앱의 Firestore 가져오기
