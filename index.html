@@ -7279,6 +7279,7 @@ const firebaseConfig = {
             const ADMIN_UID = 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2';
             const [isAdmin, setIsAdmin] = useState(false);
             const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [isCurrentUserBlocked, setIsCurrentUserBlocked] = useState(false);
             
             // [New] 관리자 대시보드 상태 및 함수
             const [showAdminDashboard, setShowAdminDashboard] = useState(false);
@@ -7298,7 +7299,8 @@ const firebaseConfig = {
                     const users = profilesSnap.docs.map(doc => ({
                         uid: doc.id,
                         name: doc.data().name || "(이름 없음)",
-                        createdAt: doc.data().createdAt
+                        createdAt: doc.data().createdAt,
+                        blocked: doc.data().blocked || false
                     }));
                     setManageUserList(users);
                 } catch (e) {
@@ -7317,6 +7319,17 @@ const firebaseConfig = {
                         setToastMessage("닉네임이 수정되었습니다.");
                         fetchManageUsers();
                     } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
+                }
+            };
+
+            const handleAdminToggleBlock = async (uid, name, currentStatus) => {
+                const action = currentStatus ? "차단 해제" : "차단";
+                if (confirm(`'${name}' 사용자를 ${action}하시겠습니까?\n(차단 시 글쓰기와 댓글 작성이 제한됩니다.)`)) {
+                    try {
+                        await sharedDb.collection('userProfiles').doc(uid).set({ blocked: !currentStatus }, { merge: true });
+                        setToastMessage(`사용자가 ${action}되었습니다.`);
+                        fetchManageUsers();
+                    } catch (e) { console.error(e); setToastMessage("처리 실패: " + e.message); }
                 }
             };
 
@@ -7452,13 +7465,21 @@ const firebaseConfig = {
                         const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
                             setIsLoggedIn(!!user);
                             setIsAdmin(!!user && user.uid === ADMIN_UID);
+                            if (user) {
+                                sharedDb.collection('userProfiles').doc(user.uid).onSnapshot(doc => {
+                                    if (doc.exists) setIsCurrentUserBlocked(!!doc.data().blocked);
+                                    else setIsCurrentUserBlocked(false);
+                                });
+                            } else {
+                                setIsCurrentUserBlocked(false);
+                            }
                         });
                         return () => unsubscribe();
                     } else {
                         setIsLoggedIn(false);
                         setIsAdmin(false);
                     }
-                } catch (e) { setIsLoggedIn(false); setIsAdmin(false); }
+                } catch (e) { setIsLoggedIn(false); setIsAdmin(false); setIsCurrentUserBlocked(false); }
             }, [isLocalMode]);
 
             // [New] 알림 구독 및 처리 로직
@@ -7686,6 +7707,10 @@ const firebaseConfig = {
                 if (!isLoggedIn) {
                     setToastMessage("글을 쓰려면 로그인이 필요합니다.");
                     setIsSetupOpen(true);
+                    return;
+                }
+                if (isCurrentUserBlocked) {
+                    setToastMessage("관리자에 의해 글쓰기가 제한되었습니다.");
                     return;
                 }
                 if (!userNickname) {
@@ -8069,6 +8094,19 @@ const firebaseConfig = {
                             pCount++;
                             await statsRef.set({ postCount: pCount, commentCount: cCount }, { merge: true });
                             currentBadge = getLevelBadge(pCount, cCount);
+
+                            // [Fix] 사용자 관리 명단에 뜨도록 프로필 정보 갱신 (없으면 생성)
+                            const profileRef = sharedDb.collection('userProfiles').doc(user.uid);
+                            const profileDoc = await profileRef.get();
+                            if (!profileDoc.exists) {
+                                await profileRef.set({
+                                    uid: user.uid,
+                                    name: userNickname,
+                                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                            } else {
+                                await profileRef.set({ name: userNickname, lastActiveAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                            }
                         }
 
                         await sharedDb.collection('community').add({
@@ -8284,6 +8322,11 @@ const firebaseConfig = {
                     return;
                 }
 
+                if (isCurrentUserBlocked) {
+                    setToastMessage("관리자에 의해 댓글 작성이 제한되었습니다.");
+                    return;
+                }
+
                 if (!contentToUse.trim()) {
                     setToastMessage("내용을 입력해주세요.");
                     return;
@@ -8307,6 +8350,19 @@ const firebaseConfig = {
             cCount++;
             await statsRef.set({ postCount: pCount, commentCount: cCount }, { merge: true });
             currentBadge = getLevelBadge(pCount, cCount);
+
+            // [Fix] 사용자 관리 명단에 뜨도록 프로필 정보 갱신 (없으면 생성)
+            const profileRef = sharedDb.collection('userProfiles').doc(user.uid);
+            const profileDoc = await profileRef.get();
+            if (!profileDoc.exists) {
+                await profileRef.set({
+                    uid: user.uid,
+                    name: userNickname,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } else {
+                await profileRef.set({ name: userNickname, lastActiveAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            }
         }
 
         const newCommentData = {
@@ -11931,7 +11987,7 @@ const firebaseConfig = {
                                                                     onClick={() => { setShowUserManagementModal(true); fetchManageUsers(); }}
                                                                     className="ml-2 px-3 py-1 bg-slate-800 text-white text-xs rounded-lg font-bold hover:bg-slate-700 transition-colors shadow-sm"
                                                                 >
-                                                                    사용자 관리
+                                                                    사용자 관리 ⚙️
                                                                 </button>
                                                             )}
                                                         </h3>
@@ -13218,12 +13274,19 @@ const firebaseConfig = {
                                     ) : (
                                         <div className="space-y-2">
                                             {manageUserList.map(user => (
-                                                <div key={user.uid} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 transition-colors gap-3 shadow-sm">
+                                                <div key={user.uid} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-xl transition-colors gap-3 shadow-sm ${user.blocked ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className="font-bold text-slate-700 text-sm truncate">{user.name}</span>
-                                                        <span className="text-[10px] text-slate-400 font-mono truncate">{user.uid}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-slate-700 text-sm truncate">{user.name}</span>
+                                                            {user.createdAt && <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{dayjs(user.createdAt.toDate()).format('YY.MM.DD')}</span>}
+                                                            {user.blocked && <span className="text-[10px] text-white bg-rose-500 px-1.5 py-0.5 rounded font-bold">차단됨</span>}
+                                                        </div>
+                                                        <span onClick={() => { navigator.clipboard.writeText(user.uid); setToastMessage("UID가 복사되었습니다."); }} className="text-[10px] text-slate-400 font-mono truncate cursor-pointer hover:text-indigo-500 hover:underline" title="클릭하여 UID 복사">
+                                                            {user.uid}
+                                                        </span>
                                                     </div>
                                                     <div className="flex gap-2 shrink-0">
+                                                        <button onClick={() => handleAdminToggleBlock(user.uid, user.name, user.blocked)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${user.blocked ? 'bg-slate-600 text-white border-slate-600 hover:bg-slate-700' : 'bg-white text-rose-500 border-rose-200 hover:bg-rose-50'}`}>{user.blocked ? "차단 해제" : "차단"}</button>
                                                         <button onClick={() => handleAdminUpdateNickname(user.uid, user.name)} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 border border-indigo-100 transition-colors">닉네임 변경</button>
                                                         <button onClick={() => handleAdminResetUser(user.uid, user.name)} className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100 border border-rose-100 transition-colors">데이터 초기화</button>
                                                     </div>
