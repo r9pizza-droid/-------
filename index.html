@@ -3192,6 +3192,15 @@
             const [isVacStartCalOpen, setIsVacStartCalOpen] = useState(false);
             const [isVacEndCalOpen, setIsVacEndCalOpen] = useState(false);
             const [isVacationSectionOpen, setIsVacationSectionOpen] = useState(false);
+            const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('cls_dark_mode') === 'true');
+
+            const toggleDarkMode = (e) => {
+                const newVal = e.target.checked;
+                setIsDarkMode(newVal);
+                localStorage.setItem('cls_dark_mode', newVal);
+                window.dispatchEvent(new Event('cls_dark_mode_change'));
+                if (showToast) showToast(newVal ? "다크 모드가 켜졌습니다." : "라이트 모드가 켜졌습니다.");
+            };
             
             // [New] 사용자 관리 (관리자 전용)
             const [userList, setUserList] = useState([]);
@@ -4206,6 +4215,18 @@
                                                                     </div>
                                                                 </>
                                                             )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors flex flex-col justify-between">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="text-base">{isDarkMode ? '🌙' : '☀️'}</span>
+                                                            <span className="text-xs font-bold text-slate-500">{isDarkMode ? '다크 모드' : '라이트 모드'}</span>
+                                                        </div>
+                                                        <div className="flex justify-end items-center">
+                                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                                <input type="checkbox" className="sr-only peer" checked={isDarkMode} onChange={toggleDarkMode} />
+                                                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                                            </label>
                                                         </div>
                                                     </div>
                                                     <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:border-indigo-300 transition-colors">
@@ -7111,6 +7132,18 @@ const firebaseConfig = {
 
             // [New] 현재 사용자 통계 상태 (레벨 권한 체크용)
             const [currentUserStats, setCurrentUserStats] = useState({ postCount: 0, commentCount: 0 });
+
+            useEffect(() => {
+                const handleDarkModeChange = () => {
+                    const isDark = localStorage.getItem('cls_dark_mode') === 'true';
+                    if (isDark) document.documentElement.classList.add('dark');
+                    else document.documentElement.classList.remove('dark');
+                };
+                
+                handleDarkModeChange(); // 초기 실행
+                window.addEventListener('cls_dark_mode_change', handleDarkModeChange);
+                return () => window.removeEventListener('cls_dark_mode_change', handleDarkModeChange);
+            }, []);
 
             useEffect(() => {
                 if (!sharedDb) return;
