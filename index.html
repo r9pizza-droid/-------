@@ -6239,13 +6239,30 @@
                     if (!firebase.apps.some(app => app.name === '[DEFAULT]')) {
                         firebase.initializeApp(config);
                     }
-                    await firebase.auth().signInWithEmailAndPassword(authId, authPw); 
-                    if (rememberMe) { localStorage.setItem('cls_fb_id', authId); localStorage.setItem('cls_fb_pw', authPw); localStorage.setItem('cls_fb_config', inputConfig); } 
+                    // [Fix] 공백 실수 방지를 위해 trim() 적용
+                    const userCredential = await firebase.auth().signInWithEmailAndPassword(authId.trim(), authPw.trim());
+                    const user = userCredential.user;
+
+                    if (user) {
+                        await firebase.firestore().collection('userProfiles').doc(user.uid).set({
+                            uid: user.uid,
+                            email: user.email,
+                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+
+                        // [New] 현재 로그인한 사용자를 관리자로 설정 (로컬)
+                        localStorage.setItem('cls_admin_uid', user.uid);
+                    }
+
+                    if (rememberMe) { localStorage.setItem('cls_fb_id', authId.trim()); localStorage.setItem('cls_fb_pw', authPw.trim()); localStorage.setItem('cls_fb_config', inputConfig); } 
                     else { localStorage.removeItem('cls_fb_id'); localStorage.removeItem('cls_fb_pw'); localStorage.removeItem('cls_fb_config'); }
                     onConnect(config); 
                 } catch (e) { 
                     let errMsg = "연결 실패: " + e.message;
-                    if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
+                    // [Fix] 에러 메시지 구체화
+                    if (e.code === 'auth/invalid-credential' || e.message.includes('INVALID_LOGIN_CREDENTIALS')) {
+                        errMsg = "로그인 실패: 이메일이나 비밀번호가 올바르지 않습니다.";
+                    } else if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
                     showToast(errMsg); logSystemEvent(errMsg, 'error');
                 } 
             };
@@ -6261,11 +6278,13 @@
                     if (!firebase.apps.some(app => app.name === '[DEFAULT]')) {
                         firebase.initializeApp(config);
                     }
-                    await firebase.auth().signInWithEmailAndPassword(authId, authPw);
+                    await firebase.auth().signInWithEmailAndPassword(authId.trim(), authPw.trim());
                     showToast("✅ 연결 테스트 성공! (로그인 확인됨)");
                 } catch (e) {
                     let errMsg = "연결 실패: " + e.message;
-                    if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
+                    if (e.code === 'auth/invalid-credential' || e.message.includes('INVALID_LOGIN_CREDENTIALS')) {
+                        errMsg = "로그인 실패: 이메일이나 비밀번호가 올바르지 않습니다.";
+                    } else if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
                     showToast(errMsg);
                 } finally {
                     setIsTesting(false);
@@ -7400,7 +7419,7 @@ const firebaseConfig = {
             const [db, setDb] = useState(null); 
             const [appId, setAppId] = useState("");
 
-            const ADMIN_UID = 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2';
+            const [adminUid, setAdminUid] = useState(() => localStorage.getItem('cls_admin_uid') || 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');
             const [isAdmin, setIsAdmin] = useState(false);
             
             // [New] 관리자 대시보드 상태 및 함수
@@ -7524,11 +7543,11 @@ const firebaseConfig = {
             useEffect(() => {
                 try {
                     const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
-                        setIsAdmin(!!user && user.uid === ADMIN_UID);
+                        setIsAdmin(!!user && user.uid === adminUid);
                     });
                     return () => unsubscribe();
                 } catch (e) {}
-            }, [isLocalMode]);
+            }, [isLocalMode, adminUid]);
 
             // [New] 알림 구독 및 처리 로직
             useEffect(() => {
