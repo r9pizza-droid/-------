@@ -13,11 +13,27 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     const [tagInput, setTagInput] = useState("");
     const [resourceLink, setResourceLink] = useState("");
     const [resourceTitle, setResourceTitle] = useState("");
+    const [canUseQuill, setCanUseQuill] = useState(false);
     const quillRef = useRef(null);
     const draftContentRef = useRef("");
 
     useEffect(() => {
         if (isOpen) {
+            if (!window.Quill) {
+                let script = document.getElementById('quill-js');
+                if (!script) {
+                    script = document.createElement('script');
+                    script.id = 'quill-js';
+                    script.src = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
+                    document.head.appendChild(script);
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = 'https://cdn.quilljs.com/1.3.6/quill.snow.css';
+                    document.head.appendChild(link);
+                }
+                script.addEventListener('load', () => setCanUseQuill(true));
+            } else { setCanUseQuill(true); }
+
             if (initialPost) {
                 setCategory(initialPost.category);
                 setTitle(initialPost.title);
@@ -80,7 +96,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     }, [category, title, authorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && canUseQuill) {
             const timer = setTimeout(() => {
                 const container = document.getElementById('quill-editor');
                 if (container && !quillRef.current && window.Quill) {
@@ -155,7 +171,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
             }, 100);
             return () => clearTimeout(timer);
         } else { quillRef.current = null; }
-    }, [isOpen, initialPost]);
+    }, [isOpen, initialPost, canUseQuill]);
 
     const compressImage = (file, maxWidth = 800, quality = 0.6) => {
         return new Promise((resolve, reject) => {
@@ -317,7 +333,16 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">내용</label>
                     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                        <div id="quill-editor" className="text-sm" style={{ border: 'none' }}></div>
+                        {canUseQuill ? (
+                            <div id="quill-editor" className="text-sm" style={{ border: 'none', height: '400px' }}></div>
+                        ) : (
+                            <textarea 
+                                className="w-full h-96 p-4 text-sm outline-none resize-none" 
+                                placeholder="내용을 입력하세요..." 
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                            />
+                        )}
                     </div>
                 </div>
                 <div className="space-y-1">
