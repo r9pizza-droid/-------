@@ -7177,13 +7177,22 @@ const firebaseConfig = {
                     const users = profilesSnap.docs.map(doc => {
                         const data = doc.data();
                         const stat = statsMap[doc.id];
+                        const lastActive = data.lastActive || stat?.lastActive;
                         return { 
                             uid: doc.id, 
                             ...data,
-                            lastActive: stat?.lastActive ? stat.lastActive.toDate() : null,
+                            lastActive: lastActive ? lastActive.toDate() : null,
                             isBlocked: stat?.isBlocked || false
                         };
                     });
+
+                    // [New] 최근 접속 순 정렬
+                    users.sort((a, b) => {
+                        const tA = a.lastActive ? a.lastActive.getTime() : 0;
+                        const tB = b.lastActive ? b.lastActive.getTime() : 0;
+                        return tB - tA;
+                    });
+
                     setUserList(users);
                 } catch (e) { console.error(e); setToastMessage("사용자 목록 로딩 실패"); }
                 finally { setIsLoadingUsers(false); }
@@ -8146,6 +8155,8 @@ const firebaseConfig = {
                         await sharedDb.collection('userProfiles').doc(user.uid).set({
                             uid: user.uid,
                             name: authorName,
+                            nickname: authorName,
+                            lastActive: new Date(),
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         }, { merge: true });
                     }
@@ -8400,6 +8411,23 @@ const firebaseConfig = {
                 }, 100);
             }
             
+            // [New] 댓글 작성자 사용자 명단 등록
+            if (user) {
+                await sharedDb.collection('userStats').doc(user.uid).set({ 
+                    nickname: userNickname, 
+                    lastActive: new Date(), 
+                    uid: user.uid 
+                }, { merge: true });
+
+                await sharedDb.collection('userProfiles').doc(user.uid).set({
+                    uid: user.uid,
+                    name: userNickname,
+                    nickname: userNickname,
+                    lastActive: new Date(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            }
+
             // [알림] 댓글 알림 전송
             const post = communityPosts.find(p => p.id === postId);
             if (post && post.uid) {
