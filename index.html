@@ -3463,7 +3463,8 @@
             
             // 관리자 모드 토글
             const handleDataManagementClick = () => { 
-                if (!isAdmin) {
+                const user = firebase.auth().currentUser;
+                if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
                     return;
                 }
 
@@ -7404,6 +7405,7 @@ const firebaseConfig = {
             const [adminLevelConfig, setAdminLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60 });
 
             const handleOpenAdminDashboard = async () => {
+                // 철통 보안 검사
                 const user = firebase.auth().currentUser;
                 if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
                     alert("접근 권한이 없습니다. 최고 관리자만 이용 가능합니다.");
