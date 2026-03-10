@@ -7180,7 +7180,8 @@ const firebaseConfig = {
                         return { 
                             uid: doc.id, 
                             ...data,
-                            lastActive: stat?.lastActive ? stat.lastActive.toDate() : null
+                            lastActive: stat?.lastActive ? stat.lastActive.toDate() : null,
+                            isBlocked: stat?.isBlocked || false
                         };
                     });
                     setUserList(users);
@@ -7197,6 +7198,24 @@ const firebaseConfig = {
                         fetchUserList();
                     } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
                 }
+            };
+
+            const handleBlockUser = async (uid, currentStatus) => {
+                if (!confirm(currentStatus ? "차단을 해제하시겠습니까?" : "사용자를 차단하시겠습니까?\n(게시글 및 댓글 작성이 제한됩니다)")) return;
+                try {
+                    await sharedDb.collection('userStats').doc(uid).set({ isBlocked: !currentStatus }, { merge: true });
+                    setToastMessage(currentStatus ? "차단이 해제되었습니다." : "사용자가 차단되었습니다.");
+                    fetchUserList();
+                } catch (e) { console.error(e); setToastMessage("처리 실패: " + e.message); }
+            };
+
+            const handleResetUserStats = async (uid) => {
+                if (!confirm("사용자의 활동 점수(글/댓글 수)를 초기화하시겠습니까?")) return;
+                try {
+                    await sharedDb.collection('userStats').doc(uid).set({ postCount: 0, commentCount: 0 }, { merge: true });
+                    setToastMessage("활동 점수가 초기화되었습니다.");
+                    fetchUserList();
+                } catch (e) { console.error(e); setToastMessage("초기화 실패: " + e.message); }
             };
 
             const handleSyncCommunityUsers = async () => {
@@ -7631,6 +7650,7 @@ const firebaseConfig = {
             const [showPostModal, setShowPostModal] = useState(false);
             const [showCommunityHelp, setShowCommunityHelp] = useState(false);
             const [filterAuthor, setFilterAuthor] = useState(null);
+            const [filterUid, setFilterUid] = useState(null);
             const [lastPostDoc, setLastPostDoc] = useState(null);
             const [hasMorePosts, setHasMorePosts] = useState(true);
             const [isLoadingPosts, setIsLoadingPosts] = useState(false);
@@ -7657,6 +7677,7 @@ const firebaseConfig = {
             const filteredPosts = useMemo(() => {
                 return communityPosts
                     .filter(post => !filterAuthor || post.authorName === filterAuthor)
+                    .filter(post => !filterUid || post.uid === filterUid)
                     .filter(post => !filterCategory || post.category === filterCategory)
                     .filter(post => {
                         if (showMyPosts) {
@@ -7672,7 +7693,7 @@ const firebaseConfig = {
                             (post.tags && post.tags.some(tag => tag.toLowerCase().includes(lowerTerm)))
                         );
                     });
-            }, [communityPosts, filterAuthor, filterCategory, postSearchTerm, showMyPosts]);
+            }, [communityPosts, filterAuthor, filterCategory, postSearchTerm, showMyPosts, filterUid]);
 
             const sortedPosts = useMemo(() => {
                 return [...filteredPosts].sort((a, b) => {
@@ -7707,6 +7728,11 @@ const firebaseConfig = {
                     return;
                 }
                 
+                if (currentUserStats.isBlocked) {
+                    setToastMessage("관리자에 의해 활동이 제한되었습니다.");
+                    return;
+                }
+
                 if (!isAdmin) {
                     const myLevel = getLevel(currentUserStats.postCount || 0, currentUserStats.commentCount || 0);
                     const requiredLevel = levelConfig.writeLevel || 1;
@@ -8051,13 +8077,13 @@ const firebaseConfig = {
             const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags, resourceLink, resourceTitle) => {
                 try {
                      // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
-                     setCommentAuthor(userNickname);
+                     setCommentAuthor(authorName);
                      
                      const user = firebase.auth().currentUser;
 
                      if (editingPost) {
                         const updatedData = {
-                            title, content, authorName: userNickname, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
+                            title, content, authorName: authorName, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
                         };
                         await sharedDb.collection('community').doc(editingPost.id).update(updatedData);
                         setToastMessage("게시글이 수정되었습니다.");
@@ -8089,7 +8115,7 @@ const firebaseConfig = {
                         await sharedDb.collection('community').add({
                             title,
                             content,
-                            authorName: userNickname,
+                            authorName: authorName,
                             authorBadge: currentBadge,
                             category,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -8111,7 +8137,7 @@ const firebaseConfig = {
                     // [New] 글 작성자 사용자 명단 등록 (수정 시에도 갱신)
                     if (user) {
                         await sharedDb.collection('userStats').doc(user.uid).set({ 
-                            nickname: userNickname, 
+                            nickname: authorName, 
                             lastActive: new Date(), 
                             uid: user.uid 
                         }, { merge: true });
@@ -8119,7 +8145,7 @@ const firebaseConfig = {
                         // [New] 사용자 프로필에도 등록 (관리자 목록용)
                         await sharedDb.collection('userProfiles').doc(user.uid).set({
                             uid: user.uid,
-                            name: userNickname,
+                            name: authorName,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         }, { merge: true });
                     }
@@ -8309,6 +8335,11 @@ const firebaseConfig = {
                 if (!userNickname) {
                     setToastMessage("별칭을 먼저 등록해주세요.");
                     setShowNicknameModal(true);
+                    return;
+                }
+
+                if (currentUserStats.isBlocked) {
+                    setToastMessage("관리자에 의해 활동이 제한되었습니다.");
                     return;
                 }
 
@@ -11995,6 +12026,22 @@ const firebaseConfig = {
                                                     </div>
                                                 )}
 
+                                                {/* UID Filter Banner */}
+                                                {filterUid && (
+                                                    <div className="flex items-center justify-between bg-indigo-50 p-3 rounded-xl border border-indigo-100 animate-fade-in mb-4">
+                                                        <span className="text-xs font-bold text-indigo-700 flex items-center gap-2">
+                                                            <span className="bg-white p-1 rounded-full shadow-sm">🔍</span> 
+                                                            UID '{filterUid.slice(0, 8)}...' 사용자의 글
+                                                        </span>
+                                                        <button 
+                                                            onClick={() => setFilterUid(null)}
+                                                            className="text-xs bg-white text-slate-500 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold shadow-sm transition-colors"
+                                                        >
+                                                            전체 보기
+                                                        </button>
+                                                    </div>
+                                                )}
+
                                                 {/* My Posts Filter Banner */}
                                                 {showMyPosts && (
                                                     <div className="flex items-center justify-between bg-indigo-50 p-3 rounded-xl border border-indigo-100 animate-fade-in">
@@ -13176,16 +13223,29 @@ const firebaseConfig = {
                                                             <div key={user.uid} className="flex justify-between items-center p-2 bg-white rounded-lg border border-slate-200">
                                                                 <div className="flex flex-col">
                                                                     <span className="text-xs font-bold text-slate-700">{user.name || "(이름 없음)"}</span>
-                                                                <span 
-                                                                    className="text-[9px] text-slate-400 font-mono cursor-pointer hover:text-indigo-500 hover:underline"
-                                                                    onClick={() => { navigator.clipboard.writeText(user.uid); setToastMessage("UID가 복사되었습니다."); }}
-                                                                    title="클릭하여 UID 복사"
-                                                                >
-                                                                    {user.uid}
-                                                                </span>
-                                                                    {user.lastActive && <span className="text-[9px] text-indigo-400">{dayjs(user.lastActive).format('YY.MM.DD HH:mm')}</span>}
+                                                                <div className="flex items-center gap-1">
+                                                                    <span 
+                                                                        className="text-[11px] text-slate-500 font-mono cursor-pointer hover:text-indigo-500 hover:underline"
+                                                                        onClick={() => { 
+                                                                            setFilterUid(user.uid); 
+                                                                            setMode('community'); 
+                                                                            setShowAdminDashboard(false); 
+                                                                            setToastMessage("해당 사용자의 게시글을 필터링했습니다."); 
+                                                                        }}
+                                                                        title="클릭하여 작성글 모아보기"
+                                                                    >
+                                                                        {user.uid}
+                                                                    </span>
+                                                                    <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(user.uid); setToastMessage("UID가 복사되었습니다."); }} className="text-[8px] text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 transition-colors" title="UID 복사">📋</button>
                                                                 </div>
-                                                                <button onClick={() => handleUpdateUserName(user.uid, user.name)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">수정</button>
+                                                                    {user.lastActive && <span className="text-[9px] text-indigo-400">{dayjs(user.lastActive).format('YY.MM.DD HH:mm')}</span>}
+                                                                {user.isBlocked && <span className="text-[10px] text-rose-500 font-bold mt-0.5">⛔ 차단됨</span>}
+                                                                </div>
+                                                            <div className="flex gap-1">
+                                                                <button onClick={() => handleBlockUser(user.uid, user.isBlocked)} className={`text-[10px] px-2 py-1 rounded border ${user.isBlocked ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}>{user.isBlocked ? "해제" : "차단"}</button>
+                                                                <button onClick={() => handleResetUserStats(user.uid)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">초기화</button>
+                                                                <button onClick={() => handleUpdateUserName(user.uid, user.name)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">이름</button>
+                                                            </div>
                                                             </div>
                                                         ))}
                                                         {userList.length === 0 && !isLoadingUsers && <div className="text-center text-xs text-slate-400 py-2">목록을 불러오세요.</div>}
