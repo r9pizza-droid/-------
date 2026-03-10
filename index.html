@@ -7405,6 +7405,7 @@ const firebaseConfig = {
                 setShowAdminDashboard(true);
                 setIsLoadingStats(true);
                 setAdminLevelConfig({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1, ...levelConfig });
+                fetchUserList();
                 
                 try {
                     const todayStart = new Date();
