@@ -3478,6 +3478,31 @@
                 }
             };
 
+            const handleLogout = async () => {
+                try {
+                    // 1. 파이어베이스 계정 로그아웃
+                    if (firebase.apps.length > 0) {
+                        await firebase.auth().signOut();
+                    }
+                    
+                    // 2. 브라우저에 저장된 API 키(설정값), UID, 아이디/비번을 흔적도 없이 지움!
+                    localStorage.removeItem('cls_fb_config'); 
+                    localStorage.removeItem('cls_admin_uid'); 
+                    localStorage.removeItem('cls_fb_id');
+                    localStorage.removeItem('cls_fb_pw');
+                    // 저장소 전체를 핵폭탄급으로 한 번 더 날려줌 (캐시 꼬임 완벽 차단)
+                    localStorage.clear(); 
+                    sessionStorage.clear();
+                    alert("로그아웃 되었습니다. 저장된 로그인 정보가 안전하게 초기화되었습니다.");
+                    
+                    // 3. 화면을 완전히 새로고침해서 초기 화면으로 돌려보냄
+                    window.location.reload(); 
+                } catch (error) {
+                    console.error("로그아웃 에러:", error);
+                    alert("로그아웃 중 에러가 발생했습니다.");
+                }
+            };
+
             const addTestData = () => { 
                 const testData = [
                     { name: "유재석", gender: "M" }, { name: "아이유", gender: "F" }, { name: "박보검", gender: "M" }, 
@@ -4688,7 +4713,7 @@
                                                                 <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
                                                                 <Icon d={PATHS.right} size={24} className={`text-slate-400 hover:text-indigo-500 transition-colors transition-transform duration-300 ${showStorageHelp ? 'rotate-90' : ''}`} />
                                                             </div>
-                                                            {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("연결을 해제하시겠습니까?", () => { localStorage.removeItem('checklist_config'); window.location.reload(); }) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">해제</Btn>}
+                                                            {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("로그아웃 하시겠습니까?", handleLogout) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">로그아웃</Btn>}
                                                         </div>
                                                         <div className="flex items-center gap-1.5 mt-2">
                                                             <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isLocalMode ? 'bg-slate-200' : 'bg-green-200/50'}`}>
@@ -6244,7 +6269,9 @@
                     if (!firebase.apps.some(app => app.name === '[DEFAULT]')) {
                         firebase.initializeApp(config);
                     }
+                    // [수정] 입력된 아이디/비밀번호로 로그인 (특정 계정 제한 없음)
                     await firebase.auth().signInWithEmailAndPassword(authId, authPw); 
+
                     if (rememberMe) { localStorage.setItem('cls_fb_id', authId); localStorage.setItem('cls_fb_pw', authPw); localStorage.setItem('cls_fb_config', inputConfig); } 
                     else { localStorage.removeItem('cls_fb_id'); localStorage.removeItem('cls_fb_pw'); localStorage.removeItem('cls_fb_config'); }
                     onConnect(config); 
