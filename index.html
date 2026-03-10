@@ -7180,12 +7180,24 @@ const firebaseConfig = {
 
             useEffect(() => {
                 if (!sharedDb) return;
-                const unsubscribe = firebase.auth().onAuthStateChanged(user => {
+                const unsubscribe = firebase.auth().onAuthStateChanged(async (user) => {
                     if (user) {
                         const unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
                             if (doc.exists) setCurrentUserStats(doc.data());
                             else setCurrentUserStats({ postCount: 0, commentCount: 0 });
                         });
+
+                        try {
+                            await sharedDb.collection('userProfiles').doc(user.uid).set({
+                                uid: user.uid,
+                                email: user.email,
+                                lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                                userNickname: user.displayName || (user.email ? user.email.split('@')[0] : "익명")
+                            }, { merge: true });
+                            console.log("✅ 명단 수집 성공");
+                        } catch (e) {
+                            console.error("명단 수집 실패:", e);
+                        }
                     } else {
                         setCurrentUserStats({ postCount: 0, commentCount: 0 });
                     }
