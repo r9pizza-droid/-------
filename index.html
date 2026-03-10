@@ -7132,6 +7132,7 @@ const firebaseConfig = {
             // [New] 레벨 시스템 설정 (관리자 밸런스 패치용)
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
             const [showLevelGuide, setShowLevelGuide] = useState(false);
+            const [allUsers, setAllUsers] = useState([]);
 
             // [New] 레벨 설정 불러오기
             useEffect(() => {
@@ -7178,6 +7179,17 @@ const firebaseConfig = {
                 return () => window.removeEventListener('cls_dark_mode_change', handleDarkModeChange);
             }, []);
 
+            // [New] 관리자용 전체 사용자 목록 실시간 조회
+            useEffect(() => {
+                if (isAdmin && mode === 'community' && sharedDb) {
+                    const unsubscribe = sharedDb.collection('userProfiles').orderBy('lastLogin', 'desc').onSnapshot(snapshot => {
+                        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        setAllUsers(users);
+                    });
+                    return () => unsubscribe();
+                }
+            }, [isAdmin, mode, sharedDb]);
+
             useEffect(() => {
                 if (!sharedDb) return;
                 const unsubscribe = firebase.auth().onAuthStateChanged(async (user) => {
@@ -7192,7 +7204,7 @@ const firebaseConfig = {
                                 uid: user.uid,
                                 email: user.email,
                                 lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-                                userNickname: user.displayName || (user.email ? user.email.split('@')[0] : "익명")
+                                userNickname: user.displayName || user.email.split('@')[0]
                             }, { merge: true });
                             console.log("✅ 명단 수집 성공");
                         } catch (e) {
@@ -7296,7 +7308,12 @@ const firebaseConfig = {
 
                     userMap.forEach((name, uid) => {
                         const userRef = sharedDb.collection('userProfiles').doc(uid);
-                        currentChunk.set(userRef, { uid, name }, { merge: true });
+                        currentChunk.set(userRef, { 
+                            uid, 
+                            name,
+                            userNickname: name,
+                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
                         
                         // 통계 문서도 없으면 생성 (기본값)
                         const statsRef = sharedDb.collection('userStats').doc(uid);
@@ -8155,7 +8172,10 @@ const firebaseConfig = {
                             await sharedDb.collection('userProfiles').doc(user.uid).set({
                                 uid: user.uid,
                                 nickname: authorName,
-                                lastActive: new Date()
+                                userNickname: authorName,
+                                name: authorName,
+                                lastActive: new Date(),
+                                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                             }, { merge: true });
                         }
                         setToastMessage("게시글이 수정되었습니다.");
@@ -8206,7 +8226,10 @@ const firebaseConfig = {
                             await sharedDb.collection('userProfiles').doc(user.uid).set({
                                 uid: user.uid,
                                 nickname: authorName,
-                                lastActive: new Date()
+                                userNickname: authorName,
+                                name: authorName,
+                                lastActive: new Date(),
+                                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                             }, { merge: true });
                         }
 
@@ -12060,7 +12083,7 @@ const firebaseConfig = {
                                                             onClick={handleOpenAdminDashboard}
                                                             className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold shadow-md hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
                                                         >
-                                                            <span>👑</span> 관리자 전용 게시판 현황 보기
+                                                            <span>👑</span> 관리자 전용 게시판
                                                         </button>
                                                     </div>
                                                 )}
@@ -12091,12 +12114,14 @@ const firebaseConfig = {
                                                                 </button>
                                                             )}
                                                         </div>
-                                                        <button 
-                                                            onClick={handleWriteClick}
-                                                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 whitespace-nowrap"
-                                                        >
-                                                            <Icon d={PATHS.edit} size={16} /> <span className="hidden sm:inline">글쓰기</span>
-                                                        </button>
+                                                        {firebase.auth().currentUser && (
+                                                            <button 
+                                                                onClick={handleWriteClick}
+                                                                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 whitespace-nowrap"
+                                                            >
+                                                                <Icon d={PATHS.edit} size={16} /> <span className="hidden sm:inline">글쓰기</span>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
 
@@ -13299,6 +13324,40 @@ const firebaseConfig = {
                                                     </div>
                                                 </div>
                                                 
+                                                {/* [New] 전체 사용자 관리 섹션 (테이블) */}
+                                                <div className="bg-white p-4 rounded-xl border border-slate-200 mt-6">
+                                                    <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm mb-4">
+                                                        <span className="text-lg">👤</span> 전체 사용자 관리 ({allUsers.length}명)
+                                                    </h4>
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-xs text-left text-slate-600">
+                                                            <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
+                                                                <tr>
+                                                                    <th className="px-3 py-2">닉네임</th>
+                                                                    <th className="px-3 py-2">이메일</th>
+                                                                    <th className="px-3 py-2">최근 접속</th>
+                                                                    <th className="px-3 py-2">UID</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-slate-100">
+                                                                {allUsers.map((user) => (
+                                                                    <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                                                                        <td className="px-3 py-2 font-bold">{user.userNickname || user.name || "(없음)"}</td>
+                                                                        <td className="px-3 py-2">{user.email}</td>
+                                                                        <td className="px-3 py-2">
+                                                                            {user.lastLogin ? dayjs(user.lastLogin.toDate()).format('YY.MM.DD HH:mm') : '-'}
+                                                                        </td>
+                                                                        <td className="px-3 py-2 font-mono text-[10px] text-slate-400 truncate max-w-[100px]" title={user.uid}>
+                                                                            {user.uid}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                                {allUsers.length === 0 && <tr><td colSpan="4" className="text-center py-4">사용자 데이터가 없습니다.</td></tr>}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+
                                                 {/* [New] 사용자 관리 섹션 (대시보드 내) */}
                                                 <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 mt-6">
                                                     <div className="flex justify-between items-center mb-4">
