@@ -7261,7 +7261,17 @@ const firebaseConfig = {
                 const newName = prompt("새로운 별칭을 입력하세요:", currentName);
                 if (newName && newName.trim() !== "" && newName !== currentName) {
                     try {
-                        await sharedDb.collection('userProfiles').doc(uid).update({ name: newName.trim() });
+                        // [Fix] update 대신 set(merge: true) 사용으로 문서 부재 시 에러 방지 및 관련 필드 동기화
+                        await sharedDb.collection('userProfiles').doc(uid).set({ 
+                            name: newName.trim(),
+                            userNickname: newName.trim()
+                        }, { merge: true });
+                        
+                        // [New] 통계 데이터의 닉네임도 동기화
+                        await sharedDb.collection('userStats').doc(uid).set({ 
+                            nickname: newName.trim() 
+                        }, { merge: true });
+
                         setToastMessage("별칭이 수정되었습니다.");
                         fetchUserList();
                     } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
@@ -8160,8 +8170,7 @@ const firebaseConfig = {
                      // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
                      setCommentAuthor(authorName);
                      
-                     const user = firebase.auth().currentUser;
-
+                
                      if (editingPost) {
                         const updatedData = {
                             title, content, authorName: authorName, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
@@ -8203,7 +8212,12 @@ const firebaseConfig = {
                             await statsRef.set({ postCount: pCount, commentCount: cCount }, { merge: true });
                             currentBadge = getLevelBadge(pCount, cCount);
                         }
+                        const user = firebase.auth().currentUser;
 
+                        if (!user) {
+                            alert("로그인 후 글을 작성해주세요.");
+                            return;
+                        }
                         await sharedDb.collection('community').add({
                             title,
                             content,

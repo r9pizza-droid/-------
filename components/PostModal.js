@@ -322,9 +322,8 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="제목을 입력하세요" />
                 </div>
                 <div className="space-y-1">
-                    <div className="text-sm font-bold text-slate-700 mb-2">
-                        작성자: {authorName}
-                    </div>
+                    <label className="text-xs font-bold text-slate-500">작성자</label>
+                    <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="작성자 이름" />
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">비밀번호</label>
