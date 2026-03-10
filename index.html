@@ -4172,6 +4172,36 @@
                                                         )}
                                                     </div>
                                                 </div>
+
+                                        {isAdmin && (
+                                            <div className="bg-white p-4 rounded-xl border border-slate-200 mt-6 shadow-sm">
+                                                <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm mb-4">
+                                                    <span className="text-lg">📋</span> 전체 사용자 명단 ({allUsers.length}명)
+                                                </h4>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-xs text-left text-slate-600">
+                                                        <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
+                                                            <tr>
+                                                                <th className="px-3 py-2">닉네임</th>
+                                                                <th className="px-3 py-2">이메일</th>
+                                                                <th className="px-3 py-2">최근 접속</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {allUsers.map((user) => (
+                                                                <tr key={user.id} className="hover:bg-slate-50">
+                                                                    <td className="px-3 py-2 font-bold">{user.userNickname || user.name || "(없음)"}</td>
+                                                                    <td className="px-3 py-2">{user.email}</td>
+                                                                    <td className="px-3 py-2">
+                                                                        {user.lastLogin ? dayjs(user.lastLogin.toDate()).format('YY.MM.DD HH:mm') : '-'}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
                                             </div>
                                         </div>
                                     )}
@@ -7133,6 +7163,8 @@ const firebaseConfig = {
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
             const [showLevelGuide, setShowLevelGuide] = useState(false);
             const [allUsers, setAllUsers] = useState([]);
+            const [needProfileSetup, setNeedProfileSetup] = useState(false);
+            const [currentUserProfile, setCurrentUserProfile] = useState(null);
 
             // [New] 레벨 설정 불러오기
             useEffect(() => {
@@ -7200,15 +7232,17 @@ const firebaseConfig = {
                         });
 
                         try {
-                            await sharedDb.collection('userProfiles').doc(user.uid).set({
-                                uid: user.uid,
-                                email: user.email,
-                                lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-                                userNickname: user.displayName || user.email.split('@')[0]
-                            }, { merge: true });
-                            console.log("✅ 명단 수집 성공");
+                            const userDoc = await sharedDb.collection('userProfiles').doc(user.uid).get();
+                            if (userDoc.exists && userDoc.data().userNickname) {
+                                setCurrentUserProfile(userDoc.data());
+                                await sharedDb.collection('userProfiles').doc(user.uid).set({
+                                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                                }, { merge: true });
+                            } else {
+                                setNeedProfileSetup(true);
+                            }
                         } catch (e) {
-                            console.error("명단 수집 실패:", e);
+                            console.error("프로필 확인 실패:", e);
                         }
                     } else {
                         setCurrentUserStats({ postCount: 0, commentCount: 0 });
@@ -7261,17 +7295,7 @@ const firebaseConfig = {
                 const newName = prompt("새로운 별칭을 입력하세요:", currentName);
                 if (newName && newName.trim() !== "" && newName !== currentName) {
                     try {
-                        // [Fix] update 대신 set(merge: true) 사용으로 문서 부재 시 에러 방지 및 관련 필드 동기화
-                        await sharedDb.collection('userProfiles').doc(uid).set({ 
-                            name: newName.trim(),
-                            userNickname: newName.trim()
-                        }, { merge: true });
-                        
-                        // [New] 통계 데이터의 닉네임도 동기화
-                        await sharedDb.collection('userStats').doc(uid).set({ 
-                            nickname: newName.trim() 
-                        }, { merge: true });
-
+                        await sharedDb.collection('userProfiles').doc(uid).update({ name: newName.trim() });
                         setToastMessage("별칭이 수정되었습니다.");
                         fetchUserList();
                     } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
@@ -8170,7 +8194,8 @@ const firebaseConfig = {
                      // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
                      setCommentAuthor(authorName);
                      
-                
+                     const user = firebase.auth().currentUser;
+
                      if (editingPost) {
                         const updatedData = {
                             title, content, authorName: authorName, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
@@ -8212,12 +8237,7 @@ const firebaseConfig = {
                             await statsRef.set({ postCount: pCount, commentCount: cCount }, { merge: true });
                             currentBadge = getLevelBadge(pCount, cCount);
                         }
-                        const user = firebase.auth().currentUser;
 
-                        if (!user) {
-                            alert("로그인 후 글을 작성해주세요.");
-                            return;
-                        }
                         await sharedDb.collection('community').add({
                             title,
                             content,
@@ -8233,7 +8253,7 @@ const firebaseConfig = {
                             tags: tags || [],
                             resourceLink: resourceLink || "",
                             resourceTitle: resourceTitle || "",
-                            uid: user.uid
+                            uid: user ? user.uid : null
                         });
 
                         if (user) {
@@ -12832,6 +12852,53 @@ const firebaseConfig = {
                     </div>
                 </div>
             )}
+
+            {needProfileSetup && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-pop-up">
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">닉네임 설정</h3>
+                        <p className="text-sm text-slate-500 mb-4">게시판에서 사용할 닉네임을 입력해주세요.</p>
+                        <input 
+                            type="text" 
+                            value={tempNickname} 
+                            onChange={(e) => setTempNickname(e.target.value)}
+                            className="w-full p-3 border border-slate-200 rounded-xl mb-4 text-sm outline-none focus:border-indigo-500"
+                            placeholder="닉네임 입력"
+                        />
+                        <button 
+                            onClick={async () => {
+                                const nickname = tempNickname.trim();
+                                if (!nickname) return alert("닉네임을 입력해주세요.");
+                                if (nickname.length < 2) return alert("닉네임은 2글자 이상이어야 합니다.");
+
+                                const user = firebase.auth().currentUser;
+                                if (user && sharedDb) {
+                                    try {
+                                        const snapshot = await sharedDb.collection('userProfiles').where('userNickname', '==', nickname).get();
+                                        if (!snapshot.empty) return alert("이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.");
+
+                                        await sharedDb.collection('userProfiles').doc(user.uid).set({
+                                            uid: user.uid,
+                                            email: user.email,
+                                            userNickname: nickname,
+                                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                                        }, { merge: true });
+                                        setCurrentUserProfile({ ...currentUserProfile, userNickname: nickname });
+                                        setNeedProfileSetup(false);
+                                    } catch (e) {
+                                        console.error("닉네임 설정 오류:", e);
+                                        alert("오류가 발생했습니다.");
+                                    }
+                                }
+                            }}
+                            className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 transition-colors"
+                        >
+                            시작하기
+                        </button>
+                    </div>
+                </div>
+            )}
+
                         </main>
                     <footer onClick={() => setShowUpdateNotes(true)} className="hidden md:block text-center py-2 text-xs text-slate-400 bg-slate-50 hover:bg-slate-100 border-t border-slate-200 cursor-pointer hover:text-indigo-500 transition-colors">{CURRENT_VERSION} | Visual Studio Code With Gemini</footer>
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe">
@@ -13484,7 +13551,7 @@ const firebaseConfig = {
                     {showGlobalRecord && (
                         <GlobalRecordModal isOpen={showGlobalRecord} onClose={()=>setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} appConfig={appConfig} db={db} appId={appId} />
                     )}
-                    {showPostModal && <PostModal isOpen={showPostModal} onClose={() => { setShowPostModal(false); setEditingPost(null); }} onSave={handleSavePost} initialPost={editingPost} imgbbApiKey={imgbbApiKey} userNickname={userNickname} showToast={setToastMessage} />}
+                    {showPostModal && <PostModal isOpen={showPostModal} onClose={() => { setShowPostModal(false); setEditingPost(null); }} onSave={handleSavePost} initialPost={editingPost} imgbbApiKey={imgbbApiKey} userNickname={currentUserProfile?.userNickname} showToast={setToastMessage} />}
                     <CommunityHelpModal isOpen={showCommunityHelp} onClose={() => setShowCommunityHelp(false)} />
                     <AiSecurityCheckModal isOpen={aiCheckState.isOpen} onClose={handleAiCheckCancel} prompt={aiCheckState.prompt} onConfirm={handleAiCheckConfirm} />
                     {appConfig.showFloatingButton !== false && (
