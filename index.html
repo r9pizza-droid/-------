@@ -7151,6 +7151,16 @@ const firebaseConfig = {
                             if (doc.exists) setCurrentUserStats(doc.data());
                             else setCurrentUserStats({ postCount: 0, commentCount: 0 });
                         });
+
+                        // [New] 게시판 로드/인증 시 강제 등록 (유령 사용자 방지)
+                        const savedName = localStorage.getItem('myBoardName');
+                        if (savedName) {
+                            sharedDb.collection('userProfiles').doc(user.uid).set({
+                                uid: user.uid,
+                                nickname: savedName,
+                                lastActive: new Date()
+                            }, { merge: true }).catch(e => console.error("Auth profile sync failed", e));
+                        }
                     } else {
                         setCurrentUserStats({ postCount: 0, commentCount: 0 });
                     }
@@ -7297,11 +7307,11 @@ const firebaseConfig = {
                         nickname: name
                     }, { merge: true }).catch(e => console.error("Stats update failed", e));
 
-                    // [New] 사용자 프로필에도 등록 (관리자 목록용)
+                    // [New] 사용자 프로필에도 등록 (유령 사용자 방지)
                     sharedDb.collection('userProfiles').doc(user.uid).set({
                         uid: user.uid,
-                        name: name,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        nickname: name,
+                        lastActive: new Date()
                     }, { merge: true }).catch(e => console.error("Profile update failed", e));
                 }
             };
@@ -8097,6 +8107,7 @@ const firebaseConfig = {
                         };
                         await sharedDb.collection('community').doc(editingPost.id).update(updatedData);
 
+                        // [New] 글쓰기 시 확실한 대기 (await)
                         if (user) {
                             await sharedDb.collection('userProfiles').doc(user.uid).set({
                                 uid: user.uid,
@@ -8148,6 +8159,7 @@ const firebaseConfig = {
                             uid: user ? user.uid : null
                         });
 
+                        // [New] 글쓰기 시 확실한 대기 (await)
                         if (user) {
                             await sharedDb.collection('userProfiles').doc(user.uid).set({
                                 uid: user.uid,
