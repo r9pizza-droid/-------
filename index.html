@@ -8355,6 +8355,10 @@ const firebaseConfig = {
 
     // [New] 게시글 상세 뷰 열기/닫기 함수
     const handleOpenPostDetail = (post) => {
+                if (!currentUser) {
+                    setToastMessage("로그인한 사용자만 글을 읽을 수 있습니다.");
+                    return;
+                }
         setSelectedPost(post);
         setIsPostDetailOpen(true);
         
@@ -12317,6 +12321,7 @@ const firebaseConfig = {
                                                 {/* Post List */}
                                                 <div className={postViewMode === 'gallery' ? "grid grid-cols-2 sm:grid-cols-3 gap-4" : "space-y-4"}>
                                                     {sortedPosts.map(post => {
+                                                        const isPopular = (post.likes ? post.likes.length : 0) >= 3;
                                                         let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
                                                         if (post.category === '생활지도팁') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
                                                         else if (post.category === '수업팁') badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
@@ -12333,6 +12338,7 @@ const firebaseConfig = {
                                                                         <div className="flex-1 min-w-0 flex flex-col gap-2">
                                                                             <div className="flex items-center gap-2">
                                                                                 <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}</span>
+                                                                                {isPopular && <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded font-bold border border-rose-200 shrink-0">🔥 인기</span>}
                                                                                 <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
                                                                                 {post.resourceLink && <span className="text-[10px]">💾</span>}
                                                                                 {post.postPassword && <span className="text-[10px] text-slate-300">🔒</span>}
@@ -12388,7 +12394,10 @@ const firebaseConfig = {
                                                                                 </div>
                                                                             )}
                                                                             {images.length > 1 && <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{images.length - 1}</div>}
-                                                                            <div className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
+                                                                            <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+                                                                                <div className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
+                                                                                {isPopular && <div className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-md font-bold shadow-sm border border-rose-600">🔥 인기</div>}
+                                                                            </div>
                                                                             {post.postPassword && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
                                                                             {post.resourceLink && <div className={`absolute top-2 ${post.postPassword ? 'right-8' : 'right-2'} text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full`}>💾</div>}
                                                                         </div>
@@ -12448,7 +12457,10 @@ const firebaseConfig = {
                                                         return (
                                                             <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group" onClick={() => toggleInPlacePost(post.id)}>
                                                                 <div className="flex justify-between items-start mb-2">
-                                                                    <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
+                                                                        {isPopular && <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-lg font-bold border border-rose-200">🔥 인기</span>}
+                                                                    </div>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-[10px] text-slate-400 font-medium">{dayjs(post.createdAt).format('YYYY.MM.DD HH:mm')}</span>
                                                                     </div>
