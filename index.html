@@ -6266,9 +6266,11 @@
                 if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
 
                 try {
-                    if (!firebase.apps.some(app => app.name === '[DEFAULT]')) {
-                        firebase.initializeApp(config);
+                    // [수정] 기존 연결이 있다면 모두 제거하여 초기화
+                    if (firebase.apps.length > 0) {
+                        await Promise.all(firebase.apps.map(app => app.delete()));
                     }
+                    firebase.initializeApp(config);
                     // [수정] 입력된 아이디/비밀번호로 로그인 (특정 계정 제한 없음)
                     await firebase.auth().signInWithEmailAndPassword(authId, authPw); 
 
@@ -6290,9 +6292,11 @@
 
                 setIsTesting(true);
                 try {
-                    if (!firebase.apps.some(app => app.name === '[DEFAULT]')) {
-                        firebase.initializeApp(config);
+                    // [수정] 기존 연결이 있다면 모두 제거하여 초기화
+                    if (firebase.apps.length > 0) {
+                        await Promise.all(firebase.apps.map(app => app.delete()));
                     }
+                    firebase.initializeApp(config);
                     await firebase.auth().signInWithEmailAndPassword(authId, authPw);
                     showToast("✅ 연결 테스트 성공! (로그인 확인됨)");
                 } catch (e) {
