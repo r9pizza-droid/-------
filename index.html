@@ -2382,7 +2382,7 @@
             const [isTesting, setIsTesting] = useState(false);
             const [showManual, setShowManual] = useState(false);
             const [testSuccess, setTestSuccess] = useState(false);
-            const [saveLocally, setSaveLocally] = useState(false);
+            const [saveLocally, setSaveLocally] = useState(true);
 
             useEffect(() => {
                 if (isOpen) {
@@ -3462,7 +3462,7 @@
             
             // 관리자 모드 토글
             const handleDataManagementClick = () => { 
-                const user = firebase.auth().currentUser;
+                const user = currentUser;
                 if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
                     return;
                 }
@@ -6369,7 +6369,19 @@
                     }
                     const userApp = firebase.initializeApp(config, 'myClassApp');
                     await userApp.auth().signInWithEmailAndPassword(authId, authPw);
-                    showToast("✅ 연결 테스트 성공! (로그인 확인됨)");
+                    
+                    // [NEW] Firestore 보안 규칙(Rules) 검증 테스트 (쓰기 시도)
+                    try {
+                        await userApp.firestore().collection('connection_test').add({
+                            test: true,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            uid: userApp.auth().currentUser.uid
+                        });
+                        showToast("✅ 연결 및 보안 규칙(Rules) 검증 성공! (쓰기 권한 확인됨)");
+                    } catch (dbError) {
+                        if (dbError.code === 'permission-denied') throw new Error("로그인은 성공했으나 DB 쓰기 권한이 없습니다. Firestore Rules에서 UID가 올바르게 설정되었는지 확인하세요.");
+                        else throw dbError;
+                    }
                 } catch (e) {
                     let errMsg = "연결 실패: " + e.message;
                     if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
@@ -7418,7 +7430,7 @@ const firebaseConfig = {
         if (mode === 'community') {
             // [New] 접속 기록 업데이트 함수
             const updateStats = (name) => {
-                const user = firebase.auth().currentUser;
+                const user = currentUser;
                 if (user && sharedDb) {
                     sharedDb.collection('userStats').doc(user.uid).set({
                         uid: user.uid,
@@ -7446,7 +7458,7 @@ const firebaseConfig = {
 
             // 내 컴퓨터에 없다면 파이어베이스 서버에 물어봅니다. (지연 시간 대비)
             const checkFirebase = () => {
-                const user = firebase.auth().currentUser;
+                const user = currentUser;
                 if (user && sharedDb) {
                     sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
                         if (doc.exists && doc.data().name) {
@@ -7479,7 +7491,7 @@ const firebaseConfig = {
             return;
         }
         try {
-            const user = firebase.auth().currentUser;
+            const user = currentUser;
             if (user && sharedDb) {
                         // [New] 중복 닉네임 체크
                         const nickname = tempNickname.trim();
@@ -7544,7 +7556,7 @@ const firebaseConfig = {
 
             const handleOpenAdminDashboard = async () => {
                 // 철통 보안 검사
-                const user = firebase.auth().currentUser;
+                const user = currentUser;
                 if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
                     alert("접근 권한이 없습니다. 최고 관리자만 이용 가능합니다.");
                     return;
@@ -7665,7 +7677,7 @@ const firebaseConfig = {
     // 🔔 알림 테스트 발송 함수 (하얀 화면 해결용)
     // ==========================================
             const handleTestCommentLikeNotification = async () => {
-                const user = firebase.auth().currentUser;
+                const user = currentUser;
                 if (!user) {
                     alert("로그인이 필요합니다.");
                     return;
@@ -7789,7 +7801,7 @@ const firebaseConfig = {
                     .filter(post => !filterCategory || post.category === filterCategory)
                     .filter(post => {
                         if (showMyPosts) {
-                            const user = firebase.auth().currentUser;
+                            const user = currentUser;
                             if (!user || post.uid !== user.uid) return false;
                         }
                         if (!postSearchTerm) return true;
@@ -8187,7 +8199,7 @@ const firebaseConfig = {
                      // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
                      setCommentAuthor(authorName);
                      
-                     const user = firebase.auth().currentUser;
+                     const user = currentUser;
 
                      if (editingPost) {
                         const updatedData = {
@@ -8328,7 +8340,7 @@ const firebaseConfig = {
         const post = communityPosts.find(p => p.id === postId);
         if (!post) return;
 
-        const uid = firebase.auth().currentUser?.uid || "anonymous";
+        const uid = currentUser?.uid || "anonymous";
         const currentLikes = post.likes || [];
         
         // 좋아요 상태 판단 (서버 데이터 우선, 없으면 로컬 스토리지 확인)
@@ -8480,11 +8492,11 @@ const firebaseConfig = {
                     return;
                 }
 
-        const uid = firebase.auth().currentUser?.uid || "anonymous";
+        const uid = currentUser?.uid || "anonymous";
         
         // [New] 뱃지 시스템: 댓글 작성 시 통계 업데이트 및 뱃지 획득
         let currentBadge = '🌱';
-        const user = firebase.auth().currentUser;
+        const user = currentUser;
         if (user) {
             const statsRef = sharedDb.collection('userStats').doc(user.uid);
             const doc = await statsRef.get();
@@ -8589,7 +8601,7 @@ const firebaseConfig = {
 
     // ❌ 댓글 삭제 함수
     const handleDeleteComment = async (postId, commentId, commentUid) => {
-        const currentUid = firebase.auth().currentUser?.uid;
+        const currentUid = currentUser?.uid;
         if (!isAdmin && currentUid !== commentUid) {
             alert("본인이 작성한 댓글만 삭제할 수 있습니다.");
             return;
@@ -9653,11 +9665,13 @@ const firebaseConfig = {
                             userApp = firebase.initializeApp(config, 'myClassApp');
                         }
                         
-                        const firestore = userApp.firestore();
+                        // [Fix] 초기화 직후 db 변수가 반드시 개인용 프로젝트(myClassApp)를 가리키도록 명시적 지정
+                        const firestore = firebase.app('myClassApp').firestore();
                         setDb(firestore);
                         setConfig(config);
                         setAppId(config.projectId);
                         setIsLocalMode(false);
+                        setToastMessage("🟢 개인용 Firestore에 연결되었습니다.");
 
                         logSystemEvent(`Firebase 연결 시도: ${config.projectId}`);
                     } catch (e) { logSystemEvent(`Firebase 초기화 실패: ${e.message}`, 'error'); setIsLocalMode(true); setIsLoading(false); }
@@ -11548,7 +11562,13 @@ const firebaseConfig = {
                 <div className="p-1.5 bg-notion-bg-alt text-notion-text rounded border border-notion-border"><Icon d={PATHS.list} size={18}/></div>
                 <h1 className="text-base font-bold text-notion-text">{appConfig.recordTitle}</h1>
                 {!tutorialSeen && <button onClick={() => { setShowTutorial(true); setTutorialStep(0); }} className="ml-2 w-7 h-7 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors shadow-sm ring-1 ring-indigo-100" title="사용 설명서 보기">💡</button>}
-                {!isLocalMode && <div className="animate-fade-in" title="클라우드 연결됨">{appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}</div>}
+                {!isLocalMode && <div className="animate-fade-in flex items-center gap-1.5" title="개인 클라우드 연결됨">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                    </span>
+                    {appConfig.cloudIcon ? <img src={appConfig.cloudIcon} className="w-6 h-6 object-contain" alt="cloud"/> : <span className="text-xl">☁️</span>}
+                </div>}
             </div>
             <div className="hidden md:flex relative bg-slate-100 p-1 rounded-xl">
                 <div 
@@ -12215,7 +12235,7 @@ const firebaseConfig = {
                                                                 로그인/가입
                                                             </button>
                                                         )}
-                                                        {firebase.auth().currentUser && (
+                            {currentUser && (
                                                             <button 
                                                                 onClick={handleWriteClick}
                                                                 className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 whitespace-nowrap"
@@ -12311,7 +12331,7 @@ const firebaseConfig = {
                                                     <div className="flex gap-2 shrink-0 flex-wrap justify-end w-full">
                                                         <button 
                                                             onClick={() => {
-                                                                if (!firebase.auth().currentUser) {
+                                if (!currentUser) {
                                                                     setToastMessage("로그인이 필요한 기능입니다.");
                                                                     return;
                                                                 }
@@ -13554,7 +13574,9 @@ const firebaseConfig = {
                                                         <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm"><span className="text-lg">👥</span> 사용자 관리</h4>
                                                         <div className="flex gap-2">
                                                             <Btn onClick={handleSyncCommunityUsers} className="px-2 py-1 bg-white border border-indigo-200 text-indigo-600 rounded text-xs font-bold hover:bg-indigo-50" title="동기화">🔄</Btn>
-                                                            <Btn onClick={fetchUserList} className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-bold hover:bg-indigo-100">목록</Btn>
+                                                <Btn onClick={fetchUserList} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 flex items-center gap-1 shadow-sm transition-colors">
+                                                    {isLoadingUsers ? <Icon d={PATHS.spinner} size={12} className="animate-spin"/> : <Icon d={PATHS.refresh} size={12}/>} 새로고침
+                                                </Btn>
                                                         </div>
                                                     </div>
                                                     <div className="max-h-40 overflow-y-auto custom-scroll space-y-2">
