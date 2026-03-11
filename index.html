@@ -336,6 +336,8 @@
                 await fetch(url, {
                     method: "POST",
                     mode: 'no-cors',
+                    cache: 'no-cache',
+                    redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
@@ -2435,6 +2437,8 @@
                     await fetch(cleanUrl, {
                         method: "POST",
                         mode: 'no-cors',
+                        cache: 'no-cache',
+                        redirect: 'follow',
                         headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: "테스트", category: "연동 테스트", content: "Google 시트 연동 성공!" })
                     });
@@ -3295,6 +3299,8 @@
                             await fetch(cleanUrl, {
                                 method: "POST",
                                 mode: 'no-cors',
+                                cache: 'no-cache',
+                                redirect: 'follow',
                                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                                 body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: "테스트", category: "연동 테스트", content: "전체 연동 테스트" })
                             });
@@ -5162,15 +5168,29 @@
         );
         
         const RecordView = ({ students, records, dailyTasks, date, toggleCheck, appConfig, stats, onLongPress, onSaveTaskComment }) => {
+            const [newMemoInput, setNewMemoInput] = useState("");
             const [editingComment, setEditingComment] = useState(null);
+            const [editingMemoIndex, setEditingMemoIndex] = useState(null);
             const handleCommentClick = (e, studentId, taskIndex, taskDate, currentValue) => {
                 e.stopPropagation();
-                setEditingComment({ studentId, taskIndex, date: taskDate, value: currentValue || "" });
+                let val = [];
+                if (Array.isArray(currentValue)) val = [...currentValue];
+                else if (currentValue) val = [currentValue];
+                setEditingComment({ studentId, taskIndex, date: taskDate, value: val });
+                setNewMemoInput("");
+                setEditingMemoIndex(null);
             };
             const saveComment = () => {
                 if (editingComment) {
-                    onSaveTaskComment(editingComment.studentId, editingComment.taskIndex, editingComment.value, editingComment.date);
+                    const finalMemos = editingComment.value.filter(m => m && m.trim());
+                    onSaveTaskComment(editingComment.studentId, editingComment.taskIndex, finalMemos, editingComment.date);
                     setEditingComment(null);
+                }
+            };
+            const handleAddMemo = () => {
+                if (newMemoInput.trim()) {
+                    setEditingComment(prev => ({ ...prev, value: [...prev.value, newMemoInput.trim()] }));
+                    setNewMemoInput("");
                 }
             };
 
@@ -5248,15 +5268,44 @@
                     {editingComment && (
                         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setEditingComment(null)}>
                             <div className="bg-white p-4 rounded-xl shadow-xl w-64 border border-slate-200 animate-pop-up" onClick={e => e.stopPropagation()}>
-                                <h4 className="font-bold text-slate-700 mb-2 text-sm flex items-center gap-2"><span className="text-lg">📝</span> 과제 메모</h4>
-                                <input 
-                                    className="w-full p-2 border border-slate-200 rounded-lg text-sm mb-3 outline-none focus:border-indigo-500"
-                                    value={editingComment.value}
-                                    onChange={e => setEditingComment({...editingComment, value: e.target.value})}
-                                    placeholder="내용을 입력하세요 (빈 칸이면 삭제)"
-                                    autoFocus
-                                    onKeyDown={e => { if (e.key === 'Enter') saveComment(); }}
-                                />
+                                <h4 className="font-bold text-slate-700 mb-2 text-sm flex items-center gap-2"><Icon d={PATHS.message} className="text-indigo-500" size={18} /> 과제 메모</h4>
+                                <div className="max-h-48 overflow-y-auto custom-scroll mb-3 space-y-2">
+                                    {editingComment.value.map((memo, idx) => (
+                                        <div key={idx} className="flex gap-1 items-start group">
+                                            {editingMemoIndex === idx ? (
+                                                <input 
+                                                    className="flex-1 p-1.5 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500"
+                                                    value={memo}
+                                                    autoFocus
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') setEditingMemoIndex(null); }}
+                                                    onChange={e => { const newVal = [...editingComment.value]; newVal[idx] = e.target.value; setEditingComment({...editingComment, value: newVal}); }}
+                                                />
+                                            ) : (
+                                                <div className="flex-1 text-xs text-slate-600 py-1.5 px-1 break-all bg-slate-50 rounded border border-transparent hover:border-slate-200 transition-colors">{memo}</div>
+                                            )}
+                                            
+                                            {editingMemoIndex === idx ? (
+                                                <button onClick={() => setEditingMemoIndex(null)} className="text-indigo-500 hover:text-indigo-700 p-1"><Icon d={PATHS.check} size={14} /></button>
+                                            ) : (
+                                                <div className="flex shrink-0">
+                                                    <button onClick={() => setEditingMemoIndex(idx)} className="text-slate-400 hover:text-indigo-500 p-1"><Icon d={PATHS.edit} size={14} /></button>
+                                                    <button onClick={() => { setEditingComment({...editingComment, value: editingComment.value.filter((_, i) => i !== idx)}); setEditingMemoIndex(null); }} className="text-slate-400 hover:text-rose-500 p-1"><Icon d={PATHS.trash} size={14} /></button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {editingComment.value.length === 0 && <div className="text-xs text-slate-400 text-center py-2">메모가 없습니다.</div>}
+                                </div>
+                                <div className="flex gap-1 mb-3">
+                                    <input 
+                                        className="flex-1 p-1.5 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500"
+                                        placeholder="새 메모 추가..."
+                                        value={newMemoInput}
+                                        onChange={e => setNewMemoInput(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter') handleAddMemo(); }}
+                                    />
+                                    <button onClick={handleAddMemo} className="bg-indigo-50 text-indigo-600 p-1.5 rounded hover:bg-indigo-100"><Icon d={PATHS.plus} size={16}/></button>
+                                </div>
                                 <div className="flex gap-2 justify-end">
                                     <button onClick={() => setEditingComment(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">취소</button>
                                     <button onClick={saveComment} className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold">저장</button>
@@ -5346,8 +5395,8 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className={`transition-all duration-200 ${isDone ? 'text-notion-blue opacity-100' : 'text-notion-border opacity-0 group-hover:opacity-100'}`}>
-                                            <Icon d={PATHS.check} size={16} />
+                                        <div className={`transition-all duration-300 ${isDone ? 'text-notion-blue opacity-100 scale-125' : 'text-notion-border opacity-0 group-hover:opacity-100 scale-100'}`}>
+                                            <Icon d={PATHS.check} size={20} strokeWidth={isDone ? 3 : 2} />
                                         </div>
                                     </div>
                                     {(currentTasks.length > 0 || overdue.length > 0) ? (
@@ -5355,6 +5404,7 @@
                                             {visibleOverdue.map((t, i) => {
                                                 const overdueRec = records[t.originalDate]?.[s.id];
                                                 const comment = overdueRec?.taskComments?.[t.originalIndex];
+                                                const hasComment = comment && (Array.isArray(comment) ? comment.length > 0 : true);
                                                 return (
                                                 <div key={`overdue-${i}`} onClick={(e) => { e.stopPropagation(); toggleCheck(s.id, t.originalIndex, t.originalDate); }} className="flex flex-col p-1 rounded hover:bg-rose-50 group/task transition-colors bg-rose-50/30 border border-rose-100/50">
                                                     <div className="flex items-center gap-2">
@@ -5364,9 +5414,8 @@
                                                         <span className="text-[10px] font-bold mr-1">[미제출]</span>
                                                         {t.title} <span className="text-[9px] text-rose-400">({dayjs(t.originalDate).format('MM/DD')})</span>
                                                     </span>
-                                                    <button onClick={(e) => handleCommentClick(e, s.id, t.originalIndex, t.originalDate, comment)} className={`p-1 text-slate-300 hover:text-indigo-500 transition-colors ${comment ? 'text-indigo-400 opacity-100' : 'opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
+                                                    <button onClick={(e) => handleCommentClick(e, s.id, t.originalIndex, t.originalDate, comment)} className={`p-1 transition-colors rounded ${hasComment ? 'text-indigo-600 opacity-100 z-10' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
                                                     </div>
-                                                    {comment && <div className="text-[10px] text-indigo-500 pl-6 break-keep leading-tight">{comment}</div>}
                                                 </div>
                                             )})}
                                             {hasMore && !isExpanded && (
@@ -5382,6 +5431,7 @@
                                             {currentTasks.map((t, idx) => {
                                                 const taskDone = rec.tasks?.[idx];
                                                 const comment = rec.taskComments?.[idx];
+                                                const hasComment = comment && (Array.isArray(comment) ? comment.length > 0 : true);
                                                 return (
                                                     <div key={idx} onClick={(e) => { e.stopPropagation(); toggleCheck(s.id, idx); }} className="flex flex-col p-1 rounded hover:bg-notion-bg-alt group/task transition-colors">
                                                         <div className="flex items-center gap-2">
@@ -5391,9 +5441,8 @@
                                                         <span className={`text-xs truncate flex-1 ${taskDone ? 'text-notion-text-light line-through' : 'text-notion-text'}`}>
                                                             {typeof t === 'object' ? t.title : t}
                                                         </span>
-                                                        <button onClick={(e) => handleCommentClick(e, s.id, idx, date, comment)} className={`p-1 text-slate-300 hover:text-indigo-500 transition-colors ${comment ? 'text-indigo-400 opacity-100' : 'opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
+                                                        <button onClick={(e) => handleCommentClick(e, s.id, idx, date, comment)} className={`p-1 transition-colors rounded ${hasComment ? 'text-indigo-600 opacity-100 z-10' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
                                                         </div>
-                                                        {comment && <div className="text-[10px] text-indigo-500 pl-6 break-keep leading-tight">{comment}</div>}
                                                     </div>
                                                 );
                                             })}
@@ -10158,7 +10207,10 @@ const firebaseConfig = {
                 const currentRec = records[d]?.[studentId] || { done: false, tasks: {} };
                 const newTaskComments = { ...(currentRec.taskComments || {}) };
                 
-                if (comment && comment.trim()) {
+                if (Array.isArray(comment)) {
+                    if (comment.length > 0) newTaskComments[taskIndex] = comment;
+                    else delete newTaskComments[taskIndex];
+                } else if (comment && typeof comment === 'string' && comment.trim()) {
                     newTaskComments[taskIndex] = comment.trim();
                 } else {
                     delete newTaskComments[taskIndex];
@@ -13051,7 +13103,10 @@ const firebaseConfig = {
             {/* 최초 가입 (닉네임 설정) 모달 */}
             {needProfileSetup && currentUser && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm transform transition-all">
+                    <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm transform transition-all relative">
+                        <button onClick={() => setNeedProfileSetup(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors group">
+                            <Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" />
+                        </button>
                         <div className="text-center mb-6">
                             <div className="text-5xl mb-3">👋</div>
                             <h2 className="text-2xl font-bold text-slate-800">환영합니다!</h2>
@@ -13275,6 +13330,7 @@ const firebaseConfig = {
                         appId={appId}
                         isPortfolioMode={isPortfolioMode}
                         setStudents={setStudents}
+                        onSaveTaskComment={handleSaveTaskComment}
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} />}
