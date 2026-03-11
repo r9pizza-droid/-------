@@ -1499,14 +1499,9 @@
                                 {/* 입력 폼 */}
                                 <div className="flex flex-col gap-2">
                                     <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                                        <div className="relative group flex items-center">
-                                            <input 
-                                                type="date" 
-                                                value={dueDate} 
-                                                onChange={e => setDueDate(e.target.value)} 
-                                                className="w-32 p-2 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded border border-transparent hover:border-slate-200 transition-all outline-none cursor-pointer" 
-                                            />
-                                            <button onClick={() => setShowCalendar(true)} className="ml-1 p-2 bg-slate-100 rounded-lg text-slate-500 hover:bg-slate-200 transition-colors" title="달력 보기"><Icon d={PATHS.calendar} size={16}/></button>
+                                        <div className="flex items-center gap-2 cursor-pointer bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-lg transition-colors border border-transparent hover:border-slate-200 shrink-0" onClick={() => setShowCalendar(true)}>
+                                            <span className="text-xs font-bold text-slate-500">제출일</span>
+                                            <span className="text-sm font-bold text-slate-700">{dayjs(dueDate).format('YY.MM.DD')}</span>
                                         </div>
                                         <div className="flex-1 relative w-full">
                                             <input 
@@ -9819,7 +9814,7 @@ const firebaseConfig = {
             }, []);
 
     React.useEffect(() => {
-        let unsubStats, unsubNoti, unsubArtifacts, unsubGroupResults, unsubRecords, unsubTasks;
+        let unsubStats, unsubNoti, unsubArtifacts;
     
     // [Fix] myClassApp이 존재하면 해당 앱의 Auth를 사용, 아니면 Default(shared) 사용
     const userApp = firebase.apps.find(app => app.name === 'myClassApp');
@@ -9831,9 +9826,6 @@ const firebaseConfig = {
         if (unsubStats) unsubStats();
         if (unsubNoti) unsubNoti();
         if (unsubArtifacts) unsubArtifacts();
-        if (unsubGroupResults) unsubGroupResults();
-        if (unsubRecords) unsubRecords();
-        if (unsubTasks) unsubTasks();
         if (user) {
             if (sharedDb) {
                 unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
@@ -9911,17 +9903,6 @@ const firebaseConfig = {
                             const hydrated = hydrateGroups(mergedGroups, mergedStudents);
                             setGroupsByDate(hydrated);
                         }
-                        if (d.avoidance) setAvoidancePairs(d.avoidance);
-                        if (d.mustPairs) setMustPairs(d.mustPairs);
-                        if (d.config) setAppConfig({ ...d.config, version: CURRENT_VERSION });
-                        if (d.dailyTasks) setDailyTasks(d.dailyTasks);
-                        if (d.weeklyTasks) setWeeklyTasks(d.weeklyTasks);
-                        if (d.tags) setTags(d.tags);
-                        if (d.groupNames) setGroupNames(d.groupNames);
-                        if (d.groupRoles) setGroupRoles(d.groupRoles);
-                        if (d.rolesList) setRolesList(d.rolesList);
-                        if (d.aiKey) { setApiKey(d.aiKey); localStorage.setItem('cls_ai_key', d.aiKey); }
-                        if (d.notionKey) localStorage.setItem('cls_notion_key', d.notionKey);
                         if (d.notionDbId) localStorage.setItem('cls_notion_db_id', d.notionDbId);
                         if (d.notion_key) localStorage.setItem('cls_notion_key', d.notion_key);
                         if (d.notion_db_id) localStorage.setItem('cls_notion_db_id', d.notion_db_id);
@@ -9943,47 +9924,34 @@ const firebaseConfig = {
                     setIsLoading(false);
                     setToastMessage("데이터 로딩 오류: " + error.message);
                 });
-                
-                // [Optimization] 최근 3개월 데이터만 불러와서 읽기 횟수 절약
-                const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
+            }
+        } else {
+            logSystemEvent('Firebase 로그인 상태 아님', 'warning');
+            setCurrentUserStats({ postCount: 0, commentCount: 0 });
+            setCurrentUserProfile(null);
+            setNotifications([]);
+            setIsLoading(false);
+        }
+    });
+    return () => {
+        unsubscribeAuth();
+        if (unsubStats) unsubStats();
+        if (unsubNoti) unsubNoti();
+        if (unsubArtifacts) unsubArtifacts();
+    };
+}, [sharedDb, firestore, config?.projectId, appConfig, isLocalMode]);
 
-                unsubGroupResults = firestore.collection('classes').doc(config.projectId).collection('groupResults')
-                    .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
-                    .onSnapshot(snapshot => {
-                    const newGroups = {};
-                    snapshot.docs.forEach(doc => { newGroups[doc.id] = doc.data().list; });
-                    setGroupsByDate(prev => hydrateGroups({ ...prev, ...newGroups }, studentsRef.current));
-                }, (error) => {
-                    console.error("GroupResults sync error:", error);
-                    if (error.code === 'resource-exhausted') {
-                        setToastMessage("⚠️ 일일 사용량 초과: 모둠 기록을 불러올 수 없습니다.");
-                    }
-                });
+// [Optimization] 과제 및 기록 데이터 Lazy Loading (기록, 통계 탭에서만 활성화)
+useEffect(() => {
+    if (isLocalMode || !firestore || !appId || !currentUser) return;
+    
+    let unsubRecords, unsubTasks;
 
-                unsubRecords = firestore.collection('classes').doc(config.projectId).collection('records')
-                    .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
-                    .onSnapshot(snapshot => {
-                    setRecords(prev => {
-                        const next = { ...prev };
-                        snapshot.docChanges().forEach(change => {
-                            if (change.type === 'added' || change.type === 'modified') {
-                                // doc.id는 날짜(YYYY-MM-DD), data는 { studentId: { tasks: [...] } }
-                                next[change.doc.id] = change.doc.data();
-                            }
-                            if (change.type === 'removed') delete next[change.doc.id];
-                        });
-                        return next;
-                    });
-                }, (error) => {
-                    console.error("Records sync error:", error);
-                    if (error.code === 'resource-exhausted') {
-                        setToastMessage("⚠️ 일일 사용량 초과: 활동 기록을 불러올 수 없습니다. (내일 0시에 초기화됩니다)");
-                    } else {
-                        setToastMessage("기록 동기화 오류: " + error.message);
-                    }
-                });
-                
-                unsubTasks = firestore.collection('classes').doc(classId).collection('tasks').onSnapshot(snapshot => {
+    // 사용자가 '기록' 또는 '통계' 모드일 때만 데이터 구독
+    if (mode === 'record' || mode === 'stats') {
+        // 1. 과제(Tasks) 데이터 구독
+        try {
+            unsubTasks = firestore.collection('classes').doc(appId).collection('tasks').onSnapshot(snapshot => {
                     snapshot.docChanges().forEach(change => {
                         if (change.doc.id === 'settings') {
                             const data = change.doc.data();
@@ -10001,26 +9969,68 @@ const firebaseConfig = {
                             }
                         }
                     });
+            }, error => console.error("Tasks sync error:", error));
+        } catch (e) { console.error("Task subscription failed:", e); }
+
+        // 2. 활동 기록(Records) 데이터 구독 (최근 3개월 제한)
+        const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
+        try {
+            unsubRecords = firestore.collection('classes').doc(appId).collection('records')
+                .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
+                .onSnapshot(snapshot => {
+                setRecords(prev => {
+                    const next = { ...prev };
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === 'added' || change.type === 'modified') {
+                            next[change.doc.id] = change.doc.data();
+                        }
+                        if (change.type === 'removed') delete next[change.doc.id];
+                    });
+                    return next;
                 });
-            }
-        } else {
-            logSystemEvent('Firebase 로그인 상태 아님', 'warning');
-            setCurrentUserStats({ postCount: 0, commentCount: 0 });
-            setCurrentUserProfile(null);
-            setNotifications([]);
-            setIsLoading(false);
-        }
-    });
+            }, (error) => {
+                console.error("Records sync error:", error);
+                if (error.code === 'resource-exhausted') {
+                    setToastMessage("⚠️ 사용량 초과: 기록을 불러올 수 없습니다.");
+                }
+            });
+        } catch (e) { console.error("Records subscription failed:", e); }
+    }
+
     return () => {
-        unsubscribeAuth();
-        if (unsubStats) unsubStats();
-        if (unsubNoti) unsubNoti();
-        if (unsubArtifacts) unsubArtifacts();
-        if (unsubGroupResults) unsubGroupResults();
-        if (unsubRecords) unsubRecords();
         if (unsubTasks) unsubTasks();
+        if (unsubRecords) unsubRecords();
     };
-}, [sharedDb, firestore, config?.projectId, appConfig, isLocalMode]);
+}, [mode, firestore, appId, isLocalMode, currentUser]);
+
+// [Optimization] 모둠 데이터 Lazy Loading (모둠 탭에서만 활성화)
+useEffect(() => {
+    if (isLocalMode || !firestore || !appId || !currentUser) return;
+    
+    let unsubGroupResults;
+
+    if (mode === 'group') {
+        const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
+        try {
+            unsubGroupResults = firestore.collection('classes').doc(appId).collection('groupResults')
+                .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
+                .onSnapshot(snapshot => {
+                const newGroups = {};
+                snapshot.docs.forEach(doc => { newGroups[doc.id] = doc.data().list; });
+                setGroupsByDate(prev => hydrateGroups({ ...prev, ...newGroups }, studentsRef.current));
+            }, (error) => {
+                console.error("GroupResults sync error:", error);
+                if (error.code === 'resource-exhausted') {
+                    setToastMessage("⚠️ 사용량 초과: 모둠 기록을 불러올 수 없습니다.");
+                }
+            });
+        } catch (e) { console.error("Group subscription failed:", e); }
+    }
+
+    return () => {
+        if (unsubGroupResults) unsubGroupResults();
+    };
+}, [mode, firestore, appId, isLocalMode, currentUser]);
 
             // [New] 게시판 탭 진입 시 닉네임 설정 확인
             useEffect(() => {
