@@ -9884,6 +9884,8 @@ const firebaseConfig = {
             if (firestore && config && config.projectId) {
                 logSystemEvent(`Firebase 로그인 성공: ${user.email}`);
                 
+                const classId = config.projectId;
+
                 unsubArtifacts = firestore.collection('artifacts').doc(config.projectId).collection('public').doc('data').onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
@@ -9939,7 +9941,7 @@ const firebaseConfig = {
                     setIsLoading(false);
                     setToastMessage("데이터 로딩 오류: " + error.message);
                 });
-                unsubGroupResults = firestore.collection('classes').doc(config.projectId).collection('groupResults').onSnapshot(snapshot => {
+                unsubGroupResults = firestore.collection('classes').doc(classId).collection('groupResults').onSnapshot(snapshot => {
                     const newGroups = {};
                     snapshot.docs.forEach(doc => { newGroups[doc.id] = doc.data().list; });
                     setGroupsByDate(prev => hydrateGroups({ ...prev, ...newGroups }, studentsRef.current));
@@ -9947,7 +9949,7 @@ const firebaseConfig = {
                 
                 // [Fix] 과제 체크 기록(Records) 실시간 동기화 복구
                 // 경로: classes/{appId}/records/{date}
-                unsubRecords = firestore.collection('classes').doc(config.projectId).collection('records').onSnapshot(snapshot => {
+                unsubRecords = firestore.collection('classes').doc(classId).collection('records').onSnapshot(snapshot => {
                     setRecords(prev => {
                         const next = { ...prev };
                         snapshot.docChanges().forEach(change => {
@@ -9961,7 +9963,7 @@ const firebaseConfig = {
                     });
                 }, (error) => console.error("Records sync error:", error));
                 
-                unsubTasks = firestore.collection('classes').doc(config.projectId).collection('tasks').onSnapshot(snapshot => {
+                unsubTasks = firestore.collection('classes').doc(classId).collection('tasks').onSnapshot(snapshot => {
                     snapshot.docChanges().forEach(change => {
                         if (change.doc.id === 'settings') {
                             const data = change.doc.data();
