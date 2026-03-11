@@ -1122,7 +1122,7 @@
             );
         };
 
-        const CalendarModal = ({ isOpen, onClose, currentDate, onSelectDate, records, appConfig, groupsByDate, mode, selectionMode = 'single', onSelectRange, customDots, dailyTasks, zIndex = "z-[1500]" }) => {
+        const CalendarModal = ({ isOpen, onClose, currentDate, onSelectDate, records, appConfig, groupsByDate, mode, selectionMode = 'single', onSelectRange, customDots, dailyTasks, zIndex = "z-[1500]", showAllOption }) => {
             const [viewDate, setViewDate] = useState(dayjs(currentDate));
             const [range, setRange] = useState({ start: null, end: null });
             const [blinkDate, setBlinkDate] = useState(null);
@@ -1182,6 +1182,7 @@
                                 {selectionMode === 'range' ? '기간 선택 (시작일 → 종료일)' : '날짜 선택'}
                             </h3>
                             <div className="flex items-center gap-2">
+                                {showAllOption && <button onClick={() => { onSelectDate(null); onClose(); }} className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-bold hover:bg-slate-200 transition-colors">전체</button>}
                                 {selectionMode === 'single' && <button onClick={() => { 
                                     const today = getToday();
                                     setViewDate(dayjs(today));
@@ -7096,7 +7097,7 @@ const firebaseConfig = {
                                     className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 whitespace-nowrap transition-colors ${selectedDate ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     <Icon d={PATHS.calendar} size={14} />
-                                    {selectedDate ? dayjs(selectedDate).format('MM/DD') : '날짜 선택'}
+                                    {selectedDate ? dayjs(selectedDate).format('MM/DD') : '전체'}
                                 </button>
                                 <button 
                                     onClick={handleLoadData}
@@ -7225,6 +7226,7 @@ const firebaseConfig = {
                             customDots={datesWithData}
                             mode="custom"
                             appConfig={appConfig}
+                            showAllOption={true}
                         />
                     )}
                 </BaseModal>

@@ -1528,7 +1528,7 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                                                                         onBlur={() => setTimeout(() => setShowEditStudentDropdown(false), 200)}
                                                                                     />
                                                                                     {showEditStudentDropdown && (
-                                                                                        <div className="absolute top-full left-0 w-48 bg-white shadow-xl border border-slate-200 rounded-lg z-50 max-h-32 overflow-y-auto mt-1 custom-scroll">
+                                                                                        <div className="absolute top-full right-0 w-32 bg-white shadow-xl border border-slate-200 rounded-lg z-50 max-h-32 overflow-y-auto mt-1 custom-scroll">
                                                                                             {students.filter(s => s.name.includes(editSearchText) && s.id !== student.id && !editRelatedStudents.some(rs => rs.id === s.id)).map(s => (
                                                                                                 <div key={s.id} className="px-3 py-2 text-xs hover:bg-indigo-50 cursor-pointer font-bold" onMouseDown={() => handleAddEditStudent(s)}>
                                                                                                     {s.name}
@@ -1710,7 +1710,7 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                                                                             setCommentInput(comment);
                                                                                         }
                                                                                     }}
-                                                                                    className={`p-1.5 rounded-full transition-all ml-2 ${comment ? 'border-2 border-blue-400' : 'border-2 border-transparent'} hover:bg-slate-100`}
+                                                                            className={`p-1.5 rounded-full transition-all ml-2 shrink-0 ${comment ? 'border-2 border-blue-400' : 'border-2 border-transparent'} hover:bg-slate-100`}
                                                                                     title="메모 남기기"
                                                                                 >
                                                                                     <Icon d={PATHS.edit} size={14} className="text-slate-400" />
