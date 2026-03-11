@@ -3479,9 +3479,10 @@
 
             const handleLogout = async () => {
                 try {
-                    // 1. 파이어베이스 계정 로그아웃
-                    if (firebase.apps.length > 0) {
-                        await firebase.auth().signOut();
+                    // 1. 파이어베이스 계정 로그아웃 (myClassApp)
+                    const userApp = firebase.apps.find(app => app.name === 'myClassApp');
+                    if (userApp) {
+                        await userApp.auth().signOut();
                     }
                     
                     // 2. 브라우저에 저장된 API 키(설정값), UID, 아이디/비번을 흔적도 없이 지움!
@@ -6295,13 +6296,14 @@
                 if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
 
                 try {
-                    // [수정] 기존 연결이 있다면 모두 제거하여 초기화
-                    if (firebase.apps.length > 0) {
-                        await Promise.all(firebase.apps.map(app => app.delete()));
+                    // [수정] 명명된 앱(myClassApp)으로 초기화하여 충돌 방지
+                    const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
+                    if (existingApp) {
+                        await existingApp.delete();
                     }
-                    firebase.initializeApp(config);
-                    // [수정] 입력된 아이디/비밀번호로 로그인 (특정 계정 제한 없음)
-                    await firebase.auth().signInWithEmailAndPassword(authId, authPw); 
+                    const userApp = firebase.initializeApp(config, 'myClassApp');
+                    // [수정] 입력된 아이디/비밀번호로 로그인
+                    await userApp.auth().signInWithEmailAndPassword(authId, authPw); 
 
                     if (rememberMe) { localStorage.setItem('cls_fb_id', authId); localStorage.setItem('cls_fb_pw', authPw); localStorage.setItem('cls_fb_config', inputConfig); } 
                     else { localStorage.removeItem('cls_fb_id'); localStorage.removeItem('cls_fb_pw'); localStorage.removeItem('cls_fb_config'); }
@@ -6321,12 +6323,13 @@
 
                 setIsTesting(true);
                 try {
-                    // [수정] 기존 연결이 있다면 모두 제거하여 초기화
-                    if (firebase.apps.length > 0) {
-                        await Promise.all(firebase.apps.map(app => app.delete()));
+                    // [수정] 명명된 앱(myClassApp)으로 테스트
+                    const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
+                    if (existingApp) {
+                        await existingApp.delete();
                     }
-                    firebase.initializeApp(config);
-                    await firebase.auth().signInWithEmailAndPassword(authId, authPw);
+                    const userApp = firebase.initializeApp(config, 'myClassApp');
+                    await userApp.auth().signInWithEmailAndPassword(authId, authPw);
                     showToast("✅ 연결 테스트 성공! (로그인 확인됨)");
                 } catch (e) {
                     let errMsg = "연결 실패: " + e.message;
@@ -9585,13 +9588,13 @@ const firebaseConfig = {
                 if (savedConfig) {
                     try {
                         const config = JSON.parse(savedConfig);
-                        if (!firebase.apps.some(app => app.name === '[DEFAULT]')) {
-                            firebase.initializeApp(config);
+                        // [Fix] 사용자 설정은 'myClassApp'이라는 별도 이름으로 초기화 (DEFAULT 앱과 충돌 방지)
+                        let userApp = firebase.apps.find(app => app.name === 'myClassApp');
+                        if (!userApp) {
+                            userApp = firebase.initializeApp(config, 'myClassApp');
                         }
                         
-                        // [Fix] 명시적으로 기본 앱의 Firestore 가져오기
-                        const defaultApp = firebase.app('[DEFAULT]');
-                        const firestore = defaultApp.firestore();
+                        const firestore = userApp.firestore();
                         setDb(firestore);
                         setConfig(config);
                         setAppId(config.projectId);
@@ -9614,7 +9617,12 @@ const firebaseConfig = {
 
     React.useEffect(() => {
         let unsubStats, unsubNoti, unsubArtifacts, unsubGroupResults, unsubRecords, unsubTasks;
-    const unsubscribeAuth = firebase.auth().onAuthStateChanged(async (user) => {
+    
+    // [Fix] myClassApp이 존재하면 해당 앱의 Auth를 사용, 아니면 Default(shared) 사용
+    const userApp = firebase.apps.find(app => app.name === 'myClassApp');
+    const authInstance = userApp ? userApp.auth() : firebase.auth();
+
+    const unsubscribeAuth = authInstance.onAuthStateChanged(async (user) => {
         setCurrentUser(user);
         setIsAdmin(!!user && user.uid === 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');
         if (unsubStats) unsubStats();
