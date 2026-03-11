@@ -3490,6 +3490,11 @@
                     localStorage.removeItem('cls_admin_uid'); 
                     localStorage.removeItem('cls_fb_id');
                     localStorage.removeItem('cls_fb_pw');
+                    
+                    // [New] 프로젝트 설정값 명시적 제거
+                    localStorage.removeItem('firebaseConfig');
+                    localStorage.removeItem('appId');
+
                     // 저장소 전체를 핵폭탄급으로 한 번 더 날려줌 (캐시 꼬임 완벽 차단)
                     localStorage.clear(); 
                     sessionStorage.clear();
@@ -6473,6 +6478,13 @@
                         </div>
                         <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일" value={authId} onChange={e => setAuthId(e.target.value)} />
                         <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호 (6자 이상)" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} />
+                        
+                        <button 
+                            onClick={() => { localStorage.clear(); alert('모든 설정이 초기화되었습니다. 다시 로그인해 주세요.'); window.location.reload(); }} 
+                            className="w-full py-2 bg-white border border-slate-300 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-100 hover:text-slate-700 transition-colors flex items-center justify-center gap-1 mt-1"
+                        >
+                            <Icon d={PATHS.refresh} size={12}/> 설정 초기화 (다른 프로젝트로 로그인)
+                        </button>
                     </div><div className="relative"><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder={`// 1. 개인 데이터 동기화를 원하시면 Firebase 설정 코드를 입력하세요.
 // 2. 게시판만 이용하시려면 비워두세요 (자동으로 공용 서버에 연결됩니다).
 const firebaseConfig = {
