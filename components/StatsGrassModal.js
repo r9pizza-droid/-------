@@ -94,7 +94,43 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
     const [searchTerm, setSearchTerm] = useState("");
     const [showSearchCal, setShowSearchCal] = useState(false);
     const [calMonth, setCalMonth] = useState(dayjs());
-    const recordDates = Array.from(new Set(notes.map(n => n.date))); // 기록이 있는 날짜만 쏙쏙 뽑기
+    
+    // [New] 과제별 메모 모아보기 데이터 가공
+    const taskComments = useMemo(() => {
+        const collected = [];
+        if (!student || !records || !dailyTasks) return collected;
+        
+        Object.entries(records).forEach(([date, r]) => {
+            const sRec = r[student.id];
+            if (sRec && sRec.taskComments) {
+                const tasks = dailyTasks[date] || [];
+                Object.entries(sRec.taskComments).forEach(([idx, comment]) => {
+                    if (comment) {
+                        const t = tasks[idx];
+                        const title = (typeof t === 'object' && t !== null) ? t.title : t;
+                        collected.push({
+                            id: `tc-${date}-${idx}`,
+                            date: date,
+                            content: comment,
+                            taskTitle: title,
+                            isTaskComment: true
+                        });
+                    }
+                });
+            }
+        });
+        return collected;
+    }, [records, dailyTasks, student]);
+
+    const combinedNotes = useMemo(() => {
+        return [...notes, ...taskComments].sort((a, b) => {
+            if (a.date !== b.date) return b.date.localeCompare(a.date);
+            return String(b.id).localeCompare(String(a.id));
+        });
+    }, [notes, taskComments]);
+
+    const recordDates = useMemo(() => Array.from(new Set(combinedNotes.map(n => n.date))), [combinedNotes]);
+    
     const [editingNoteId, setEditingNoteId] = useState(null);
     const [editNoteContent, setEditNoteContent] = useState("");
     const [editRelatedStudents, setEditRelatedStudents] = useState([]);
@@ -748,12 +784,27 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
             
             // [New] 지각 제출 계산
             let lateCount = 0;
+            const taskCommentsList = [];
             let curr = dayjs(reportStart);
             const end = dayjs(reportEnd);
             while(curr.isBefore(end) || curr.isSame(end, 'day')) {
                 const dStr = curr.format('YYYY-MM-DD');
                 const rec = records[dStr]?.[student.id];
-                if (rec && rec.lateTasks) lateCount += Object.keys(rec.lateTasks).length;
+                if (rec) {
+                    if (rec.lateTasks) lateCount += Object.keys(rec.lateTasks).length;
+                    if (rec.taskComments) {
+                        const tasks = dailyTasks[dStr] || [];
+                        Object.entries(rec.taskComments).forEach(([idx, comment]) => {
+                            if (comment) {
+                                const t = tasks[idx];
+                                const title = (typeof t === 'object' && t !== null) ? t.title : t;
+                                if (title) {
+                                    taskCommentsList.push(`[${dStr}] 과제(${title}): ${comment}`);
+                                }
+                            }
+                        });
+                    }
+                }
                 curr = curr.add(1, 'day');
             }
 
@@ -795,6 +846,9 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
 
                 // [보안 강화] 대상 학생 외에 다른 학생들의 이름도 모두 익명화
                 let safeNotesStr = pNotes.map(n => `[${n.date}] ${n.content}`).join('\n');
+                if (taskCommentsList.length > 0) {
+                    safeNotesStr += `\n\n[과제별 메모]\n${taskCommentsList.join('\n')}`;
+                }
                 safeNotesStr = anonymizeText(safeNotesStr, student.name);
                 students.forEach(s => {
                     if (s.id !== student.id) {
@@ -1018,11 +1072,12 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
         setShowPhraseList(false);
     };
 
-   const filteredNotes = notes.filter(n => {
+   const filteredNotes = combinedNotes.filter(n => {
         const matchDate = selectedDate ? n.date === selectedDate : true;
         const matchText = searchTerm 
             ? (n.content && n.content.toLowerCase().includes(searchTerm.toLowerCase())) || 
-              (n.date && n.date.includes(searchTerm)) 
+              (n.date && n.date.includes(searchTerm)) ||
+              (n.taskTitle && n.taskTitle.toLowerCase().includes(searchTerm.toLowerCase()))
             : true;
         return matchDate && matchText;
     });
@@ -1470,9 +1525,14 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                                                             </div>
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="group w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-700 shadow-sm hover:border-indigo-300 transition-colors">
+                                                                        <div className={`group w-full border rounded-xl p-3 text-xs text-slate-700 shadow-sm transition-colors ${note.isTaskComment ? 'bg-indigo-50/30 border-indigo-100 hover:border-indigo-300' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
                                                                             <div className="flex justify-between items-start mb-2">
                                                                                 <div className="flex flex-wrap gap-1.5 flex-1 items-center">
+                                                                                    {note.isTaskComment && (
+                                                                                        <span className="px-1.5 py-0.5 border border-indigo-200 bg-indigo-100 text-indigo-700 text-[8px] rounded-full font-bold shadow-sm flex items-center gap-1">
+                                                                                            <span className="text-[10px]">📝</span> 과제: {note.taskTitle}
+                                                                                        </span>
+                                                                                    )}
                                                                                     {note.destTags && note.destTags.map((tag, idx) => {
                                                                                         let colorClass = "bg-white border-slate-200 text-slate-500";
                                                                                         if (tag === '노션(기록)') colorClass = "bg-blue-50 border-blue-100 text-blue-600";
@@ -1498,14 +1558,14 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                                                                         );
                                                                                     })()}
                                                                                 </div>
-                                                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 shrink-0 ml-2">
+                                                                                {!note.isTaskComment && <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 shrink-0 ml-2">
                                                                                     <button onClick={() => startEditing(note)} className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="수정">
                                                                                         <Icon d={PATHS.edit} size={14} />
                                                                                     </button>
                                                                                     <button onClick={() => handleDeleteNote(note.id)} className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors" title="삭제">
                                                                                         <Icon d={PATHS.trash} size={14} />
                                                                                     </button>
-                                                                                </div>
+                                                                                </div>}
                                                                             </div>
                                                                             <div className="whitespace-pre-wrap leading-relaxed">
                                                                                 {note.content}
