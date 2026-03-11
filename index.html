@@ -12972,7 +12972,8 @@ const firebaseConfig = {
                                             uid: currentUser.uid,
                                             email: currentUser.email,
                                             userNickname: tempNickname.trim(),
-                                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                                            lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                                            isApproved: true
                                         }, { merge: true });
                                         
                                         setNeedProfileSetup(false);
