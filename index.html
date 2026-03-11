@@ -245,7 +245,7 @@
 
         const GEMINI_MODEL_NAME = "gemini-2.5-flash-lite";
         // [New] Gemini 호출 함수 (리포트 생성용)
-        const callGemini = async (apiKey, prompt, temperature = 0.7) => {
+        window.callGemini = async (apiKey, prompt, temperature = 0.7) => {
             // 🔒 [보안 점검] 실제 AI에게 전송되는 내용을 콘솔창에 출력합니다.
             // F12(개발자 도구) > Console 탭에서 학생 이름이 [STUDENT_TOKEN]으로 바뀌었는지 확인하세요.
             console.log("🚀 [Gemini 전송 프롬프트 확인]", prompt);
@@ -286,8 +286,7 @@
         // [New] 구글 시트 전송용 함수
         // 🌟 따옴표 중복 방지 및 전송 최적화 버전
         // [New] 구글 시트 전송용 함수
-        // [New] 구글 시트 전송용 함수
-        const saveToGoogleSheet = async (studentData, category, recordContent, recordDate) => {
+        window.saveToGoogleSheet = async (studentData, category, recordContent, recordDate) => {
             let url = localStorage.getItem('cls_google_sheet_url');
             if (url) url = url.trim().replace(/^"|'|"$|'$/g, '');
             
@@ -302,14 +301,27 @@
                 let payload;
                 // 🌟 핵심 기술: 다수의 학생 데이터가 들어오면 '배열(Array)'로 묶어서 포장합니다!
                 if (Array.isArray(studentData)) {
-                    payload = studentData.map(s => ({
-                        date: clean(dateStr),
-                        name: clean(s.name || s),
-                        category: clean(category),
-                        content: clean(recordContent), 
-                        memo: clean(recordContent),
-                        text: clean(recordContent)
-                    }));
+                    // [Fix] 1명일 때는 배열 대신 단일 객체로 보내 호환성 확보 (구버전 스크립트 대응)
+                    if (studentData.length === 1) {
+                        const s = studentData[0];
+                        payload = {
+                            date: clean(dateStr),
+                            name: clean(s.name || s),
+                            category: clean(category),
+                            content: clean(recordContent), 
+                            memo: clean(recordContent),
+                            text: clean(recordContent)
+                        };
+                    } else {
+                        payload = studentData.map(s => ({
+                            date: clean(dateStr),
+                            name: clean(s.name || s),
+                            category: clean(category),
+                            content: clean(recordContent), 
+                            memo: clean(recordContent),
+                            text: clean(recordContent)
+                        }));
+                    }
                 } else {
                     payload = {
                         date: clean(dateStr),
