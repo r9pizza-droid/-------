@@ -6292,30 +6292,47 @@
 
             const handleConnect = async () => { 
                 if(!authId || !authPw) { showToast("아이디와 비밀번호를 입력해주세요."); return; } 
-                const config = parseConfig(inputConfig);
-
-                if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
+                
+                // [수정] 설정 코드가 있으면 개인용, 없으면 공용(null)으로 처리
+                let config = null;
+                if (inputConfig.trim()) {
+                    config = parseConfig(inputConfig);
+                    if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
+                }
 
                 try {
-                    // [수정] 명명된 앱(myClassApp)으로 초기화하여 충돌 방지
-                    const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
-                    if (existingApp) {
-                        await existingApp.delete();
+                    let targetAuth = firebase.auth(); // 기본값: 공용 앱 인증
+
+                    if (config) {
+                        // [수정] 개인 설정이 있는 경우 myClassApp 초기화
+                        const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
+                        if (existingApp) {
+                            await existingApp.delete();
+                        }
+                        const userApp = firebase.initializeApp(config, 'myClassApp');
+                        targetAuth = userApp.auth();
                     }
-                    const userApp = firebase.initializeApp(config, 'myClassApp');
                     
                     if (isSignUp) {
                         // [New] 회원가입 처리
-                        await userApp.auth().createUserWithEmailAndPassword(authId, authPw);
+                        await targetAuth.createUserWithEmailAndPassword(authId, authPw);
                         showToast("🎉 가입을 환영합니다! 자동으로 로그인되었습니다.");
                     } else {
                         // 기존 로그인
-                        await userApp.auth().signInWithEmailAndPassword(authId, authPw); 
+                        await targetAuth.signInWithEmailAndPassword(authId, authPw); 
                     }
 
-                    if (rememberMe) { localStorage.setItem('cls_fb_id', authId); localStorage.setItem('cls_fb_pw', authPw); localStorage.setItem('cls_fb_config', inputConfig); } 
-                    else { localStorage.removeItem('cls_fb_id'); localStorage.removeItem('cls_fb_pw'); localStorage.removeItem('cls_fb_config'); }
-                    onConnect(config); 
+                    if (rememberMe) { 
+                        localStorage.setItem('cls_fb_id', authId); 
+                        localStorage.setItem('cls_fb_pw', authPw); 
+                        if (config) localStorage.setItem('cls_fb_config', inputConfig);
+                        else localStorage.removeItem('cls_fb_config');
+                    } else { 
+                        localStorage.removeItem('cls_fb_id'); 
+                        localStorage.removeItem('cls_fb_pw'); 
+                        localStorage.removeItem('cls_fb_config'); 
+                    }
+                    onConnect(config); // 공용이면 null 전달
                 } catch (e) { 
                     let errMsg = "연결 실패: " + e.message;
                     if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
@@ -6325,8 +6342,22 @@
 
             const handleTest = async () => {
                 if(!authId || !authPw) { showToast("아이디와 비밀번호를 입력해주세요."); return; }
-                const config = parseConfig(inputConfig);
+                
+                if (!inputConfig.trim()) {
+                    // [New] 설정 코드 없이 공용 계정 로그인 테스트
+                    setIsTesting(true);
+                    try {
+                        await firebase.auth().signInWithEmailAndPassword(authId, authPw);
+                        showToast("✅ 공용 계정 로그인 확인됨!");
+                    } catch (e) {
+                        showToast("❌ 로그인 실패: " + e.message);
+                    } finally {
+                        setIsTesting(false);
+                    }
+                    return;
+                }
 
+                const config = parseConfig(inputConfig);
                 if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
 
                 setIsTesting(true);
@@ -6411,7 +6442,8 @@
                         </div>
                         <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일" value={authId} onChange={e => setAuthId(e.target.value)} />
                         <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호 (6자 이상)" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} />
-                    </div><div className="relative"><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder={`// Firebase 콘솔에서 복사한 설정 코드를 여기에 붙여넣으세요.
+                    </div><div className="relative"><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder={`// 1. 개인 데이터 동기화를 원하시면 Firebase 설정 코드를 입력하세요.
+// 2. 게시판만 이용하시려면 비워두세요 (자동으로 공용 서버에 연결됩니다).
 const firebaseConfig = {
   apiKey: "AIzaSy...",
   authDomain: "project-id.firebaseapp.com",
@@ -7448,6 +7480,17 @@ const firebaseConfig = {
         try {
             const user = firebase.auth().currentUser;
             if (user && sharedDb) {
+                        // [New] 중복 닉네임 체크
+                        const nickname = tempNickname.trim();
+                        const check1 = await sharedDb.collection('userProfiles').where('userNickname', '==', nickname).get();
+                        const check2 = await sharedDb.collection('userProfiles').where('name', '==', nickname).get();
+                        
+                        // 이미 존재하는 닉네임이 있고, 그게 내 것이 아닐 경우
+                        if ((!check1.empty && check1.docs[0].id !== user.uid) || (!check2.empty && check2.docs[0].id !== user.uid)) {
+                            alert("이미 사용 중인 별칭입니다. 다른 별칭을 입력해주세요.");
+                            return;
+                        }
+
                 // 1. 파이어베이스 서버에 저장
                 await sharedDb.collection('userProfiles').doc(user.uid).set({
                     uid: user.uid,
@@ -9661,9 +9704,7 @@ const firebaseConfig = {
                         await userDocRef.set({
                             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                         }, { merge: true });
-                    } else {
-                        setNeedProfileSetup(true);
-                    }
+                    } // 프로필이 없으면, 게시판 탭에 진입할 때 설정 모달을 띄웁니다.
                 } catch (e) {
                     console.error("프로필 확인 실패:", e);
                 }
@@ -9809,6 +9850,13 @@ const firebaseConfig = {
         if (unsubTasks) unsubTasks();
     };
 }, [sharedDb, firestore, config?.projectId, appConfig, isLocalMode]);
+
+            // [New] 게시판 탭 진입 시 닉네임 설정 확인
+            useEffect(() => {
+                if (mode === 'community' && currentUser && !currentUserProfile) {
+                    setNeedProfileSetup(true);
+                }
+            }, [mode, currentUser, currentUserProfile]);
 
             useEffect(() => {
                 let timer;
@@ -12894,7 +12942,7 @@ const firebaseConfig = {
                                     type="text" 
                                     value={tempNickname} 
                                     onChange={(e) => setTempNickname(e.target.value)}
-                                    placeholder="예: 1학년 1반 김교사"
+                                    placeholder="예: 은샘(별칭을 적어주세요)"
                                     className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-center font-medium"
                                     autoFocus
                                 />
@@ -12908,6 +12956,18 @@ const firebaseConfig = {
                                     try {
                                         // 🚨 핵심: 닉네임과 함께 UID, 이메일을 자동 수집하여 저장
                                         const dbRef = typeof sharedDb !== 'undefined' ? sharedDb : db;
+
+                                        // [New] 중복 닉네임 체크
+                                        const nickname = tempNickname.trim();
+                                        const check1 = await dbRef.collection('userProfiles').where('userNickname', '==', nickname).get();
+                                        const check2 = await dbRef.collection('userProfiles').where('name', '==', nickname).get();
+
+                                        // 이미 존재하는 닉네임이 있고, 그게 내 것이 아닐 경우
+                                        if ((!check1.empty && check1.docs[0].id !== currentUser.uid) || (!check2.empty && check2.docs[0].id !== currentUser.uid)) {
+                                            alert("이미 사용 중인 닉네임입니다. 다른 닉네임을 사용해주세요.");
+                                            return;
+                                        }
+
                                         await dbRef.collection('userProfiles').doc(currentUser.uid).set({
                                             uid: currentUser.uid,
                                             email: currentUser.email,
@@ -13443,9 +13503,14 @@ const firebaseConfig = {
                                                 
                                                 {/* [New] 전체 사용자 관리 섹션 (테이블) */}
                                                 <div className="bg-white p-4 rounded-xl border border-slate-200 mt-6">
-                                                    <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm mb-4">
-                                                        <span className="text-lg">👤</span> 전체 사용자 관리 ({userList.length}명)
-                                                    </h4>
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                                                            <span className="text-lg">👤</span> 전체 사용자 관리 ({userList.length}명)
+                                                        </h4>
+                                                        <button onClick={fetchUserList} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 flex items-center gap-1 shadow-sm transition-colors">
+                                                            {isLoadingUsers ? <Icon d={PATHS.spinner} size={12} className="animate-spin"/> : <Icon d={PATHS.refresh} size={12}/>} 목록 새로고침
+                                                        </button>
+                                                    </div>
                                                     <div className="overflow-x-auto">
                                                         <table className="w-full text-xs text-left text-slate-600">
                                                             <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
