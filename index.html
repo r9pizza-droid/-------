@@ -7283,15 +7283,12 @@ const firebaseConfig = {
         sharedApp = firebase.app();
         }
     
-   /* try {
-        firebase.firestore().enablePersistence()
+    try {
+        sharedApp.firestore().enablePersistence({ synchronizeTabs: true })
           .catch(function(err) {
               console.log("캐시 활성화 에러:", err.code);
           });
-    } catch (error) {
-        console.log("Persistence 로직 추가 중 에러:", error);
-    }
-    */
+    } catch (error) { console.log("Persistence 에러:", error); }
 
     // 4. 게시판에서 사용할 데이터베이스(Firestore)를 연결합니다.
     sharedDb = sharedApp.firestore();
@@ -9792,6 +9789,10 @@ const firebaseConfig = {
                             
                             // [Fix] 전역 변수 db가 반드시 개인용 프로젝트를 가리키도록 강제 할당
                             const firestore = userApp.firestore();
+                            
+                            // [Quota] 오프라인 캐시 활성화 (읽기 비용 절감 및 속도 향상)
+                            await firestore.enablePersistence({ synchronizeTabs: true }).catch(e => console.log("Persistence Error:", e.code));
+                            
                             setDb(firestore);
                             setConfig(config);
                             setAppId(config.projectId);
