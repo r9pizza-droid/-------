@@ -6262,6 +6262,7 @@
             const [rememberMe, setRememberMe] = useState(false);
             const [showManual, setShowManual] = useState(false);
             const [isTesting, setIsTesting] = useState(false);
+            const [isSignUp, setIsSignUp] = useState(false); // [New] 회원가입 모드 상태
 
             useEffect(() => {
                 if (isOpen) {
@@ -6302,8 +6303,15 @@
                         await existingApp.delete();
                     }
                     const userApp = firebase.initializeApp(config, 'myClassApp');
-                    // [수정] 입력된 아이디/비밀번호로 로그인
-                    await userApp.auth().signInWithEmailAndPassword(authId, authPw); 
+                    
+                    if (isSignUp) {
+                        // [New] 회원가입 처리
+                        await userApp.auth().createUserWithEmailAndPassword(authId, authPw);
+                        showToast("🎉 가입을 환영합니다! 자동으로 로그인되었습니다.");
+                    } else {
+                        // 기존 로그인
+                        await userApp.auth().signInWithEmailAndPassword(authId, authPw); 
+                    }
 
                     if (rememberMe) { localStorage.setItem('cls_fb_id', authId); localStorage.setItem('cls_fb_pw', authPw); localStorage.setItem('cls_fb_config', inputConfig); } 
                     else { localStorage.removeItem('cls_fb_id'); localStorage.removeItem('cls_fb_pw'); localStorage.removeItem('cls_fb_config'); }
@@ -6396,7 +6404,14 @@
                             </div>
                         </div>
                     )}
-                    <div className="flex flex-col gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200"><div className="text-xs font-bold text-slate-500 mb-1">Firebase 인증 (이메일/비밀번호)</div><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일 (ID)" value={authId} onChange={e => setAuthId(e.target.value)} /><input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} /></div><div className="relative"><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder={`// Firebase 콘솔에서 복사한 설정 코드를 여기에 붙여넣으세요.
+                    <div className="flex flex-col gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <div className="flex justify-between items-center">
+                            <div className="text-xs font-bold text-slate-500">{isSignUp ? "회원가입 (새 계정 생성)" : "Firebase 인증 (로그인)"}</div>
+                            <button onClick={() => setIsSignUp(!isSignUp)} className="text-xs text-indigo-600 font-bold hover:underline">{isSignUp ? "이미 계정이 있어요" : "계정이 없으신가요?"}</button>
+                        </div>
+                        <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일" value={authId} onChange={e => setAuthId(e.target.value)} />
+                        <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호 (6자 이상)" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} />
+                    </div><div className="relative"><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder={`// Firebase 콘솔에서 복사한 설정 코드를 여기에 붙여넣으세요.
 const firebaseConfig = {
   apiKey: "AIzaSy...",
   authDomain: "project-id.firebaseapp.com",
@@ -6404,7 +6419,7 @@ const firebaseConfig = {
   storageBucket: "project-id.firebasestorage.app",
   messagingSenderId: "...",
   appId: "..."
-};`} value={inputConfig} onChange={e => setInputConfig(e.target.value)} /><button onClick={handlePasteConfig} className="absolute top-3 right-3 bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm flex items-center gap-1">붙여넣기</button></div><div className="flex items-center gap-2 mt-2 px-1"><label className="flex items-center gap-2 cursor-pointer select-none group"><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-slate-300 group-hover:border-indigo-400'}`}>{rememberMe && <Icon d={PATHS.check} size={14} className="text-white" />}</div><input type="checkbox" className="hidden" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} /><span className="text-sm font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">로그인 정보 저장</span></label></div><div className="flex gap-2 mt-5"><Btn onClick={onClose} className="px-4 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">취소</Btn><Btn onClick={handleTest} disabled={isTesting} className="flex-1 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 flex items-center justify-center gap-2">{isTesting ? <><Icon d={PATHS.spinner} className="animate-spin" size={16}/> 확인 중...</> : '연결 테스트'}</Btn><Btn onClick={handleConnect} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">연결하기</Btn></div></BaseModal>
+};`} value={inputConfig} onChange={e => setInputConfig(e.target.value)} /><button onClick={handlePasteConfig} className="absolute top-3 right-3 bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm flex items-center gap-1">붙여넣기</button></div><div className="flex items-center gap-2 mt-2 px-1"><label className="flex items-center gap-2 cursor-pointer select-none group"><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-slate-300 group-hover:border-indigo-400'}`}>{rememberMe && <Icon d={PATHS.check} size={14} className="text-white" />}</div><input type="checkbox" className="hidden" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} /><span className="text-sm font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">로그인 정보 저장</span></label></div><div className="flex gap-2 mt-5"><Btn onClick={onClose} className="px-4 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">취소</Btn><Btn onClick={handleTest} disabled={isTesting} className="flex-1 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 flex items-center justify-center gap-2">{isTesting ? <><Icon d={PATHS.spinner} className="animate-spin" size={16}/> 확인 중...</> : '연결 테스트'}</Btn><Btn onClick={handleConnect} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">{isSignUp ? '회원가입' : '연결하기'}</Btn></div></BaseModal>
             );
         };
         const GlobalRecordModal = ({ isOpen, onClose, students, setStudents, saveData, isLocalMode, showToast, buttonPos, appConfig, db, appId }) => {
@@ -12143,6 +12158,14 @@ const firebaseConfig = {
                                                                 </button>
                                                             )}
                                                         </div>
+                                                        {!currentUser && (
+                                                            <button 
+                                                                onClick={() => setIsSetupOpen(true)}
+                                                                className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 whitespace-nowrap"
+                                                            >
+                                                                로그인/가입
+                                                            </button>
+                                                        )}
                                                         {firebase.auth().currentUser && (
                                                             <button 
                                                                 onClick={handleWriteClick}
@@ -12856,52 +12879,57 @@ const firebaseConfig = {
                 </div>
             )}
 
-            {needProfileSetup && (
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-pop-up">
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">닉네임 설정</h3>
-                        <p className="text-sm text-slate-500 mb-4">게시판에서 사용할 닉네임을 입력해주세요.</p>
-                        <input 
-                            type="text" 
-                            value={tempNickname} 
-                            onChange={(e) => setTempNickname(e.target.value)}
-                            className="w-full p-3 border border-slate-200 rounded-xl mb-4 text-sm outline-none focus:border-indigo-500"
-                            placeholder="닉네임 입력"
-                        />
-                        <button 
-                            onClick={async () => {
-                                const nickname = tempNickname.trim();
-                                if (!nickname) return alert("닉네임을 입력해주세요.");
-                                if (nickname.length < 2) return alert("닉네임은 2글자 이상이어야 합니다.");
-
-                                const user = firebase.auth().currentUser;
-                                if (user && sharedDb) {
+            {/* 최초 가입 (닉네임 설정) 모달 */}
+            {needProfileSetup && currentUser && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm transform transition-all">
+                        <div className="text-center mb-6">
+                            <div className="text-5xl mb-3">👋</div>
+                            <h2 className="text-2xl font-bold text-slate-800">환영합니다!</h2>
+                            <p className="text-sm text-slate-500 mt-2">게시판에서 사용할 별칭(닉네임)을 정해주세요.<br/>(이후 관리자 승인 등에 사용됩니다)</p>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <input 
+                                    type="text" 
+                                    value={tempNickname} 
+                                    onChange={(e) => setTempNickname(e.target.value)}
+                                    placeholder="예: 1학년 1반 김교사"
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-center font-medium"
+                                    autoFocus
+                                />
+                            </div>
+                            <button 
+                                onClick={async () => {
+                                    if (!tempNickname.trim()) {
+                                        alert("닉네임을 입력해주세요!");
+                                        return;
+                                    }
                                     try {
-                                        const snapshot = await sharedDb.collection('userProfiles').where('userNickname', '==', nickname).get();
-                                        if (!snapshot.empty) return alert("이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.");
-
-                                        await sharedDb.collection('userProfiles').doc(user.uid).set({
-                                            uid: user.uid,
-                                            email: user.email,
-                                            userNickname: nickname,
+                                        // 🚨 핵심: 닉네임과 함께 UID, 이메일을 자동 수집하여 저장
+                                        const dbRef = typeof sharedDb !== 'undefined' ? sharedDb : db;
+                                        await dbRef.collection('userProfiles').doc(currentUser.uid).set({
+                                            uid: currentUser.uid,
+                                            email: currentUser.email,
+                                            userNickname: tempNickname.trim(),
                                             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                                         }, { merge: true });
-                                        setCurrentUserProfile({ 
-                                            uid: user.uid, 
-                                            email: user.email, 
-                                            userNickname: nickname 
-                                        });
+                                        
                                         setNeedProfileSetup(false);
-                                    } catch (e) {
-                                        console.error("닉네임 설정 오류:", e);
-                                        alert("오류가 발생했습니다.");
+                                        if (typeof setCurrentUserProfile === 'function') {
+                                            setCurrentUserProfile({ userNickname: tempNickname.trim() });
+                                        }
+                                        alert("가입이 완료되었습니다!");
+                                    } catch (error) {
+                                        console.error("프로필 저장 실패:", error);
+                                        alert("저장에 실패했습니다.");
                                     }
-                                }
-                            }}
-                            className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 transition-colors"
-                        >
-                            시작하기
-                        </button>
+                                }}
+                                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg"
+                            >
+                                시작하기
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -13416,7 +13444,7 @@ const firebaseConfig = {
                                                 {/* [New] 전체 사용자 관리 섹션 (테이블) */}
                                                 <div className="bg-white p-4 rounded-xl border border-slate-200 mt-6">
                                                     <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm mb-4">
-                                                        <span className="text-lg">👤</span> 전체 사용자 관리 ({allUsers.length}명)
+                                                        <span className="text-lg">👤</span> 전체 사용자 관리 ({userList.length}명)
                                                     </h4>
                                                     <div className="overflow-x-auto">
                                                         <table className="w-full text-xs text-left text-slate-600">
@@ -13426,10 +13454,11 @@ const firebaseConfig = {
                                                                     <th className="px-3 py-2">이메일</th>
                                                                     <th className="px-3 py-2">최근 접속</th>
                                                                     <th className="px-3 py-2">UID</th>
+                                                                    <th className="px-3 py-2 text-right">관리</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-slate-100">
-                                                                {allUsers.map((user) => (
+                                                                {userList.map((user) => (
                                                                     <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                                                                         <td className="px-3 py-2 font-bold">{user.userNickname || user.name || "(없음)"}</td>
                                                                         <td className="px-3 py-2">{user.email}</td>
@@ -13437,11 +13466,16 @@ const firebaseConfig = {
                                                                             {user.lastLogin ? dayjs(user.lastLogin.toDate()).format('YY.MM.DD HH:mm') : '-'}
                                                                         </td>
                                                                         <td className="px-3 py-2 font-mono text-[10px] text-slate-400 truncate max-w-[100px]" title={user.uid}>
-                                                                            {user.uid}
+                                                                            {user.uid.slice(0, 8)}...
+                                                                        </td>
+                                                                        <td className="px-3 py-2 text-right">
+                                                                            <button onClick={() => handleBlockUser(user.uid, user.isBlocked)} className={`text-xs px-2 py-1 rounded font-bold transition-colors ${user.isBlocked ? 'bg-rose-100 text-rose-600 hover:bg-rose-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                                                                {user.isBlocked ? '승인(해제)' : '차단'}
+                                                                            </button>
                                                                         </td>
                                                                     </tr>
                                                                 ))}
-                                                                {allUsers.length === 0 && <tr><td colSpan="4" className="text-center py-4">사용자 데이터가 없습니다.</td></tr>}
+                                                                {userList.length === 0 && <tr><td colSpan="5" className="text-center py-4">사용자 데이터가 없습니다.</td></tr>}
                                                             </tbody>
                                                         </table>
                                                     </div>
