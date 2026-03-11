@@ -3160,7 +3160,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers }) => {
+        const SettingsModal = ({ isOpen, onClose, allUsers, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -7113,6 +7113,15 @@ const firebaseConfig = {
         sharedApp = firebase.app();
         }
     
+    try {
+        firebase.firestore().enablePersistence()
+          .catch(function(err) {
+              console.log("캐시 활성화 에러:", err.code);
+          });
+    } catch (error) {
+        console.log("Persistence 로직 추가 중 에러:", error);
+    }
+
     // 4. 게시판에서 사용할 데이터베이스(Firestore)를 연결합니다.
     sharedDb = sharedApp.firestore();
     
