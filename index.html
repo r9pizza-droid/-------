@@ -9657,24 +9657,29 @@ const firebaseConfig = {
                 } catch (e) { console.error("Cache load error", e); }
                 
                 if (savedConfig) {
-                    try {
-                        const config = JSON.parse(savedConfig);
-                        // [Fix] 사용자 설정은 'myClassApp'이라는 별도 이름으로 초기화 (DEFAULT 앱과 충돌 방지)
-                        let userApp = firebase.apps.find(app => app.name === 'myClassApp');
-                        if (!userApp) {
-                            userApp = firebase.initializeApp(config, 'myClassApp');
-                        }
-                        
-                        // [Fix] 초기화 직후 db 변수가 반드시 개인용 프로젝트(myClassApp)를 가리키도록 명시적 지정
-                        const firestore = firebase.app('myClassApp').firestore();
-                        setDb(firestore);
-                        setConfig(config);
-                        setAppId(config.projectId);
-                        setIsLocalMode(false);
-                        setToastMessage("🟢 개인용 Firestore에 연결되었습니다.");
+                    const initUserApp = async () => {
+                        try {
+                            const config = JSON.parse(savedConfig);
+                            
+                            // [Fix] 기존 앱이 있다면 삭제 후 재생성 (권한 충돌 및 세션 꼬임 방지)
+                            const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
+                            if (existingApp) {
+                                await existingApp.delete();
+                            }
+                            const userApp = firebase.initializeApp(config, 'myClassApp');
+                            
+                            // [Fix] 전역 변수 db가 반드시 개인용 프로젝트를 가리키도록 강제 할당
+                            const firestore = userApp.firestore();
+                            setDb(firestore);
+                            setConfig(config);
+                            setAppId(config.projectId);
+                            setIsLocalMode(false);
+                            setToastMessage("🟢 개인용 Firestore에 연결되었습니다.");
 
-                        logSystemEvent(`Firebase 연결 시도: ${config.projectId}`);
-                    } catch (e) { logSystemEvent(`Firebase 초기화 실패: ${e.message}`, 'error'); setIsLocalMode(true); setIsLoading(false); }
+                            logSystemEvent(`Firebase 연결 시도: ${config.projectId}`);
+                        } catch (e) { logSystemEvent(`Firebase 초기화 실패: ${e.message}`, 'error'); setIsLocalMode(true); setIsLoading(false); }
+                    };
+                    initUserApp();
                 } else {
                     // 로컬 모드 (위에서 이미 로드함)
                     
