@@ -13053,7 +13053,9 @@ const firebaseConfig = {
                         onPhotoUpload={handlePhotoUpload} />}
                     <SettingsModal 
                         isOpen={isSettingOpen} 
-                        onClose={()=>setIsSettingOpen(false)} 
+                        onClose={()=>setIsSettingOpen(false)}
+                        allUsers={allUsers}     
+                        isAdmin={isAdmin}       
                         students={students} 
                         setStudents={setStudents} 
                         appConfig={appConfig} 
