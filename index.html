@@ -9816,12 +9816,26 @@ const firebaseConfig = {
                     setIsLoading(false);
                     setToastMessage("데이터 로딩 오류: " + error.message);
                 });
-                unsubGroupResults = firestore.collection('classes').doc(config.projectId).collection('groupResults').onSnapshot(snapshot => {
+                
+                // [Optimization] 최근 3개월 데이터만 불러와서 읽기 횟수 절약
+                const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
+
+                unsubGroupResults = firestore.collection('classes').doc(config.projectId).collection('groupResults')
+                    .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
+                    .onSnapshot(snapshot => {
                     const newGroups = {};
                     snapshot.docs.forEach(doc => { newGroups[doc.id] = doc.data().list; });
                     setGroupsByDate(prev => hydrateGroups({ ...prev, ...newGroups }, studentsRef.current));
+                }, (error) => {
+                    console.error("GroupResults sync error:", error);
+                    if (error.code === 'resource-exhausted') {
+                        setToastMessage("⚠️ 일일 사용량 초과: 모둠 기록을 불러올 수 없습니다.");
+                    }
                 });
-                unsubRecords = firestore.collection('classes').doc(config.projectId).collection('records').onSnapshot(snapshot => {
+
+                unsubRecords = firestore.collection('classes').doc(config.projectId).collection('records')
+                    .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
+                    .onSnapshot(snapshot => {
                     setRecords(prev => {
                         const next = { ...prev };
                         snapshot.docChanges().forEach(change => {
@@ -9830,6 +9844,13 @@ const firebaseConfig = {
                         });
                         return next;
                     });
+                }, (error) => {
+                    console.error("Records sync error:", error);
+                    if (error.code === 'resource-exhausted') {
+                        setToastMessage("⚠️ 일일 사용량 초과: 활동 기록을 불러올 수 없습니다. (내일 0시에 초기화됩니다)");
+                    } else {
+                        setToastMessage("기록 동기화 오류: " + error.message);
+                    }
                 });
                 
                 unsubTasks = firestore.collection('classes').doc(config.projectId).collection('tasks').onSnapshot(snapshot => {
