@@ -13687,15 +13687,15 @@ const firebaseConfig = {
                                                 {/* 통계 카드 영역 */}
                                                 <div className="grid grid-cols-3 gap-3">
                                                     <div className="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
-                                                        <span className="text-blue-800 font-bold text-sm block mb-1">📝 게시글</span>
+                                                        <span className="text-blue-800 font-bold text-sm block mb-1 whitespace-nowrap">📝 게시글</span>
                                                         <span className="text-2xl font-black text-blue-600">{adminStats?.posts || 0}</span>
                                                     </div>
                                                     <div className="bg-green-50 p-4 rounded-xl text-center border border-green-100">
-                                                        <span className="text-green-800 font-bold text-sm block mb-1">💬 댓글</span>
+                                                        <span className="text-green-800 font-bold text-sm block mb-1 whitespace-nowrap">💬 댓글</span>
                                                         <span className="text-2xl font-black text-green-600">{adminStats?.comments || 0}</span>
                                                     </div>
                                                     <div className="bg-orange-50 p-4 rounded-xl text-center border border-orange-100">
-                                                        <span className="text-orange-800 font-bold text-sm block mb-1">🔔 오늘 알림</span>
+                                                        <span className="text-orange-800 font-bold text-sm block mb-1 whitespace-nowrap">🔔 오늘 알림</span>
                                                         <span className="text-2xl font-black text-orange-600">{adminStats?.notis || 0}</span>
                                                     </div>
                                                 </div>
@@ -13753,7 +13753,7 @@ const firebaseConfig = {
 
                                                 {/* [추가된 기능] 레벨업 점수 밸런스 패치 영역 (levelConfig 상태 사용) */}
                                                 <div className="border-t border-slate-100 pt-5">
-                                                    <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">🌱 레벨업 점수 밸런스 패치 <span className="text-xs font-normal text-slate-500">(글 1점 / 댓글 0.01점 기준)</span></h4>
+                                                    <h4 className="font-bold text-slate-800 mb-4 flex flex-wrap items-center gap-2"><span className="whitespace-nowrap">🌱 레벨업 점수 밸런스 패치</span> <span className="text-xs font-normal text-slate-500 whitespace-nowrap">(글 1점 / 댓글 0.01점 기준)</span></h4>
                                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                                         <div>
                                                             <label className="block text-xs font-medium text-slate-500 mb-1">🌿 풀잎 커트라인</label>
