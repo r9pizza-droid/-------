@@ -3541,6 +3541,20 @@
             try { const successful = document.execCommand('copy'); if (successful) showToast("전체 코드가 클립보드에 복사되었습니다!"); else showToast("복사에 실패했습니다.");
             } catch (err) { showToast("오류가 발생했습니다."); } finally { document.body.removeChild(textarea); } };
             
+            const handleClearCache = () => {
+                if (isLocalMode) return;
+                if (!confirm("로컬 캐시(임시 데이터)를 삭제하고 새로고침 하시겠습니까?\n\n- 서버에 저장된 데이터는 안전합니다.\n- 브라우저 저장 공간 부족 문제를 해결할 수 있습니다.")) return;
+                
+                const cacheKeys = [
+                    'cls_students', 'cls_records', 'cls_groups_date', 'cls_daily_tasks', 
+                    'cls_weekly_tasks', 'cls_tags', 'cls_group_names', 'cls_group_roles', 
+                    'cls_roles_list', 'cls_role_descriptions', 'cls_seat_assignments', 
+                    'cls_seat_config', 'cls_avoidance', 'cls_mustPairs'
+                ];
+                cacheKeys.forEach(k => localStorage.removeItem(k));
+                window.location.reload();
+            };
+
             const handleExportJson = async () => { 
                 let exportStudents = [...students];
                 let exportRecords = { ...records };
@@ -4891,6 +4905,11 @@
                                                         <span className="text-xs font-bold text-slate-600">사용 설명서</span>
                                                     </Btn>
                                                 </div>
+                                                {!isLocalMode && (
+                                                    <Btn onClick={handleClearCache} className="w-full py-3 mb-3 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl font-bold hover:bg-slate-100 hover:text-slate-700 transition-colors text-sm flex items-center justify-center gap-2">
+                                                        <Icon d={PATHS.refresh} size={16} /> 캐시 데이터 삭제 (새로고침)
+                                                    </Btn>
+                                                )}
                                             </div>
                                             <Btn onClick={() => setShowResetOptions(true)} className="w-full py-3 bg-white border-2 border-rose-100 text-rose-500 rounded-xl font-bold hover:bg-rose-50 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><Icon d={PATHS.trash} size={18} /> 데이터 초기화</Btn>
                                         </div>
@@ -9821,16 +9840,22 @@ const firebaseConfig = {
                     snapshot.docs.forEach(doc => { newGroups[doc.id] = doc.data().list; });
                     setGroupsByDate(prev => hydrateGroups({ ...prev, ...newGroups }, studentsRef.current));
                 });
+                
+                // [Fix] 과제 체크 기록(Records) 실시간 동기화 복구
+                // 경로: classes/{appId}/records/{date}
                 unsubRecords = firestore.collection('classes').doc(config.projectId).collection('records').onSnapshot(snapshot => {
                     setRecords(prev => {
                         const next = { ...prev };
                         snapshot.docChanges().forEach(change => {
-                            if (change.type === 'added' || change.type === 'modified') next[change.doc.id] = change.doc.data();
+                            if (change.type === 'added' || change.type === 'modified') {
+                                // doc.id는 날짜(YYYY-MM-DD), data는 { studentId: { tasks: [...] } }
+                                next[change.doc.id] = change.doc.data();
+                            }
                             if (change.type === 'removed') delete next[change.doc.id];
                         });
                         return next;
                     });
-                });
+                }, (error) => console.error("Records sync error:", error));
                 
                 unsubTasks = firestore.collection('classes').doc(config.projectId).collection('tasks').onSnapshot(snapshot => {
                     snapshot.docChanges().forEach(change => {
@@ -9894,9 +9919,6 @@ const firebaseConfig = {
             const saveData = async (keyOrData, value) => {
                 const updates = (typeof keyOrData === 'object') ? keyOrData : { [keyOrData]: value };
                 
-                // [New] 클라우드 모드여도 로컬 스토리지에 항상 캐시(백업) 저장 (빠른 로딩 및 오프라인 대비)
-                Object.entries(updates).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
-
                 if (isLocalMode) {
                     Object.entries(updates).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
                     return;
