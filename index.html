@@ -245,7 +245,7 @@
 
         const GEMINI_MODEL_NAME = "gemini-2.5-flash-lite";
         // [New] Gemini 호출 함수 (리포트 생성용)
-        const callGemini = async (apiKey, prompt, temperature = 0.7) => {
+        window.callGemini = async (apiKey, prompt, temperature = 0.7) => {
             // 🔒 [보안 점검] 실제 AI에게 전송되는 내용을 콘솔창에 출력합니다.
             // F12(개발자 도구) > Console 탭에서 학생 이름이 [STUDENT_TOKEN]으로 바뀌었는지 확인하세요.
             console.log("🚀 [Gemini 전송 프롬프트 확인]", prompt);
@@ -286,8 +286,7 @@
         // [New] 구글 시트 전송용 함수
         // 🌟 따옴표 중복 방지 및 전송 최적화 버전
         // [New] 구글 시트 전송용 함수
-        // [New] 구글 시트 전송용 함수
-        const saveToGoogleSheet = async (studentData, category, recordContent, recordDate) => {
+        window.saveToGoogleSheet = async (studentData, category, recordContent, recordDate) => {
             let url = localStorage.getItem('cls_google_sheet_url');
             if (url) url = url.trim().replace(/^"|'|"$|'$/g, '');
             
@@ -302,14 +301,27 @@
                 let payload;
                 // 🌟 핵심 기술: 다수의 학생 데이터가 들어오면 '배열(Array)'로 묶어서 포장합니다!
                 if (Array.isArray(studentData)) {
-                    payload = studentData.map(s => ({
-                        date: clean(dateStr),
-                        name: clean(s.name || s),
-                        category: clean(category),
-                        content: clean(recordContent), 
-                        memo: clean(recordContent),
-                        text: clean(recordContent)
-                    }));
+                    // [Fix] 1명일 때는 배열 대신 단일 객체로 보내 호환성 확보 (구버전 스크립트 대응)
+                    if (studentData.length === 1) {
+                        const s = studentData[0];
+                        payload = {
+                            date: clean(dateStr),
+                            name: clean(s.name || s),
+                            category: clean(category),
+                            content: clean(recordContent), 
+                            memo: clean(recordContent),
+                            text: clean(recordContent)
+                        };
+                    } else {
+                        payload = studentData.map(s => ({
+                            date: clean(dateStr),
+                            name: clean(s.name || s),
+                            category: clean(category),
+                            content: clean(recordContent), 
+                            memo: clean(recordContent),
+                            text: clean(recordContent)
+                        }));
+                    }
                 } else {
                     payload = {
                         date: clean(dateStr),
@@ -324,6 +336,8 @@
                 await fetch(url, {
                     method: "POST",
                     mode: 'no-cors',
+                    cache: 'no-cache',
+                    redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
@@ -2423,6 +2437,8 @@
                     await fetch(cleanUrl, {
                         method: "POST",
                         mode: 'no-cors',
+                        cache: 'no-cache',
+                        redirect: 'follow',
                         headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: "테스트", category: "연동 테스트", content: "Google 시트 연동 성공!" })
                     });
@@ -3283,6 +3299,8 @@
                             await fetch(cleanUrl, {
                                 method: "POST",
                                 mode: 'no-cors',
+                                cache: 'no-cache',
+                                redirect: 'follow',
                                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                                 body: JSON.stringify({ date: dayjs().format('YYYY-MM-DD HH:mm:ss'), name: "테스트", category: "연동 테스트", content: "전체 연동 테스트" })
                             });
@@ -3490,6 +3508,11 @@
                     localStorage.removeItem('cls_admin_uid'); 
                     localStorage.removeItem('cls_fb_id');
                     localStorage.removeItem('cls_fb_pw');
+                    
+                    // [New] 프로젝트 설정값 명시적 제거
+                    localStorage.removeItem('firebaseConfig');
+                    localStorage.removeItem('appId');
+
                     // 저장소 전체를 핵폭탄급으로 한 번 더 날려줌 (캐시 꼬임 완벽 차단)
                     localStorage.clear(); 
                     sessionStorage.clear();
@@ -3541,6 +3564,20 @@
             try { const successful = document.execCommand('copy'); if (successful) showToast("전체 코드가 클립보드에 복사되었습니다!"); else showToast("복사에 실패했습니다.");
             } catch (err) { showToast("오류가 발생했습니다."); } finally { document.body.removeChild(textarea); } };
             
+            const handleClearCache = () => {
+                if (isLocalMode) return;
+                if (!confirm("로컬 캐시(임시 데이터)를 삭제하고 새로고침 하시겠습니까?\n\n- 서버에 저장된 데이터는 안전합니다.\n- 브라우저 저장 공간 부족 문제를 해결할 수 있습니다.")) return;
+                
+                const cacheKeys = [
+                    'cls_students', 'cls_records', 'cls_groups_date', 'cls_daily_tasks', 
+                    'cls_weekly_tasks', 'cls_tags', 'cls_group_names', 'cls_group_roles', 
+                    'cls_roles_list', 'cls_role_descriptions', 'cls_seat_assignments', 
+                    'cls_seat_config', 'cls_avoidance', 'cls_mustPairs'
+                ];
+                cacheKeys.forEach(k => localStorage.removeItem(k));
+                window.location.reload();
+            };
+
             const handleExportJson = async () => { 
                 let exportStudents = [...students];
                 let exportRecords = { ...records };
@@ -4174,35 +4211,6 @@
                                                     </div>
                                                 </div>
 
-                                        {isAdmin && (
-                                            <div className="bg-white p-4 rounded-xl border border-slate-200 mt-6 shadow-sm">
-                                                <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm mb-4">
-                                                    <span className="text-lg">📋</span> 전체 사용자 명단 ({allUsers.length}명)
-                                                </h4>
-                                                <div className="overflow-x-auto">
-                                                    <table className="w-full text-xs text-left text-slate-600">
-                                                        <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
-                                                            <tr>
-                                                                <th className="px-3 py-2">닉네임</th>
-                                                                <th className="px-3 py-2">이메일</th>
-                                                                <th className="px-3 py-2">최근 접속</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-slate-100">
-                                                            {allUsers.map((user) => (
-                                                                <tr key={user.id} className="hover:bg-slate-50">
-                                                                    <td className="px-3 py-2 font-bold">{user.userNickname || user.name || "(없음)"}</td>
-                                                                    <td className="px-3 py-2">{user.email}</td>
-                                                                    <td className="px-3 py-2">
-                                                                        {user.lastLogin ? dayjs(user.lastLogin.toDate()).format('YY.MM.DD HH:mm') : '-'}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        )}
                                             </div>
                                         </div>
                                     )}
@@ -4891,6 +4899,11 @@
                                                         <span className="text-xs font-bold text-slate-600">사용 설명서</span>
                                                     </Btn>
                                                 </div>
+                                                {!isLocalMode && (
+                                                    <Btn onClick={handleClearCache} className="w-full py-3 mb-3 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl font-bold hover:bg-slate-100 hover:text-slate-700 transition-colors text-sm flex items-center justify-center gap-2">
+                                                        <Icon d={PATHS.refresh} size={16} /> 캐시 데이터 삭제 (새로고침)
+                                                    </Btn>
+                                                )}
                                             </div>
                                             <Btn onClick={() => setShowResetOptions(true)} className="w-full py-3 bg-white border-2 border-rose-100 text-rose-500 rounded-xl font-bold hover:bg-rose-50 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"><Icon d={PATHS.trash} size={18} /> 데이터 초기화</Btn>
                                         </div>
@@ -5154,7 +5167,33 @@
             </div>
         );
         
-        const RecordView = ({ students, records, dailyTasks, date, toggleCheck, appConfig, stats, onLongPress }) => {
+        const RecordView = ({ students, records, dailyTasks, date, toggleCheck, appConfig, stats, onLongPress, onSaveTaskComment }) => {
+            const [newMemoInput, setNewMemoInput] = useState("");
+            const [editingComment, setEditingComment] = useState(null);
+            const [editingMemoIndex, setEditingMemoIndex] = useState(null);
+            const handleCommentClick = (e, studentId, taskIndex, taskDate, currentValue) => {
+                e.stopPropagation();
+                let val = [];
+                if (Array.isArray(currentValue)) val = [...currentValue];
+                else if (currentValue) val = [currentValue];
+                setEditingComment({ studentId, taskIndex, date: taskDate, value: val });
+                setNewMemoInput("");
+                setEditingMemoIndex(null);
+            };
+            const saveComment = () => {
+                if (editingComment) {
+                    const finalMemos = editingComment.value.filter(m => m && m.trim());
+                    onSaveTaskComment(editingComment.studentId, editingComment.taskIndex, finalMemos, editingComment.date);
+                    setEditingComment(null);
+                }
+            };
+            const handleAddMemo = () => {
+                if (newMemoInput.trim()) {
+                    setEditingComment(prev => ({ ...prev, value: [...prev.value, newMemoInput.trim()] }));
+                    setNewMemoInput("");
+                }
+            };
+
             const getStreakBadge = (studentId) => {
                 const s = stats.students.find(st => st.id === studentId);
                 if(!s) return null;
@@ -5226,11 +5265,60 @@
 
             return (
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 animate-fade-in pb-10">
+                    {editingComment && (
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setEditingComment(null)}>
+                            <div className="bg-white p-4 rounded-xl shadow-xl w-64 border border-slate-200 animate-pop-up" onClick={e => e.stopPropagation()}>
+                                <h4 className="font-bold text-slate-700 mb-2 text-sm flex items-center gap-2"><Icon d={PATHS.message} className="text-indigo-500" size={18} /> 과제 메모</h4>
+                                <div className="max-h-48 overflow-y-auto custom-scroll mb-3 space-y-2">
+                                    {editingComment.value.map((memo, idx) => (
+                                        <div key={idx} className="flex gap-1 items-start group">
+                                            {editingMemoIndex === idx ? (
+                                                <input 
+                                                    className="flex-1 p-1.5 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500"
+                                                    value={memo}
+                                                    autoFocus
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') setEditingMemoIndex(null); }}
+                                                    onChange={e => { const newVal = [...editingComment.value]; newVal[idx] = e.target.value; setEditingComment({...editingComment, value: newVal}); }}
+                                                />
+                                            ) : (
+                                                <div className="flex-1 text-xs text-slate-600 py-1.5 px-1 break-all bg-slate-50 rounded border border-transparent hover:border-slate-200 transition-colors">{memo}</div>
+                                            )}
+                                            
+                                            {editingMemoIndex === idx ? (
+                                                <button onClick={() => setEditingMemoIndex(null)} className="text-indigo-500 hover:text-indigo-700 p-1"><Icon d={PATHS.check} size={14} /></button>
+                                            ) : (
+                                                <div className="flex shrink-0">
+                                                    <button onClick={() => setEditingMemoIndex(idx)} className="text-slate-400 hover:text-indigo-500 p-1"><Icon d={PATHS.edit} size={14} /></button>
+                                                    <button onClick={() => { setEditingComment({...editingComment, value: editingComment.value.filter((_, i) => i !== idx)}); setEditingMemoIndex(null); }} className="text-slate-400 hover:text-rose-500 p-1"><Icon d={PATHS.trash} size={14} /></button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {editingComment.value.length === 0 && <div className="text-xs text-slate-400 text-center py-2">메모가 없습니다.</div>}
+                                </div>
+                                <div className="flex gap-1 mb-3">
+                                    <input 
+                                        className="flex-1 p-1.5 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500"
+                                        placeholder="새 메모 추가..."
+                                        value={newMemoInput}
+                                        onChange={e => setNewMemoInput(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter') handleAddMemo(); }}
+                                    />
+                                    <button onClick={handleAddMemo} className="bg-indigo-50 text-indigo-600 p-1.5 rounded hover:bg-indigo-100"><Icon d={PATHS.plus} size={16}/></button>
+                                </div>
+                                <div className="flex gap-2 justify-end">
+                                    <button onClick={() => setEditingComment(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">취소</button>
+                                    <button onClick={saveComment} className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold">저장</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     {students.map(s => {
                         const rec = records[date]?.[s.id] || { done: false, tasks: {} };
                         const currentTasks = dailyTasks[date] || [];
                         const isDone = rec.done;
                         const showPhoto = appConfig.showPhotoInRecord;
+                        const hasMemo = rec.taskComments && Object.values(rec.taskComments).some(c => c);
                         const overdue = overdueTasksByStudent[s.id] || [];
                         const isExpanded = expandedOverdue[s.id];
                         const visibleOverdue = isExpanded ? overdue : overdue.slice(0, 2);
@@ -5261,6 +5349,7 @@
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-bold text-notion-text flex items-center gap-1">
                                                     {s.name} <span className="text-xs">{getStreakBadge(s.id)}</span>
+                                                    {hasMemo && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 ml-0.5 animate-pulse" title="과제 메모 있음"></div>}
                                                 </span>
                                                 <div className="flex items-end gap-2 mt-0.5">
                                                     <span className="text-[10px] text-notion-text-light whitespace-nowrap mb-0.5">{s.order}번</span>
@@ -5306,22 +5395,29 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className={`transition-all duration-200 ${isDone ? 'text-notion-blue opacity-100' : 'text-notion-border opacity-0 group-hover:opacity-100'}`}>
-                                            <Icon d={PATHS.check} size={16} />
+                                        <div className={`transition-all duration-300 ${isDone ? 'text-notion-blue opacity-100 scale-125' : 'text-notion-border opacity-0 group-hover:opacity-100 scale-100'}`}>
+                                            <Icon d={PATHS.check} size={20} strokeWidth={isDone ? 3 : 2} />
                                         </div>
                                     </div>
                                     {(currentTasks.length > 0 || overdue.length > 0) ? (
                                         <div className="space-y-1 mt-1 flex-1">
-                                            {visibleOverdue.map((t, i) => (
-                                                <div key={`overdue-${i}`} onClick={(e) => { e.stopPropagation(); toggleCheck(s.id, t.originalIndex, t.originalDate); }} className="flex items-center gap-2 p-1 rounded hover:bg-rose-50 group/task transition-colors bg-rose-50/30 border border-rose-100/50">
+                                            {visibleOverdue.map((t, i) => {
+                                                const overdueRec = records[t.originalDate]?.[s.id];
+                                                const comment = overdueRec?.taskComments?.[t.originalIndex];
+                                                const hasComment = comment && (Array.isArray(comment) ? comment.length > 0 : true);
+                                                return (
+                                                <div key={`overdue-${i}`} onClick={(e) => { e.stopPropagation(); toggleCheck(s.id, t.originalIndex, t.originalDate); }} className="flex flex-col p-1 rounded hover:bg-rose-50 group/task transition-colors bg-rose-50/30 border border-rose-100/50">
+                                                    <div className="flex items-center gap-2">
                                                     <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors border-rose-200 bg-white group-hover/task:border-rose-300`}>
                                                     </div>
                                                     <span className="text-xs truncate flex-1 text-rose-600 font-medium">
                                                         <span className="text-[10px] font-bold mr-1">[미제출]</span>
                                                         {t.title} <span className="text-[9px] text-rose-400">({dayjs(t.originalDate).format('MM/DD')})</span>
                                                     </span>
+                                                    <button onClick={(e) => handleCommentClick(e, s.id, t.originalIndex, t.originalDate, comment)} className={`p-1 transition-colors rounded ${hasComment ? 'text-indigo-600 opacity-100 z-10' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
+                                                    </div>
                                                 </div>
-                                            ))}
+                                            )})}
                                             {hasMore && !isExpanded && (
                                                 <div onClick={(e) => toggleOverdue(e, s.id)} className="text-[10px] text-center text-rose-400 hover:text-rose-600 cursor-pointer py-1 bg-rose-50/50 rounded hover:bg-rose-50 transition-colors font-bold">
                                                     +{overdue.length - 2}개 더 보기
@@ -5334,14 +5430,19 @@
                                             )}
                                             {currentTasks.map((t, idx) => {
                                                 const taskDone = rec.tasks?.[idx];
+                                                const comment = rec.taskComments?.[idx];
+                                                const hasComment = comment && (Array.isArray(comment) ? comment.length > 0 : true);
                                                 return (
-                                                    <div key={idx} onClick={(e) => { e.stopPropagation(); toggleCheck(s.id, idx); }} className="flex items-center gap-2 p-1 rounded hover:bg-notion-bg-alt group/task transition-colors">
+                                                    <div key={idx} onClick={(e) => { e.stopPropagation(); toggleCheck(s.id, idx); }} className="flex flex-col p-1 rounded hover:bg-notion-bg-alt group/task transition-colors">
+                                                        <div className="flex items-center gap-2">
                                                         <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${taskDone ? 'bg-notion-blue border-notion-blue text-white' : 'border-notion-border bg-white group-hover/task:border-notion-text-light'}`}>
                                                             {taskDone && <Icon d={PATHS.check} size={10} />}
                                                         </div>
                                                         <span className={`text-xs truncate flex-1 ${taskDone ? 'text-notion-text-light line-through' : 'text-notion-text'}`}>
                                                             {typeof t === 'object' ? t.title : t}
                                                         </span>
+                                                        <button onClick={(e) => handleCommentClick(e, s.id, idx, date, comment)} className={`p-1 transition-colors rounded ${hasComment ? 'text-indigo-600 opacity-100 z-10' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
@@ -6454,6 +6555,13 @@
                         </div>
                         <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="이메일" value={authId} onChange={e => setAuthId(e.target.value)} />
                         <input className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none" placeholder="비밀번호 (6자 이상)" type="password" value={authPw} onChange={e => setAuthPw(e.target.value)} />
+                        
+                        <button 
+                            onClick={() => { localStorage.clear(); alert('모든 설정이 초기화되었습니다. 다시 로그인해 주세요.'); window.location.reload(); }} 
+                            className="w-full py-2 bg-white border border-slate-300 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-100 hover:text-slate-700 transition-colors flex items-center justify-center gap-1 mt-1"
+                        >
+                            <Icon d={PATHS.refresh} size={12}/> 설정 초기화 (다른 프로젝트로 로그인)
+                        </button>
                     </div><div className="relative"><textarea className="w-full h-40 p-3 border rounded-xl text-xs font-mono bg-white outline-none custom-scroll" placeholder={`// 1. 개인 데이터 동기화를 원하시면 Firebase 설정 코드를 입력하세요.
 // 2. 게시판만 이용하시려면 비워두세요 (자동으로 공용 서버에 연결됩니다).
 const firebaseConfig = {
@@ -7175,15 +7283,12 @@ const firebaseConfig = {
         sharedApp = firebase.app();
         }
     
-   /* try {
-        firebase.firestore().enablePersistence()
+    try {
+        sharedApp.firestore().enablePersistence({ synchronizeTabs: true })
           .catch(function(err) {
               console.log("캐시 활성화 에러:", err.code);
           });
-    } catch (error) {
-        console.log("Persistence 로직 추가 중 에러:", error);
-    }
-    */
+    } catch (error) { console.log("Persistence 에러:", error); }
 
     // 4. 게시판에서 사용할 데이터베이스(Firestore)를 연결합니다.
     sharedDb = sharedApp.firestore();
@@ -7233,6 +7338,7 @@ const firebaseConfig = {
         const App = () => {
             // [New] 레벨 시스템 설정 (관리자 밸런스 패치용)
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
+            const [expandedUserId, setExpandedUserId] = useState(null);
             const [showLevelGuide, setShowLevelGuide] = useState(false);
             const [allUsers, setAllUsers] = useState([]);
             const [needProfileSetup, setNeedProfileSetup] = useState(false);
@@ -7361,6 +7467,19 @@ const firebaseConfig = {
                     setToastMessage("활동 점수가 초기화되었습니다.");
                     fetchUserList();
                 } catch (e) { console.error(e); setToastMessage("초기화 실패: " + e.message); }
+            };
+
+            const handleDeleteUser = async (uid) => {
+                if (!confirm("정말 이 사용자를 삭제하시겠습니까? 모든 활동 기록(게시글, 댓글)은 유지되지만, 사용자 정보는 영구적으로 삭제됩니다.")) return;
+                try {
+                    await sharedDb.collection('userProfiles').doc(uid).delete();
+                    await sharedDb.collection('userStats').doc(uid).delete();
+                    setToastMessage("사용자가 삭제되었습니다.");
+                    fetchUserList(); // Refresh the list
+                } catch (e) {
+                    console.error(e);
+                    setToastMessage("삭제 실패: " + e.message);
+                }
             };
 
             const handleSyncCommunityUsers = async () => {
@@ -9670,6 +9789,10 @@ const firebaseConfig = {
                             
                             // [Fix] 전역 변수 db가 반드시 개인용 프로젝트를 가리키도록 강제 할당
                             const firestore = userApp.firestore();
+                            
+                            // [Quota] 오프라인 캐시 활성화 (읽기 비용 절감 및 속도 향상)
+                            await firestore.enablePersistence({ synchronizeTabs: true }).catch(e => console.log("Persistence Error:", e.code));
+                            
                             setDb(firestore);
                             setConfig(config);
                             setAppId(config.projectId);
@@ -9761,6 +9884,8 @@ const firebaseConfig = {
             if (firestore && config && config.projectId) {
                 logSystemEvent(`Firebase 로그인 성공: ${user.email}`);
                 
+                const classId = config.projectId;
+
                 unsubArtifacts = firestore.collection('artifacts').doc(config.projectId).collection('public').doc('data').onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
@@ -9839,7 +9964,10 @@ const firebaseConfig = {
                     setRecords(prev => {
                         const next = { ...prev };
                         snapshot.docChanges().forEach(change => {
-                            if (change.type === 'added' || change.type === 'modified') next[change.doc.id] = change.doc.data();
+                            if (change.type === 'added' || change.type === 'modified') {
+                                // doc.id는 날짜(YYYY-MM-DD), data는 { studentId: { tasks: [...] } }
+                                next[change.doc.id] = change.doc.data();
+                            }
                             if (change.type === 'removed') delete next[change.doc.id];
                         });
                         return next;
@@ -9853,7 +9981,7 @@ const firebaseConfig = {
                     }
                 });
                 
-                unsubTasks = firestore.collection('classes').doc(config.projectId).collection('tasks').onSnapshot(snapshot => {
+                unsubTasks = firestore.collection('classes').doc(classId).collection('tasks').onSnapshot(snapshot => {
                     snapshot.docChanges().forEach(change => {
                         if (change.doc.id === 'settings') {
                             const data = change.doc.data();
@@ -9915,9 +10043,6 @@ const firebaseConfig = {
             const saveData = async (keyOrData, value) => {
                 const updates = (typeof keyOrData === 'object') ? keyOrData : { [keyOrData]: value };
                 
-                // [New] 클라우드 모드여도 로컬 스토리지에 항상 캐시(백업) 저장 (빠른 로딩 및 오프라인 대비)
-                Object.entries(updates).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
-
                 if (isLocalMode) {
                     Object.entries(updates).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
                     return;
@@ -10098,6 +10223,28 @@ const firebaseConfig = {
                 if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } }); 
             };
             
+            const handleSaveTaskComment = (studentId, taskIndex, comment, targetDate) => {
+                const d = targetDate || date;
+                const currentRec = records[d]?.[studentId] || { done: false, tasks: {} };
+                const newTaskComments = { ...(currentRec.taskComments || {}) };
+                
+                if (Array.isArray(comment)) {
+                    if (comment.length > 0) newTaskComments[taskIndex] = comment;
+                    else delete newTaskComments[taskIndex];
+                } else if (comment && typeof comment === 'string' && comment.trim()) {
+                    newTaskComments[taskIndex] = comment.trim();
+                } else {
+                    delete newTaskComments[taskIndex];
+                }
+
+                const newRec = { ...currentRec, taskComments: newTaskComments };
+                const updates = { [d]: { ...records[d], [studentId]: newRec } };
+                
+                const newRecords = { ...records, ...updates };
+                setRecords(newRecords);
+                if (!isLocalMode) saveRecordsToFirestore(updates);
+            };
+
             const resetDateRecord = () => { openConfirm(`${date} 기록을 초기화하시겠습니까?`, () => { const newRecords = { ...records }; delete newRecords[date]; setRecords(newRecords); if (!isLocalMode) deleteRecordsFromFirestore([date]); setToastMessage("기록이 초기화되었습니다."); });
             };
             
@@ -11712,7 +11859,7 @@ const firebaseConfig = {
                                         </div>
                                     </div>
                                     {!isSimpleMode ? (
-                                        <RecordView students={students} records={records} dailyTasks={dailyTasks} date={date} toggleCheck={toggleCheck} appConfig={appConfig} stats={stats} onLongPress={(id) => setGrassStudentId(id)} />
+                                        <RecordView students={students} records={records} dailyTasks={dailyTasks} date={date} toggleCheck={toggleCheck} appConfig={appConfig} stats={stats} onLongPress={(id) => setGrassStudentId(id)} onSaveTaskComment={handleSaveTaskComment} />
                                     ) : (
                                         <SimpleView students={students} simpleChecks={simpleChecks} toggleCheck={toggleCheck} onLongPress={(id) => setGrassStudentId(id)} />
                                     )}
@@ -12977,7 +13124,10 @@ const firebaseConfig = {
             {/* 최초 가입 (닉네임 설정) 모달 */}
             {needProfileSetup && currentUser && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm transform transition-all">
+                    <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm transform transition-all relative">
+                        <button onClick={() => setNeedProfileSetup(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors group">
+                            <Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" />
+                        </button>
                         <div className="text-center mb-6">
                             <div className="text-5xl mb-3">👋</div>
                             <h2 className="text-2xl font-bold text-slate-800">환영합니다!</h2>
@@ -13201,6 +13351,7 @@ const firebaseConfig = {
                         appId={appId}
                         isPortfolioMode={isPortfolioMode}
                         setStudents={setStudents}
+                        onSaveTaskComment={handleSaveTaskComment}
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} />}
@@ -13548,94 +13699,47 @@ const firebaseConfig = {
                                                         <span className="text-2xl font-black text-orange-600">{adminStats?.notis || 0}</span>
                                                     </div>
                                                 </div>
-                                                
                                                 {/* [New] 전체 사용자 관리 섹션 (테이블) */}
-                                                <div className="bg-white p-4 rounded-xl border border-slate-200 mt-6">
+                                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mt-6">
                                                     <div className="flex justify-between items-center mb-4">
                                                         <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm">
-                                                            <span className="text-lg">👤</span> 전체 사용자 관리 ({userList.length}명)
+                                                            <span className="text-lg">👥</span> 사용자 관리 ({userList.length}명)
                                                         </h4>
-                                                        <button onClick={fetchUserList} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 flex items-center gap-1 shadow-sm transition-colors">
-                                                            {isLoadingUsers ? <Icon d={PATHS.spinner} size={12} className="animate-spin"/> : <Icon d={PATHS.refresh} size={12}/>} 목록 새로고침
-                                                        </button>
-                                                    </div>
-                                                    <div className="overflow-x-auto">
-                                                        <table className="w-full text-xs text-left text-slate-600">
-                                                            <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
-                                                                <tr>
-                                                                    <th className="px-3 py-2">닉네임</th>
-                                                                    <th className="px-3 py-2">이메일</th>
-                                                                    <th className="px-3 py-2">최근 접속</th>
-                                                                    <th className="px-3 py-2">UID</th>
-                                                                    <th className="px-3 py-2 text-right">관리</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-slate-100">
-                                                                {userList.map((user) => (
-                                                                    <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                                                                        <td className="px-3 py-2 font-bold">{user.userNickname || user.name || "(없음)"}</td>
-                                                                        <td className="px-3 py-2">{user.email}</td>
-                                                                        <td className="px-3 py-2">
-                                                                            {user.lastLogin ? dayjs(user.lastLogin.toDate()).format('YY.MM.DD HH:mm') : '-'}
-                                                                        </td>
-                                                                        <td className="px-3 py-2 font-mono text-[10px] text-slate-400 truncate max-w-[100px]" title={user.uid}>
-                                                                            {user.uid.slice(0, 8)}...
-                                                                        </td>
-                                                                        <td className="px-3 py-2 text-right">
-                                                                            <button onClick={() => handleBlockUser(user.uid, user.isBlocked)} className={`text-xs px-2 py-1 rounded font-bold transition-colors ${user.isBlocked ? 'bg-rose-100 text-rose-600 hover:bg-rose-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                                                                                {user.isBlocked ? '승인(해제)' : '차단'}
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                                {userList.length === 0 && <tr><td colSpan="5" className="text-center py-4">사용자 데이터가 없습니다.</td></tr>}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-
-                                                {/* [New] 사용자 관리 섹션 (대시보드 내) */}
-                                                <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 mt-6">
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm"><span className="text-lg">👥</span> 사용자 관리</h4>
                                                         <div className="flex gap-2">
-                                                            <Btn onClick={handleSyncCommunityUsers} className="px-2 py-1 bg-white border border-indigo-200 text-indigo-600 rounded text-xs font-bold hover:bg-indigo-50" title="동기화">🔄</Btn>
-                                                <Btn onClick={fetchUserList} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 flex items-center gap-1 shadow-sm transition-colors">
-                                                    {isLoadingUsers ? <Icon d={PATHS.spinner} size={12} className="animate-spin"/> : <Icon d={PATHS.refresh} size={12}/>} 새로고침
-                                                </Btn>
+                                                            <Btn onClick={handleSyncCommunityUsers} className="px-2 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50" title="동기화">🔄</Btn>
+                                                            <Btn onClick={fetchUserList} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 flex items-center gap-1 shadow-sm transition-colors">
+                                                                {isLoadingUsers ? <Icon d={PATHS.spinner} size={12} className="animate-spin"/> : <Icon d={PATHS.refresh} size={12}/>} 새로고침
+                                                            </Btn>
                                                         </div>
                                                     </div>
-                                                    <div className="max-h-40 overflow-y-auto custom-scroll space-y-2">
-                                                        {userList.map(user => (
-                                                            <div key={user.uid} className="flex justify-between items-center p-2 bg-white rounded-lg border border-slate-200">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-xs font-bold text-slate-700">{user.name || "(이름 없음)"}</span>
-                                                                <div className="flex items-center gap-1">
-                                                                    <span 
-                                                                        className="text-[11px] text-slate-500 font-mono cursor-pointer hover:text-indigo-500 hover:underline"
-                                                                        onClick={() => { 
-                                                                            setFilterUid(user.uid); 
-                                                                            setMode('community'); 
-                                                                            setShowAdminDashboard(false); 
-                                                                            setToastMessage("해당 사용자의 게시글을 필터링했습니다."); 
-                                                                        }}
-                                                                        title="클릭하여 작성글 모아보기"
-                                                                    >
-                                                                        {user.uid}
-                                                                    </span>
-                                                                    <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(user.uid); setToastMessage("UID가 복사되었습니다."); }} className="text-[8px] text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 transition-colors" title="UID 복사">📋</button>
+                                                    <div className="space-y-2">
+                                                        {userList.map((user) => (
+                                                            <div key={user.uid} className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                                                                <div 
+                                                                    className="flex justify-between items-center p-3 cursor-pointer"
+                                                                    onClick={() => setExpandedUserId(expandedUserId === user.uid ? null : user.uid)}
+                                                                >
+                                                                    <span className="font-bold text-slate-700 text-sm">{user.userNickname || user.name || "(없음)"}</span>
+                                                                    <Icon d={PATHS.down} size={16} className={`text-slate-400 transition-transform ${expandedUserId === user.uid ? 'rotate-180' : ''}`} />
                                                                 </div>
-                                                                    {user.lastActive && <span className="text-[9px] text-indigo-400">{dayjs(user.lastActive).format('YY.MM.DD HH:mm')}</span>}
-                                                                {user.isBlocked && <span className="text-[10px] text-rose-500 font-bold mt-0.5">⛔ 차단됨</span>}
-                                                                </div>
-                                                            <div className="flex gap-1">
-                                                                <button onClick={() => handleBlockUser(user.uid, user.isBlocked)} className={`text-[10px] px-2 py-1 rounded border ${user.isBlocked ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}>{user.isBlocked ? "해제" : "차단"}</button>
-                                                                <button onClick={() => handleResetUserStats(user.uid)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">초기화</button>
-                                                                <button onClick={() => handleUpdateUserName(user.uid, user.name)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">이름</button>
-                                                            </div>
+                                                                {expandedUserId === user.uid && (
+                                                                    <div className="p-4 border-t border-slate-100 space-y-3 animate-fade-in">
+                                                                        <div className="text-xs space-y-1 text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                                            <p><strong>이메일:</strong> {user.email || '-'}</p>
+                                                                            <p><strong>최근 접속:</strong> {user.lastActive ? dayjs(user.lastActive).format('YY.MM.DD HH:mm') : '-'}</p>
+                                                                            <p className="flex items-center gap-1"><strong>UID:</strong> <span className="font-mono text-slate-400 truncate max-w-[200px]">{user.uid}</span> <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(user.uid); setToastMessage("UID가 복사되었습니다."); }} className="text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 transition-colors" title="UID 복사"><Icon d={PATHS.copy} size={12}/></button></p>
+                                                                        </div>
+                                                                        <div className="flex gap-2 flex-wrap justify-end pt-2 border-t border-slate-100">
+                                                                            <button onClick={() => handleBlockUser(user.uid, user.isBlocked)} className={`text-[10px] px-2 py-1 rounded border ${user.isBlocked ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}>{user.isBlocked ? "해제" : "차단"}</button>
+                                                                            <button onClick={() => handleResetUserStats(user.uid)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">초기화</button>
+                                                                            <button onClick={() => handleUpdateUserName(user.uid, user.name)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">이름</button>
+                                                                            <button onClick={() => handleDeleteUser(user.uid)} className="text-[10px] bg-rose-50 border border-rose-200 px-2 py-1 rounded hover:bg-rose-100 text-rose-600">삭제</button>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         ))}
-                                                        {userList.length === 0 && !isLoadingUsers && <div className="text-center text-xs text-slate-400 py-2">목록을 불러오세요.</div>}
+                                                        {userList.length === 0 && <div className="text-center text-xs text-slate-400 py-4">사용자 데이터가 없습니다.</div>}
                                                     </div>
                                                 </div>
 

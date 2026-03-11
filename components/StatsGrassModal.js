@@ -72,7 +72,7 @@ const GRASS_THEMES = {
     slate: { bg: 'bg-slate-100', border: 'border-slate-400', ring: 'ring-slate-300', text: 'text-slate-700', dot: 'bg-slate-500' },
 };
 
-const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload }) => {
+const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment }) => {
     if (!isOpen || !student || !student.history) return null;
     
     useEffect(() => {
@@ -94,7 +94,44 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
     const [searchTerm, setSearchTerm] = useState("");
     const [showSearchCal, setShowSearchCal] = useState(false);
     const [calMonth, setCalMonth] = useState(dayjs());
-    const recordDates = Array.from(new Set(notes.map(n => n.date))); // 기록이 있는 날짜만 쏙쏙 뽑기
+    
+    // [New] 과제별 메모 모아보기 데이터 가공
+    const taskComments = useMemo(() => {
+        const collected = [];
+        if (!student || !records || !dailyTasks) return collected;
+        
+        Object.entries(records).forEach(([date, r]) => {
+            const sRec = r[student.id];
+            if (sRec && sRec.taskComments) {
+                const tasks = dailyTasks[date] || [];
+                Object.entries(sRec.taskComments).forEach(([idx, comment]) => {
+                    if (comment) {
+                        const t = tasks[idx];
+                        const title = (typeof t === 'object' && t !== null) ? t.title : t;
+                        collected.push({
+                            id: `tc-${date}-${idx}`,
+                            date: date,
+                            content: Array.isArray(comment) ? comment.join('\n') : comment,
+                            taskTitle: title,
+                            isTaskComment: true,
+                            taskIndex: idx
+                        });
+                    }
+                });
+            }
+        });
+        return collected;
+    }, [records, dailyTasks, student]);
+
+    const combinedNotes = useMemo(() => {
+        return [...notes, ...taskComments].sort((a, b) => {
+            if (a.date !== b.date) return b.date.localeCompare(a.date);
+            return String(b.id).localeCompare(String(a.id));
+        });
+    }, [notes, taskComments]);
+
+    const recordDates = useMemo(() => Array.from(new Set(combinedNotes.map(n => n.date))), [combinedNotes]);
+    
     const [editingNoteId, setEditingNoteId] = useState(null);
     const [editNoteContent, setEditNoteContent] = useState("");
     const [editRelatedStudents, setEditRelatedStudents] = useState([]);
@@ -134,6 +171,8 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
     const [isDetailViewOpen, setIsDetailViewOpen] = useState(false); // [New] 슬라이드 상태 분리
     const [grassTheme, setGrassTheme] = useState(() => localStorage.getItem('cls_grass_theme') || 'indigo');
     const [showThemePicker, setShowThemePicker] = useState(false);
+    const [openCommentIndex, setOpenCommentIndex] = useState(null); // [New] 과제별 메모 입력창 상태
+    const [commentInput, setCommentInput] = useState(""); // [New] 과제별 메모 입력값
     
     // [New] 연동 상태 확인 및 기본값 설정 (초기화)
     const [hasNotionRecord, setHasNotionRecord] = useState(false);
@@ -214,7 +253,11 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
 
     // [New] 상세 뷰 데이터 캐싱 (닫힐 때 애니메이션 유지용)
     useEffect(() => {
-        if (selectedGrassDate) setCachedDetailDate(selectedGrassDate);
+        if (selectedGrassDate) {
+            setCachedDetailDate(selectedGrassDate);
+            setOpenCommentIndex(null);
+            setCommentInput("");
+        }
     }, [selectedGrassDate]);
 
     useEffect(() => {
@@ -280,6 +323,15 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
     };
     
     const handleDeleteNote = (id) => {
+        const taskComment = taskComments.find(n => n.id === id);
+        if (taskComment) {
+            if (confirm("이 과제 메모를 삭제하시겠습니까?")) {
+                onSaveTaskComment(student.id, taskComment.taskIndex, null, taskComment.date);
+                showToast("과제 메모가 삭제되었습니다.");
+            }
+            return;
+        }
+
         const noteToDelete = notes.find(n => n.id === id);
         if (!noteToDelete) return;
 
@@ -367,6 +419,15 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
     const saveEditing = async () => {
         if (!editNoteContent.trim()) return;
         
+        const taskComment = taskComments.find(n => n.id === editingNoteId);
+        if (taskComment) {
+            onSaveTaskComment(student.id, taskComment.taskIndex, editNoteContent.trim(), taskComment.date);
+            setEditingNoteId(null);
+            setEditNoteContent("");
+            showToast("과제 메모가 수정되었습니다.");
+            return;
+        }
+
         const originalNote = notes.find(n => n.id === editingNoteId);
         if (!originalNote) return;
 
@@ -748,12 +809,27 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
             
             // [New] 지각 제출 계산
             let lateCount = 0;
+            const taskCommentsList = [];
             let curr = dayjs(reportStart);
             const end = dayjs(reportEnd);
             while(curr.isBefore(end) || curr.isSame(end, 'day')) {
                 const dStr = curr.format('YYYY-MM-DD');
                 const rec = records[dStr]?.[student.id];
-                if (rec && rec.lateTasks) lateCount += Object.keys(rec.lateTasks).length;
+                if (rec) {
+                    if (rec.lateTasks) lateCount += Object.keys(rec.lateTasks).length;
+                    if (rec.taskComments) {
+                        const tasks = dailyTasks[dStr] || [];
+                        Object.entries(rec.taskComments).forEach(([idx, comment]) => {
+                            if (comment) {
+                                const t = tasks[idx];
+                                const title = (typeof t === 'object' && t !== null) ? t.title : t;
+                                if (title) {
+                                    taskCommentsList.push(`[${dStr}] 과제(${title}): ${comment}`);
+                                }
+                            }
+                        });
+                    }
+                }
                 curr = curr.add(1, 'day');
             }
 
@@ -795,6 +871,9 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
 
                 // [보안 강화] 대상 학생 외에 다른 학생들의 이름도 모두 익명화
                 let safeNotesStr = pNotes.map(n => `[${n.date}] ${n.content}`).join('\n');
+                if (taskCommentsList.length > 0) {
+                    safeNotesStr += `\n\n[과제별 메모]\n${taskCommentsList.join('\n')}`;
+                }
                 safeNotesStr = anonymizeText(safeNotesStr, student.name);
                 students.forEach(s => {
                     if (s.id !== student.id) {
@@ -1018,11 +1097,12 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
         setShowPhraseList(false);
     };
 
-   const filteredNotes = notes.filter(n => {
+   const filteredNotes = combinedNotes.filter(n => {
         const matchDate = selectedDate ? n.date === selectedDate : true;
         const matchText = searchTerm 
             ? (n.content && n.content.toLowerCase().includes(searchTerm.toLowerCase())) || 
-              (n.date && n.date.includes(searchTerm)) 
+              (n.date && n.date.includes(searchTerm)) ||
+              (n.taskTitle && n.taskTitle.toLowerCase().includes(searchTerm.toLowerCase()))
             : true;
         return matchDate && matchText;
     });
@@ -1470,9 +1550,14 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                                                             </div>
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="group w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-700 shadow-sm hover:border-indigo-300 transition-colors">
+                                                                        <div className={`group w-full border rounded-xl p-3 text-xs text-slate-700 shadow-sm transition-colors ${note.isTaskComment ? 'bg-indigo-50/30 border-indigo-100 hover:border-indigo-300' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
                                                                             <div className="flex justify-between items-start mb-2">
                                                                                 <div className="flex flex-wrap gap-1.5 flex-1 items-center">
+                                                                                    {note.isTaskComment && (
+                                                                                        <span className="px-1.5 py-0.5 border border-indigo-200 bg-indigo-100 text-indigo-700 text-[8px] rounded-full font-bold shadow-sm flex items-center gap-1">
+                                                                                            <Icon d={PATHS.message} size={10} /> 과제: {note.taskTitle}
+                                                                                        </span>
+                                                                                    )}
                                                                                     {note.destTags && note.destTags.map((tag, idx) => {
                                                                                         let colorClass = "bg-white border-slate-200 text-slate-500";
                                                                                         if (tag === '노션(기록)') colorClass = "bg-blue-50 border-blue-100 text-blue-600";
@@ -1499,6 +1584,9 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                                                                     })()}
                                                                                 </div>
                                                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 shrink-0 ml-2">
+                                                                                    <button onClick={() => { navigator.clipboard.writeText(note.content); showToast("내용이 복사되었습니다."); }} className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="복사">
+                                                                                        <Icon d={PATHS.copy} size={14} />
+                                                                                    </button>
                                                                                     <button onClick={() => startEditing(note)} className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="수정">
                                                                                         <Icon d={PATHS.edit} size={14} />
                                                                                     </button>
@@ -1599,18 +1687,74 @@ const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, d
                                                                     const tag = typeof t === 'object' ? t.tag : '기타';
                                                                     const rec = records[detailDate]?.[student.id];
                                                                     const isDone = rec ? (rec.tasks ? rec.tasks[i] : rec.done) : false;
+                                                                    const comment = rec?.taskComments?.[i] || '';
+                                                                    const isEditingComment = openCommentIndex === i;
                                                                     return (
-                                                                        <div key={i} className={`relative flex items-center p-3 rounded-2xl border-2 transition-all duration-200 ${isDone ? 'bg-indigo-50/30 border-indigo-100 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
-                                                                            <div className={`flex items-center justify-center w-6 h-6 rounded-full border-2 mr-3 transition-colors ${isDone ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-slate-200 text-transparent'}`}>
-                                                                                <Icon d={PATHS.check} size={14} strokeWidth={4} />
-                                                                            </div>
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <div className="flex items-center gap-2 mb-0.5">
-                                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isDone ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>{tag}</span>
+                                                                        <div key={i} className={`flex flex-col p-3 rounded-2xl border-2 transition-all duration-200 ${isDone ? 'bg-indigo-50/30 border-indigo-100 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+                                                                            <div className="flex items-center">
+                                                                                <div className={`flex items-center justify-center w-6 h-6 rounded-full border-2 mr-3 transition-colors ${isDone ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-slate-200 text-transparent'}`}>
+                                                                                    <Icon d={PATHS.check} size={14} strokeWidth={4} />
                                                                                 </div>
-                                                                                <p className={`text-sm font-bold truncate ${isDone ? 'text-slate-700' : 'text-slate-500'}`}>{title}</p>
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isDone ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>{tag}</span>
+                                                                                    </div>
+                                                                                    <p className={`text-sm font-bold truncate ${isDone ? 'text-slate-700' : 'text-slate-500'}`}>{title}</p>
+                                                                                </div>
+                                                                                <button 
+                                                                                    onClick={() => {
+                                                                                        if (isEditingComment) {
+                                                                                            setOpenCommentIndex(null);
+                                                                                        } else {
+                                                                                            setOpenCommentIndex(i);
+                                                                                            setCommentInput(comment);
+                                                                                        }
+                                                                                    }}
+                                                                                    className={`p-1.5 rounded-full transition-all ml-2 ${comment ? 'border-2 border-blue-400' : 'border-2 border-transparent'} hover:bg-slate-100`}
+                                                                                    title="메모 남기기"
+                                                                                >
+                                                                                    <Icon d={PATHS.edit} size={14} className="text-slate-400" />
+                                                                                </button>
                                                                             </div>
-                                                                            {isDone && <div className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-200 opacity-20 pointer-events-none"><Icon d={PATHS.check} size={48} /></div>}
+                                                                            
+                                                                            {comment && !isEditingComment && (
+                                                                                <div className="mt-2 pl-9 flex items-center gap-2 group">
+                                                                                    <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg flex-1 whitespace-pre-wrap">{comment}</p>
+                                                                                    <button 
+                                                                                        onClick={() => { navigator.clipboard.writeText(comment); showToast("메모가 복사되었습니다."); }} 
+                                                                                        className="p-1 text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                        title="메모 복사"
+                                                                                    >
+                                                                                        <Icon d={PATHS.copy} size={12} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {isEditingComment && (
+                                                                                <div className="mt-2 pl-9 space-y-2 animate-fade-in">
+                                                                                    <textarea 
+                                                                                        value={commentInput}
+                                                                                        onChange={(e) => setCommentInput(e.target.value)}
+                                                                                        className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 resize-none"
+                                                                                        rows={3}
+                                                                                        placeholder="과제에 대한 메모를 남겨보세요..."
+                                                                                        autoFocus
+                                                                                    />
+                                                                                    <div className="flex justify-end gap-2">
+                                                                                        <button onClick={() => setOpenCommentIndex(null)} className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold hover:bg-slate-200">취소</button>
+                                                                                        <button 
+                                                                                            onClick={() => {
+                                                                                                onSaveTaskComment(student.id, i, commentInput.trim() || null, detailDate);
+                                                                                                setOpenCommentIndex(null);
+                                                                                                showToast("메모가 저장되었습니다.");
+                                                                                            }} 
+                                                                                            className="px-2 py-1 bg-indigo-600 text-white rounded-md text-[10px] font-bold hover:bg-indigo-700"
+                                                                                        >
+                                                                                            저장
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     );
                                                                 })}
