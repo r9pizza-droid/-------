@@ -79,34 +79,6 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const dailyTasks = propDailyTasks || {};
     const student = propStudent;
 
-    // [핵심] 앱 전체 데이터 실시간 동기화 (v3.15.70 업데이트 되돌리기)
-    // 이 컴포넌트가 렌더링될 때 Firebase 리스너를 연결하여 앱 전체의 데이터를 실시간으로 동기화합니다.
-    useEffect(() => {
-        // 부모로부터 받은 state 업데이트 함수들이 모두 있을 때만 실행합니다.
-        if (!isLocalMode && db && appId && setRecords && setDailyTasks && setStudents) {
-            
-            // 1. 활동 기록(records) 실시간 동기화 -> 부모 state 업데이트
-            const unsubRecords = db.collection('classes').doc(appId).collection('records').onSnapshot(snap => {
-                const next = {}; snap.forEach(d => next[d.id] = d.data());
-                setRecords(prev => ({ ...prev, ...next })); // 기존 데이터와 병합하여 안정성 확보
-            });
-
-            // 2. 과제 목록(dailyTasks) 실시간 동기화 -> 부모 state 업데이트
-            const unsubTasks = db.collection('classes').doc(appId).collection('dailyTasks').onSnapshot(snap => {
-                const next = {}; snap.forEach(d => next[d.id] = d.data().tasks || []);
-                setDailyTasks(prev => ({ ...prev, ...next }));
-            });
-
-            // 3. 전체 학생 정보 실시간 동기화 -> 부모 state 업데이트
-            const unsubStudents = db.collection('classes').doc(appId).collection('students').orderBy('order').onSnapshot(snap => {
-                setStudents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            });
-
-            // 컴포넌트가 사라질 때 리스너를 모두 정리합니다.
-            return () => { unsubRecords(); unsubTasks(); unsubStudents(); };
-        }
-    }, [isLocalMode, db, appId, setRecords, setDailyTasks, setStudents]);
-
     if (!isOpen || !student || !student.history) return null;
     
     useEffect(() => {
@@ -331,6 +303,27 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         const dbId = localStorage.getItem('cls_notion_db_id');
         setHasNotionConfig(!!(key && dbId));
     }, [student, isLocalMode, db, appId]);
+
+    // [New] 상세 뷰의 특정 날짜 기록만 실시간으로 감시 (onSnapshot 최적화)
+    useEffect(() => {
+        // 상세 뷰가 열렸을 때, 그리고 클라우드 모드일 때만 리스너를 연결합니다.
+        if (isDetailViewOpen && selectedGrassDate && !isLocalMode && db && appId) {
+            const unsub = db.collection('classes').doc(appId).collection('records').doc(selectedGrassDate)
+                .onSnapshot(doc => {
+                    // 실시간으로 변경된 데이터를 부모의 records 상태에 병합합니다.
+                    // 이렇게 하면 화면이 깜빡이지 않고 자연스럽게 업데이트됩니다.
+                    setRecords(prev => ({
+                        ...prev,
+                        [selectedGrassDate]: doc.data() || {} // 문서가 삭제된 경우를 대비해 기본값 설정
+                    }));
+                }, err => {
+                    console.error(`실시간 기록 감시 실패 (${selectedGrassDate}):`, err);
+                });
+
+            // 상세 뷰가 닫히거나 다른 날짜가 선택되면, 이전에 열어둔 연결을 반드시 끊습니다.
+            return () => unsub();
+        }
+    }, [isDetailViewOpen, selectedGrassDate, isLocalMode, db, appId, setRecords]);
 
     useEffect(() => {
         setNotionDate(selectedDate || dayjs().format('YYYY-MM-DD'));
