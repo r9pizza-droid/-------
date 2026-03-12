@@ -72,7 +72,41 @@ const GRASS_THEMES = {
     slate: { bg: 'bg-slate-100', border: 'border-slate-400', ring: 'ring-slate-300', text: 'text-slate-700', dot: 'bg-slate-500' },
 };
 
-const StatsGrassModal = ({ isOpen, onClose, student, students, records, dates, dailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment }) => {
+const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, records: propRecords, dates, dailyTasks: propDailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, setRecords, setDailyTasks, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment }) => {
+    // [실시간 연동] 부모로부터 받은 props(propRecords, propDailyTasks, propStudent)를 직접 사용합니다.
+    // 아래 useEffect 훅이 부모의 state를 직접 업데이트하므로, 이 컴포넌트 내의 별도 state는 더 이상 필요 없습니다.
+    const records = propRecords || {};
+    const dailyTasks = propDailyTasks || {};
+    const student = propStudent;
+
+    // [핵심] 앱 전체 데이터 실시간 동기화 (v3.15.70 업데이트 되돌리기)
+    // 이 컴포넌트가 렌더링될 때 Firebase 리스너를 연결하여 앱 전체의 데이터를 실시간으로 동기화합니다.
+    useEffect(() => {
+        // 부모로부터 받은 state 업데이트 함수들이 모두 있을 때만 실행합니다.
+        if (!isLocalMode && db && appId && setRecords && setDailyTasks && setStudents) {
+            
+            // 1. 활동 기록(records) 실시간 동기화 -> 부모 state 업데이트
+            const unsubRecords = db.collection('classes').doc(appId).collection('records').onSnapshot(snap => {
+                const next = {}; snap.forEach(d => next[d.id] = d.data());
+                setRecords(prev => ({ ...prev, ...next })); // 기존 데이터와 병합하여 안정성 확보
+            });
+
+            // 2. 과제 목록(dailyTasks) 실시간 동기화 -> 부모 state 업데이트
+            const unsubTasks = db.collection('classes').doc(appId).collection('dailyTasks').onSnapshot(snap => {
+                const next = {}; snap.forEach(d => next[d.id] = d.data().tasks || []);
+                setDailyTasks(prev => ({ ...prev, ...next }));
+            });
+
+            // 3. 전체 학생 정보 실시간 동기화 -> 부모 state 업데이트
+            const unsubStudents = db.collection('classes').doc(appId).collection('students').orderBy('order').onSnapshot(snap => {
+                setStudents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            });
+
+            // 컴포넌트가 사라질 때 리스너를 모두 정리합니다.
+            return () => { unsubRecords(); unsubTasks(); unsubStudents(); };
+        }
+    }, [isLocalMode, db, appId, setRecords, setDailyTasks, setStudents]);
+
     if (!isOpen || !student || !student.history) return null;
     
     useEffect(() => {
