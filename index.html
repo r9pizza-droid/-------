@@ -463,15 +463,40 @@
         };
         const Toast = ({ message, action, onClose }) => {
             const onCloseRef = useRef(onClose);
+            const [offsetY, setOffsetY] = useState(0);
+            const [isDragging, setIsDragging] = useState(false);
+            const startY = useRef(0);
+
             useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
             useEffect(() => { 
-                if (!message) return; 
+                if (!message) { setOffsetY(0); return; }
                 let duration = action ? 4000 : 3000;
                 if (message.includes("연동 상태 확인 중")) duration = 600000; 
-                if (message.includes("❌")) return;
+                // 에러 배너도 5초 후 자동 닫힘 (기존 무한 유지 제거)
+                if (message.includes("❌") || message.includes("오류") || message.includes("실패")) duration = 5000;
+                
                 const timer = setTimeout(() => onCloseRef.current(), duration); 
                 return () => clearTimeout(timer); 
             }, [message, action]);
+
+            const handleTouchStart = (e) => {
+                startY.current = e.touches[0].clientY;
+                setIsDragging(true);
+            };
+
+            const handleTouchMove = (e) => {
+                if (!isDragging) return;
+                const currentY = e.touches[0].clientY;
+                const diff = currentY - startY.current;
+                if (diff < 0) setOffsetY(diff); // 위로 올릴 때만 이동
+            };
+
+            const handleTouchEnd = () => {
+                setIsDragging(false);
+                if (offsetY < -50) onCloseRef.current(); // 50px 이상 올리면 닫기
+                setOffsetY(0);
+            };
+
             if (!message) return null;
             
             // 🌟 메시지 내용에 따라 디자인 자동 변경 (삭제/에러 vs 성공/저장)
@@ -482,7 +507,13 @@
 
             return (
                 <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[7000] w-full max-w-sm px-4 animate-[slideInDown_0.5s_cubic-bezier(0.16,1,0.3,1)] pointer-events-none">
-                    <div className={`bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-3 border ${borderColor} flex items-center gap-3 ring-1 ring-black/5 pointer-events-auto`}>
+                    <div 
+                        className={`bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-3 border ${borderColor} flex items-center gap-3 ring-1 ring-black/5 pointer-events-auto touch-none transition-transform will-change-transform`}
+                        style={{ transform: `translateY(${offsetY}px)`, transition: isDragging ? 'none' : 'transform 0.2s ease-out' }}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                    >
                         <div className={`w-10 h-10 bg-gradient-to-br ${iconBg} rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}>
                             <span className="text-lg animate-bounce">{emoji}</span>
                         </div>
@@ -3093,13 +3124,19 @@
                     try { data = JSON.parse(responseText); } catch (e) { data = null; }
 
                     if (!res.ok) {
-                        let msg = `[HTTP ${res.status}] `;
-                        if (res.status === 403) msg += "Forbidden (접근 거부). ";
-                        
-                        if (data && data.error) msg += data.error.message;
-                        else if (responseText) msg += responseText.substring(0, 100);
-                        
-                        throw new Error(msg);
+                        let errorMsg = "";
+                        if (data && data.error && data.error.message) {
+                            errorMsg = data.error.message;
+                        } else if (responseText.includes("You have been forbidden") || res.status === 403) {
+                            errorMsg = "API 키 문제일 수도 있지만, 현재 웹사이트 환경에서 ImgBB 호출이 제한된 것일 수 있습니다.";
+                        } else if (res.status === 400) {
+                            errorMsg = "요청 형식이 잘못되었습니다 (400). API 키가 비어있는지 확인해주세요.";
+                        } else if (res.status === 401) {
+                            errorMsg = "권한이 없습니다 (401). API 키를 확인해주세요.";
+                        } else {
+                            errorMsg = `서버 오류 (${res.status}): ` + responseText.substring(0, 100);
+                        }
+                        throw new Error(errorMsg);
                     }
 
                     if (data && data.success) {
@@ -3356,9 +3393,15 @@
                                 try { data = JSON.parse(text); } catch (e) { data = null; }
 
                                 if (res.ok && data && data.success) success = true;
-                                else errorMsg = `오류(${res.status}): ` + (data?.error?.message || text.substring(0, 50));
+                                else {
+                                    if (data && data.error && data.error.message) errorMsg = data.error.message;
+                                    else if (text.includes("You have been forbidden")) errorMsg = "웹 환경 제한 (Forbidden)";
+                                    else if (res.status === 400) errorMsg = "요청 오류 (400)";
+                                    else if (res.status === 401 || res.status === 403) errorMsg = "키/권한 오류";
+                                    else errorMsg = `오류(${res.status})`;
+                                }
                             } catch (e) {
-                                errorMsg = e.message;
+                                errorMsg = "연결 실패";
                             }
                         }
                     } catch (e) {
