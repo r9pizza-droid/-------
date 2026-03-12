@@ -7340,12 +7340,13 @@ const firebaseConfig = {
         sharedApp = firebase.app();
         }
     
-    try {
-        sharedApp.firestore().enablePersistence({ synchronizeTabs: true })
-          .catch(function(err) {
-              console.log("캐시 활성화 에러:", err.code);
-          });
-    } catch (error) { console.log("Persistence 에러:", error); }
+    // [Mod] 웹 충돌 방지를 위해 Shared App Persistence 비활성화
+    // try {
+    //     sharedApp.firestore().enablePersistence({ synchronizeTabs: true })
+    //       .catch(function(err) {
+    //           console.log("캐시 활성화 에러:", err.code);
+    //       });
+    // } catch (error) { console.log("Persistence 에러:", error); }
 
     // 4. 게시판에서 사용할 데이터베이스(Firestore)를 연결합니다.
     sharedDb = sharedApp.firestore();
@@ -9892,8 +9893,8 @@ const firebaseConfig = {
                             // [Fix] 전역 변수 db가 반드시 개인용 프로젝트를 가리키도록 강제 할당
                             const firestore = userApp.firestore();
                             
-                            // [Quota] 오프라인 캐시 활성화 (읽기 비용 절감 및 속도 향상)
-                            await firestore.enablePersistence({ synchronizeTabs: true }).catch(e => console.log("Persistence Error:", e.code));
+                            // [Stability] 웹 안정화를 위해 개인용 Persistence 비활성화 (IndexedDB 충돌 방지)
+                            // await firestore.enablePersistence({ synchronizeTabs: true }).catch(e => console.log("Persistence Error:", e.code));
                             
                             setDb(firestore);
                             setConfig(config);
@@ -9981,38 +9982,12 @@ const firebaseConfig = {
                     }, err => console.error("알림 동기화 오류:", err));
             }
             if (firestore && config) {
-                let classId = user.uid; // [수정] 기본값을 user.uid로 변경 (원칙: 로그인한 사용자 기준)
+                // [Stable] appId는 무조건 로그인한 user.uid로 고정 (경로 통일)
+                const classId = user.uid;
                 
-                try {
-                    // [개선] 1. 프로필 기반 appId 자동 조회 및 매핑
-                    const profileRef = firestore.collection('userProfiles').doc(user.uid);
-                    const profileDoc = await profileRef.get();
-                    
-                    if (profileDoc.exists) {
-                        const userData = profileDoc.data();
-                        if (userData.appId && userData.appId.trim()) {
-                            classId = userData.appId.trim(); // 기존 저장된 학급 코드가 있다면 유지 (Fallback)
-                        } else {
-                            // appId 필드가 없으면 기본값으로 업데이트
-                            await profileRef.set({ appId: classId }, { merge: true });
-                        }
-                    } else {
-                        // [개선] 3. 최초 사용자 프로필 생성
-                        await profileRef.set({
-                            appId: classId,
-                            email: user.email,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
-                    }
-
-                    // [개선] 2. 로컬 스토리지 및 상태 동기화
-                    localStorage.setItem('appId', classId);
-                    setAppId(classId);
-                } catch (e) {
-                    console.error("AppID Auto-mapping failed:", e);
-                    // 에러 발생 시에도 user.uid를 기본값으로 사용
-                    setAppId(user.uid);
-                }
+                // [Clean] userProfiles.appId 조회 로직 제거 -> classes/{user.uid}/... 로 일원화
+                localStorage.setItem('appId', classId);
+                setAppId(classId);
 
                 logSystemEvent(`로그인 성공: ${user.email} (Class: ${classId})`);
 

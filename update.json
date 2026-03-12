@@ -1,5 +1,12 @@
 [
   {
+    "version": "v3.15.75",
+    "list": [
+      "웹 Firestore 연결 안정화: 개인 데이터 경로(AppID)를 사용자 UID로 고정",
+      "데이터베이스 충돌 방지를 위해 웹 환경 Persistence 설정 최적화"
+    ]
+  },
+  {
     "version": "v3.15.74",
     "list": [
       "모둠 데이터 실시간 동기화 적용 (onSnapshot)",
