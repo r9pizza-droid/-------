@@ -9405,7 +9405,7 @@ const firebaseConfig = {
                         });
                         await batch.commit();
                     }
-                } catch (e) { console.error(e); setToastMessage("기록 저장 실패: " + e.message); }
+                } catch (e) { console.error(e); setToastMessage("기록 저장 실패: " + e.message); throw e; }
             };
 
             // [New] 활동 기록(Records) 하위 컬렉션 삭제 함수
@@ -9897,7 +9897,6 @@ const firebaseConfig = {
                             
                             setDb(firestore);
                             setConfig(config);
-                            setAppId(config.projectId);
                             setIsLocalMode(false);
                             setToastMessage("🟢 개인용 Firestore에 연결되었습니다.");
 
@@ -10086,7 +10085,7 @@ const cachedTasksRef = useRef(null);   // [New] 메모리 캐싱 (Tasks)
 const currentAppIdRef = useRef(null);  // [Safe] AppID 변경 감지
 
 useEffect(() => {
-    const targetAppId = appId || config?.projectId;
+    const targetAppId = appId;
     
     // [Safe] 계정(AppID) 변경 시 캐시 및 데이터 혼용 방지
     if (currentAppIdRef.current && currentAppIdRef.current !== targetAppId) {
@@ -10100,6 +10099,8 @@ useEffect(() => {
         console.log("No App ID found, skipping data fetch.");
         return;
     }
+
+    console.log("[Data Load] Fetching tasks/records for:", targetAppId);
 
     let unsubscribeRecords = () => {};
     let unsubscribeTasks = () => {};
@@ -10185,7 +10186,7 @@ useEffect(() => {
 const cachedGroupsRef = useRef(null); // [New] 메모리 캐싱 (Groups)
 
 useEffect(() => {
-    const targetAppId = appId || config?.projectId;
+    const targetAppId = appId;
     
     // [Safe] 계정 변경 시 캐시 초기화
     if (currentAppIdRef.current !== targetAppId) {
@@ -10195,6 +10196,7 @@ useEffect(() => {
     if (isLocalMode || !firestore || !targetAppId || !currentUser) return;
     
     if (mode === 'group') {
+        console.log("[Data Load] Fetching groups for:", targetAppId);
         if (cachedGroupsRef.current) {
             setGroupsByDate(hydrateGroups(cachedGroupsRef.current, studentsRef.current));
             return;
@@ -10285,6 +10287,12 @@ useEffect(() => {
                 
                 if (isLocalMode) {
                     Object.entries(updates).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
+                    return;
+                }
+
+                if (!appId) {
+                    console.warn("Save blocked: AppID is missing");
+                    setToastMessage("⚠️ 오류: 계정 정보(AppID)가 로드되지 않았습니다. 잠시 후 다시 시도하거나 새로고침하세요.");
                     return;
                 }
                 
@@ -10381,7 +10389,7 @@ useEffect(() => {
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_assignments', seatAssignments); }, [seatAssignments]);
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_config', seatConfig); }, [seatConfig]);
 
-            const toggleCheck = (id, taskIndex = null, targetDate = null) => { 
+            const toggleCheck = async (id, taskIndex = null, targetDate = null) => { 
                 const d = targetDate || date;
                 if (navigator.vibrate) navigator.vibrate(15);
 
@@ -10398,7 +10406,8 @@ useEffect(() => {
                 const isLate = d < today;
 
                 let newRec; 
-                let updates = {}; 
+                let localUpdates = {};
+                let firestoreUpdates = {};
 
                 if (taskIndex !== null) { 
                     const newTasksStatus = { ...currentRec.tasks, [taskIndex]: !currentRec.tasks?.[taskIndex] };
@@ -10410,7 +10419,8 @@ useEffect(() => {
                     }
                     const allDone = currentTasks.length > 0 && currentTasks.every((_, idx) => newTasksStatus[idx]); 
                     newRec = { ...currentRec, tasks: newTasksStatus, done: allDone, lateTasks: newLateStatus };
-                    updates[d] = { ...records[d], [id]: newRec };
+                    localUpdates[d] = { ...records[d], [id]: newRec };
+                    firestoreUpdates[d] = { [id]: newRec };
                 } else { 
                     const newDone = !currentRec.done; 
                     const newTasksStatus = {};
@@ -10422,7 +10432,8 @@ useEffect(() => {
                         else delete newLateStatus[idx];
                     }); 
                     newRec = { ...currentRec, done: newDone, tasks: newTasksStatus, lateTasks: newLateStatus };
-                    updates[d] = { ...records[d], [id]: newRec };
+                    localUpdates[d] = { ...records[d], [id]: newRec };
+                    firestoreUpdates[d] = { [id]: newRec };
 
                     // [New] 미제출(지각) 숙제 일괄 처리
                     if (!targetDate || targetDate === date) {
@@ -10458,16 +10469,26 @@ useEffect(() => {
                             if (pChanged) {
                                 const pAllDone = pTasks.every((_, idx) => pNewTasksStatus[idx]);
                                 const pUpdatedRec = { ...pRec, tasks: pNewTasksStatus, done: pAllDone, lateTasks: pNewLateStatus };
-                                if (!updates[dt]) updates[dt] = { ...records[dt] };
-                                updates[dt][id] = pUpdatedRec;
+                                if (!localUpdates[dt]) localUpdates[dt] = { ...records[dt] };
+                                localUpdates[dt][id] = pUpdatedRec;
+                                if (!firestoreUpdates[dt]) firestoreUpdates[dt] = {};
+                                firestoreUpdates[dt][id] = pUpdatedRec;
                             }
                         });
                     }
                 } 
                 
-                const newRecords = { ...records, ...updates }; 
+                const prevRecords = records;
+                const newRecords = { ...records, ...localUpdates }; 
                 setRecords(newRecords); 
-                if (!isLocalMode) saveRecordsToFirestore(updates);
+                
+                if (!isLocalMode) {
+                    try {
+                        await saveRecordsToFirestore(firestoreUpdates);
+                    } catch (e) {
+                        setRecords(prevRecords); // Rollback
+                    }
+                }
                 if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } }); 
             };
             

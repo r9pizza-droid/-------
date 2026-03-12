@@ -304,27 +304,6 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         setHasNotionConfig(!!(key && dbId));
     }, [student, isLocalMode, db, appId]);
 
-    // [New] 상세 뷰의 특정 날짜 기록만 실시간으로 감시 (onSnapshot 최적화)
-    useEffect(() => {
-        // 상세 뷰가 열렸을 때, 그리고 클라우드 모드일 때만 리스너를 연결합니다.
-        if (isDetailViewOpen && selectedGrassDate && !isLocalMode && db && appId) {
-            const unsub = db.collection('classes').doc(appId).collection('records').doc(selectedGrassDate)
-                .onSnapshot(doc => {
-                    // 실시간으로 변경된 데이터를 부모의 records 상태에 병합합니다.
-                    // 이렇게 하면 화면이 깜빡이지 않고 자연스럽게 업데이트됩니다.
-                    setRecords(prev => ({
-                        ...prev,
-                        [selectedGrassDate]: doc.data() || {} // 문서가 삭제된 경우를 대비해 기본값 설정
-                    }));
-                }, err => {
-                    console.error(`실시간 기록 감시 실패 (${selectedGrassDate}):`, err);
-                });
-
-            // 상세 뷰가 닫히거나 다른 날짜가 선택되면, 이전에 열어둔 연결을 반드시 끊습니다.
-            return () => unsub();
-        }
-    }, [isDetailViewOpen, selectedGrassDate, isLocalMode, db, appId, setRecords]);
-
     useEffect(() => {
         setNotionDate(selectedDate || dayjs().format('YYYY-MM-DD'));
     }, [selectedDate]);
