@@ -3172,7 +3172,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, allUsers, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers, handleUpdateAppId, adminLogs }) => {
+        const SettingsModal = ({ isOpen, onClose, allUsers, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers, handleUpdateAppId, adminLogs, currentUser }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -4757,7 +4757,10 @@
                                                     <div className="flex-1 flex flex-col">
                                                         <div className="flex justify-between items-center">
                                                             <div className="flex items-center gap-1 cursor-pointer hover:opacity-80" onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }}>
-                                                                <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
+                                                                <div className="flex flex-col items-start">
+                                                                    <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
+                                                                    {!isLocalMode && currentUser && <span className="text-[10px] text-slate-400 font-medium -mt-0.5">{currentUser.email}</span>}
+                                                                </div>
                                                                 <Icon d={PATHS.right} size={24} className={`text-slate-400 hover:text-indigo-500 transition-colors transition-transform duration-300 ${showStorageHelp ? 'rotate-90' : ''}`} />
                                                             </div>
                                                             {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("로그아웃 하시겠습니까?", handleLogout) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">로그아웃</Btn>}
@@ -10159,6 +10162,18 @@ useEffect(() => {
     }
 }, [mode, firestore, appId, config, isLocalMode, currentUser]);
 
+            // [Fix] 탭 전환 시 데이터 유실 방지를 위한 캐시 동기화
+            useEffect(() => { if (records) cachedRecordsRef.current = records; }, [records]);
+            useEffect(() => { if (groupsByDate) cachedGroupsRef.current = groupsByDate; }, [groupsByDate]);
+            useEffect(() => {
+                if (dailyTasks || weeklyTasks || tags) {
+                    if (!cachedTasksRef.current) cachedTasksRef.current = {};
+                    cachedTasksRef.current.daily = dailyTasks;
+                    cachedTasksRef.current.weekly = weeklyTasks;
+                    cachedTasksRef.current.tags = tags;
+                }
+            }, [dailyTasks, weeklyTasks, tags]);
+
             // [New] 게시판 탭 진입 시 닉네임 설정 확인
             useEffect(() => {
                 if (mode === 'community' && currentUser && !currentUserProfile) {
@@ -13569,6 +13584,7 @@ useEffect(() => {
                         handleUpdateAppId={handleUpdateAppId}
                         handleSyncCommunityUsers={handleSyncCommunityUsers}
                         adminLogs={adminLogs}
+                        currentUser={currentUser}
                     />
                     {showImgbbModal && (
                         <ImgbbSetupModal 
