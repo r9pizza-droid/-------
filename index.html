@@ -7755,12 +7755,17 @@ const firebaseConfig = {
                 const user = currentUser;
                 if (user && sharedDb) {
                     sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
-                        if (doc.exists && doc.data().name) {
-                            const fetchedName = doc.data().name;
-                            setUserNickname(fetchedName);
-                            localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
-                            setShowNicknameModal(false);
-                            updateStats(fetchedName); // [New] 접속 기록 업데이트
+                                if (doc.exists) {
+                                    const data = doc.data();
+                                    const fetchedName = data.name || data.userNickname;
+                                    if (fetchedName) {
+                                        setUserNickname(fetchedName);
+                                        localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
+                                        setShowNicknameModal(false);
+                                        updateStats(fetchedName); // [New] 접속 기록 업데이트
+                                    } else {
+                                        setShowNicknameModal(true);
+                                    }
                         } else {
                             setShowNicknameModal(true);
                         }
@@ -7776,7 +7781,7 @@ const firebaseConfig = {
         } else {
             setShowNicknameModal(false);
         }
-    }, [mode, sharedDb]);
+    }, [mode, sharedDb, currentUser]);
 
     // 별칭 저장 버튼 눌렀을 때 실행되는 함수
     const handleSaveNickname = async () => {
@@ -7787,6 +7792,20 @@ const firebaseConfig = {
         try {
             const user = currentUser;
             if (user && sharedDb) {
+                        // [New] 중복 가입 방지 (이미 프로필이 있는지 확인 - UID 기준)
+                        const doc = await sharedDb.collection('userProfiles').doc(user.uid).get();
+                        if (doc.exists) {
+                            const data = doc.data();
+                            const existingName = data.name || data.userNickname;
+                            if (existingName) {
+                                alert(`이미 '${existingName}'(으)로 등록된 사용자입니다. 기존 별칭으로 로그인합니다.`);
+                                setUserNickname(existingName);
+                                localStorage.setItem('myBoardName', existingName);
+                                setShowNicknameModal(false);
+                                return;
+                            }
+                        }
+
                         // [New] 중복 닉네임 체크
                         const nickname = tempNickname.trim();
                         const check1 = await sharedDb.collection('userProfiles').where('userNickname', '==', nickname).get();
@@ -7801,15 +7820,16 @@ const firebaseConfig = {
                 // 1. 파이어베이스 서버에 저장
                 await sharedDb.collection('userProfiles').doc(user.uid).set({
                     uid: user.uid,
-                    name: tempNickname.trim(),
+                            name: nickname,
+                            userNickname: nickname, // [New] 별칭 필드 통일
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                        }, { merge: true }); // [New] 기존 데이터 보존
 
                 // [New] 접속 통계에도 저장
                 await sharedDb.collection('userStats').doc(user.uid).set({
                     uid: user.uid,
                     lastActive: new Date(),
-                    nickname: tempNickname.trim()
+                            nickname: nickname
                 }, { merge: true });
             }
             
@@ -10261,7 +10281,7 @@ const cachedTasksRef = useRef(null);   // [New] 메모리 캐싱 (Tasks)
 const currentAppIdRef = useRef(null);  // [Safe] AppID 변경 감지
 
 useEffect(() => {
-    const targetAppId = appId;
+    const targetAppId = appId || (config ? config.projectId : sharedFirebaseConfig.projectId);
     
     // [Safe] 계정(AppID) 변경 시 캐시 및 데이터 혼용 방지
     if (currentAppIdRef.current && currentAppIdRef.current !== targetAppId) {
@@ -10362,7 +10382,7 @@ useEffect(() => {
 const cachedGroupsRef = useRef(null); // [New] 메모리 캐싱 (Groups)
 
 useEffect(() => {
-    const targetAppId = appId;
+    const targetAppId = appId || (config ? config.projectId : sharedFirebaseConfig.projectId);
     
     // [Safe] 계정 변경 시 캐시 초기화
     if (currentAppIdRef.current !== targetAppId) {
@@ -10401,13 +10421,15 @@ useEffect(() => {
             // [New] 기록 탭 실시간 동기화 (onSnapshot 최적화)
             // 현재 선택된 날짜의 활동 기록(records) 문서 '하나만' 실시간으로 감시합니다.
             useEffect(() => {
+                const targetAppId = appId || (config ? config.projectId : sharedFirebaseConfig.projectId);
+
                 // '기록' 탭이 아니거나, 로컬 모드이거나, 연결 준비가 안 됐으면 실행하지 않습니다.
-                if (mode !== 'record' || isLocalMode || !firestore || !appId || !currentUser || !date) {
+                if (mode !== 'record' || isLocalMode || !firestore || !targetAppId || !currentUser || !date) {
                     return;
                 }
 
                 // 선택된 날짜(date)의 문서에 대한 실시간 리스너를 설정합니다.
-                const unsub = firestore.collection('classes').doc(appId).collection('records').doc(date)
+                const unsub = firestore.collection('classes').doc(targetAppId).collection('records').doc(date)
                     .onSnapshot(doc => {
                         // 실시간으로 변경된 데이터를 기존 records 상태에 병합합니다.
                         // 이렇게 하면 화면 전체가 깜빡이지 않고 자연스럽게 업데이트됩니다.
@@ -10421,7 +10443,7 @@ useEffect(() => {
 
                 // [중요] 컴포넌트가 unmount되거나, 날짜(date)가 바뀌면 이전 리스너를 반드시 해제합니다.
                 return () => unsub();
-            }, [mode, date, firestore, appId, isLocalMode, currentUser]);
+            }, [mode, date, firestore, appId, config, isLocalMode, currentUser]);
 
             // [Fix] 탭 전환 시 데이터 유실 방지를 위한 캐시 동기화
             useEffect(() => { if (records) cachedRecordsRef.current = records; }, [records]);
