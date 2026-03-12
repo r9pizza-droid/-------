@@ -10343,7 +10343,7 @@ useEffect(() => {
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_assignments', seatAssignments); }, [seatAssignments]);
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_config', seatConfig); }, [seatConfig]);
 
-            const toggleCheck = (id, taskIndex = null, targetDate = null) => { 
+            const toggleCheck = async (id, taskIndex = null, targetDate = null) => { 
                 const d = targetDate || date;
                 if (navigator.vibrate) navigator.vibrate(15);
 
@@ -10362,75 +10362,80 @@ useEffect(() => {
                 let newRec; 
                 let updates = {}; 
 
-                if (taskIndex !== null) { 
-                    const newTasksStatus = { ...currentRec.tasks, [taskIndex]: !currentRec.tasks?.[taskIndex] };
-                    const newLateStatus = { ...(currentRec.lateTasks || {}) };
-                    if (newTasksStatus[taskIndex] && isLate) {
-                        newLateStatus[taskIndex] = true;
-                    } else {
-                        delete newLateStatus[taskIndex];
-                    }
-                    const allDone = currentTasks.length > 0 && currentTasks.every((_, idx) => newTasksStatus[idx]); 
-                    newRec = { ...currentRec, tasks: newTasksStatus, done: allDone, lateTasks: newLateStatus };
-                    updates[d] = { ...records[d], [id]: newRec };
-                } else { 
-                    const newDone = !currentRec.done; 
-                    const newTasksStatus = {};
-                    const newLateStatus = { ...(currentRec.lateTasks || {}) };
-                    
-                    if (currentTasks.length > 0) currentTasks.forEach((_, idx) => {
-                        newTasksStatus[idx] = newDone;
-                        if (newDone && isLate) newLateStatus[idx] = true;
-                        else delete newLateStatus[idx];
-                    }); 
-                    newRec = { ...currentRec, done: newDone, tasks: newTasksStatus, lateTasks: newLateStatus };
-                    updates[d] = { ...records[d], [id]: newRec };
+                try {
+                    if (taskIndex !== null) { 
+                        const newTasksStatus = { ...currentRec.tasks, [taskIndex]: !currentRec.tasks?.[taskIndex] };
+                        const newLateStatus = { ...(currentRec.lateTasks || {}) };
+                        if (newTasksStatus[taskIndex] && isLate) {
+                            newLateStatus[taskIndex] = true;
+                        } else {
+                            delete newLateStatus[taskIndex];
+                        }
+                        const allDone = currentTasks.length > 0 && currentTasks.every((_, idx) => newTasksStatus[idx]); 
+                        newRec = { ...currentRec, tasks: newTasksStatus, done: allDone, lateTasks: newLateStatus };
+                        updates[d] = { ...records[d], [id]: newRec };
+                    } else { 
+                        const newDone = !currentRec.done; 
+                        const newTasksStatus = {};
+                        const newLateStatus = { ...(currentRec.lateTasks || {}) };
+                        
+                        if (currentTasks.length > 0) currentTasks.forEach((_, idx) => {
+                            newTasksStatus[idx] = newDone;
+                            if (newDone && isLate) newLateStatus[idx] = true;
+                            else delete newLateStatus[idx];
+                        }); 
+                        newRec = { ...currentRec, done: newDone, tasks: newTasksStatus, lateTasks: newLateStatus };
+                        updates[d] = { ...records[d], [id]: newRec };
 
-                    // [New] 미제출(지각) 숙제 일괄 처리
-                    if (!targetDate || targetDate === date) {
-                        const pastDates = Object.keys(dailyTasks).filter(dt => dt < date);
-                        pastDates.forEach(dt => {
-                            const pTasks = dailyTasks[dt] || [];
-                            if (pTasks.length === 0) return;
-                            
-                            const pRec = records[dt]?.[id] || { done: false, tasks: {}, lateTasks: {} };
-                            let pChanged = false;
-                            const pNewTasksStatus = { ...(pRec.tasks || {}) };
-                            const pNewLateStatus = { ...(pRec.lateTasks || {}) };
+                        // [New] 미제출(지각) 숙제 일괄 처리
+                        if (!targetDate || targetDate === date) {
+                            const pastDates = Object.keys(dailyTasks).filter(dt => dt < date);
+                            pastDates.forEach(dt => {
+                                const pTasks = dailyTasks[dt] || [];
+                                if (pTasks.length === 0) return;
+                                
+                                const pRec = records[dt]?.[id] || { done: false, tasks: {}, lateTasks: {} };
+                                let pChanged = false;
+                                const pNewTasksStatus = { ...(pRec.tasks || {}) };
+                                const pNewLateStatus = { ...(pRec.lateTasks || {}) };
 
-                            pTasks.forEach((_, idx) => {
-                                const isTaskDone = pNewTasksStatus[idx];
-                                const isTaskLate = pNewLateStatus[idx];
+                                pTasks.forEach((_, idx) => {
+                                    const isTaskDone = pNewTasksStatus[idx];
+                                    const isTaskLate = pNewLateStatus[idx];
 
-                                if (newDone) {
-                                    if (!isTaskDone) {
-                                        pNewTasksStatus[idx] = true;
-                                        pNewLateStatus[idx] = true;
-                                        pChanged = true;
+                                    if (newDone) {
+                                        if (!isTaskDone) {
+                                            pNewTasksStatus[idx] = true;
+                                            pNewLateStatus[idx] = true;
+                                            pChanged = true;
+                                        }
+                                    } else {
+                                        if (isTaskDone && isTaskLate) {
+                                            pNewTasksStatus[idx] = false;
+                                            delete pNewLateStatus[idx];
+                                            pChanged = true;
+                                        }
                                     }
-                                } else {
-                                    if (isTaskDone && isTaskLate) {
-                                        pNewTasksStatus[idx] = false;
-                                        delete pNewLateStatus[idx];
-                                        pChanged = true;
-                                    }
+                                });
+
+                                if (pChanged) {
+                                    const pAllDone = pTasks.every((_, idx) => pNewTasksStatus[idx]);
+                                    const pUpdatedRec = { ...pRec, tasks: pNewTasksStatus, done: pAllDone, lateTasks: pNewLateStatus };
+                                    if (!updates[dt]) updates[dt] = { ...records[dt] };
+                                    updates[dt][id] = pUpdatedRec;
                                 }
                             });
-
-                            if (pChanged) {
-                                const pAllDone = pTasks.every((_, idx) => pNewTasksStatus[idx]);
-                                const pUpdatedRec = { ...pRec, tasks: pNewTasksStatus, done: pAllDone, lateTasks: pNewLateStatus };
-                                if (!updates[dt]) updates[dt] = { ...records[dt] };
-                                updates[dt][id] = pUpdatedRec;
-                            }
-                        });
-                    }
-                } 
-                
-                const newRecords = { ...records, ...updates }; 
-                setRecords(newRecords); 
-                if (!isLocalMode) saveRecordsToFirestore(updates);
-                if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } }); 
+                        }
+                    } 
+                    
+                    const newRecords = { ...records, ...updates }; 
+                    setRecords(newRecords); 
+                    if (!isLocalMode) await saveRecordsToFirestore(updates);
+                    if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } }); 
+                } catch (e) {
+                    console.error("체크 저장 실패:", e);
+                    setToastMessage("저장 실패: " + e.message);
+                }
             };
             
             const handleSaveTaskComment = (studentId, taskIndex, comment, targetDate) => {
