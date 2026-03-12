@@ -9931,7 +9931,7 @@ const firebaseConfig = {
                             createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
                         }));
                         setNotifications(notis);
-                        if (!isNotiFirstLoad.current && appConfig && appConfig.enablePushNotifications && appConfig.enableNotifications !== false) {
+                        if (!isNotiFirstLoad.current && appConfigRef.current && appConfigRef.current.enablePushNotifications && appConfigRef.current.enableNotifications !== false) {
                             snapshot.docChanges().forEach(change => {
                                 if (change.type === 'added') {
                                     const newNoti = change.doc.data();
@@ -9939,7 +9939,7 @@ const firebaseConfig = {
                                         try {
                                             new Notification("다했나요? 알림", {
                                                 body: newNoti.message,
-                                                icon: appConfig.favicon || undefined
+                                                icon: appConfigRef.current.favicon || undefined
                                             });
                                         } catch (e) { console.error(e); }
                                     }
@@ -10044,7 +10044,7 @@ const firebaseConfig = {
         if (unsubNoti) unsubNoti();
         if (unsubArtifacts) unsubArtifacts();
     };
-}, [sharedDb, firestore, config?.projectId, appConfig, isLocalMode]);
+    }, [sharedDb, firestore, config?.projectId, isLocalMode]); // [Fix] appConfig 의존성 제거 (Ref 사용)
 
 // [Optimization] 과제 및 기록 데이터 Lazy Loading (기록, 통계 탭에서만 활성화)
 const cachedRecordsRef = useRef(null); // [New] 메모리 캐싱 (Records)
@@ -10241,6 +10241,10 @@ useEffect(() => {
             
             useEffect(() => { if (mode === 'record') { const dayOfWeek = dayjs(date).day(); if ((!dailyTasks[date] || dailyTasks[date].length === 0) && weeklyTasks[dayOfWeek]?.length > 0) { const tasksToAdd = weeklyTasks[dayOfWeek].map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t); const newDailyTasks = { ...dailyTasks, [date]: tasksToAdd }; setDailyTasks(newDailyTasks); if (isLocalMode) saveData('cls_daily_tasks', newDailyTasks); } } }, [date, mode, weeklyTasks]);
             
+            // [Fix] useEffect 내부에서 최신 appConfig를 참조하기 위한 Ref (무한 루프 방지)
+            const appConfigRef = useRef(appConfig);
+            useEffect(() => { appConfigRef.current = appConfig; }, [appConfig]);
+
             // [Fix] saveData 함수 개선: 단일 키/값 저장뿐만 아니라 객체 형태의 일괄 저장(Batch) 지원
             const saveData = async (keyOrData, value) => {
                 const updates = (typeof keyOrData === 'object') ? keyOrData : { [keyOrData]: value };
