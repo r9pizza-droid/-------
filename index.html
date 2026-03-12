@@ -10067,72 +10067,84 @@ useEffect(() => {
         return;
     }
 
+    let unsubscribeRecords = () => {};
+    let unsubscribeTasks = () => {};
+
     // 사용자가 '기록' 또는 '통계' 모드일 때만 데이터 구독
     if (mode === 'record' || mode === 'stats') {
         
-        // [New] 캐시 데이터 확인 (이미 데이터가 있다면 파이어베이스 요청 스킵)
-        if (cachedRecordsRef.current && cachedTasksRef.current) {
-             setRecords(cachedRecordsRef.current);
+        // 1. 과제(Tasks) 데이터 조회 (캐시 즉시 적용 + 실시간 구독)
+        if (cachedTasksRef.current) {
              setDailyTasks(cachedTasksRef.current.daily || {});
              if (cachedTasksRef.current.weekly) setWeeklyTasks(cachedTasksRef.current.weekly);
              if (cachedTasksRef.current.tags) setTags(cachedTasksRef.current.tags);
-             return; 
         }
-
-        // 1. 과제(Tasks) 데이터 조회 (1회성 Get)
+        
         try {
-            firestore.collection('classes').doc(targetAppId).collection('tasks').get().then(snapshot => {
-                    snapshot.forEach(doc => {
-                        if (!cachedTasksRef.current) cachedTasksRef.current = { daily: {}, weekly: {}, tags: [] }; // 캐시 초기화
+            unsubscribeTasks = firestore.collection('classes').doc(targetAppId).collection('tasks').onSnapshot(snapshot => {
+                if (!cachedTasksRef.current) cachedTasksRef.current = { daily: {}, weekly: {}, tags: [] }; // 캐시 초기화
 
-                        if (doc.id === 'settings') {
-                            const data = doc.data();
-                            if (data.weekly) {
-                                setWeeklyTasks(data.weekly);
-                                cachedTasksRef.current.weekly = data.weekly;
-                            }
-                            if (data.tags) {
-                                setTags(data.tags);
-                                cachedTasksRef.current.tags = data.tags;
-                            }
-                        } else {
-                            setDailyTasks(prev => {
-                                const next = { ...prev, [doc.id]: doc.data().list };
-                                cachedTasksRef.current.daily = next;
-                                return next;
-                            });
-                        }
-                    });
-            }).catch(error => console.error("Tasks fetch error:", error));
-        } catch (e) { console.error("Task subscription failed:", e); }
-
-        // 2. 활동 기록(Records) 데이터 조회 (1회성 Get, 최근 3개월 제한)
-        const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
-        try {
-            firestore.collection('classes').doc(targetAppId).collection('records')
-                .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
-                .get().then(snapshot => {
-                const newRecords = {};
+                const newDailyTasks = {};
                 snapshot.forEach(doc => {
-                    const data = doc.data();
-                    // [Safe] 데이터 구조 유효성 확인: { studentId: { ... } } 형태 유지
-                    if (data && typeof data === 'object') {
-                        newRecords[doc.id] = data;
-                    } else { console.warn("Invalid data structure for record:", doc.id); }
+                    if (doc.id === 'settings') {
+                        const data = doc.data();
+                        if (data.weekly) {
+                            setWeeklyTasks(data.weekly);
+                            cachedTasksRef.current.weekly = data.weekly;
+                        }
+                        if (data.tags) {
+                            setTags(data.tags);
+                            cachedTasksRef.current.tags = data.tags;
+                        }
+                    } else {
+                        newDailyTasks[doc.id] = doc.data().list;
+                    }
                 });
-                setRecords(prev => {
-                    const next = { ...prev, ...newRecords };
-                    cachedRecordsRef.current = next; // 캐시 업데이트
+                
+                setDailyTasks(prev => {
+                    const next = { ...prev, ...newDailyTasks };
+                    cachedTasksRef.current.daily = next;
                     return next;
                 });
-            }).catch(error => {
-                console.error("Records sync error:", error);
-                if (error.code === 'resource-exhausted') {
-                    setToastMessage("⚠️ 사용량 초과: 기록을 불러올 수 없습니다.");
-                }
-            });
+            }, error => console.error("Tasks sync error:", error));
+        } catch (e) { console.error("Task subscription failed:", e); }
+
+        // 2. 활동 기록(Records) 데이터 조회 (캐시 즉시 적용 + 실시간 구독)
+        if (cachedRecordsRef.current) {
+            setRecords(cachedRecordsRef.current);
+        }
+
+        const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
+        try {
+            unsubscribeRecords = firestore.collection('classes').doc(targetAppId).collection('records')
+                .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
+                .onSnapshot(snapshot => {
+                    const newRecords = {};
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        // [Safe] 데이터 구조 유효성 확인: { studentId: { ... } } 형태 유지
+                        if (data && typeof data === 'object') {
+                            newRecords[doc.id] = data;
+                        } else { console.warn("Invalid data structure for record:", doc.id); }
+                    });
+                    setRecords(prev => {
+                        const next = { ...prev, ...newRecords };
+                        cachedRecordsRef.current = next; // 캐시 업데이트
+                        return next;
+                    });
+                }, error => {
+                    console.error("Records sync error:", error);
+                    if (error.code === 'resource-exhausted') {
+                        setToastMessage("⚠️ 사용량 초과: 기록을 불러올 수 없습니다.");
+                    }
+                });
         } catch (e) { console.error("Records fetch failed:", e); }
     }
+
+    return () => {
+        unsubscribeRecords();
+        unsubscribeTasks();
+    };
 }, [mode, firestore, appId, config, isLocalMode, currentUser]);
 
 // [Optimization] 모둠 데이터 Lazy Loading (모둠 탭에서만 활성화)
