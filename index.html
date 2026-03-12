@@ -3103,16 +3103,16 @@
                 setIsTesting(true);
                 setTestSuccess(false);
                 try {
-                    // [수정] Base64 문자열 대신 Blob(파일) 전송으로 변경 (실제 업로드 방식과 동일하게 맞춤)
-                    const b64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                    // [수정] Base64 문자열 대신 Blob(파일) 전송으로 변경 (test.png)
+                    const b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==";
                     const bin = atob(b64);
                     const len = bin.length;
                     const u8 = new Uint8Array(len);
                     for (let i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
-                    const blob = new Blob([u8], { type: "image/gif" });
+                    const blob = new Blob([u8], { type: "image/png" });
 
                     const formData = new FormData();
-                    formData.append("image", blob, "test.gif");
+                    formData.append("image", blob, "test.png");
 
                     const res = await fetch(`https://api.imgbb.com/1/upload?key=${cleanKey}`, {
                         method: "POST",
@@ -3124,17 +3124,14 @@
                     try { data = JSON.parse(responseText); } catch (e) { data = null; }
 
                     if (!res.ok) {
-                        let errorMsg = "";
-                        if (data && data.error && data.error.message) {
-                            errorMsg = data.error.message;
-                        } else if (responseText.includes("You have been forbidden") || res.status === 403) {
-                            errorMsg = "API 키 문제일 수도 있지만, 현재 웹사이트 환경에서 ImgBB 호출이 제한된 것일 수 있습니다.";
-                        } else if (res.status === 400) {
-                            errorMsg = "요청 형식이 잘못되었습니다 (400). API 키가 비어있는지 확인해주세요.";
-                        } else if (res.status === 401) {
-                            errorMsg = "권한이 없습니다 (401). API 키를 확인해주세요.";
+                        let errorMsg = `HTTP ${res.status}: `;
+                        
+                        if (responseText.toLowerCase().includes("forbidden") || res.status === 403) {
+                            errorMsg = "현재 웹 환경 또는 사이트 출처에서 ImgBB 호출이 제한될 수 있습니다 (Forbidden).";
+                        } else if (data && data.error && data.error.message) {
+                            errorMsg += data.error.message;
                         } else {
-                            errorMsg = `서버 오류 (${res.status}): ` + responseText.substring(0, 100);
+                            errorMsg += responseText.substring(0, 100);
                         }
                         throw new Error(errorMsg);
                     }
@@ -3374,15 +3371,15 @@
                             success = true;
                         } else if (test.type === 'imgbb') {
                             try {
-                                const b64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                                const b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==";
                                 const bin = atob(b64);
                                 const len = bin.length;
                                 const u8 = new Uint8Array(len);
                                 for (let i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
-                                const blob = new Blob([u8], { type: "image/gif" });
+                                const blob = new Blob([u8], { type: "image/png" });
 
                                 const formData = new FormData();
-                                formData.append("image", blob, "test.gif");
+                                formData.append("image", blob, "test.png");
                                 
                                 const res = await fetch(`https://api.imgbb.com/1/upload?key=${test.key}`, {
                                     method: "POST",
@@ -3395,13 +3392,11 @@
                                 if (res.ok && data && data.success) success = true;
                                 else {
                                     if (data && data.error && data.error.message) errorMsg = data.error.message;
-                                    else if (text.includes("You have been forbidden")) errorMsg = "웹 환경 제한 (Forbidden)";
-                                    else if (res.status === 400) errorMsg = "요청 오류 (400)";
-                                    else if (res.status === 401 || res.status === 403) errorMsg = "키/권한 오류";
+                                    else if (text.toLowerCase().includes("forbidden") || res.status === 403) errorMsg = "웹 환경 제한 (Forbidden)";
                                     else errorMsg = `오류(${res.status})`;
                                 }
                             } catch (e) {
-                                errorMsg = "연결 실패";
+                                errorMsg = "연결 실패: " + e.message;
                             }
                         }
                     } catch (e) {
