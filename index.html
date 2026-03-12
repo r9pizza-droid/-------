@@ -7700,6 +7700,7 @@ const firebaseConfig = {
             const [adminLogs, setAdminLogs] = useState([]);
             const [isLoadingStats, setIsLoadingStats] = useState(false);
             const [adminLevelConfig, setAdminLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60 });
+            const [showLogs, setShowLogs] = useState(false);
 
             const handleOpenAdminDashboard = async () => {
                 // 철통 보안 검사
