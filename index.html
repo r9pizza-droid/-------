@@ -5348,6 +5348,20 @@
                         const showPhoto = appConfig.showPhotoInRecord;
                         const hasMemo = rec.taskComments && Object.values(rec.taskComments).some(c => c);
                         const overdue = overdueTasksByStudent[s.id] || [];
+
+                        // [New] Find first memo to enable direct editing from card
+                        let firstMemoInfo = null;
+                        if (hasMemo) {
+                            const taskComments = rec.taskComments || {};
+                            const firstMemoIndex = Object.keys(taskComments).find(idx => taskComments[idx] && (Array.isArray(taskComments[idx]) ? taskComments[idx].length > 0 : true));
+                            if (firstMemoIndex !== undefined) {
+                                firstMemoInfo = {
+                                    index: parseInt(firstMemoIndex, 10),
+                                    content: taskComments[firstMemoIndex]
+                                };
+                            }
+                        }
+
                         const isExpanded = expandedOverdue[s.id];
                         const visibleOverdue = isExpanded ? overdue : overdue.slice(0, 2);
                         const hasMore = overdue.length > 2;
@@ -5377,7 +5391,18 @@
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-bold text-notion-text flex items-center gap-1">
                                                     {s.name} <span className="text-xs">{getStreakBadge(s.id)}</span>
-                                                    {hasMemo && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 ml-0.5 animate-pulse" title="과제 메모 있음"></div>}
+                                                    {hasMemo && (
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (firstMemoInfo) {
+                                                                    handleCommentClick(e, s.id, firstMemoInfo.index, date, firstMemoInfo.content);
+                                                                }
+                                                            }}
+                                                            className="ml-1 p-0.5 rounded-full hover:bg-indigo-100 transition-colors"
+                                                            title="과제 메모 보기/수정"
+                                                        ><span className="text-sm animate-pulse">💬</span></button>
+                                                    )}
                                                 </span>
                                                 <div className="flex items-end gap-2 mt-0.5">
                                                     <span className="text-[10px] text-notion-text-light whitespace-nowrap mb-0.5">{s.order}번</span>
