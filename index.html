@@ -3072,27 +3072,46 @@
                 setIsTesting(true);
                 setTestSuccess(false);
                 try {
+                    // [수정] Base64 문자열 대신 Blob(파일) 전송으로 변경 (실제 업로드 방식과 동일하게 맞춤)
+                    const b64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                    const bin = atob(b64);
+                    const len = bin.length;
+                    const u8 = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
+                    const blob = new Blob([u8], { type: "image/gif" });
+
                     const formData = new FormData();
-                    formData.append("image", "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+                    formData.append("image", blob, "test.gif");
+
                     const res = await fetch(`https://api.imgbb.com/1/upload?key=${cleanKey}`, {
                         method: "POST",
                         body: formData,
                     });
 
-                    if (res.status === 403) {
-                        throw new Error("접근이 거부되었습니다 (403). API 키가 올바른지 확인해주세요.");
+                    const responseText = await res.text();
+                    let data;
+                    try { data = JSON.parse(responseText); } catch (e) { data = null; }
+
+                    if (!res.ok) {
+                        let msg = `[HTTP ${res.status}] `;
+                        if (res.status === 403) msg += "Forbidden (접근 거부). ";
+                        
+                        if (data && data.error) msg += data.error.message;
+                        else if (responseText) msg += responseText.substring(0, 100);
+                        
+                        throw new Error(msg);
                     }
 
-                    const data = await res.json();
-                    if (data.success) {
+                    if (data && data.success) {
                         setTestSuccess(true);
                         showToast("✅ 연동 성공!");
                         setTimeout(() => setTestSuccess(false), 3000);
                     } else {
-                        throw new Error(data.error?.message || "연동 실패");
+                        throw new Error(data?.error?.message || "연동 실패 (응답 형식 오류)");
                     }
                 } catch (e) {
-                    showToast("❌ 테스트 실패: " + e.message);
+                    showToast("❌ " + e.message);
+                    console.error("ImgBB Test Error:", e);
                 } finally {
                     setIsTesting(false);
                 }
@@ -3144,6 +3163,7 @@
                                 <div className="bg-white p-2 rounded border border-slate-100 mt-2">
                                     <p className="font-bold text-slate-700 mb-1">💡 참고사항</p>
                                     <p className="text-slate-500">사진 파일은 ImgBB 서버에 저장되며, 앱 데이터 용량을 차지하지 않습니다.</p>
+                                    <p className="text-slate-500 mt-1 text-[10px] text-rose-500">* "Forbidden" 오류 시: API 키가 정확한지 확인하거나, 광고 차단(AdBlock) 기능을 꺼주세요.</p>
                                 </div>
                             </div>
                         )}
@@ -3316,15 +3336,30 @@
                             });
                             success = true;
                         } else if (test.type === 'imgbb') {
-                            const formData = new FormData();
-                            formData.append("image", "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
-                            const res = await fetch(`https://api.imgbb.com/1/upload?key=${test.key}`, {
-                                method: "POST",
-                                body: formData,
-                            });
-                            const data = await res.json();
-                            if (data.success) success = true;
-                            else errorMsg = "API 키 오류";
+                            try {
+                                const b64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                                const bin = atob(b64);
+                                const len = bin.length;
+                                const u8 = new Uint8Array(len);
+                                for (let i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
+                                const blob = new Blob([u8], { type: "image/gif" });
+
+                                const formData = new FormData();
+                                formData.append("image", blob, "test.gif");
+                                
+                                const res = await fetch(`https://api.imgbb.com/1/upload?key=${test.key}`, {
+                                    method: "POST",
+                                    body: formData,
+                                });
+                                const text = await res.text();
+                                let data;
+                                try { data = JSON.parse(text); } catch (e) { data = null; }
+
+                                if (res.ok && data && data.success) success = true;
+                                else errorMsg = `오류(${res.status}): ` + (data?.error?.message || text.substring(0, 50));
+                            } catch (e) {
+                                errorMsg = e.message;
+                            }
                         }
                     } catch (e) {
                         success = false;
