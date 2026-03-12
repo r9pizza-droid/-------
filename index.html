@@ -9353,7 +9353,8 @@ const firebaseConfig = {
                 const cleanGroups = groups.map(g => ({
                     list: g.map(s => ({ id: s.id, name: s.name, gender: s.gender, skill: s.skill, leader: s.leader, order: s.order }))
                 }));
-                batch.set(ref, { list: cleanGroups });
+                // [수정] 안전을 위해 merge: true 추가
+                batch.set(ref, { list: cleanGroups }, { merge: true });
             });
             try {
                 await batch.commit();
@@ -9399,7 +9400,8 @@ const firebaseConfig = {
                         const chunk = entries.slice(i, i + chunkSize);
                         chunk.forEach(([date, data]) => {
                             const ref = db.collection('classes').doc(appId).collection('records').doc(date);
-                            batch.set(ref, data);
+                            // [수정] merge: true 옵션 추가하여 데이터 덮어쓰기 방지 (중요!)
+                            batch.set(ref, data, { merge: true });
                         });
                         await batch.commit();
                     }
@@ -9979,8 +9981,8 @@ const firebaseConfig = {
                         isNotiFirstLoad.current = false;
                     }, err => console.error("알림 동기화 오류:", err));
             }
-            if (firestore && config && config.projectId) {
-                let classId = config.projectId; // 기본값 (학급 코드가 없을 경우 프로젝트 ID 사용)
+            if (firestore && config) {
+                let classId = user.uid; // [수정] 기본값을 user.uid로 변경 (원칙: 로그인한 사용자 기준)
                 
                 try {
                     // [개선] 1. 프로필 기반 appId 자동 조회 및 매핑
@@ -9990,7 +9992,7 @@ const firebaseConfig = {
                     if (profileDoc.exists) {
                         const userData = profileDoc.data();
                         if (userData.appId && userData.appId.trim()) {
-                            classId = userData.appId.trim(); // 저장된 학급 코드 사용
+                            classId = userData.appId.trim(); // 기존 저장된 학급 코드가 있다면 유지 (Fallback)
                         } else {
                             // appId 필드가 없으면 기본값으로 업데이트
                             await profileRef.set({ appId: classId }, { merge: true });
@@ -10009,6 +10011,8 @@ const firebaseConfig = {
                     setAppId(classId);
                 } catch (e) {
                     console.error("AppID Auto-mapping failed:", e);
+                    // 에러 발생 시에도 user.uid를 기본값으로 사용
+                    setAppId(user.uid);
                 }
 
                 logSystemEvent(`로그인 성공: ${user.email} (Class: ${classId})`);
