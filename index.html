@@ -11820,7 +11820,7 @@ useEffect(() => {
                 if (!db || !appId) return;
 
                 try {
-                    setToastMessage("클라우드에서 전체 데이터를 동기화 중...");
+                    setToastMessage(`클라우드(${appId})에서 데이터를 동기화 중...`);
                     
                     // 1. 학생 데이터
                     const studentSnapshot = await db.collection('classes').doc(appId).collection('studentData').get();
@@ -11876,10 +11876,10 @@ useEffect(() => {
                     const hydratedGroups = hydrateGroups({ ...groupsByDate, ...newGroups }, updatedStudents);
                     setGroupsByDate(hydratedGroups);
                     
-                    setToastMessage("전체 데이터 동기화 완료!");
+                    setToastMessage(`동기화 완료! (기록: ${Object.keys(newRecords).length}건, 모둠: ${Object.keys(newGroups).length}건)`);
                 } catch (e) {
                     console.error(e);
-                    setToastMessage("데이터 로드 실패: " + e.message);
+                    setToastMessage(`데이터 로드 실패(${appId}): ` + e.message);
                 }
             };
 
