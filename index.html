@@ -9880,11 +9880,35 @@ const firebaseConfig = {
                     }, err => console.error("알림 동기화 오류:", err));
             }
             if (firestore && config && config.projectId) {
-                logSystemEvent(`Firebase 로그인 성공: ${user.email}`);
+                let classId = config.projectId; // 기본값 (학급 코드가 없을 경우 프로젝트 ID 사용)
                 
-                const classId = config.projectId;
+                try {
+                    // [요청] 1. 프로필 기반 appId 조회
+                    const profileRef = firestore.collection('userProfiles').doc(user.uid);
+                    const profileDoc = await profileRef.get();
+                    
+                    if (profileDoc.exists && profileDoc.data().appId) {
+                        classId = profileDoc.data().appId; // 저장된 학급 코드 사용
+                    } else {
+                        // [요청] 3. 최초 사용자 처리: appId가 없으면 기본값으로 프로필 생성/업데이트
+                        await profileRef.set({
+                            appId: classId,
+                            email: user.email,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    }
 
-                unsubArtifacts = firestore.collection('artifacts').doc(config.projectId).collection('public').doc('data').onSnapshot(doc => {
+                    // [요청] 2. 로컬 스토리지 자동 저장 및 상태 업데이트
+                    localStorage.setItem('appId', classId);
+                    setAppId(classId);
+                } catch (e) {
+                    console.error("Auto-mapping appId failed:", e);
+                }
+
+                logSystemEvent(`Firebase 로그인 성공: ${user.email} (Class: ${classId})`);
+
+                // [요청] 4. 안전한 데이터 호출 (확정된 classId 사용)
+                unsubArtifacts = firestore.collection('artifacts').doc(classId).collection('public').doc('data').onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
                         if (d.students) setStudents(d.students);
