@@ -3174,7 +3174,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, allUsers, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers, handleUpdateAppId, adminLogs, currentUser }) => {
+        const SettingsModal = ({ isOpen, onClose, allUsers, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers, handleUpdateAppId, adminLogs, currentUser, handleMigration }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -4871,8 +4871,8 @@
                                                             <Icon d={PATHS.upload} size={14} /> 과거 데이터 가져오기 (마이그레이션)
                                                         </Btn>
                                                         <p className="text-[10px] text-slate-400 mt-1.5 text-center leading-tight">
-                                                            서버의 최신 데이터를 불러오거나,<br/>
-                                                            업데이트 전 과거 경로의 데이터를 현재 경로로 옮겨옵니다.
+                                                            서버의 최신 데이터(학생, 과제, 기록, 모둠)를 강제로 불러옵니다.<br/>
+                                                            (다른 기기에서 수정한 내용이 안 보일 때 사용하세요)
                                                         </p>
                                                     </div>
                                                 )}
@@ -9878,8 +9878,8 @@ const firebaseConfig = {
                                 await Promise.all(batches.map(b => b.commit()));
                             }
                         }
-                        setToastMessage("🎉 데이터 이사가 완료되었습니다! 새로고침합니다.");
-                        setTimeout(() => window.location.reload(), 2000);
+                        alert("데이터가 성공적으로 복구되었습니다.");
+                        window.location.reload();
                     } catch (e) { console.error(e); setToastMessage("마이그레이션 실패: " + e.message); }
                 });
             };
@@ -13776,6 +13776,7 @@ useEffect(() => {
                         handleSyncCommunityUsers={handleSyncCommunityUsers}
                         adminLogs={adminLogs}
                         currentUser={currentUser}
+                        handleMigration={handleMigration}
                     />
                     {showImgbbModal && (
                         <ImgbbSetupModal 
