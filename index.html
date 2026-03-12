@@ -9884,7 +9884,8 @@ const firebaseConfig = {
                     if (doc.exists) {
                         const d = doc.data();
                         if (d.students) setStudents(d.students);
-                        if (d.records) setRecords(prev => ({ ...d.records, ...prev })); 
+                        // [Mod] 초기화 시 전체 기록 로드 제거 (탭 클릭 시 로드)
+                        // if (d.records) setRecords(prev => ({ ...d.records, ...prev })); 
                         if (d.groupsByDate) {
                             const serverStudents = d.students || [];
                             const localStudents = studentsRef.current || [];
@@ -9942,30 +9943,62 @@ const firebaseConfig = {
 }, [sharedDb, firestore, config?.projectId, appConfig, isLocalMode]);
 
 // [Optimization] 과제 및 기록 데이터 Lazy Loading (기록, 통계 탭에서만 활성화)
+const cachedRecordsRef = useRef(null); // [New] 메모리 캐싱 (Records)
+const cachedTasksRef = useRef(null);   // [New] 메모리 캐싱 (Tasks)
+const unsubRecordsRef = useRef(null);  // [Safe] 리스너 관리 변수 (Records)
+const unsubTasksRef = useRef(null);    // [Safe] 리스너 관리 변수 (Tasks)
+
 useEffect(() => {
-    if (isLocalMode || !firestore || !appId || !currentUser) return;
+    const targetAppId = appId || config?.projectId;
     
-    let unsubRecords, unsubTasks;
+    // [Safe] 안전장치: 탭 이동 시 기존 리스너가 있다면 즉시 중단 (할당량 보호)
+    if (unsubTasksRef.current) { unsubTasksRef.current(); unsubTasksRef.current = null; }
+    if (unsubRecordsRef.current) { unsubRecordsRef.current(); unsubRecordsRef.current = null; }
+
+    if (isLocalMode || !firestore || !targetAppId || !currentUser) return;
 
     // 사용자가 '기록' 또는 '통계' 모드일 때만 데이터 구독
     if (mode === 'record' || mode === 'stats') {
+        
+        // [New] 캐시 데이터 확인 (이미 데이터가 있다면 파이어베이스 요청 스킵)
+        if (cachedRecordsRef.current && cachedTasksRef.current) {
+             setRecords(cachedRecordsRef.current);
+             setDailyTasks(cachedTasksRef.current.daily || {});
+             if (cachedTasksRef.current.weekly) setWeeklyTasks(cachedTasksRef.current.weekly);
+             if (cachedTasksRef.current.tags) setTags(cachedTasksRef.current.tags);
+             return; 
+        }
+
         // 1. 과제(Tasks) 데이터 구독
         try {
-            unsubTasks = firestore.collection('classes').doc(appId).collection('tasks').onSnapshot(snapshot => {
+            unsubTasksRef.current = firestore.collection('classes').doc(targetAppId).collection('tasks').onSnapshot(snapshot => {
                     snapshot.docChanges().forEach(change => {
+                        if (!cachedTasksRef.current) cachedTasksRef.current = { daily: {}, weekly: {}, tags: [] }; // 캐시 초기화
+
                         if (change.doc.id === 'settings') {
                             const data = change.doc.data();
-                            if (data.weekly) setWeeklyTasks(data.weekly);
-                            if (data.tags) setTags(data.tags);
+                            if (data.weekly) {
+                                setWeeklyTasks(data.weekly);
+                                cachedTasksRef.current.weekly = data.weekly;
+                            }
+                            if (data.tags) {
+                                setTags(data.tags);
+                                cachedTasksRef.current.tags = data.tags;
+                            }
                         } else {
                             if (change.type === 'removed') {
                                 setDailyTasks(prev => {
                                     const next = { ...prev };
                                     delete next[change.doc.id];
+                                    cachedTasksRef.current.daily = next;
                                     return next;
                                 });
                             } else {
-                                setDailyTasks(prev => ({ ...prev, [change.doc.id]: change.doc.data().list }));
+                                setDailyTasks(prev => {
+                                    const next = { ...prev, [change.doc.id]: change.doc.data().list };
+                                    cachedTasksRef.current.daily = next;
+                                    return next;
+                                });
                             }
                         }
                     });
@@ -9975,7 +10008,7 @@ useEffect(() => {
         // 2. 활동 기록(Records) 데이터 구독 (최근 3개월 제한)
         const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
         try {
-            unsubRecords = firestore.collection('classes').doc(appId).collection('records')
+            unsubRecordsRef.current = firestore.collection('classes').doc(targetAppId).collection('records')
                 .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
                 .onSnapshot(snapshot => {
                 setRecords(prev => {
@@ -9986,6 +10019,7 @@ useEffect(() => {
                         }
                         if (change.type === 'removed') delete next[change.doc.id];
                     });
+                    cachedRecordsRef.current = next; // 캐시 업데이트
                     return next;
                 });
             }, (error) => {
@@ -9998,21 +10032,26 @@ useEffect(() => {
     }
 
     return () => {
-        if (unsubTasks) unsubTasks();
-        if (unsubRecords) unsubRecords();
+        if (unsubTasksRef.current) { unsubTasksRef.current(); unsubTasksRef.current = null; }
+        if (unsubRecordsRef.current) { unsubRecordsRef.current(); unsubRecordsRef.current = null; }
     };
-}, [mode, firestore, appId, isLocalMode, currentUser]);
+}, [mode, firestore, appId, config, isLocalMode, currentUser]);
 
 // [Optimization] 모둠 데이터 Lazy Loading (모둠 탭에서만 활성화)
-useEffect(() => {
-    if (isLocalMode || !firestore || !appId || !currentUser) return;
-    
-    let unsubGroupResults;
+const unsubGroupResultsRef = useRef(null); // [Safe] 리스너 관리 변수 (Groups)
 
+useEffect(() => {
+    const targetAppId = appId || config?.projectId;
+    
+    // [Safe] 안전장치: 기존 리스너 중단
+    if (unsubGroupResultsRef.current) { unsubGroupResultsRef.current(); unsubGroupResultsRef.current = null; }
+
+    if (isLocalMode || !firestore || !targetAppId || !currentUser) return;
+    
     if (mode === 'group') {
         const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
         try {
-            unsubGroupResults = firestore.collection('classes').doc(appId).collection('groupResults')
+            unsubGroupResultsRef.current = firestore.collection('classes').doc(targetAppId).collection('groupResults')
                 .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
                 .onSnapshot(snapshot => {
                 const newGroups = {};
@@ -10028,9 +10067,9 @@ useEffect(() => {
     }
 
     return () => {
-        if (unsubGroupResults) unsubGroupResults();
+        if (unsubGroupResultsRef.current) { unsubGroupResultsRef.current(); unsubGroupResultsRef.current = null; }
     };
-}, [mode, firestore, appId, isLocalMode, currentUser]);
+}, [mode, firestore, appId, config, isLocalMode, currentUser]);
 
             // [New] 게시판 탭 진입 시 닉네임 설정 확인
             useEffect(() => {
