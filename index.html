@@ -7869,6 +7869,7 @@ const firebaseConfig = {
             const [isLoadingStats, setIsLoadingStats] = useState(false);
             const [adminLevelConfig, setAdminLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60 });
             const [showLogs, setShowLogs] = useState(false);
+            const [isUserListExpanded, setIsUserListExpanded] = useState(false);
 
             const handleOpenAdminDashboard = async () => {
                 // 철통 보안 검사
@@ -14204,18 +14205,18 @@ useEffect(() => {
                                         ) : (
                                             <div className="flex flex-col gap-6 custom-scroll overflow-y-auto max-h-[70vh]">
                                                 {/* 통계 카드 영역 */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                    <div className="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
-                                                        <span className="text-blue-800 font-bold text-sm block mb-1 whitespace-nowrap">📝 게시글</span>
-                                                        <span className="text-2xl font-black text-blue-600">{adminStats?.posts || 0}</span>
+                                                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                                                    <div className="bg-blue-50 p-2 sm:p-4 rounded-xl text-center border border-blue-100">
+                                                        <span className="text-blue-800 font-bold text-xs sm:text-sm block mb-1 whitespace-nowrap">📝 게시글</span>
+                                                        <span className="text-lg sm:text-2xl font-black text-blue-600">{adminStats?.posts || 0}</span>
                                                     </div>
-                                                    <div className="bg-green-50 p-4 rounded-xl text-center border border-green-100">
-                                                        <span className="text-green-800 font-bold text-sm block mb-1 whitespace-nowrap">💬 댓글</span>
-                                                        <span className="text-2xl font-black text-green-600">{adminStats?.comments || 0}</span>
+                                                    <div className="bg-green-50 p-2 sm:p-4 rounded-xl text-center border border-green-100">
+                                                        <span className="text-green-800 font-bold text-xs sm:text-sm block mb-1 whitespace-nowrap">💬 댓글</span>
+                                                        <span className="text-lg sm:text-2xl font-black text-green-600">{adminStats?.comments || 0}</span>
                                                     </div>
-                                                    <div className="bg-orange-50 p-4 rounded-xl text-center border border-orange-100">
-                                                        <span className="text-orange-800 font-bold text-sm block mb-1 whitespace-nowrap">🔔 오늘 알림</span>
-                                                        <span className="text-2xl font-black text-orange-600">{adminStats?.notis || 0}</span>
+                                                    <div className="bg-orange-50 p-2 sm:p-4 rounded-xl text-center border border-orange-100">
+                                                        <span className="text-orange-800 font-bold text-xs sm:text-sm block mb-1 whitespace-nowrap">🔔 오늘 알림</span>
+                                                        <span className="text-lg sm:text-2xl font-black text-orange-600">{adminStats?.notis || 0}</span>
                                                     </div>
                                                 </div>
 
@@ -14233,7 +14234,7 @@ useEffect(() => {
                                                         </div>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        {userList.map((user) => (
+                                                        {(isUserListExpanded ? userList : userList.slice(0, 5)).map((user) => (
                                                             <div key={user.uid} className="bg-white rounded-xl border border-slate-200 shadow-sm">
                                                                 <div 
                                                                     className="flex justify-between items-center p-3 cursor-pointer"
@@ -14261,6 +14262,18 @@ useEffect(() => {
                                                                 )}
                                                             </div>
                                                         ))}
+                                                        {userList.length > 5 && (
+                                                            <button 
+                                                                onClick={() => setIsUserListExpanded(!isUserListExpanded)}
+                                                                className="w-full py-2 text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                                                            >
+                                                                {isUserListExpanded ? (
+                                                                    <>접기 <Icon d={PATHS.down} size={14} className="rotate-180" /></>
+                                                                ) : (
+                                                                    <>+{userList.length - 5}명 더 보기 <Icon d={PATHS.down} size={14} /></>
+                                                                )}
+                                                            </button>
+                                                        )}
                                                         {userList.length === 0 && <div className="text-center text-xs text-slate-400 py-4">사용자 데이터가 없습니다.</div>}
                                                     </div>
                                                 </div>
