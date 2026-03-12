@@ -3124,10 +3124,10 @@
                     try { data = JSON.parse(responseText); } catch (e) { data = null; }
 
                     if (!res.ok) {
-                        let errorMsg = `HTTP ${res.status}: `;
+                        let errorMsg = `[HTTP ${res.status}] `;
                         
                         if (responseText.toLowerCase().includes("forbidden") || res.status === 403) {
-                            errorMsg = "현재 웹 환경 또는 사이트 출처에서 ImgBB 호출이 제한될 수 있습니다 (Forbidden).";
+                            errorMsg = "현재 웹사이트 환경 또는 ImgBB 정책에 의해 호출이 차단될 수 있습니다.\nAPI 키 형식 문제만은 아닐 수 있습니다.\n\n응답: " + responseText.substring(0, 100);
                         } else if (data && data.error && data.error.message) {
                             errorMsg += data.error.message;
                         } else {
@@ -3197,7 +3197,8 @@
                                 <div className="bg-white p-2 rounded border border-slate-100 mt-2">
                                     <p className="font-bold text-slate-700 mb-1">💡 참고사항</p>
                                     <p className="text-slate-500">사진 파일은 ImgBB 서버에 저장되며, 앱 데이터 용량을 차지하지 않습니다.</p>
-                                    <p className="text-slate-500 mt-1 text-[10px] text-rose-500">* "Forbidden" 오류 시: API 키가 정확한지 확인하거나, 광고 차단(AdBlock) 기능을 꺼주세요.</p>
+                                    <p className="text-slate-500 mt-1 text-[10px] text-rose-500">* "Forbidden" 오류 시: API 키가 노출되어 차단되었을 수 있습니다. 키를 새로 발급받아 주세요.</p>
+                                    <p className="text-slate-400 mt-0.5 text-[9px]">* 테스트는 1x1 이미지를 전송하며, 실제 업로드와 환경 차이가 있을 수 있습니다.</p>
                                 </div>
                             </div>
                         )}
@@ -3392,7 +3393,7 @@
                                 if (res.ok && data && data.success) success = true;
                                 else {
                                     if (data && data.error && data.error.message) errorMsg = data.error.message;
-                                    else if (text.toLowerCase().includes("forbidden") || res.status === 403) errorMsg = "웹 환경 제한 (Forbidden)";
+                                    else if (text.toLowerCase().includes("forbidden") || res.status === 403) errorMsg = "차단됨(Forbidden)";
                                     else errorMsg = `오류(${res.status})`;
                                 }
                             } catch (e) {
