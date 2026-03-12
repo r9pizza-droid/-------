@@ -3050,30 +3050,39 @@
             }, [isOpen, imgbbApiKey, isLocalMode]);
 
             const validateImgbbKey = (key) => {
-                return key && key.trim().length === 32;
+                if (!key) return false;
+                const clean = key.trim().replace(/^"|'|"$|'$/g, '');
+                return clean.length === 32;
             };
 
             const handlePasteKey = async () => {
                 try {
                     const text = await navigator.clipboard.readText();
                     if (text) {
-                        setApiKey(text.trim());
+                        setApiKey(text.trim().replace(/^"|'|"$|'$/g, ''));
                         showToast("붙여넣기 완료");
                     }
-                } catch (err) { showToast("붙여넣기 실패"); }
+                } catch (err) { showToast("붙여넣기 실패 (직접 입력해주세요)"); }
             };
 
             const handleTestConnection = async () => {
-                if (!apiKey) return showToast("API Key를 입력해주세요.");
+                const cleanKey = apiKey ? apiKey.trim().replace(/^"|'|"$|'$/g, '') : "";
+                
+                if (!cleanKey) return showToast("API Key를 입력해주세요.");
                 setIsTesting(true);
                 setTestSuccess(false);
                 try {
                     const formData = new FormData();
                     formData.append("image", "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
-                    const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+                    const res = await fetch(`https://api.imgbb.com/1/upload?key=${cleanKey}`, {
                         method: "POST",
                         body: formData,
                     });
+
+                    if (res.status === 403) {
+                        throw new Error("접근이 거부되었습니다 (403). API 키가 올바른지 확인해주세요.");
+                    }
+
                     const data = await res.json();
                     if (data.success) {
                         setTestSuccess(true);
@@ -3090,11 +3099,13 @@
             };
 
             const handleSave = () => {
-                setImgbbApiKey(apiKey);
+                const cleanKey = apiKey ? apiKey.trim().replace(/^"|'|"$|'$/g, '') : "";
+
+                setImgbbApiKey(cleanKey);
                 if (saveLocally) {
-                    localStorage.setItem('cls_imgbb_key', apiKey);
+                    localStorage.setItem('cls_imgbb_key', cleanKey);
                     if (!isLocalMode && db) {
-                        db.collection("settings").doc("imgbb").set({ apiKey: apiKey });
+                        db.collection("settings").doc("imgbb").set({ apiKey: cleanKey });
                     }
                 } else {
                     localStorage.removeItem('cls_imgbb_key');
@@ -5381,9 +5392,14 @@
                                 onClick={() => { if (!isLongPress.current) toggleCheck(s.id); }}
                                 className={`group relative flex flex-col bg-white rounded-md border transition-all duration-200 cursor-pointer overflow-hidden hover:bg-notion-bg-hover hover:-translate-y-1 active:scale-95 ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm hover:shadow-md"}`}>
                                 <div className={`h-1 w-full transition-colors duration-200 ${isDone ? 'bg-notion-blue' : 'bg-transparent'}`}></div>
+                                
+                                <div className={`absolute top-2 right-2 z-10 transition-all duration-300 rounded-full p-1 flex items-center justify-center ${isDone ? 'bg-blue-50 text-notion-blue opacity-100 scale-100 shadow-sm' : 'text-slate-300 opacity-0 group-hover:opacity-100 scale-75'}`}>
+                                    <Icon d={PATHS.check} size={20} strokeWidth={3} />
+                                </div>
+
                                 <div className="p-3 flex flex-col h-full min-h-[100px]">
                                     <div className="flex justify-between items-start mb-2">
-                                        <div className="flex items-start gap-3">
+                                        <div className="flex items-start gap-3 pr-6">
                                             {showPhoto && (
                                                 <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
                                                     {s.photoUrl ? (
@@ -5452,9 +5468,6 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className={`transition-all duration-300 ${isDone ? 'text-notion-blue opacity-100 scale-125' : 'text-notion-border opacity-0 group-hover:opacity-100 scale-100'}`}>
-                                            <Icon d={PATHS.check} size={20} strokeWidth={isDone ? 3 : 2} />
                                         </div>
                                     </div>
                                     {(currentTasks.length > 0 || overdue.length > 0) ? (
@@ -10042,16 +10055,29 @@ const firebaseConfig = {
                     }, err => console.error("알림 동기화 오류:", err));
             }
             if (firestore && config) {
-                // [Stable] appId는 무조건 로그인한 user.uid로 고정 (경로 통일)
-                const classId = user.uid;
-                
-                // [Clean] userProfiles.appId 조회 로직 제거 -> classes/{user.uid}/... 로 일원화
-                localStorage.setItem('appId', classId);
-                setAppId(classId);
+                let classId = "";
+                try {
+                    // [Rules] 1. userProfiles에서 appId 조회 (필수)
+                    const profileRef = firestore.collection('userProfiles').doc(user.uid);
+                    const profileSnap = await profileRef.get();
 
-                logSystemEvent(`로그인 성공: ${user.email} (Class: ${classId})`);
+                    if (profileSnap.exists && profileSnap.data().appId) {
+                        classId = profileSnap.data().appId;
+                    } else {
+                        // [Init] 2. 없으면 uid로 초기화 및 저장 (최초 1회)
+                        classId = user.uid;
+                        await profileRef.set({ 
+                            appId: classId,
+                            email: user.email,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    }
 
-                // [개선] 4. 확정된 Class ID로 데이터 구독 시작
+                    if (classId) {
+                        localStorage.setItem('appId', classId);
+                        setAppId(classId);
+                        logSystemEvent(`로그인 성공: ${user.email} (Class: ${classId})`);
+
                 unsubArtifacts = firestore.collection('artifacts').doc(classId).collection('public').doc('data').onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
@@ -10097,6 +10123,11 @@ const firebaseConfig = {
                     setIsLoading(false);
                     setToastMessage("데이터 로딩 오류: " + error.message);
                 });
+                    }
+                } catch (e) {
+                    console.error("AppID Setup Failed:", e);
+                    setToastMessage("계정 정보 설정 실패: " + e.message);
+                }
             }
         } else {
             logSystemEvent('Firebase 로그인 상태 아님', 'warning');
