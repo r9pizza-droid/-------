@@ -8504,23 +8504,25 @@ const firebaseConfig = {
             // [New] Community Logic
             const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags, resourceLink, resourceTitle) => {
                 try {
-                     // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
-                     setCommentAuthor(authorName);
-                     
                      const user = currentUser;
+                     // [New] 별칭 강제 적용 (수정 불가)
+                     const finalAuthorName = userNickname || authorName;
+
+                     // [New] 작성자 이름 상태 동기화 (댓글 작성 시에도 자동 적용되도록)
+                     setCommentAuthor(finalAuthorName);
 
                      if (editingPost) {
                         const updatedData = {
-                            title, content, authorName: authorName, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
+                            title, content, authorName: finalAuthorName, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
                         };
                         await sharedDb.collection('community').doc(editingPost.id).update(updatedData);
 
                         if (user) {
                             await sharedDb.collection('userProfiles').doc(user.uid).set({
                                 uid: user.uid,
-                                nickname: authorName,
-                                userNickname: authorName,
-                                name: authorName,
+                                nickname: finalAuthorName,
+                                userNickname: finalAuthorName,
+                                name: finalAuthorName,
                                 lastActive: new Date(),
                                 lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                             }, { merge: true });
@@ -8554,7 +8556,7 @@ const firebaseConfig = {
                         await sharedDb.collection('community').add({
                             title,
                             content,
-                            authorName: authorName,
+                            authorName: finalAuthorName,
                             authorBadge: currentBadge,
                             category,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -8572,9 +8574,9 @@ const firebaseConfig = {
                         if (user) {
                             await sharedDb.collection('userProfiles').doc(user.uid).set({
                                 uid: user.uid,
-                                nickname: authorName,
-                                userNickname: authorName,
-                                name: authorName,
+                                nickname: finalAuthorName,
+                                userNickname: finalAuthorName,
+                                name: finalAuthorName,
                                 lastActive: new Date(),
                                 lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                             }, { merge: true });
@@ -8582,13 +8584,13 @@ const firebaseConfig = {
 
                         setToastMessage("게시글이 등록되었습니다.");
                         localStorage.removeItem('cls_post_draft'); // [New] 등록 성공 시 임시 저장 삭제
-                        logToSharedDb('POST_CREATE', `게시글 작성: ${title}`, user?.uid, authorName);
+                        logToSharedDb('POST_CREATE', `게시글 작성: ${title}`, user?.uid, finalAuthorName);
                     }
 
                     // [New] 글 작성자 사용자 명단 등록 (수정 시에도 갱신)
                     if (user) {
                         await sharedDb.collection('userStats').doc(user.uid).set({ 
-                            nickname: authorName, 
+                            nickname: finalAuthorName, 
                             lastActive: new Date(), 
                             uid: user.uid 
                         }, { merge: true });
@@ -13517,10 +13519,9 @@ useEffect(() => {
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-xs font-bold text-slate-500">작성자</span>
                                                                         <input 
-                                                                            value={commentAuthor} 
-                                                                            onChange={e => setCommentAuthor(e.target.value)} 
-                                                                            placeholder="이름" 
-                                                                            className="w-24 p-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 bg-white font-bold text-slate-700" 
+                                                                            value={userNickname || commentAuthor} 
+                                                                            readOnly
+                                                                            className="w-24 p-2 border border-slate-200 rounded-lg text-xs outline-none bg-slate-100 text-slate-500 font-bold cursor-not-allowed" 
                                                                         />
                                                                     </div>
                                                                     <div className="flex gap-2">
@@ -14158,7 +14159,7 @@ useEffect(() => {
                     <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => { setShowUpdateNotes(false); localStorage.setItem('cls_last_version', CURRENT_VERSION); }} showToast={setToastMessage} notes={UPDATE_NOTES} />
                     {showAdminDashboard && (
                         <div 
-                            className="fixed inset-0 z-[5000] bg-black/30 backdrop-blur-sm overflow-y-auto" 
+                            className="fixed inset-0 z-[5000] bg-black/30 backdrop-blur-sm overflow-y-auto overflow-x-hidden" 
                             onClick={() => setShowAdminDashboard(false)} // 뒷배경 클릭 시 닫기
                         >
                             {/* 모달창 정렬용 컨테이너 (여기는 클릭해도 안 닫힘) */}
@@ -14172,13 +14173,13 @@ useEffect(() => {
                                     </div>
                                     
                                     {/* --- 모달 본문 (기존 콘텐츠 그대로 유지) --- */}
-                                    <div className="p-6">
+                                    <div className="p-4 md:p-6">
                                         {isLoadingStats ? (
                                             <div className="text-center py-8 text-slate-500 animate-pulse font-medium">데이터를 집계 중입니다...<br/><span className="text-xs font-normal text-slate-400 mt-2 block">(글이 많을수록 시간이 조금 걸립니다)</span></div>
                                         ) : (
                                             <div className="flex flex-col gap-6 custom-scroll overflow-y-auto max-h-[70vh]">
                                                 {/* 통계 카드 영역 */}
-                                                <div className="grid grid-cols-3 gap-3">
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                                     <div className="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
                                                         <span className="text-blue-800 font-bold text-sm block mb-1 whitespace-nowrap">📝 게시글</span>
                                                         <span className="text-2xl font-black text-blue-600">{adminStats?.posts || 0}</span>

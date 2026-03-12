@@ -89,11 +89,12 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     useEffect(() => {
         if (isOpen && !initialPost) {
             if (title.trim() || content.trim() || tags.length > 0 || imageUrls.length > 0 || resourceLink.trim()) {
-                const draft = { category, title, authorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+                const finalAuthorName = userNickname || authorName;
+                const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
                 localStorage.setItem('cls_post_draft', JSON.stringify(draft));
             }
         }
-    }, [category, title, authorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
+    }, [category, title, authorName, userNickname, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
 
     useEffect(() => {
         if (isOpen && canUseQuill) {
@@ -283,19 +284,21 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     };
 
     const handleManualSaveDraft = () => {
-        const draft = { category, title, authorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+        const finalAuthorName = userNickname || authorName;
+        const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
         localStorage.setItem('cls_post_draft', JSON.stringify(draft));
         if (showToast) showToast("임시 저장되었습니다.");
         else alert("임시 저장되었습니다.");
     };
 
     const handleSubmit = () => {
-        if (!title.trim() || !authorName.trim() || !content.trim() || !postPassword.trim()) {
+        const finalAuthorName = userNickname || authorName;
+        if (!title.trim() || !finalAuthorName.trim() || !content.trim() || !postPassword.trim()) {
             alert("모든 항목을 입력해주세요.");
             return;
         }
-        localStorage.setItem('community_authorName', authorName);
-        onSave(title, content, authorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle);
+        localStorage.setItem('community_authorName', finalAuthorName);
+        onSave(title, content, finalAuthorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle);
     };
 
     if (!isOpen) return null;
@@ -323,7 +326,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">작성자</label>
-                    <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="작성자 이름" />
+                    <input value={userNickname || authorName} readOnly className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none bg-slate-100 text-slate-500 font-bold cursor-not-allowed" placeholder="작성자 이름" />
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">비밀번호</label>
