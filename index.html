@@ -21,6 +21,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" data-app-script="true"></script>
     <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js" data-app-script="true"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" data-app-script="true"></script>
+    <script type="text/babel" src="components/PostModal.js" data-app-script="true"></script>
+    <script type="text/babel" src="components/StatsGrassModal.js" data-app-script="true"></script>
     
            
     
@@ -13009,7 +13011,7 @@ useEffect(() => {
                                                                                 <span>{dayjs(post.createdAt).format('MM.DD')}</span>
                                                                             </div>
                                                                         </div>
-                                                                        {isExpanded && (
+                                                                        {isExpanded && (isAdmin || (currentUser && post.uid === currentUser.uid)) && (
                                                                             <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100 animate-fade-in" onClick={e => e.stopPropagation()}>
                                                                                 <button onClick={(e) => { e.stopPropagation(); handleEditPost(post); }} className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-200 transition-colors font-bold">
                                                                                     <Icon d={PATHS.edit} size={14}/> 수정
@@ -13072,7 +13074,7 @@ useEffect(() => {
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                {isExpanded && (
+                                                                {isExpanded && (isAdmin || (currentUser && post.uid === currentUser.uid)) && (
                                                                     <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100 animate-fade-in" onClick={e => e.stopPropagation()}>
                                                                         <button onClick={(e) => { e.stopPropagation(); handleEditPost(post); }} className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-200 transition-colors font-bold">
                                                                             <Icon d={PATHS.edit} size={14}/> 수정
@@ -13152,12 +13154,16 @@ useEffect(() => {
                                                                 <span className="text-xs font-bold">목록으로</span>
                                                             </button>
                                                             <div className="flex gap-2">
-                                                                <button onClick={() => handleEditPost(selectedPost)} className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-200 transition-colors font-bold">
-                                                                    <Icon d={PATHS.edit} size={14}/> 수정
-                                                                </button>
-                                                                <button onClick={() => handleDeletePost(selectedPost)} className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-rose-200 transition-colors font-bold">
-                                                                    <Icon d={PATHS.trash} size={14}/> 삭제
-                                                                </button>
+                                                                {(isAdmin || (currentUser && selectedPost.uid === currentUser.uid)) && (
+                                                                    <>
+                                                                        <button onClick={() => handleEditPost(selectedPost)} className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-200 transition-colors font-bold">
+                                                                            <Icon d={PATHS.edit} size={14}/> 수정
+                                                                        </button>
+                                                                        <button onClick={() => handleDeletePost(selectedPost)} className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-rose-200 transition-colors font-bold">
+                                                                            <Icon d={PATHS.trash} size={14}/> 삭제
+                                                                        </button>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </div>
 

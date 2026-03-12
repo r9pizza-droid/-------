@@ -404,3 +404,5 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         </BaseModal>
     );
 };
+
+window.PostModal = PostModal;

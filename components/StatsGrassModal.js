@@ -2115,3 +2115,5 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         </div>
     );
 };
+
+window.StatsGrassModal = StatsGrassModal;
