@@ -3172,7 +3172,7 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, allUsers, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers }) => {
+        const SettingsModal = ({ isOpen, onClose, allUsers, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers, handleUpdateAppId, adminLogs }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
@@ -3218,6 +3218,7 @@
             const [isVacStartCalOpen, setIsVacStartCalOpen] = useState(false);
             const [isVacEndCalOpen, setIsVacEndCalOpen] = useState(false);
             const [isVacationSectionOpen, setIsVacationSectionOpen] = useState(false);
+            const [showLogs, setShowLogs] = useState(false);
             const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('cls_dark_mode') === 'true');
 
             const toggleDarkMode = (e) => {
@@ -3499,16 +3500,16 @@
                         await userApp.auth().signOut();
                     }
                     
-                    // 2. 브라우저에 저장된 API 키(설정값), UID, 아이디/비번을 흔적도 없이 지움!
-                    localStorage.removeItem('cls_fb_config'); 
-                    localStorage.removeItem('cls_admin_uid'); 
-                    localStorage.removeItem('cls_fb_id');
-                    localStorage.removeItem('cls_fb_pw');
+                    // [추가] 기본 인증 인스턴스(게시판 등)도 로그아웃
+                    await firebase.auth().signOut();
                     
-                    // [New] 프로젝트 설정값 명시적 제거
-                    localStorage.removeItem('firebaseConfig');
-                    localStorage.removeItem('appId');
-                    localStorage.removeItem('checklist_config'); // [Fix] 설정 파일 명시적 제거
+                    // 2. 브라우저에 저장된 API 키(설정값), UID, 아이디/비번을 흔적도 없이 지움!
+                    const keysToRemove = [
+                        'cls_fb_config', 'cls_admin_uid', 'cls_fb_id', 'cls_fb_pw',
+                        'firebaseConfig', 'appId', 'checklist_config',
+                        'cls_ai_key', 'cls_notion_key', 'cls_notion_db_id', 'cls_google_sheet_url'
+                    ];
+                    keysToRemove.forEach(k => localStorage.removeItem(k));
 
                     // 저장소 전체를 핵폭탄급으로 한 번 더 날려줌 (캐시 꼬임 완벽 차단)
                     localStorage.clear(); 
@@ -7299,6 +7300,20 @@ const firebaseConfig = {
     console.error("❌ 게시판 앱 연결 실패:", e);
 }
 
+        // [New] 활동 로그 저장 헬퍼 함수 (전역)
+        const logToSharedDb = async (type, message, uid, nickname) => {
+            if (!sharedDb) return;
+            try {
+                await sharedDb.collection('activityLogs').add({
+                    uid: uid || 'anonymous',
+                    userName: nickname || 'Unknown',
+                    type: type,
+                    message: message,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (e) { console.error("Activity logging failed:", e); }
+        };
+
         const Lightbox = ({ isOpen, onClose, images, initialIndex = 0 }) => {
             const [index, setIndex] = useState(initialIndex);
             
@@ -7447,6 +7462,17 @@ const firebaseConfig = {
                     try {
                         await sharedDb.collection('userProfiles').doc(uid).update({ name: newName.trim() });
                         setToastMessage("별칭이 수정되었습니다.");
+                        fetchUserList();
+                    } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
+                }
+            };
+
+            const handleUpdateAppId = async (uid, currentAppId) => {
+                const newAppId = prompt("새로운 학급 코드(App ID)를 입력하세요:", currentAppId);
+                if (newAppId !== null) {
+                    try {
+                        await sharedDb.collection('userProfiles').doc(uid).set({ appId: newAppId.trim() }, { merge: true });
+                        setToastMessage("학급 코드가 수정되었습니다.");
                         fetchUserList();
                     } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
                 }
@@ -7671,6 +7697,7 @@ const firebaseConfig = {
             // [New] 관리자 대시보드 상태 및 함수
             const [showAdminDashboard, setShowAdminDashboard] = useState(false);
             const [adminStats, setAdminStats] = useState({ posts: 0, comments: 0, notis: 0 });
+            const [adminLogs, setAdminLogs] = useState([]);
             const [isLoadingStats, setIsLoadingStats] = useState(false);
             const [adminLevelConfig, setAdminLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60 });
 
@@ -7693,12 +7720,13 @@ const firebaseConfig = {
                     const todayStart = new Date();
                     todayStart.setHours(0, 0, 0, 0);
 
-                    const [postsSnap, commentsSnap, notisSnap] = await Promise.all([
+                    const [postsSnap, commentsSnap, notisSnap, logsSnap] = await Promise.all([
                         sharedDb.collection('community').get(),
                         sharedDb.collectionGroup('comments').get(),
                         sharedDb.collection('notifications')
                             .where('createdAt', '>=', todayStart)
-                            .get()
+                            .get(),
+                        sharedDb.collection('activityLogs').orderBy('createdAt', 'desc').limit(100).get()
                     ]);
 
                     // [Fix] 데이터 용량 계산 추가 (App 컴포넌트 내 dataUsage 변수 부재 해결)
@@ -7718,6 +7746,13 @@ const firebaseConfig = {
                         kb: kb,
                         percent: percent
                     });
+                    
+                    const logs = logsSnap.docs.map(doc => ({ 
+                        id: doc.id, 
+                        ...doc.data(), 
+                        createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date() 
+                    }));
+                    setAdminLogs(logs);
                 } catch (e) {
                     console.error("통계 로딩 실패:", e);
                     setToastMessage("통계 불러오기 실패: " + e.message);
@@ -8394,6 +8429,7 @@ const firebaseConfig = {
 
                         setToastMessage("게시글이 등록되었습니다.");
                         localStorage.removeItem('cls_post_draft'); // [New] 등록 성공 시 임시 저장 삭제
+                        logToSharedDb('POST_CREATE', `게시글 작성: ${title}`, user?.uid, authorName);
                     }
 
                     // [New] 글 작성자 사용자 명단 등록 (수정 시에도 갱신)
@@ -8443,6 +8479,7 @@ const firebaseConfig = {
         try {
             await sharedDb.collection('community').doc(post.id).delete();
             setToastMessage("게시글이 삭제되었습니다.");
+            logToSharedDb('POST_DELETE', `게시글 삭제: ${post.title}`, currentUser?.uid, userNickname || 'Unknown');
             setCommunityPosts(prev => prev.filter(p => p.id !== post.id)); // 화면 즉시 반영
             
             // [Fix] 상세 보기 중인 글이 삭제되면 목록으로 돌아가기
@@ -8713,6 +8750,7 @@ const firebaseConfig = {
                 }
             }
             
+            logToSharedDb('COMMENT_CREATE', `댓글 작성 (Post: ${postId})`, uid, userNickname);
         } catch (e) { 
             console.error(e); 
             setToastMessage("댓글 등록 실패: " + e.message);
@@ -8736,6 +8774,7 @@ const firebaseConfig = {
 
             // 화면에서 즉시 제거
             setComments(prev => prev.filter(c => c.id !== commentId));
+            logToSharedDb('COMMENT_DELETE', `댓글 삭제 (Post: ${postId})`, currentUid, userNickname || 'Unknown');
         } catch (e) { 
             console.error(e); 
             setToastMessage("댓글 삭제 실패: " + e.message);
@@ -9845,6 +9884,7 @@ const firebaseConfig = {
                         await userDocRef.set({
                             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                         }, { merge: true });
+                        logToSharedDb('LOGIN', '사용자 접속', user.uid, userDoc.data().userNickname);
                     } // 프로필이 없으면, 게시판 탭에 진입할 때 설정 모달을 띄웁니다.
                 } catch (e) {
                     console.error("프로필 확인 실패:", e);
@@ -9883,14 +9923,20 @@ const firebaseConfig = {
                 let classId = config.projectId; // 기본값 (학급 코드가 없을 경우 프로젝트 ID 사용)
                 
                 try {
-                    // [요청] 1. 프로필 기반 appId 조회
+                    // [개선] 1. 프로필 기반 appId 자동 조회 및 매핑
                     const profileRef = firestore.collection('userProfiles').doc(user.uid);
                     const profileDoc = await profileRef.get();
                     
-                    if (profileDoc.exists && profileDoc.data().appId) {
-                        classId = profileDoc.data().appId; // 저장된 학급 코드 사용
+                    if (profileDoc.exists) {
+                        const userData = profileDoc.data();
+                        if (userData.appId && userData.appId.trim()) {
+                            classId = userData.appId.trim(); // 저장된 학급 코드 사용
+                        } else {
+                            // appId 필드가 없으면 기본값으로 업데이트
+                            await profileRef.set({ appId: classId }, { merge: true });
+                        }
                     } else {
-                        // [요청] 3. 최초 사용자 처리: appId가 없으면 기본값으로 프로필 생성/업데이트
+                        // [개선] 3. 최초 사용자 프로필 생성
                         await profileRef.set({
                             appId: classId,
                             email: user.email,
@@ -9898,16 +9944,16 @@ const firebaseConfig = {
                         }, { merge: true });
                     }
 
-                    // [요청] 2. 로컬 스토리지 자동 저장 및 상태 업데이트
+                    // [개선] 2. 로컬 스토리지 및 상태 동기화
                     localStorage.setItem('appId', classId);
                     setAppId(classId);
                 } catch (e) {
-                    console.error("Auto-mapping appId failed:", e);
+                    console.error("AppID Auto-mapping failed:", e);
                 }
 
-                logSystemEvent(`Firebase 로그인 성공: ${user.email} (Class: ${classId})`);
+                logSystemEvent(`로그인 성공: ${user.email} (Class: ${classId})`);
 
-                // [요청] 4. 안전한 데이터 호출 (확정된 classId 사용)
+                // [개선] 4. 확정된 Class ID로 데이터 구독 시작
                 unsubArtifacts = firestore.collection('artifacts').doc(classId).collection('public').doc('data').onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
@@ -13504,7 +13550,9 @@ useEffect(() => {
                         isLoadingUsers={isLoadingUsers}
                         fetchUserList={fetchUserList}
                         handleUpdateUserName={handleUpdateUserName}
+                        handleUpdateAppId={handleUpdateAppId}
                         handleSyncCommunityUsers={handleSyncCommunityUsers}
+                        adminLogs={adminLogs}
                     />
                     {showImgbbModal && (
                         <ImgbbSetupModal 
@@ -13784,6 +13832,7 @@ useEffect(() => {
                                                         <span className="text-2xl font-black text-orange-600">{adminStats?.notis || 0}</span>
                                                     </div>
                                                 </div>
+
                                                 {/* [New] 전체 사용자 관리 섹션 (테이블) */}
                                                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mt-6">
                                                     <div className="flex justify-between items-center mb-4">
@@ -13813,10 +13862,12 @@ useEffect(() => {
                                                                             <p><strong>이메일:</strong> {user.email || '-'}</p>
                                                                             <p><strong>최근 접속:</strong> {user.lastActive ? dayjs(user.lastActive).format('YY.MM.DD HH:mm') : '-'}</p>
                                                                             <p className="flex items-center gap-1"><strong>UID:</strong> <span className="font-mono text-slate-400 truncate max-w-[200px]">{user.uid}</span> <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(user.uid); setToastMessage("UID가 복사되었습니다."); }} className="text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 transition-colors" title="UID 복사"><Icon d={PATHS.copy} size={12}/></button></p>
+                                                                            <p><strong>App ID:</strong> <span className="font-mono text-indigo-500 font-bold">{user.appId || "(미설정)"}</span></p>
                                                                         </div>
                                                                         <div className="flex gap-2 flex-wrap justify-end pt-2 border-t border-slate-100">
                                                                             <button onClick={() => handleBlockUser(user.uid, user.isBlocked)} className={`text-[10px] px-2 py-1 rounded border ${user.isBlocked ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}>{user.isBlocked ? "해제" : "차단"}</button>
                                                                             <button onClick={() => handleResetUserStats(user.uid)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">초기화</button>
+                                                                            <button onClick={() => handleUpdateAppId(user.uid, user.appId)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">App ID</button>
                                                                             <button onClick={() => handleUpdateUserName(user.uid, user.name)} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 text-slate-600">이름</button>
                                                                             <button onClick={() => handleDeleteUser(user.uid)} className="text-[10px] bg-rose-50 border border-rose-200 px-2 py-1 rounded hover:bg-rose-100 text-rose-600">삭제</button>
                                                                         </div>
@@ -13826,6 +13877,33 @@ useEffect(() => {
                                                         ))}
                                                         {userList.length === 0 && <div className="text-center text-xs text-slate-400 py-4">사용자 데이터가 없습니다.</div>}
                                                     </div>
+                                                </div>
+
+                                                {/* [New] 활동 로그 조회 섹션 */}
+                                                <div className="bg-white p-4 rounded-2xl border border-slate-200 mt-4 shadow-sm">
+                                                    <div 
+                                                        className="flex justify-between items-center cursor-pointer select-none"
+                                                        onClick={() => setShowLogs(!showLogs)}
+                                                    >
+                                                        <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm"><span className="text-lg">📜</span> 활동 로그 (최근 100건)</h4>
+                                                        <Icon d={PATHS.down} size={16} className={`text-slate-400 transition-transform ${showLogs ? 'rotate-180' : ''}`} />
+                                                    </div>
+                                                    {showLogs && (
+                                                        <div className="mt-4 max-h-60 overflow-y-auto custom-scroll space-y-2 animate-fade-in border-t border-slate-100 pt-2">
+                                                            {adminLogs && adminLogs.length > 0 ? adminLogs.map((log) => (
+                                                                <div key={log.id} className="text-xs p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col gap-1">
+                                                                    <div className="flex justify-between items-center text-slate-400">
+                                                                        <span className="font-mono">{dayjs(log.createdAt).format('YY-MM-DD HH:mm:ss')}</span>
+                                                                        <span className={`px-1.5 py-0.5 rounded font-bold ${log.type === 'LOGIN' ? 'bg-green-100 text-green-700' : 'bg-indigo-100 text-indigo-700'}`}>{log.type}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-start gap-2">
+                                                                        <span className="font-bold text-slate-700">{log.userName}</span>
+                                                                        <span className="text-slate-600 flex-1 text-right break-all">{log.message}</span>
+                                                                    </div>
+                                                                </div>
+                                                            )) : <div className="text-center text-xs text-slate-400 py-4">로그 기록이 없습니다.</div>}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* 파이어베이스 용량 확인 버튼 영역 */}
