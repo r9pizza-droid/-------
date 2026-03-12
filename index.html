@@ -10123,7 +10123,7 @@ const firebaseConfig = {
             }, []);
 
     React.useEffect(() => {
-        let unsubStats, unsubNoti, unsubArtifacts;
+        let unsubStats, unsubNoti, unsubArtifacts, unsubSettings;
     
     // [Fix] myClassApp이 존재하면 해당 앱의 Auth를 사용, 아니면 Default(shared) 사용
     const userApp = firebase.apps.find(app => app.name === 'myClassApp');
@@ -10135,6 +10135,7 @@ const firebaseConfig = {
         if (unsubStats) unsubStats();
         if (unsubNoti) unsubNoti();
         if (unsubArtifacts) unsubArtifacts();
+        if (unsubSettings) unsubSettings();
         if (user) {
             if (sharedDb) {
                 unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
@@ -10209,6 +10210,17 @@ const firebaseConfig = {
                         setAppId(classId);
                         logSystemEvent(`로그인 성공: ${user.email} (Class: ${classId})`);
 
+                // [New] 설정 데이터 실시간 동기화 (Firestore settings/config 감시)
+                unsubSettings = firestore.collection('classes').doc(classId).collection('settings').doc('config')
+                    .onSnapshot(doc => {
+                        if (doc.exists) {
+                            const remoteConfig = doc.data();
+                            const newConfig = { ...remoteConfig, version: CURRENT_VERSION };
+                            setAppConfig(newConfig);
+                            localStorage.setItem('cls_app_config', JSON.stringify(newConfig));
+                        }
+                    }, err => console.error("Settings sync error:", err));
+
                 unsubArtifacts = firestore.collection('artifacts').doc(classId).collection('public').doc('data').onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
@@ -10239,6 +10251,13 @@ const firebaseConfig = {
                         if (d.notion_portfolio_db_id) { localStorage.setItem('cls_notion_portfolio_db_id', d.notion_portfolio_db_id); setPortfolioDbId(d.notion_portfolio_db_id); }
                         if (d.studentMap) { setStudentMap(d.studentMap); localStorage.setItem('cls_student_map', JSON.stringify(d.studentMap)); }
                         if (d.portfolio_mode !== undefined) { setIsPortfolioMode(d.portfolio_mode); localStorage.setItem('cls_portfolio_mode', d.portfolio_mode); }
+                        
+                        // [Fix] 앱 설정(파비콘, 테마 등) 실시간 동기화 추가
+                        if (d.config) {
+                            const newConfig = { ...d.config, version: CURRENT_VERSION }; // 버전은 현재 클라이언트 버전 유지
+                            setAppConfig(newConfig);
+                            localStorage.setItem('cls_app_config', JSON.stringify(newConfig));
+                        }
                         
                         setIsLoading(false);
                         if (!localStorage.getItem('cls_intro_shown')) {
@@ -10273,6 +10292,7 @@ const firebaseConfig = {
         if (unsubStats) unsubStats();
         if (unsubNoti) unsubNoti();
         if (unsubArtifacts) unsubArtifacts();
+        if (unsubSettings) unsubSettings();
     };
     }, [sharedDb, firestore, config?.projectId, isLocalMode]); // [Fix] appConfig 의존성 제거 (Ref 사용)
 
@@ -10507,6 +10527,14 @@ useEffect(() => {
                             if (k === 'cls_daily_tasks') { saveTasksToFirestore({ dailyTasks: v }); continue; } // [New] 과제 데이터 분리
                             if (k === 'cls_weekly_tasks') { saveTasksToFirestore({ weeklyTasks: v }); continue; }
                             if (k === 'cls_tags') { saveTasksToFirestore({ tags: v }); continue; }
+                            
+                            // [New] 앱 설정 데이터 분리 저장 (실시간 동기화용)
+                            if (k === 'cls_app_config') {
+                                const configRef = db.collection('classes').doc(appId).collection('settings').doc('config');
+                                batch.set(configRef, v, { merge: true });
+                                continue;
+                            }
+                            
                             if (k === 'cls_student_map') { payload['studentMap'] = JSON.parse(JSON.stringify(v)); continue; }
                             const field = k.replace('cls_', '').replace('app_', '').replace('_date', 'ByDate');
                             const cleanData = JSON.parse(JSON.stringify(v));
