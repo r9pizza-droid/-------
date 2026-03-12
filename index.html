@@ -9313,21 +9313,37 @@ const firebaseConfig = {
                 }
             };
 
+            // [New] Favicon & Manifest Management Ref
+            const prevManifestUrlRef = useRef(null);
+
             useEffect(() => {
                 const updateIcons = async () => {
                     const defaultSvg = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>";
                     const iconSrc = appConfig.favicon || defaultSvg;
                     
-                    // [Fix] 브라우저 캐시 문제 해결을 위해 기존 태그 제거 후 재생성
-                    const existingFavicon = document.getElementById('app-favicon');
-                    if (existingFavicon) existingFavicon.remove();
-                    const newFavicon = document.createElement('link');
-                    newFavicon.id = 'app-favicon';
-                    newFavicon.rel = 'icon';
-                    newFavicon.href = iconSrc;
-                    document.head.appendChild(newFavicon);
+                    // 1. Favicon Versioning (Cache Busting)
+                    const versionSuffix = iconSrc.startsWith('data:') ? `#v=${Date.now()}` : `?v=${Date.now()}`;
+                    const finalIconHref = iconSrc + versionSuffix;
 
-                    // [iOS 호환성] 이미지를 캔버스에 그려서 PNG로 변환 (흰색 배경 추가)
+                    // 2. Helper to update or create link
+                    const updateLink = (id, rel, href, type, sizes) => {
+                        let link = document.getElementById(id);
+                        if (!link) {
+                            link = document.createElement('link');
+                            link.id = id;
+                            link.rel = rel;
+                            if (type) link.type = type;
+                            if (sizes) link.sizes = sizes;
+                            document.head.appendChild(link);
+                        }
+                        link.href = href;
+                    };
+
+                    // 3. Update Main & Fallback Icons
+                    updateLink('app-favicon', 'icon', finalIconHref);
+                    updateLink('app-shortcut-icon', 'shortcut icon', finalIconHref);
+
+                    // 4. Generate PNG for Apple Icon & Manifest (if needed)
                     const getPngDataUrl = (src) => {
                         return new Promise((resolve) => {
                             const img = new Image();
@@ -9336,29 +9352,31 @@ const firebaseConfig = {
                                 const canvas = document.createElement('canvas');
                                 canvas.width = 192; canvas.height = 192;
                                 const ctx = canvas.getContext('2d');
-                                ctx.fillStyle = "#ffffff"; // iOS는 투명 배경을 검게 처리하므로 흰색 배경 필수
+                                ctx.fillStyle = "#ffffff"; 
                                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                                 ctx.drawImage(img, 0, 0, 192, 192);
                                 resolve(canvas.toDataURL('image/png'));
                             };
-                            img.onerror = () => resolve(src); // 실패 시 원본 반환
+                            img.onerror = () => resolve(defaultSvg);
                             img.src = src;
                         });
                     };
 
                     let pngIcon = iconSrc;
-                    if (iconSrc.startsWith('data:image')) {
+                    // If it's SVG data URI or external URL, convert to PNG Data URI
+                    if (iconSrc.startsWith('data:image/svg') || !iconSrc.startsWith('data:')) {
                         try { pngIcon = await getPngDataUrl(iconSrc); } catch (e) { console.error(e); }
                     }
 
-                    // [Fix] 기존 태그 제거 후 재생성 (브라우저 인식 강제)
-            const existingAppleLinks = document.querySelectorAll('link[rel*="apple-touch-icon"]');
-                    existingAppleLinks.forEach(el => el.remove());
-                    const appleIconLink = document.createElement('link');
-                    appleIconLink.rel = 'apple-touch-icon';
-                    document.head.appendChild(appleIconLink);
-                    appleIconLink.href = pngIcon;
+                    updateLink('app-favicon-png', 'icon', pngIcon, 'image/png', '192x192');
+                    
+                    // Clean up any duplicate apple-touch-icons
+                    document.querySelectorAll('link[rel="apple-touch-icon"]').forEach(el => {
+                        if (el.id !== 'app-apple-touch-icon') el.remove();
+                    });
+                    updateLink('app-apple-touch-icon', 'apple-touch-icon', pngIcon);
 
+                    // 5. Update Manifest
                     const manifest = {
                         name: appConfig.recordTitle || "다했나요!?",
                         short_name: appConfig.recordTitle || "다했나요!?",
@@ -9373,16 +9391,13 @@ const firebaseConfig = {
                     const blob = new Blob([stringManifest], {type: 'application/json'});
                     const manifestURL = URL.createObjectURL(blob);
                     
-                    const existingManifest = document.getElementById('app-manifest');
-                    if (existingManifest) {
-                        URL.revokeObjectURL(existingManifest.href);
-                        existingManifest.remove();
+                    // Revoke old blob to prevent memory leaks
+                    if (prevManifestUrlRef.current) {
+                        URL.revokeObjectURL(prevManifestUrlRef.current);
                     }
-                    const manifestLink = document.createElement('link');
-                    manifestLink.id = 'app-manifest';
-                    manifestLink.rel = 'manifest';
-                    document.head.appendChild(manifestLink);
-                    manifestLink.href = manifestURL;
+                    
+                    updateLink('app-manifest', 'manifest', manifestURL);
+                    prevManifestUrlRef.current = manifestURL;
                 };
                 updateIcons();
             }, [appConfig.favicon, appConfig.recordTitle]);
@@ -9619,15 +9634,22 @@ const firebaseConfig = {
                 );
                 setStudents(updatedStudents);
                 
-                // 2. 선생님의 기존 방식대로 저장 (로컬 + Firebase)
+                // 2. 저장 (순차적 await 적용하여 동기화 보장)
                 if (!isLocalMode) {
-                    saveData('cls_students', updatedStudents); 
-                    if (typeof db !== 'undefined' && typeof appId !== 'undefined') {
-                        db.collection("classes").doc(appId).collection("studentData").doc(String(studentId)).set({ 
-                            photoUrl: photoURL 
-                        }, { merge: true })
-                        .then(() => console.log("Firebase 사진 저장 완료!"))
-                        .catch((err) => console.error("Firebase 사진 저장 실패:", err));
+                    setToastMessage("데이터 동기화 중...");
+                    try {
+                        // 메인 데이터 저장 (students 배열)
+                        await saveData('cls_students', updatedStudents); 
+                        
+                        // 개별 데이터 저장 (studentData 문서)
+                        if (typeof db !== 'undefined' && typeof appId !== 'undefined') {
+                            await db.collection("classes").doc(appId).collection("studentData").doc(String(studentId)).set({ 
+                                photoUrl: photoURL 
+                            }, { merge: true });
+                        }
+                    } catch (saveErr) {
+                        console.error("저장 중 오류:", saveErr);
+                        throw new Error("서버 저장 실패");
                     }
                 }
                 
@@ -9710,6 +9732,7 @@ const firebaseConfig = {
 
         setToastMessage(`사진 ${files.length}장 업로드를 시작합니다... (화면을 유지해주세요)`);
         let successCount = 0;
+        let failCount = 0;
         let updatedStudents = [...students];
         
         for (let i = 0; i < files.length; i++) {
@@ -9755,20 +9778,28 @@ const firebaseConfig = {
                         const photoURL = data.data.url;
                         updatedStudents[studentIndex] = { ...updatedStudents[studentIndex], photoUrl: photoURL };
                         
+                        // 각 사진 업로드마다 studentData도 업데이트 (안전성 강화)
                         if (!isLocalMode && typeof saveStudentDataToFirestore === 'function') {
-                            saveStudentDataToFirestore(updatedStudents[studentIndex].id, { photoUrl: photoURL });
+                            await saveStudentDataToFirestore(updatedStudents[studentIndex].id, { photoUrl: photoURL });
                         }
                         successCount++;
+                    } else {
+                        failCount++;
                     }
                 } catch (error) {
                     console.error(`사진 업로드 실패 (${fileName}):`, error);
+                    failCount++;
                 }
             }
         }
 
         setStudents(updatedStudents);
-        if (!isLocalMode) saveData('cls_students', updatedStudents);
-        setToastMessage(`${successCount}명의 사진이 업데이트되었습니다!`);
+        if (!isLocalMode) {
+            await saveData('cls_students', updatedStudents);
+        }
+        
+        if (failCount > 0) setToastMessage(`${successCount}명 성공, ${failCount}명 실패. (콘솔 확인)`);
+        else setToastMessage(`${successCount}명의 사진이 모두 업데이트되었습니다!`);
         event.target.value = '';
     };
 
