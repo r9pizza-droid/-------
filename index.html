@@ -10179,14 +10179,15 @@ useEffect(() => {
 
         const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
         try {
-            firestore.collection('classes').doc(targetAppId).collection('groupResults')
+            // [Fix] 모둠 데이터도 실시간 구독(onSnapshot)으로 변경하여 동기화 강화
+            unsubscribeGroups = firestore.collection('classes').doc(targetAppId).collection('groupResults')
                 .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
-                .get().then(snapshot => {
+                .onSnapshot(snapshot => {
                 const newGroups = {};
                 snapshot.docs.forEach(doc => { newGroups[doc.id] = doc.data().list; });
                 cachedGroupsRef.current = { ...cachedGroupsRef.current, ...newGroups };
                 setGroupsByDate(prev => hydrateGroups({ ...prev, ...newGroups }, studentsRef.current));
-            }).catch(error => {
+            }, error => {
                 console.error("GroupResults sync error:", error);
                 if (error.code === 'resource-exhausted') {
                     setToastMessage("⚠️ 사용량 초과: 모둠 기록을 불러올 수 없습니다.");
