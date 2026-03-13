@@ -1638,29 +1638,29 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                                         </span>
                                                                                     )}
                                                                                     {note.destTags && note.destTags.map((tag, idx) => {
-                                                                                        let colorClass = "bg-white border-slate-200 text-slate-500";
-                                                                                        if (tag === '노션(기록)') colorClass = "bg-blue-50 border-blue-100 text-blue-600";
-                                                                                        else if (tag === '노션(포폴)') colorClass = "bg-yellow-50 border-yellow-100 text-yellow-700";
-                                                                                        else if (tag === '구글 시트') colorClass = "bg-green-50 border-green-100 text-green-600";
-                                                                                        return <span key={idx} className={`px-1.5 py-0.5 border text-[8px] rounded-full font-bold shadow-sm ${colorClass}`}>{tag}</span>;
+                                                                                         let dotColor = "bg-slate-300";
+                                                                                        if (tag === '노션(기록)') dotColor = "bg-blue-400";
+                                                                                        else if (tag === '노션(포폴)') dotColor = "bg-yellow-400";
+                                                                                        else if (tag === '구글 시트') dotColor = "bg-green-400";
+                                                                                        return <div key={idx} className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} title={tag}></div>;
                                                                                     })}
                                                                                     {(() => {
                                                                                         const related = note.relatedStudents ? note.relatedStudents.filter(s => s.id !== student.id) : [];
                                                                                         if (related.length === 0) return null;
-                                                                                        return (
-                                                                                            <div className="flex items-center gap-1 flex-wrap">
-                                                                                                <span className="text-[8px] text-slate-400">with</span>
-                                                                                                {related.map((s, idx) => (
-                                                                                                    <div key={idx} className="flex items-center">
-                                                                                                        <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[8px] rounded-full font-bold cursor-pointer hover:bg-slate-200 border border-slate-200" onClick={(e) => { e.stopPropagation(); onSwitchStudent(s.id); }}>
-                                                                                                            {s.name}
-                                                                                                        </span>
-                                                                                                        {idx < related.length - 1 && <span className="text-[8px] text-slate-400 ml-0.5">,</span>}
-                                                                                                    </div>
-                                                                                                ))}
-                                                                                            </div>
-                                                                                        );
-                                                                                    })()}
+                                                                                      return (
+                                                                                        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full">
+                                                                                            <span className="text-[8px] text-slate-400 shrink-0">with</span>
+                                                                                            {related.map((s, idx) => (
+                                                                                                <div key={idx} className="flex items-center shrink-0">
+                                                                                                    <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[8px] rounded-full font-bold cursor-pointer hover:bg-slate-200 border border-slate-200 whitespace-nowrap" onClick={(e) => { e.stopPropagation(); onSwitchStudent(s.id); }}>
+                                                                                                        {s.name}
+                                                                                                    </span>
+                                                                                                    {idx < related.length - 1 && <span className="text-[8px] text-slate-400 ml-0.5">,</span>}
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    );
+                                                                                })()}
                                                                                 </div>
                                                                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 shrink-0 ml-2">
                                                                                     <button onClick={() => { navigator.clipboard.writeText(note.content); showToast("내용이 복사되었습니다."); }} className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="복사">
