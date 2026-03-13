@@ -72,7 +72,7 @@ const GRASS_THEMES = {
     slate: { bg: 'bg-slate-100', border: 'border-slate-400', ring: 'ring-slate-300', text: 'text-slate-700', dot: 'bg-slate-500' },
 };
 
-const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, records: propRecords, dates, dailyTasks: propDailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, setRecords, setDailyTasks, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment }) => {
+const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, records: propRecords, dates, dailyTasks: propDailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, setRecords, setDailyTasks, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment, initialShowScoreAnalysis = false }) => {
     // [실시간 연동] 부모로부터 받은 props(propRecords, propDailyTasks, propStudent)를 직접 사용합니다.
     // 아래 useEffect 훅이 부모의 state를 직접 업데이트하므로, 이 컴포넌트 내의 별도 state는 더 이상 필요 없습니다.
     const records = propRecords || {};
@@ -235,6 +235,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             // 배지용 상태 업데이트 (호환성 유지)
             setHasNotionConfig(rec || port);
             setHasGoogleSheetConfig(sheet);
+
+            // [New] 외부에서 점수 분석 보기를 요청했을 경우 자동 열림
+            if (initialShowScoreAnalysis) setShowScoreAnalysis(true);
+            else setShowScoreAnalysis(false);
             
             // [Fix] 저장된 설정이 있으면 불러오고, 없으면 기본값 설정
             const savedPref = localStorage.getItem('cls_save_targets_pref');
@@ -252,7 +256,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 });
             }
         }
-    }, [isOpen, isPortfolioMode]);
+    }, [isOpen, isPortfolioMode, initialShowScoreAnalysis]);
 
     // [New] 선택 상태 변경 시 저장
     useEffect(() => {
@@ -2008,7 +2012,21 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                             </div>
 
                             <div>
-                                {!aiComment ? (
+                                {isGenerating ? (
+                                    /* [New] AI 리포트 생성 스켈레톤 UI */
+                                    <div className="space-y-6 animate-pulse">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="w-8 h-8 bg-slate-200 rounded-full"></div>
+                                            <div className="h-6 bg-slate-200 rounded w-1/3"></div>
+                                        </div>
+                                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3">
+                                            <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                                            <div className="h-4 bg-slate-200 rounded w-full"></div>
+                                            <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+                                            <div className="h-4 bg-slate-200 rounded w-2/3"></div>
+                                        </div>
+                                    </div>
+                                ) : !aiComment ? (
                                     <>
                                         <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                                             <span className="text-indigo-500">📝</span> 선생님의 종합 의견
