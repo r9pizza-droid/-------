@@ -5481,9 +5481,9 @@
                                 <div className={`backface-hidden relative flex flex-col bg-white rounded-md border overflow-hidden ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm group-hover:shadow-md"}`}>
                                 <div className={`h-1 w-full transition-colors duration-200 ${isDone ? 'bg-notion-blue' : 'bg-transparent'}`}></div>
                                 
-                                <div onClick={(e) => { e.stopPropagation(); toggleCheck(s.id); }} className={`absolute top-2 right-2 z-20 transition-all duration-300 rounded-full p-0.5 md:p-1 flex items-center justify-center hover:scale-110 active:scale-95 ${isDone ? 'bg-blue-50 text-notion-blue opacity-100 scale-100 shadow-sm' : 'bg-white border border-slate-200 text-slate-300 opacity-100 scale-100 shadow-sm hover:border-notion-blue hover:text-notion-blue'}`}>
+                                {!isFlipped && <div onClick={(e) => { e.stopPropagation(); toggleCheck(s.id); }} className={`absolute top-2 right-2 z-20 transition-all duration-300 rounded-full p-0.5 md:p-1 flex items-center justify-center hover:scale-110 active:scale-95 ${isDone ? 'bg-blue-50 text-notion-blue opacity-100 scale-100 shadow-sm' : 'bg-white border border-slate-200 text-slate-300 opacity-100 scale-100 shadow-sm hover:border-notion-blue hover:text-notion-blue'}`}>
                                     <Icon d={PATHS.check} size={20} strokeWidth={3} className="pointer-events-none w-4 h-4 md:w-5 md:h-5" />
-                                </div>
+                                </div>}
 
                                 <div className="p-3 flex flex-col h-full min-h-[100px]">
                                     <div className="flex justify-between items-start mb-2">
@@ -5500,7 +5500,7 @@
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-bold text-notion-text flex items-center gap-1">
                                                     {s.name} <span className="text-xs">{getStreakBadge(s.id)}</span>
-                                                    {hasMemo && (
+                                                    {hasMemo && !isFlipped && (
                                                         <button 
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -5654,7 +5654,6 @@
                                             if (taskWithComments.length === 0) {
                                                 return (
                                                     <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 opacity-60">
-                                                        <Icon d={PATHS.message} size={24} />
                                                         <span className="text-xs">메모 없음</span>
                                                     </div>
                                                 );
