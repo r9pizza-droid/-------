@@ -5481,8 +5481,8 @@
                                 <div className={`backface-hidden relative flex flex-col bg-white rounded-md border overflow-hidden ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm group-hover:shadow-md"}`}>
                                 <div className={`h-1 w-full transition-colors duration-200 ${isDone ? 'bg-notion-blue' : 'bg-transparent'}`}></div>
                                 
-                                <div onClick={(e) => { e.stopPropagation(); toggleCheck(s.id); }} className={`absolute top-2 right-2 z-20 transition-all duration-300 rounded-full p-1 flex items-center justify-center hover:scale-110 active:scale-95 ${isDone ? 'bg-blue-50 text-notion-blue opacity-100 scale-100 shadow-sm' : 'bg-white border border-slate-200 text-slate-300 opacity-100 scale-100 shadow-sm hover:border-notion-blue hover:text-notion-blue'}`}>
-                                    <Icon d={PATHS.check} size={20} strokeWidth={3} className="pointer-events-none" />
+                                <div onClick={(e) => { e.stopPropagation(); toggleCheck(s.id); }} className={`absolute top-2 right-2 z-20 transition-all duration-300 rounded-full p-0.5 md:p-1 flex items-center justify-center hover:scale-110 active:scale-95 ${isDone ? 'bg-blue-50 text-notion-blue opacity-100 scale-100 shadow-sm' : 'bg-white border border-slate-200 text-slate-300 opacity-100 scale-100 shadow-sm hover:border-notion-blue hover:text-notion-blue'}`}>
+                                    <Icon d={PATHS.check} size={20} strokeWidth={3} className="pointer-events-none w-4 h-4 md:w-5 md:h-5" />
                                 </div>
 
                                 <div className="p-3 flex flex-col h-full min-h-[100px]">
@@ -5510,7 +5510,7 @@
                                                             }}
                                                             className="ml-1 p-0.5 rounded-full hover:bg-indigo-100 transition-colors"
                                                             title="과제 메모 보기/수정"
-                                                        ><span className="text-sm animate-pulse">💬</span></button>
+                                                        ><span className="text-sm animate-pulse">📮</span></button>
                                                     )}
                                                 </span>
                                                 <div className="flex items-end gap-2 mt-0.5">
@@ -7982,7 +7982,7 @@ const firebaseConfig = {
                         sharedDb.collection('notifications')
                             .where('createdAt', '>=', todayStart)
                             .get(),
-                        sharedDb.collection('activityLogs').orderBy('createdAt', 'desc').limit(100).get()
+                        sharedDb.collection('activityLogs').orderBy('createdAt', 'desc').limit(50).get()
                     ]);
 
                     // [Fix] 데이터 용량 계산 추가 (App 컴포넌트 내 dataUsage 변수 부재 해결)
