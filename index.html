@@ -5571,7 +5571,7 @@
                                                         <span className="text-[10px] font-bold mr-1">[미제출]</span>
                                                         {t.title} <span className="text-[9px] text-rose-400">({dayjs(t.originalDate).format('MM/DD')})</span>
                                                     </span>
-                                                    <button onClick={(e) => handleCommentClick(e, s.id, t.originalIndex, t.originalDate, comment)} className={`p-1 transition-colors rounded ${hasComment ? 'text-indigo-600 opacity-100 z-10' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
+                                                    <button onClick={(e) => handleCommentClick(e, s.id, t.originalIndex, t.originalDate, comment)} className={`p-1 transition-colors rounded ${hasComment ? 'text-indigo-600 opacity-100' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
                                                     </div>
                                                 </div>
                                             )})}
@@ -5598,7 +5598,7 @@
                                                         <span className={`text-xs truncate flex-1 ${taskDone ? 'text-notion-text-light line-through' : 'text-notion-text'}`}>
                                                             {typeof t === 'object' ? t.title : t}
                                                         </span>
-                                                        <button onClick={(e) => handleCommentClick(e, s.id, idx, date, comment)} className={`p-1 transition-colors rounded ${hasComment ? 'text-indigo-600 opacity-100 z-10' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
+                                                        <button onClick={(e) => handleCommentClick(e, s.id, idx, date, comment)} className={`p-1 transition-colors rounded ${hasComment ? 'text-indigo-600 opacity-100' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover/task:opacity-100'}`}><Icon d={PATHS.message} size={12} /></button>
                                                         </div>
                                                     </div>
                                                 );
