@@ -8625,6 +8625,17 @@ const firebaseConfig = {
             const [scoreDetailTarget, setScoreDetailTarget] = useState(null);
             const [showScoreAnalysisOnOpen, setShowScoreAnalysisOnOpen] = useState(false);
             const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+
+            useEffect(() => {
+                // 상세 점수 분석 팝업이 열렸을 때 배경 스크롤을 막습니다.
+                if (scoreDetailTarget) {
+                    document.body.style.overflow = 'hidden';
+                    return () => {
+                        document.body.style.overflow = '';
+                    };
+                }
+            }, [scoreDetailTarget]);
+
             const [isSettingOpen, setIsSettingOpen] = useState(false); const [isSetupOpen, setIsSetupOpen] = useState(false); const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null, onCancel: null }); const [toastMessage, setToastMessage] = useState(null); const [toastAction, setToastAction] = useState(null);

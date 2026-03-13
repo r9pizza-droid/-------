@@ -80,11 +80,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const student = propStudent;
 
     if (!isOpen || !student || !student.history) return null;
-    
+
     useEffect(() => {
-        document.body.style.overflow = 'hidden';
-        return () => { document.body.style.overflow = ''; };
-    }, []);
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+            return () => { document.body.style.overflow = ''; };
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
