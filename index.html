@@ -13919,9 +13919,6 @@ useEffect(() => {
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} />}
-                    <SettingsModal 
-                        // ... (props)
-                    />
                     {scoreDetailTarget && (
                         <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-fade-in" onClick={() => setScoreDetailTarget(null)}>
                             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-5 w-full max-w-xs animate-pop-up" onClick={e => e.stopPropagation()}>
