@@ -5498,20 +5498,12 @@
                                                 </div>
                                             )}
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-notion-text flex items-center gap-1">
-                                                    {s.name} <span className="text-xs">{getStreakBadge(s.id)}</span>
+                                                <span className="text-sm font-bold text-notion-text flex items-center gap-0.5">
+                                                    {s.name}
                                                     {hasMemo && !isFlipped && (
-                                                        <button 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (firstMemoInfo) {
-                                                                    handleCommentClick(e, s.id, firstMemoInfo.index, date, firstMemoInfo.content);
-                                                                }
-                                                            }}
-                                                            className="ml-1 p-0.5 rounded-full hover:bg-indigo-100 transition-colors"
-                                                            title="과제 메모 보기/수정"
-                                                        ><span className="text-sm animate-pulse">📮</span></button>
+                                                        <span className="text-[10px] animate-pulse" title="메모 있음">📮</span>
                                                     )}
+                                                    <span className="text-xs">{getStreakBadge(s.id)}</span>
                                                 </span>
                                                 <div className="flex items-end gap-2 mt-0.5">
                                                     <span className="text-[10px] text-notion-text-light whitespace-nowrap mb-0.5">{s.order}번</span>
@@ -5660,19 +5652,25 @@
                                             }
 
                                             return (
-                                                <div className="space-y-2">
+                                                <div className="space-y-3 pr-1">
                                                     {taskWithComments.map((item, i) => (
-                                                        <div key={i} className={`bg-white p-2 rounded border text-xs shadow-sm ${item.isOverdue ? 'border-rose-200 bg-rose-50/30' : 'border-slate-100'}`}>
-                                                            <div className={`font-bold mb-1 leading-tight flex justify-between ${item.isOverdue ? 'text-rose-600' : 'text-indigo-600'}`}>
-                                                                <span>{item.isOverdue ? '[미제출] ' + item.title : item.title}</span>
-                                                                {item.dateStr && <span className="text-[9px] font-normal opacity-70 ml-1 shrink-0">{item.dateStr}</span>}
+                                                        <div key={i}>
+                                                            <div className="flex items-center gap-1.5 mb-1">
+                                                                <div className={`w-1.5 h-1.5 rounded-full ${item.isOverdue ? 'bg-rose-500' : 'bg-indigo-500'}`}></div>
+                                                                <span className={`text-[11px] font-bold truncate ${item.isOverdue ? 'text-rose-600' : 'text-slate-600'}`}>
+                                                                    {item.isOverdue ? '[미제출] ' : ''}{item.title}
+                                                                </span>
+                                                                {item.dateStr && <span className="text-[9px] text-slate-400 ml-auto font-medium">{item.dateStr}</span>}
                                                             </div>
-                                                            <div className="space-y-1">
+                                                            <div className={`bg-white rounded-lg p-2 border shadow-sm ${item.isOverdue ? 'border-rose-100 bg-rose-50/30' : 'border-slate-100'}`}>
+                                                                <div className="space-y-1.5">
                                                                 {item.list.map((memo, j) => (
-                                                                    <div key={j} className="text-slate-600 pl-1.5 border-l-2 border-slate-200 leading-snug break-all">
-                                                                        {memo}
+                                                                    <div key={j} className="text-xs text-slate-600 leading-snug break-all flex items-start gap-1.5">
+                                                                        <span className="text-slate-300 mt-[3px] select-none">•</span>
+                                                                        <span>{memo}</span>
                                                                     </div>
                                                                 ))}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}
