@@ -8499,6 +8499,7 @@ const firebaseConfig = {
 
             const [honorPeriod, setHonorPeriod] = useState('weekly'); const [helpPeriod, setHelpPeriod] = useState('weekly');
             const [honorTag, setHonorTag] = useState('전체'); const [helpTag, setHelpTag] = useState('전체'); const [grassStudentId, setGrassStudentId] = useState(null);
+            const [showScoreAnalysisOnOpen, setShowScoreAnalysisOnOpen] = useState(false);
             const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
             const [isSettingOpen, setIsSettingOpen] = useState(false); const [isSetupOpen, setIsSetupOpen] = useState(false); const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
@@ -12766,7 +12767,7 @@ useEffect(() => {
                                         </div>
                                         {viewHallOfFameList ? (
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
-                                                {stats.allRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank===1?'bg-yellow-500 text-white':s.rank===2?'bg-slate-400 text-white':s.rank===3?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.rank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span className="font-bold text-indigo-600">{s.honorStats.count}점</span></div>))}
+                                                {stats.allRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank===1?'bg-yellow-500 text-white':s.rank===2?'bg-slate-400 text-white':s.rank===3?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.rank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setGrassStudentId(s.id); setShowScoreAnalysisOnOpen(true); }} className="font-bold text-indigo-600 bg-white/80 px-2 py-1 rounded-lg border border-indigo-100 shadow-sm cursor-pointer hover:bg-indigo-50 transition-colors">{s.honorStats.count}점</span></div>))}
                                                 {stats.allRanked.length === 0 && <div className="text-center text-slate-400 py-4">데이터가 없습니다.</div>}
                                             </div>
                                         ) : (
@@ -12817,7 +12818,7 @@ useEffect(() => {
                                         </div>
                                         {viewNeedsHelpList ? (
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
-                                                {stats.allHelpRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.helpRank===1?'bg-rose-500 text-white':s.helpRank===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.helpRank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span className={`font-bold ${s.helpStats.score < 0 ? 'text-rose-500' : 'text-indigo-600'}`}>{s.helpStats.score.toFixed(1)}점</span></div>))}
+                                                {stats.allHelpRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.helpRank===1?'bg-rose-500 text-white':s.helpRank===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.helpRank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setGrassStudentId(s.id); setShowScoreAnalysisOnOpen(true); }} className={`font-bold px-2 py-1 rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-colors ${s.helpStats.score < 0 ? 'text-rose-500 bg-white/80 border-rose-100' : 'text-indigo-600 bg-white/80 border-indigo-100'}`}>{s.helpStats.score.toFixed(1)}점</span></div>))}
                                                 {stats.allHelpRanked.length === 0 && <div className="text-center text-slate-400 py-4">데이터가 없습니다.</div>}
                                             </div>
                                         ) : (
@@ -13889,7 +13890,8 @@ useEffect(() => {
                     <Toast message={toastMessage} action={toastAction} onClose={()=>{ setToastMessage(null); setToastAction(null); }} />
                     {!!grassStudentId && <StatsGrassModal 
                         isOpen={!!grassStudentId} 
-                        onClose={()=>setGrassStudentId(null)} 
+                        onClose={()=>{setGrassStudentId(null); setShowScoreAnalysisOnOpen(false);}} 
+                        initialShowScoreAnalysis={showScoreAnalysisOnOpen}
                         student={stats.students.find(s=>s.id===grassStudentId)} 
                         students={students}
                         records={records} 
@@ -14360,19 +14362,47 @@ useEffect(() => {
                                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                                         <div>
                                                             <label className="block text-xs font-medium text-slate-500 mb-1">🌿 풀잎 커트라인</label>
-                                                            <div className="relative"><input type="number" value={adminLevelConfig.grass} onChange={(e) => setAdminLevelConfig({...adminLevelConfig, grass: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg text-lg font-black text-lime-600 pl-9"/><span className="absolute left-3 top-3">🌿</span></div>
+                                                            <div className="relative">
+                                                                <input type="number" value={adminLevelConfig.grass} onChange={(e) => setAdminLevelConfig({...adminLevelConfig, grass: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg text-lg font-black text-lime-600 pl-9 pr-8 outline-none focus:ring-2 focus:ring-lime-200"/>
+                                                                <span className="absolute left-3 top-3">🌿</span>
+                                                                <div className="absolute right-1 top-1 bottom-1 flex flex-col w-6 gap-0.5">
+                                                                    <button onClick={() => setAdminLevelConfig({...adminLevelConfig, grass: (adminLevelConfig.grass || 0) + 1})} className="flex-1 bg-slate-100 hover:bg-slate-200 rounded-t text-[8px] text-slate-500 flex items-center justify-center border-b border-white">▲</button>
+                                                                    <button onClick={() => setAdminLevelConfig({...adminLevelConfig, grass: (adminLevelConfig.grass || 0) - 1})} className="flex-1 bg-slate-100 hover:bg-slate-200 rounded-b text-[8px] text-slate-500 flex items-center justify-center">▼</button>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-slate-500 mb-1">🌼 꽃 커트라인</label>
-                                                            <div className="relative"><input type="number" value={adminLevelConfig.tree} onChange={(e) => setAdminLevelConfig({...adminLevelConfig, tree: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg text-lg font-black text-green-700 pl-9"/><span className="absolute left-3 top-3">🌼</span></div>
+                                                            <div className="relative">
+                                                                <input type="number" value={adminLevelConfig.tree} onChange={(e) => setAdminLevelConfig({...adminLevelConfig, tree: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg text-lg font-black text-green-700 pl-9 pr-8 outline-none focus:ring-2 focus:ring-green-200"/>
+                                                                <span className="absolute left-3 top-3">🌼</span>
+                                                                <div className="absolute right-1 top-1 bottom-1 flex flex-col w-6 gap-0.5">
+                                                                    <button onClick={() => setAdminLevelConfig({...adminLevelConfig, tree: (adminLevelConfig.tree || 0) + 1})} className="flex-1 bg-slate-100 hover:bg-slate-200 rounded-t text-[8px] text-slate-500 flex items-center justify-center border-b border-white">▲</button>
+                                                                    <button onClick={() => setAdminLevelConfig({...adminLevelConfig, tree: (adminLevelConfig.tree || 0) - 1})} className="flex-1 bg-slate-100 hover:bg-slate-200 rounded-b text-[8px] text-slate-500 flex items-center justify-center">▼</button>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-slate-500 mb-1">🌳 나무 커트라인</label>
-                                                            <div className="relative"><input type="number" value={adminLevelConfig.forest} onChange={(e) => setAdminLevelConfig({...adminLevelConfig, forest: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg text-lg font-black text-emerald-800 pl-9"/><span className="absolute left-3 top-3">🌳</span></div>
+                                                            <div className="relative">
+                                                                <input type="number" value={adminLevelConfig.forest} onChange={(e) => setAdminLevelConfig({...adminLevelConfig, forest: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg text-lg font-black text-emerald-800 pl-9 pr-8 outline-none focus:ring-2 focus:ring-emerald-200"/>
+                                                                <span className="absolute left-3 top-3">🌳</span>
+                                                                <div className="absolute right-1 top-1 bottom-1 flex flex-col w-6 gap-0.5">
+                                                                    <button onClick={() => setAdminLevelConfig({...adminLevelConfig, forest: (adminLevelConfig.forest || 0) + 1})} className="flex-1 bg-slate-100 hover:bg-slate-200 rounded-t text-[8px] text-slate-500 flex items-center justify-center border-b border-white">▲</button>
+                                                                    <button onClick={() => setAdminLevelConfig({...adminLevelConfig, forest: (adminLevelConfig.forest || 0) - 1})} className="flex-1 bg-slate-100 hover:bg-slate-200 rounded-b text-[8px] text-slate-500 flex items-center justify-center">▼</button>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-slate-500 mb-1">🧸 왕 커트라인</label>
-                                                            <div className="relative"><input type="number" value={adminLevelConfig.king} onChange={(e) => setAdminLevelConfig({...adminLevelConfig, king: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg text-lg font-black text-amber-500 pl-9"/><span className="absolute left-3 top-3">🧸</span></div>
+                                                            <div className="relative">
+                                                                <input type="number" value={adminLevelConfig.king} onChange={(e) => setAdminLevelConfig({...adminLevelConfig, king: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg text-lg font-black text-amber-500 pl-9 pr-8 outline-none focus:ring-2 focus:ring-amber-200"/>
+                                                                <span className="absolute left-3 top-3">🧸</span>
+                                                                <div className="absolute right-1 top-1 bottom-1 flex flex-col w-6 gap-0.5">
+                                                                    <button onClick={() => setAdminLevelConfig({...adminLevelConfig, king: (adminLevelConfig.king || 0) + 1})} className="flex-1 bg-slate-100 hover:bg-slate-200 rounded-t text-[8px] text-slate-500 flex items-center justify-center border-b border-white">▲</button>
+                                                                    <button onClick={() => setAdminLevelConfig({...adminLevelConfig, king: (adminLevelConfig.king || 0) - 1})} className="flex-1 bg-slate-100 hover:bg-slate-200 rounded-b text-[8px] text-slate-500 flex items-center justify-center">▼</button>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="mt-4 pt-4 border-t border-slate-100">
