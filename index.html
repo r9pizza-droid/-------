@@ -70,7 +70,8 @@
                         'slide-in-left': 'slideInLeft 0.3s ease-out',
                         'expand-from': 'expandFrom 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                         'blink-fast': 'pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'blink-strong': 'blinkStrong 0.4s ease-in-out infinite',
+                        'blink-strong': 'blinkStrong 1.2s ease-in-out infinite',
+                        'blink-wiggle': 'blinkWiggle 1s ease-in-out infinite',
                         'zoom-out': 'zoomOut 0.3s ease-in-out forwards',
                         'zoom-in': 'zoomIn 0.3s ease-in-out forwards',
                         'zoom-out-reverse': 'zoomOutReverse 0.3s ease-in-out forwards',
@@ -96,7 +97,7 @@
                         slideInLeft: { '0%': { transform: 'translateX(-50%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
                         expandFrom: { '0%': { transform: 'scale(0)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         slideInDown: { '0%': { transform: 'translate(-50%, -100%)', opacity: 0 }, '100%': { transform: 'translate(-50%, 0)', opacity: 1 } },
-                        blinkStrong: { '0%, 100%': { opacity: 1, transform: 'scale(1)' }, '50%': { opacity: 0.4, transform: 'scale(1.15)' } },
+                        blinkStrong: { '0%, 100%': { transform: 'scale(1) rotate(-5deg)' }, '50%': { transform: 'scale(1.15) rotate(5deg)' } },
                         zoomOut: { '0%': { transform: 'scale(1)', opacity: 1 }, '100%': { transform: 'scale(1.15)', opacity: 0 } },
                         zoomIn: { '0%': { transform: 'scale(0.9)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         zoomOutReverse: { '0%': { transform: 'scale(1)', opacity: 1 }, '100%': { transform: 'scale(0.9)', opacity: 0 } },
@@ -129,6 +130,10 @@
                             '0%': { transform: 'scale(1)' },
                             '50%': { transform: 'scale(1.8)' },
                             '100%': { transform: 'scale(1)' },
+                        },
+                        blinkWiggle: {
+                            '0%, 100%': { opacity: 1, transform: 'rotate(-5deg) scale(1)' },
+                            '50%': { opacity: 0.4, transform: 'rotate(5deg) scale(1.1)' },
                         },
                     }
                 }
@@ -5502,7 +5507,7 @@
                                                 <span className="text-sm font-bold text-notion-text flex items-center gap-0.5">
                                                     {s.name}
                                                     {hasMemo && !isFlipped && (
-                                                        <span className="text-[10px] animate-pulse" title="메모 있음">📮</span>
+                                                        <span className="text-[10px] animate-blink-strong" title="메모 있음">📮</span>
                                                     )}
                                                     <span className="text-xs">{getStreakBadge(s.id)}</span>
                                                 </span>

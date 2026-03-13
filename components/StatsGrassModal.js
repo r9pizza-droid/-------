@@ -1222,7 +1222,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     <div className="lg:col-span-5 space-y-6 flex flex-col">
                         
                         <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md">
-                            <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><Icon d={PATHS.chart} size={16} className="text-indigo-500"/> 자주 놓치는 과목</h4>
+                            <h4 className="text-base font-bold text-slate-700 mb-4 flex items-center gap-2"><Icon d={PATHS.chart} size={18} className="text-indigo-500"/> 자주 놓치는 과목</h4>
                             {missedTags.length > 0 ? (
                                 <div className="space-y-3">
                                     {missedTags.map(([tag, count], i) => {
@@ -1238,7 +1238,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                         <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${rankColor}`}>{i+1}</span>
                                                         <span className="text-sm font-bold text-slate-700">{tag}</span>
                                                     </div>
-                                                    <span className="text-xs font-bold text-slate-500">{count}회 놓침</span>
+                                                    <span className="text-xs font-bold text-slate-500">{count}회</span>
                                                 </div>
                                                 <div className="h-2.5 bg-white rounded-full overflow-hidden shadow-inner border border-slate-100">
                                                     <div className={`h-full rounded-full transition-all duration-1000 ${barColor}`} style={{ width: `${width}%` }}></div>
@@ -1254,7 +1254,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
                         <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm cursor-pointer hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md active:scale-[0.98] group" onClick={() => setShowDetailStats(!showDetailStats)}>
                             <div className="flex justify-between items-center mb-4">
-                                <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2"><Icon d={PATHS.users} size={16} className="text-blue-500"/> 학급 평균 비교</h4>
+                                <h4 className="text-base font-bold text-slate-700 flex items-center gap-2"><Icon d={PATHS.users} size={18} className="text-blue-500"/> 학급 평균 비교</h4>
                                 <div className="flex items-center gap-1 text-xs font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">
                                     <span>{showDetailStats ? '접기' : '자세히 보기'}</span>
                                     <Icon d={PATHS.right} size={14} className={`transition-transform duration-300 ${showDetailStats ? 'rotate-90' : ''}`} />
@@ -1263,7 +1263,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative overflow-hidden">
                                 <div className="flex items-center justify-between mb-4 relative z-10">
                                     <div className="flex flex-col">
-                                        <span className="text-xs text-slate-500 font-bold mb-1">전체 점수 비교</span>
+                                        <span className="text-xs text-slate-400 font-bold mb-1">전체 점수 비교</span>
                                         <div className="flex items-baseline gap-1">
                                             <span className={`text-2xl font-black ${getLevelTextColor(level)}`}>{reportStats.studentScore?.toFixed(1)}점</span>
                                             <span className="text-xs text-slate-400 font-medium">vs {reportStats.classScore?.toFixed(1)}점 (학급)</span>
@@ -1275,8 +1275,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         </div>
                                     </div>
                                     <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 ${reportStats.studentScore >= reportStats.classScore ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-rose-50 border-rose-100 text-rose-500'}`}>
-                                        <span className="text-[10px] font-bold opacity-70">GAP</span>
-                                        <span className="text-lg font-black leading-none">
+                                        <span className="text-[10px] font-bold opacity-60">GAP</span>
+                                        <span className="text-xl font-black leading-none">
                                             {reportStats.studentScore >= reportStats.classScore ? '+' : ''}{(reportStats.studentScore - reportStats.classScore).toFixed(1)}
                                         </span>
                                     </div>
@@ -1373,15 +1373,15 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
                         <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md relative z-30">
                             <div className="flex flex-col">
-                                <h4 className="text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><span className="text-lg">🌟</span> 칭찬 스티커</h4>
-                                <span className="text-xs text-slate-400 font-medium">긍정적 강화와 보상</span>
+                                <h4 className="text-base font-bold text-slate-700 mb-1 flex items-center gap-2"><span className="text-xl">🌟</span> 칭찬 스티커</h4>
+                                <span className="text-xs text-slate-500 font-medium">긍정적 강화와 보상</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <Btn onClick={() => handleSticker(-1)} className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-lg">-</Btn>
                                 <div className="relative">
                                     <span 
                                         onClick={(e) => { e.stopPropagation(); setShowStickerHistory(!showStickerHistory); }}
-                                        className={`text-3xl font-black text-yellow-500 w-12 text-center transition-transform duration-200 cursor-pointer hover:scale-110 inline-block ${stickerEffect ? 'scale-150 text-orange-500' : ''}`}
+                                        className={`text-4xl font-black text-yellow-500 w-16 text-center transition-transform duration-200 cursor-pointer hover:scale-110 inline-block ${stickerEffect ? 'scale-150 text-orange-500' : ''}`}
                                         title="기록 보기"
                                     >
                                         {stickerCount}
@@ -1416,8 +1416,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
                         <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm flex flex-col flex-1 hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md">
                             <div className="flex justify-between items-center mb-4">
-                                <h4 className="text-sm font-bold text-slate-700 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 items-start">
-                                    <span className="flex items-center gap-2 whitespace-nowrap"><Icon d={PATHS.document} size={16} className="text-green-500"/> 교사 관찰 및 칭찬 기록</span>
+                                <h4 className="text-base font-bold text-slate-700 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 items-start">
+                                    <span className="flex items-center gap-2 whitespace-nowrap"><Icon d={PATHS.document} size={18} className="text-green-500"/> 교사 관찰 및 칭찬 기록</span>
                                     <div className="flex flex-col sm:flex-row gap-1">
                                         {hasNotionConfig && <span className="w-fit text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5 whitespace-nowrap"><Icon d={PATHS.check} size={10} strokeWidth={3} />노션 연동</span>}
                                         {hasGoogleSheetConfig && <span className="w-fit text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-normal flex items-center gap-0.5 whitespace-nowrap"><Icon d={PATHS.check} size={10} strokeWidth={3} />구글 연동</span>}
@@ -1914,8 +1914,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
                                 <div className={`col-start-1 row-start-1 w-full transition-all duration-300 ease-in-out transform ${isDetailViewOpen ? '-translate-x-full opacity-0 invisible pointer-events-none' : 'translate-x-0 opacity-100 visible'}`}>
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 sm:gap-0">
-                                        <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2 whitespace-nowrap">
-                                            <Icon d={PATHS.calendar} size={16} className="text-orange-500"/> 활동 잔디 
+                                        <h4 className="text-base font-bold text-slate-700 flex items-center gap-2 whitespace-nowrap">
+                                            <Icon d={PATHS.calendar} size={18} className="text-orange-500"/> 활동 잔디 
                                             <span className="text-indigo-600 font-extrabold text-xs bg-indigo-50 px-2 py-0.5 rounded-md whitespace-nowrap">{dayjs(grassStart).format('YYYY년 M월')}</span>
                                             <div className="relative ml-1 flex items-center">
                                                 <button onClick={(e) => { e.stopPropagation(); setShowThemePicker(!showThemePicker); }} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors" title="강조 색상 변경">
@@ -1937,7 +1937,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                 <button onClick={() => { const next = dayjs(grassStart).add(1, 'month'); setGrassStart(next.startOf('month').format('YYYY-MM-DD')); setGrassEnd(next.endOf('month').format('YYYY-MM-DD')); setIsGrassExpanded(true); }} className="p-1 hover:bg-white rounded-md text-slate-500 shadow-sm transition-all"><Icon d={PATHS.right} size={12}/></button>
                                                 <button onClick={() => setIsCalendarOpen(true)} className="p-1 hover:bg-white rounded-md text-slate-500 shadow-sm transition-all ml-1" title="기간 선택"><Icon d={PATHS.calendar} size={12}/></button>
                                             </div>
-                                            <span className={`text-[10px] text-slate-400 font-medium transition-all duration-300 whitespace-nowrap ${dateRangeAnim ? 'text-indigo-600 font-bold scale-110' : ''}`}>{dayjs(grassStart).format('YY.MM.DD')} ~ {dayjs(grassEnd).format('YY.MM.DD')}</span>
+                                            <span className={`text-xs text-slate-500 font-medium transition-all duration-300 whitespace-nowrap ${dateRangeAnim ? 'text-indigo-600 font-bold scale-110' : ''}`}>{dayjs(grassStart).format('YY.MM.DD')} ~ {dayjs(grassEnd).format('YY.MM.DD')}</span>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-5 gap-y-6 gap-x-2 justify-items-center py-4 mt-2">
