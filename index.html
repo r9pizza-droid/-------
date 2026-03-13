@@ -5463,19 +5463,6 @@
                         const overdue = overdueTasksByStudent[s.id] || [];
                         const isFlipped = flippedCards[s.id];
 
-                        // [New] Find first memo to enable direct editing from card
-                        let firstMemoInfo = null;
-                        if (hasMemo) {
-                            const taskComments = rec.taskComments || {};
-                            const firstMemoIndex = Object.keys(taskComments).find(idx => taskComments[idx] && (Array.isArray(taskComments[idx]) ? taskComments[idx].length > 0 : true));
-                            if (firstMemoIndex !== undefined) {
-                                firstMemoInfo = {
-                                    index: parseInt(firstMemoIndex, 10),
-                                    content: taskComments[firstMemoIndex]
-                                };
-                            }
-                        }
-
                         const isExpanded = expandedOverdue[s.id];
                         const visibleOverdue = isExpanded ? overdue : overdue.slice(0, 2);
                         const hasMore = overdue.length > 2;
