@@ -158,6 +158,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [showDetailStats, setShowDetailStats] = useState(false);
     const [showScoreAnalysis, setShowScoreAnalysis] = useState(false); // [New] 점수 분석 보기 토글
     const [showStickerHistory, setShowStickerHistory] = useState(false); // [New] 스티커 히스토리 보기 토글
+    const [showTaskCommentHistory, setShowTaskCommentHistory] = useState(false); // [New] 과제 메모 히스토리 보기 토글
     const [showStudentRecordAI, setShowStudentRecordAI] = useState(false);
     const modalRef = useRef(null);
     const reportRef = useRef(null);
@@ -1134,13 +1135,15 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     return (
         <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={(e) => {
              if (showStickerHistory) setShowStickerHistory(false);
+             else if (showTaskCommentHistory) setShowTaskCommentHistory(false);
              else onClose();
         }}>
             <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col" onClick={e => {
                 e.stopPropagation();
                 if (showStickerHistory) setShowStickerHistory(false);
+                if (showTaskCommentHistory) setShowTaskCommentHistory(false);
             }}>
-                <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0">
+                <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0 relative z-40">
                     <div className="flex justify-between items-center flex-wrap gap-4">
                         <div className="flex items-center gap-4">
                             <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm flex-shrink-0 relative group cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -1159,7 +1162,46 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     {student.name}
                                     <span className="text-sm font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{student.order}번</span>
                                 </div>
-                                <div className="text-sm font-bold text-indigo-500 mt-1">Level {level} <span className="text-slate-400 font-normal">| 평균 수행률 {avgRate}%</span></div>
+                                <div className="text-sm font-bold text-indigo-500 mt-1 flex items-center gap-2 flex-wrap">
+                                    <span>Level {level}</span>
+                                    <span className="text-slate-400 font-normal">| 평균 수행률 {avgRate}%</span>
+                                    <div className="relative" onClick={e => e.stopPropagation()}>
+                                        <button
+                                            onClick={() => setShowTaskCommentHistory(!showTaskCommentHistory)}
+                                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 transition-colors ${taskComments.length > 0 ? 'bg-violet-50 text-violet-600 border-violet-100 hover:bg-violet-100' : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-100'}`}
+                                        >
+                                            <Icon d={PATHS.message} size={10} />
+                                            과제 메모 {taskComments.length}
+                                        </button>
+                                        {showTaskCommentHistory && (
+                                            <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 p-4 z-50 animate-fade-in cursor-default">
+                                                <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
+                                                    <h5 className="text-xs font-bold text-slate-600 flex items-center gap-1">📝 과제 메모 기록 <span className="text-slate-400 font-normal">({taskComments.length})</span></h5>
+                                                    <button onClick={() => setShowTaskCommentHistory(false)} className="text-slate-400 hover:text-slate-600"><Icon d={PATHS.x} size={12}/></button>
+                                                </div>
+                                                <div className="space-y-3 max-h-60 overflow-y-auto custom-scroll">
+                                                    {taskComments.length > 0 ? (
+                                                        taskComments.sort((a,b) => b.date.localeCompare(a.date)).map(note => (
+                                                            <div key={note.id} className="text-xs group">
+                                                                <div className="flex items-center gap-1.5 mb-1">
+                                                                    <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-1.5 rounded">{dayjs(note.date).format('MM/DD')}</span>
+                                                                    <span className="px-1.5 py-0.5 border border-indigo-200 bg-indigo-50 text-indigo-600 text-[9px] rounded-md font-bold truncate max-w-[150px]">
+                                                                        {note.taskTitle}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-slate-700 pl-2 border-l-2 border-slate-100 group-hover:border-indigo-200 transition-colors py-0.5 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="text-center text-slate-400 text-xs py-8">
+                                                            작성된 과제 메모가 없습니다.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         

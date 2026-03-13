@@ -191,6 +191,11 @@
         @media (min-width: 768px) {
             .ql-editor { min-height: 400px; }
         }
+        /* 3D Flip Card Styles */
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
     </style>
 
 
@@ -5284,6 +5289,10 @@
             const [newMemoInput, setNewMemoInput] = useState("");
             const [editingComment, setEditingComment] = useState(null);
             const [editingMemoIndex, setEditingMemoIndex] = useState(null);
+            
+            const [flippedCards, setFlippedCards] = useState({});
+            const toggleFlip = (id) => setFlippedCards(prev => ({ ...prev, [id]: !prev[id] }));
+
             const handleCommentClick = (e, studentId, taskIndex, taskDate, currentValue) => {
                 e.stopPropagation();
                 let val = [];
@@ -5438,6 +5447,7 @@
                         const showPhoto = appConfig.showPhotoInRecord;
                         const hasMemo = rec.taskComments && Object.values(rec.taskComments).some(c => c);
                         const overdue = overdueTasksByStudent[s.id] || [];
+                        const isFlipped = flippedCards[s.id];
 
                         // [New] Find first memo to enable direct editing from card
                         let firstMemoInfo = null;
@@ -5463,12 +5473,16 @@
                                 onMouseLeave={handleTouchEnd}
                                 onTouchStart={() => handleTouchStart(s.id)} 
                                 onTouchEnd={handleTouchEnd}
-                                onClick={() => { if (!isLongPress.current) toggleCheck(s.id); }}
-                                className={`group relative flex flex-col bg-white rounded-md border transition-all duration-200 cursor-pointer overflow-hidden hover:bg-notion-bg-hover hover:-translate-y-1 active:scale-95 ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm hover:shadow-md"}`}>
+                                onClick={() => { if (!isLongPress.current) toggleFlip(s.id); }}
+                                className="group relative h-full perspective-1000 cursor-pointer transition-all duration-200 hover:-translate-y-1 active:scale-95"
+                            >
+                                <div className={`w-full h-full transition-all duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+                                {/* FRONT FACE */}
+                                <div className={`backface-hidden relative flex flex-col bg-white rounded-md border overflow-hidden ${isDone ? "border-notion-blue shadow-sm" : "border-notion-border shadow-sm group-hover:shadow-md"}`}>
                                 <div className={`h-1 w-full transition-colors duration-200 ${isDone ? 'bg-notion-blue' : 'bg-transparent'}`}></div>
                                 
-                                <div className={`absolute top-2 right-2 z-10 transition-all duration-300 rounded-full p-1 flex items-center justify-center ${isDone ? 'bg-blue-50 text-notion-blue opacity-100 scale-100 shadow-sm' : 'text-slate-300 opacity-0 group-hover:opacity-100 scale-75'}`}>
-                                    <Icon d={PATHS.check} size={20} strokeWidth={3} />
+                                <div onClick={(e) => { e.stopPropagation(); toggleCheck(s.id); }} className={`absolute top-2 right-2 z-20 transition-all duration-300 rounded-full p-1 flex items-center justify-center hover:scale-110 active:scale-95 ${isDone ? 'bg-blue-50 text-notion-blue opacity-100 scale-100 shadow-sm' : 'bg-white border border-slate-200 text-slate-300 opacity-100 scale-100 shadow-sm hover:border-notion-blue hover:text-notion-blue'}`}>
+                                    <Icon d={PATHS.check} size={20} strokeWidth={3} className="pointer-events-none" />
                                 </div>
 
                                 <div className="p-3 flex flex-col h-full min-h-[100px]">
@@ -5597,6 +5611,78 @@
                                             {isDone ? <span className="text-xs text-notion-blue font-medium bg-blue-50 px-2 py-1 rounded">완료</span> : null}
                                         </div>
                                     )}
+                                </div>
+                                </div>
+
+                                {/* BACK FACE */}
+                                <div className="absolute inset-0 backface-hidden rotate-y-180 bg-slate-50 rounded-md border border-slate-200 p-3 flex flex-col shadow-sm overflow-hidden text-left">
+                                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200 shrink-0">
+                                        <div className="w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                                            {s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}
+                                        </div>
+                                        <span className="font-bold text-slate-700 text-sm">{s.name}</span>
+                                    </div>
+                                    
+                                    <div className="flex-1 overflow-y-auto custom-scroll">
+                                        {(() => {
+                                            const taskWithComments = currentTasks.map((t, idx) => {
+                                                const c = rec.taskComments?.[idx];
+                                                if (!c) return null;
+                                                const list = Array.isArray(c) ? c : [c];
+                                                if (list.length === 0) return null;
+                                                return { title: typeof t === 'object' ? t.title : t, list, isOverdue: false };
+                                            }).filter(Boolean);
+
+                                            // Overdue tasks comments
+                                            const overdue = overdueTasksByStudent[s.id] || [];
+                                            overdue.forEach(t => {
+                                                const overdueRec = records[t.originalDate]?.[s.id];
+                                                const c = overdueRec?.taskComments?.[t.originalIndex];
+                                                if (c) {
+                                                    const list = Array.isArray(c) ? c : [c];
+                                                    if (list.length > 0) {
+                                                        taskWithComments.push({
+                                                            title: t.title,
+                                                            list,
+                                                            isOverdue: true,
+                                                            dateStr: dayjs(t.originalDate).format('MM/DD')
+                                                        });
+                                                    }
+                                                }
+                                            });
+
+                                            if (taskWithComments.length === 0) {
+                                                return (
+                                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 opacity-60">
+                                                        <Icon d={PATHS.message} size={24} />
+                                                        <span className="text-xs">메모 없음</span>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div className="space-y-2">
+                                                    {taskWithComments.map((item, i) => (
+                                                        <div key={i} className={`bg-white p-2 rounded border text-xs shadow-sm ${item.isOverdue ? 'border-rose-200 bg-rose-50/30' : 'border-slate-100'}`}>
+                                                            <div className={`font-bold mb-1 leading-tight flex justify-between ${item.isOverdue ? 'text-rose-600' : 'text-indigo-600'}`}>
+                                                                <span>{item.isOverdue ? '[미제출] ' + item.title : item.title}</span>
+                                                                {item.dateStr && <span className="text-[9px] font-normal opacity-70 ml-1 shrink-0">{item.dateStr}</span>}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                {item.list.map((memo, j) => (
+                                                                    <div key={j} className="text-slate-600 pl-1.5 border-l-2 border-slate-200 leading-snug break-all">
+                                                                        {memo}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+
                                 </div>
                             </div>
                         );
@@ -10698,8 +10784,12 @@ useEffect(() => {
                                         pChanged = true;
                                     }
                                 } else {
-                                    // [Fix] 체크 해제 시에는 과거 미제출(지각) 과제 상태를 변경하지 않음 (점수 보존)
-                                    // 당일 과제 체크 해제 시 과거 미제출분이 다시 미제출로 뜨는 현상 방지
+                                    // [New] 체크 해제 시 지각 제출(Late)로 표시된 과제는 다시 미제출 상태로 변경 (되돌리기)
+                                    if (isTaskDone && isTaskLate) {
+                                        pNewTasksStatus[idx] = false;
+                                        delete pNewLateStatus[idx];
+                                        pChanged = true;
+                                    }
                                 }
                             });
 
