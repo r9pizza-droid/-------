@@ -174,7 +174,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         } else { quillRef.current = null; }
     }, [isOpen, initialPost, canUseQuill]);
 
-    const compressImage = (file, maxWidth = 800, quality = 0.6) => {
+    const compressImage = (file, maxWidth = 1024, quality = 0.7) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -194,9 +194,10 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
                     canvas.toBlob((blob) => {
-                        if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                        // [Update] WebP 포맷 변환으로 용량 최적화
+                        if (blob) resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", { type: 'image/webp', lastModified: Date.now() }));
                         else reject(new Error("이미지 압축 실패"));
-                    }, 'image/jpeg', quality);
+                    }, 'image/webp', quality);
                 };
                 img.onerror = (error) => reject(error);
             };

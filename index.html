@@ -9843,6 +9843,16 @@ const firebaseConfig = {
                 if (!isLocalMode) saveData('cls_students', updatedStudents);
             };
 
+            // [New] 스티커 초기화 (통계 탭으로 이동)
+            const handleResetStickers = () => {
+                openConfirm("모든 학생의 칭찬 스티커를 0으로 초기화하시겠습니까?", () => {
+                    const updatedStudents = students.map(s => ({ ...s, stickers: 0 }));
+                    setStudents(updatedStudents);
+                    if(!isLocalMode) saveData('cls_students', updatedStudents);
+                    setToastMessage("스티커가 초기화되었습니다.");
+                });
+            };
+
             const validateApiKey = async () => {
                 if (!apiKey) return setToastMessage("API 키를 입력해주세요.");
                 try {
@@ -10686,11 +10696,8 @@ useEffect(() => {
                                         pChanged = true;
                                     }
                                 } else {
-                                    if (isTaskDone && isTaskLate) {
-                                        pNewTasksStatus[idx] = false;
-                                        delete pNewLateStatus[idx];
-                                        pChanged = true;
-                                    }
+                                    // [Fix] 체크 해제 시에는 과거 미제출(지각) 과제 상태를 변경하지 않음 (점수 보존)
+                                    // 당일 과제 체크 해제 시 과거 미제출분이 다시 미제출로 뜨는 현상 방지
                                 }
                             });
 
@@ -11838,7 +11845,10 @@ useEffect(() => {
             }
             const top5 = sortedByHonor.slice(0, 5);
             
-            const sortedByHelp = [...computedStudents].sort((a,b) => a.helpStats.score - b.helpStats.score);
+            // [Fix] 도움이 필요해요: 0점 이상은 제외하고 마이너스 점수만 표시
+            const filteredByHelp = computedStudents.filter(s => s.helpStats.score < 0);
+            const sortedByHelp = [...filteredByHelp].sort((a,b) => a.helpStats.score - b.helpStats.score);
+            
             let currentHelpRank = 1;
             for (let i = 0; i < sortedByHelp.length; i++) {
                 if (i > 0 && sortedByHelp[i].helpStats.score > sortedByHelp[i-1].helpStats.score) currentHelpRank = i + 1;
@@ -12734,6 +12744,9 @@ useEffect(() => {
                             {mode === 'stats' && (
                                 <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-10">
                                 <div className="flex justify-end items-center gap-2">
+                                    <Btn onClick={handleResetStickers} className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded-xl text-xs font-bold hover:bg-yellow-100 shadow-sm flex items-center gap-2 transition-colors">
+                                        <Icon d={PATHS.refresh} size={16} /> 스티커 초기화
+                                    </Btn>
                                     <Btn onClick={() => setShowWeeklyBriefing(true)} disabled={isGenerating} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-colors ${apiKey ? 'bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50' : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'} ${isGenerating ? 'opacity-50' : ''}`}>
                                         <Icon d={PATHS.magic} size={16} /> AI 주간 브리핑
                                     </Btn>

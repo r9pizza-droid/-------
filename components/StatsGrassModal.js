@@ -153,9 +153,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [showReportFontList, setShowReportFontList] = useState(false);
     const [reportFocus, setReportFocus] = useState('comprehensive');
     const [showCounselingAI, setShowCounselingAI] = useState(false);
-    const [reportStats, setReportStats] = useState({ studentRate: 0, classRate: 0, tagStats: {}, studentScore: 0, classScore: 0 });
+    const [reportStats, setReportStats] = useState({ studentRate: 0, classRate: 0, tagStats: {}, studentScore: 0, classScore: 0, scoreDetails: { gained: 0, lost: 0 } });
     const [animatedWidths, setAnimatedWidths] = useState({ student: 0, class: 0 });
     const [showDetailStats, setShowDetailStats] = useState(false);
+    const [showScoreAnalysis, setShowScoreAnalysis] = useState(false); // [New] 점수 분석 보기 토글
+    const [showStickerHistory, setShowStickerHistory] = useState(false); // [New] 스티커 히스토리 보기 토글
     const [showStudentRecordAI, setShowStudentRecordAI] = useState(false);
     const modalRef = useRef(null);
     const reportRef = useRef(null);
@@ -716,6 +718,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const calculateStatsForPeriod = (startStr, endStr) => {
         let pTotal = 0, pDone = 0;
         let pScore = 0;
+        let gained = 0; // [New] 얻은 점수
+        let lost = 0;   // [New] 잃은 점수 (페널티)
         const pMissed = {};
         const tagStats = {};
         let curr = dayjs(startStr);
@@ -747,11 +751,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         pDone++;
                         tagStats[tag].sDone++;
                         pScore += 0.5;
+                        gained += 0.5;
                     } else {
                         pMissed[tag] = (pMissed[tag] || 0) + 1;
                         if (!isFuture) {
                             const penalty = Math.min(3, diffDays + 1);
                             pScore -= penalty;
+                            lost += penalty;
                         }
                     }
                 });
@@ -784,13 +790,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         const classAvgRate = classTotal > 0 ? Math.round((classDone / classTotal) * 100) : 0;
         const classAvgScore = students.length > 0 ? (classScoreSum / students.length) : 0;
 
-        return { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore };
+        return { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore, scoreDetails: { gained, lost } };
     };
     
     useEffect(() => {
         if (isOpen && student && students) {
             const stats = calculateStatsForPeriod(reportStart, reportEnd);
-            setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore });
+            setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore, scoreDetails: stats.scoreDetails });
             
             // Animation logic
             const timer = setTimeout(() => {
@@ -809,8 +815,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         setIsGenerating(true);
         try {
             const stats = calculateStatsForPeriod(reportStart, reportEnd);
-            const { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore } = stats;
-            setReportStats({ studentRate: pRate, classRate: classAvgRate, tagStats, studentScore: pScore, classScore: classAvgScore });
+            const { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore, scoreDetails } = stats;
+            setReportStats({ studentRate: pRate, classRate: classAvgRate, tagStats, studentScore: pScore, classScore: classAvgScore, scoreDetails });
             const pNotes = notes.filter(n => n.date >= reportStart && n.date <= reportEnd);
             
             // [New] 지각 제출 계산
@@ -939,7 +945,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     
     const handlePrepareReport = () => {
         const stats = calculateStatsForPeriod(reportStart, reportEnd);
-        setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore });
+        setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore, scoreDetails: stats.scoreDetails });
         const savedDraft = student.recordDrafts?.['growth_report'];
         if (savedDraft) {
             setTempComment(savedDraft);
@@ -1122,8 +1128,14 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const displayedGrass = isGrassExpanded ? grassHistory : defaultGrass;
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-            <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={(e) => {
+             if (showStickerHistory) setShowStickerHistory(false);
+             else onClose();
+        }}>
+            <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col" onClick={e => {
+                e.stopPropagation();
+                if (showStickerHistory) setShowStickerHistory(false);
+            }}>
                 <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0">
                     <div className="flex justify-between items-center flex-wrap gap-4">
                         <div className="flex items-center gap-4">
@@ -1246,6 +1258,32 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* [New] 점수 상세 분석 */}
+                            <div className="mt-3 text-center">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setShowScoreAnalysis(!showScoreAnalysis); }} 
+                                    className="text-[10px] text-slate-400 font-bold hover:text-indigo-500 underline decoration-dashed underline-offset-4"
+                                >
+                                    {showScoreAnalysis ? "점수 분석 닫기" : "내 점수는 어떻게 계산됐나요?"}
+                                </button>
+                                
+                                {showScoreAnalysis && (
+                                    <div className="mt-3 bg-white border border-slate-100 rounded-xl p-3 text-xs animate-fade-in shadow-sm">
+                                        <div className="flex justify-between items-center mb-1 text-slate-600">
+                                            <span>✅ 정상 제출 (+0.5점/건)</span>
+                                            <span className="font-bold text-indigo-500">+{reportStats.scoreDetails?.gained || 0}점</span>
+                                        </div>
+                                        <div className="flex justify-between items-center mb-2 text-slate-600">
+                                            <span>⚠️ 지각/미제출 (최대 -3점/건)</span>
+                                            <span className="font-bold text-rose-500">{reportStats.scoreDetails?.lost ? `-${reportStats.scoreDetails.lost}` : '0'}점</span>
+                                        </div>
+                                        <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 leading-tight text-left">
+                                            * 마감일 내 제출 시 0.5점씩 오르고,<br/> 미제출 기간이 길어질수록 감점이 커집니다.
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             {showDetailStats && reportStats.tagStats && (
                                 <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-fade-in" onClick={e => e.stopPropagation()}>
@@ -1285,14 +1323,45 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
                     <div className="lg:col-span-7 space-y-6 flex flex-col h-full">
 
-                        <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md">
+                        <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md relative z-30">
                             <div className="flex flex-col">
                                 <h4 className="text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><span className="text-lg">🌟</span> 칭찬 스티커</h4>
                                 <span className="text-xs text-slate-400 font-medium">긍정적 강화와 보상</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <Btn onClick={() => handleSticker(-1)} className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-lg">-</Btn>
-                                <span className={`text-3xl font-black text-yellow-500 w-12 text-center transition-transform duration-200 ${stickerEffect ? 'scale-150 text-orange-500' : ''}`}>{stickerCount}</span>
+                                <div className="relative">
+                                    <span 
+                                        onClick={(e) => { e.stopPropagation(); setShowStickerHistory(!showStickerHistory); }}
+                                        className={`text-3xl font-black text-yellow-500 w-12 text-center transition-transform duration-200 cursor-pointer hover:scale-110 inline-block ${stickerEffect ? 'scale-150 text-orange-500' : ''}`}
+                                        title="기록 보기"
+                                    >
+                                        {stickerCount}
+                                    </span>
+                                    {showStickerHistory && (
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50 animate-fade-in" onClick={e => e.stopPropagation()}>
+                                            <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
+                                                <h5 className="text-xs font-bold text-slate-600">📜 최근 칭찬 기록</h5>
+                                                <button onClick={() => setShowStickerHistory(false)} className="text-slate-400 hover:text-slate-600"><Icon d={PATHS.x} size={12}/></button>
+                                            </div>
+                                            <div className="space-y-3 max-h-48 overflow-y-auto custom-scroll">
+                                                {combinedNotes.filter(n => n.content && (n.content.includes('칭찬') || n.content.includes('스티커') || n.content.includes('상점'))).slice(0, 5).map(n => (
+                                                    <div key={n.id} className="text-xs">
+                                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                                            <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-1.5 rounded">{dayjs(n.date).format('MM/DD')}</span>
+                                                            <span className="w-1 h-1 rounded-full bg-indigo-400"></span>
+                                                        </div>
+                                                        <p className="text-slate-700 pl-1 border-l-2 border-slate-100 ml-1 py-0.5">{n.content}</p>
+                                                    </div>
+                                                ))}
+                                                {combinedNotes.filter(n => n.content && (n.content.includes('칭찬') || n.content.includes('스티커') || n.content.includes('상점'))).length === 0 && (
+                                                    <div className="text-center text-slate-400 text-xs py-2">칭찬 기록이 없습니다.</div>
+                                                )}
+                                            </div>
+                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1.5 w-3 h-3 bg-white border-t border-l border-slate-100 transform rotate-45"></div>
+                                        </div>
+                                    )}
+                                </div>
                                 <Btn onClick={() => handleSticker(1)} className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold text-lg shadow-sm">+</Btn>
                             </div>
                         </div>
