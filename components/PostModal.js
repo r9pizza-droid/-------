@@ -310,11 +310,12 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">카테고리</label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map(cat => (
+                        {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map((cat, idx) => (
                             <button
                                 key={cat}
                                 onClick={() => setCategory(cat)}
-                                className={`py-3 rounded-xl text-xs font-bold transition-all ${category === cat ? 'bg-indigo-600 text-white shadow-md transform scale-105' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                className={`py-3 rounded-xl text-xs font-bold transition-all animate-fade-in ${category === cat ? 'bg-indigo-600 text-white shadow-md transform scale-105' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}
                             >
                                 {cat}
                             </button>
@@ -372,7 +373,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     {imageUrls.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mb-2">
                             {imageUrls.map((url, idx) => (
-                                <div key={idx} className="relative aspect-square bg-slate-50 rounded-xl border border-slate-200 overflow-hidden group/img">
+                                <div key={idx} className="relative aspect-square bg-slate-50 rounded-xl border border-slate-200 overflow-hidden group/img animate-fade-in" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
                                     <img src={url} alt={`첨부 ${idx + 1}`} className="w-full h-full object-cover" />
                                     <button onClick={() => setImageUrls(prev => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1.5 hover:bg-rose-500 transition-colors shadow-sm"><Icon d={PATHS.x} size={12}/></button>
                                 </div>

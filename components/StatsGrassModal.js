@@ -72,6 +72,18 @@ const GRASS_THEMES = {
     slate: { bg: 'bg-slate-100', border: 'border-slate-400', ring: 'ring-slate-300', text: 'text-slate-700', dot: 'bg-slate-500' },
 };
 
+const renderTextWithLinks = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, i) => {
+        if (part.match(urlRegex)) {
+            return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 underline break-all" onClick={(e) => e.stopPropagation()}>{part}</a>;
+        }
+        return part;
+    });
+};
+
 const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, records: propRecords, dates, dailyTasks: propDailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, setRecords, setDailyTasks, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment, initialShowScoreAnalysis = false }) => {
     // [실시간 연동] 부모로부터 받은 props(propRecords, propDailyTasks, propStudent)를 직접 사용합니다.
     // 아래 useEffect 훅이 부모의 state를 직접 업데이트하므로, 이 컴포넌트 내의 별도 state는 더 이상 필요 없습니다.
@@ -1252,15 +1264,15 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                 </div>
                                                 <div className="space-y-3 max-h-60 overflow-y-auto custom-scroll">
                                                     {taskComments.length > 0 ? (
-                                                        taskComments.sort((a,b) => b.date.localeCompare(a.date)).map(note => (
-                                                            <div key={note.id} className="text-xs group">
+                                                        taskComments.sort((a,b) => b.date.localeCompare(a.date)).map((note, index) => (
+                                                            <div key={note.id} className="text-xs group animate-fade-in" style={{ animationDelay: `${index * 0.05}s`, animationFillMode: 'both' }}>
                                                                 <div className="flex items-center gap-1.5 mb-1">
                                                                     <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-1.5 rounded">{dayjs(note.date).format('MM/DD')}</span>
                                                                     <span className="px-1.5 py-0.5 border border-indigo-200 bg-indigo-50 text-indigo-600 text-[9px] rounded-md font-bold truncate max-w-[150px]">
                                                                         {note.taskTitle}
                                                                     </span>
                                                                 </div>
-                                                                <p className="text-slate-700 pl-2 border-l-2 border-slate-100 group-hover:border-indigo-200 transition-colors py-0.5 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                                                                <p className="text-slate-700 pl-2 border-l-2 border-slate-100 group-hover:border-indigo-200 transition-colors py-0.5 whitespace-pre-wrap leading-relaxed">{renderTextWithLinks(note.content)}</p>
                                                             </div>
                                                         ))
                                                     ) : (
@@ -1301,7 +1313,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         const barColor = i === 0 ? 'bg-rose-400' : i === 1 ? 'bg-orange-300' : 'bg-amber-300';
                                         const bgColor = i === 0 ? 'bg-rose-50' : i === 1 ? 'bg-orange-50' : 'bg-amber-50';
                                         return (
-                                            <div key={tag} className={`relative p-3 rounded-xl border border-slate-100 ${bgColor}`}>
+                                            <div key={tag} className={`relative p-3 rounded-xl border border-slate-100 ${bgColor} animate-fade-in`} style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'both' }}>
                                                 <div className="flex justify-between items-center mb-2">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${rankColor}`}>{i+1}</span>
@@ -1408,8 +1420,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                 <span className="text-[9px] text-slate-400 font-medium">* 클릭하여 상태 변경</span>
                                             </div>
                                             <div className="space-y-2">
-                                                {reportStats.taskDetails?.length > 0 ? reportStats.taskDetails.map((td, i) => (
-                                                    <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors">
+                                                {reportStats.taskDetails?.length > 0 ? reportStats.taskDetails.map((td, idx) => (
+                                                    <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors animate-fade-in" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
                                                         <div className="flex flex-col text-left max-w-[55%]">
                                                             <span className="text-[10px] font-bold text-slate-400">{dayjs(td.date).format('MM/DD')}</span>
                                                             <div className="flex items-center gap-1">
@@ -1422,7 +1434,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                             </div>
                                                             {td.comment && expandedComments[`${td.date}-${td.idx}`] && (
                                                                 <div className="text-[10px] text-slate-500 mt-1 whitespace-pre-wrap border-l-2 border-indigo-200 pl-1.5 py-0.5 animate-fade-in bg-white/50 rounded-r" onClick={(e) => e.stopPropagation()}>
-                                                                    {Array.isArray(td.comment) ? td.comment.join('\n') : td.comment}
+                                                                    {renderTextWithLinks(Array.isArray(td.comment) ? td.comment.join('\n') : td.comment)}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1475,13 +1487,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     {chartType === 'bar' ? (
                                         Object.entries(reportStats.tagStats)
                                         .filter(([tag, stat]) => stat.cDone > 0)
-                                        .sort((a,b) => b[1].sTotal - a[1].sTotal).map(([tag, stat]) => {
+                                        .sort((a,b) => b[1].sTotal - a[1].sTotal).map(([tag, stat], idx) => {
                                             const sRate = stat.sTotal > 0 ? Math.round((stat.sDone / stat.sTotal) * 100) : 0;
                                             const cRate = stat.cTotal > 0 ? Math.round((stat.cDone / stat.cTotal) * 100) : 0;
                                             const isLow = cRate - sRate >= 20;
                                             const isHigh = sRate > cRate;
                                             return (
-                                                <div key={tag} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                                <div key={tag} className="bg-slate-50 p-3 rounded-xl border border-slate-100 animate-fade-in" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
                                                     <div className="flex justify-between text-xs mb-2 font-bold text-slate-600">
                                                         <div className="flex items-center gap-1.5"><span className="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-600">{tag}</span>{isHigh && <span className="text-[10px] text-orange-500 animate-pulse">훌륭해요! 🎉</span>}</div>
                                                         <div className="flex gap-3"><span className={isLow ? "text-rose-500" : getLevelTextColor(level)}>나 {sRate}%</span><span className="text-slate-400">반 {cRate}%</span></div>
@@ -1524,8 +1536,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                 <button onClick={() => setShowStickerHistory(false)} className="text-slate-400 hover:text-slate-600"><Icon d={PATHS.x} size={12}/></button>
                                             </div>
                                             <div className="space-y-3 max-h-48 overflow-y-auto custom-scroll">
-                                                {combinedNotes.filter(n => n.content && (n.content.includes('칭찬') || n.content.includes('스티커') || n.content.includes('상점'))).slice(0, 5).map(n => (
-                                                    <div key={n.id} className="text-xs">
+                                                {combinedNotes.filter(n => n.content && (n.content.includes('칭찬') || n.content.includes('스티커') || n.content.includes('상점'))).slice(0, 5).map((n, idx) => (
+                                                    <div key={n.id} className="text-xs animate-fade-in" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
                                                         <div className="flex items-center gap-1.5 mb-0.5">
                                                             <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-1.5 rounded">{dayjs(n.date).format('MM/DD')}</span>
                                                             <span className="w-1 h-1 rounded-full bg-indigo-400"></span>
@@ -1592,10 +1604,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         {showStudentDropdown && (
                                             <div className="absolute top-full left-0 w-full bg-white shadow-2xl border border-slate-200 rounded-xl z-50 max-h-48 overflow-y-auto mt-2 custom-scroll py-1 animate-fade-in">
                                                 <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 border-b border-slate-100 mb-1">학생 검색</div>
-                                                {students.filter(s => s.name.includes(searchText)).sort((a, b) => a.name.localeCompare(b.name)).map(s => (
+                                                {students.filter(s => s.name.includes(searchText)).sort((a, b) => a.name.localeCompare(b.name)).map((s, idx) => (
                                                     <div 
                                                         key={s.id} 
-                                                        className="px-3 py-2.5 text-xs text-slate-700 hover:bg-indigo-50 cursor-pointer transition-colors flex justify-between items-center"
+                                                        className="px-3 py-2.5 text-xs text-slate-700 hover:bg-indigo-50 cursor-pointer transition-colors flex justify-between items-center animate-fade-in"
+                                                        style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}
                                                         onMouseDown={() => { handleStudentSelect(s.name); setSearchText(""); }}
                                                     >
                                                         <span className="font-bold flex items-center gap-2"><span className="text-[10px] text-slate-400 font-normal">{s.order}번</span> {s.name}</span>
@@ -1734,7 +1747,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                             const visibleNotes = showExpandBtn && !isExpanded ? groupNotes.slice(0, 2) : groupNotes;
 
                                             return (
-                                                <div key={date} className="flex w-full">
+                                                <div key={date} className="flex w-full animate-fade-in" style={{ animationDelay: `${dateIndex * 0.05}s`, animationFillMode: 'both' }}>
                                                     
                                                     <div className="w-12 flex flex-col items-end shrink-0 pt-1 pr-1.5">
                                                         <div className="text-xs font-bold text-slate-600 text-right leading-tight">
@@ -1944,7 +1957,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                     const comment = rec?.taskComments?.[i] || '';
                                                                     const isEditingComment = openCommentIndex === i;
                                                                     return (
-                                                                        <div key={i} className={`flex flex-col p-3 rounded-2xl border-2 transition-all duration-200 ${isDone ? 'bg-indigo-50/30 border-indigo-100 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+                                                                        <div key={i} className={`flex flex-col p-3 rounded-2xl border-2 transition-all duration-200 animate-fade-in ${isDone ? 'bg-indigo-50/30 border-indigo-100 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`} style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'both' }}>
                                                                             <div className="flex items-center">
                                                                                 <div className={`flex items-center justify-center w-6 h-6 rounded-full border-2 mr-3 transition-colors ${isDone ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-slate-200 text-transparent'}`}>
                                                                                     <Icon d={PATHS.check} size={14} strokeWidth={4} />
@@ -1973,7 +1986,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                             
                                                                             {comment && !isEditingComment && (
                                                                                 <div className="mt-2 pl-9 flex items-center gap-2 group">
-                                                                                    <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg flex-1 whitespace-pre-wrap">{comment}</p>
+                                                                                    <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg flex-1 whitespace-pre-wrap">{renderTextWithLinks(comment)}</p>
                                                                                     <button 
                                                                                         onClick={() => { navigator.clipboard.writeText(comment); showToast("메모가 복사되었습니다."); }} 
                                                                                         className="p-1 text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -2028,8 +2041,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                 <h4 className="text-sm font-extrabold text-slate-700">선생님 기록</h4>
                                                             </div>
                                                             <div className="space-y-3">
-                                                                {notes.filter(n => n.date === detailDate).map(n => (
-                                                                    <div key={n.id} className="relative bg-amber-50/50 p-4 rounded-2xl border border-amber-100 shadow-sm hover:shadow-md transition-all">
+                                                                {notes.filter(n => n.date === detailDate).map((n, idx) => (
+                                                                    <div key={n.id} className="relative bg-amber-50/50 p-4 rounded-2xl border border-amber-100 shadow-sm hover:shadow-md transition-all animate-fade-in" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
                                                                         <div className="absolute top-4 left-0 w-1 h-8 bg-amber-400 rounded-r-full"></div>
                                                                         <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap pl-2">{n.content}</p>
                                                                     </div>
@@ -2073,7 +2086,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     </div>
                                     <div className="grid grid-cols-5 gap-y-6 gap-x-2 justify-items-center py-4 mt-2">
                                         {displayedGrass.map((h, i) => {
-                                            if (h.isPadding) return <div key={i} className="w-12 h-12"></div>;
+                                            if (h.isPadding) return <div key={i} className="w-12 h-12 animate-fade-in" style={{ animationDelay: `${i * 0.03}s`, animationFillMode: 'both' }}></div>;
                                             const isToday = h.date === todayStr;
                                             const theme = GRASS_THEMES[grassTheme];
                                             const colIndex = i % 5;
@@ -2085,7 +2098,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                             const hasNoTasks = h.total === 0;
 
                                             return (
-                                            <div key={i} onClick={() => { setSelectedGrassDate(h.date); setIsDetailViewOpen(true); }} className={`flex flex-col items-center gap-0.5 group relative cursor-pointer p-2 rounded-2xl transition-all duration-200 ease-out ${selectedGrassDate === h.date ? 'bg-white border-2 border-indigo-100 scale-100 md:scale-105 shadow-md z-20' : 'hover:bg-slate-50 border-2 border-transparent hover:border-slate-100 hover:scale-110 hover:shadow-lg hover:z-30'}`}>
+                                            <div key={i} onClick={() => { setSelectedGrassDate(h.date); setIsDetailViewOpen(true); }} className={`flex flex-col items-center gap-0.5 group relative cursor-pointer p-2 rounded-2xl transition-all duration-200 ease-out animate-fade-in ${selectedGrassDate === h.date ? 'bg-white border-2 border-indigo-100 scale-100 md:scale-105 shadow-md z-20' : 'hover:bg-slate-50 border-2 border-transparent hover:border-slate-100 hover:scale-110 hover:shadow-lg hover:z-30'}`} style={{ animationDelay: `${i * 0.03}s`, animationFillMode: 'both' }}>
                                                 {hasNoTasks ? (
                                                     <div className="w-12 h-12 flex items-center justify-center">
                                                         <div className={`w-1.5 h-1.5 rounded-full bg-slate-300 ${isToday ? `ring-4 ${theme.ring} ring-offset-4` : ''}`}></div>
