@@ -8617,6 +8617,7 @@ const firebaseConfig = {
             const [scoreDetailTarget, setScoreDetailTarget] = useState(null);
             const [showScoreAnalysisOnOpen, setShowScoreAnalysisOnOpen] = useState(false);
             const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+            const [expandedScoreComments, setExpandedScoreComments] = useState({});
 
             useEffect(() => {
                 // 상세 점수 분석 팝업이 열렸을 때 배경 스크롤을 막습니다.
@@ -8625,6 +8626,8 @@ const firebaseConfig = {
                     return () => {
                         document.body.style.overflow = '';
                     };
+                } else {
+                    setExpandedScoreComments({});
                 }
             }, [scoreDetailTarget]);
 
@@ -10872,7 +10875,7 @@ useEffect(() => {
                     studentRec.tasks[taskIndex] = true;
                     delete studentRec.lateTasks[taskIndex];
                 } else if (newStatus === 'late') {
-                    studentRec.tasks[taskIndex] = false;
+                    studentRec.tasks[taskIndex] = true;
                     studentRec.lateTasks[taskIndex] = dayjs().format('YYYY-MM-DD'); 
                 } else if (newStatus === 'missed') {
                     studentRec.tasks[taskIndex] = false;
@@ -11976,20 +11979,22 @@ useEffect(() => {
                                 dayTasks.forEach((t, idx) => {
                                     const isDone = sRec ? (sRec.tasks ? sRec.tasks[idx] : sRec.done) : false;
                                     const isLate = sRec ? (sRec.lateTasks ? !!sRec.lateTasks[idx] : false) : false;
+                                    const comment = sRec ? (sRec.taskComments ? sRec.taskComments[idx] : null) : null;
                                     const title = typeof t === 'object' ? t.title : t;
                                     if (isDone) {
-                                        if (isLate) { score += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx, status:'late', point: 0.5}); }
-                                        else { score += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx, status:'on-time', point: 1}); }
+                                        if (isLate) { score += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx, status:'late', point: 0.5, comment}); }
+                                        else { score += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx, status:'on-time', point: 1, comment}); }
                                     } else {
-                                        taskDetails.push({date:d, title, idx, status:'missed', point: 0});
+                                        taskDetails.push({date:d, title, idx, status:'missed', point: 0, comment});
                                     }
                                 });
                             } else if (dayRecord) { // Legacy single task mode
                                 totalCount++;
+                                const comment = sRec ? (sRec.taskComments ? sRec.taskComments[0] : null) : null;
                                 if (sRec?.done) {
-                                    score += 1; onTimeItems.push({date:d, title:'완료'}); taskDetails.push({date:d, title:'완료', idx:0, status:'on-time', point:1});
+                                    score += 1; onTimeItems.push({date:d, title:'완료'}); taskDetails.push({date:d, title:'완료', idx:0, status:'on-time', point:1, comment});
                                 } else {
-                                    taskDetails.push({date:d, title:'완료', idx:0, status:'missed', point:0});
+                                    taskDetails.push({date:d, title:'완료', idx:0, status:'missed', point:0, comment});
                                 }
                             }
                         } else {
@@ -12000,12 +12005,13 @@ useEffect(() => {
                                     const originalIdx = dayTasks.indexOf(t);
                                     const isDone = sRec ? (sRec.tasks ? sRec.tasks[originalIdx] : sRec.done) : false;
                                     const isLate = sRec ? (sRec.lateTasks ? !!sRec.lateTasks[originalIdx] : false) : false;
+                                    const comment = sRec ? (sRec.taskComments ? sRec.taskComments[originalIdx] : null) : null;
                                     const title = typeof t === 'object' ? t.title : t;
                                     if (isDone) {
-                                        if (isLate) { score += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'late', point: 0.5}); }
-                                        else { score += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'on-time', point: 1}); }
+                                        if (isLate) { score += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'late', point: 0.5, comment}); }
+                                        else { score += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'on-time', point: 1, comment}); }
                                     } else {
-                                        taskDetails.push({date:d, title, idx:originalIdx, status:'missed', point: 0});
+                                        taskDetails.push({date:d, title, idx:originalIdx, status:'missed', point: 0, comment});
                                     }
                                 });
                             }
@@ -12037,19 +12043,20 @@ useEffect(() => {
                                 const originalIdx = dayTasks.indexOf(t);
                                 const isDone = sRec ? (sRec.tasks ? sRec.tasks[originalIdx] : sRec.done) : false;
                                 const isLate = sRec ? (sRec.lateTasks ? !!sRec.lateTasks[originalIdx] : false) : false;
+                                const comment = sRec ? (sRec.taskComments ? sRec.taskComments[originalIdx] : null) : null;
                                 const title = typeof t === 'object' ? t.title : t;
                                 
                                 if (isDone) {
                                     score += 0.5; gained += 0.5;
                                     history.push({ date: dStr, title, point: 0.5, type: 'gain' });
-                                    taskDetails.push({ date: dStr, title, idx: originalIdx, status: isLate ? 'late' : 'on-time', point: 0.5 });
+                                    taskDetails.push({ date: dStr, title, idx: originalIdx, status: isLate ? 'late' : 'on-time', point: 0.5, comment });
                                 } else {
                                     const diff = today.diff(dObj, 'day');
                                     let penalty = -(diff + 1);
                                     if (penalty < -3) penalty = -3;
                                     score += penalty; lost += Math.abs(penalty);
                                     history.push({ date: dStr, title, point: penalty, type: 'loss' });
-                                    taskDetails.push({ date: dStr, title, idx: originalIdx, status: 'missed', point: penalty });
+                                    taskDetails.push({ date: dStr, title, idx: originalIdx, status: 'missed', point: penalty, comment });
                                 }
                             });
                         }
@@ -14242,7 +14249,19 @@ useEffect(() => {
                                                     <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors">
                                                         <div className="flex flex-col text-left max-w-[55%]">
                                                             <span className="text-[10px] font-bold text-slate-400">{dayjs(td.date).format('MM.DD')}</span>
-                                                            <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
+                                                                {td.comment && (
+                                                                    <button onClick={(e) => { e.stopPropagation(); setExpandedScoreComments(prev => ({...prev, [`${td.date}-${td.idx}`]: !prev[`${td.date}-${td.idx}`]})); }} className="text-slate-400 hover:text-indigo-500 transition-colors flex-shrink-0">
+                                                                        <Icon d={PATHS.right} size={12} className={`transition-transform duration-200 ${expandedScoreComments[`${td.date}-${td.idx}`] ? 'rotate-90' : ''}`} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {td.comment && expandedScoreComments[`${td.date}-${td.idx}`] && (
+                                                                <div className="text-[10px] text-slate-500 mt-1 whitespace-pre-wrap border-l-2 border-indigo-200 pl-1.5 py-0.5 animate-fade-in bg-white/50 rounded-r" onClick={(e) => e.stopPropagation()}>
+                                                                    {Array.isArray(td.comment) ? td.comment.join('\n') : td.comment}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div className="flex items-center gap-1.5 flex-shrink-0">
                                                             <span className={`text-[10px] font-bold w-8 text-right ${td.status === 'on-time' ? 'text-indigo-500' : td.status === 'late' ? 'text-amber-500' : 'text-rose-500'}`}>

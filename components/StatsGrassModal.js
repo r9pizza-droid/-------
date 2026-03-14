@@ -184,6 +184,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [showThemePicker, setShowThemePicker] = useState(false);
     const [openCommentIndex, setOpenCommentIndex] = useState(null); // [New] 과제별 메모 입력창 상태
     const [commentInput, setCommentInput] = useState(""); // [New] 과제별 메모 입력값
+    const [expandedComments, setExpandedComments] = useState({}); // [New] 점수 분석 내 메모 토글 상태
     
     // [New] 연동 상태 확인 및 기본값 설정 (초기화)
     const [hasNotionRecord, setHasNotionRecord] = useState(false);
@@ -756,6 +757,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     const tag = typeof t === 'object' ? t.tag : '기타';
                     const isDone = rec?.tasks ? rec.tasks[idx] : (rec?.done && !rec.tasks);
                     const isLate = rec?.lateTasks ? !!rec.lateTasks[idx] : false;
+                    const comment = rec?.taskComments ? rec.taskComments[idx] : null;
                     const lateDateStr = isLate ? (typeof rec.lateTasks[idx] === 'string' ? rec.lateTasks[idx] : null) : null;
                     
                     tagStats[tag].sTotal++;
@@ -769,20 +771,15 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         tagStats[tag].sDone++;
                         pScore += 0.5;
                         gained += 0.5;
-                        status = 'on-time';
                         currentGained = 0.5;
-                    } else if (isLate) {
-                        status = 'late';
-                        let lateDiff = diffDays;
-                        if (lateDateStr) {
-                            const lD = dayjs(lateDateStr);
-                            if (lD.isValid()) lateDiff = Math.max(0, lD.diff(curr, 'day'));
+                        
+                        if (isLate) {
+                            status = 'late';
+                        } else {
+                            status = 'on-time';
                         }
-                        const penalty = Math.max(0, Math.min(3, lateDiff));
-                        pScore -= penalty;
-                        lost += penalty;
-                        currentPenalty = penalty;
                     } else {
+                        status = 'missed';
                         pMissed[tag] = (pMissed[tag] || 0) + 1;
                         if (!isFuture) {
                             const penalty = Math.min(3, diffDays + 1);
@@ -793,7 +790,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     }
                     
                     if (!isFuture) {
-                        taskDetails.push({ date: dStr, idx, title, tag, status, penalty: currentPenalty, gained: currentGained });
+                        taskDetails.push({ date: dStr, idx, title, tag, status, penalty: currentPenalty, gained: currentGained, comment });
                     }
                 });
                 const recs = records[dStr] || {};
@@ -813,14 +810,6 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                             tagStats[tag].cDone++; 
                             classDone++; 
                             classScoreSum += 0.5;
-                        } else if (isTaskLate) {
-                            let lateDiff = diffDays;
-                            if (taskLateDateStr) {
-                                const lD = dayjs(taskLateDateStr);
-                                if (lD.isValid()) lateDiff = Math.max(0, lD.diff(curr, 'day'));
-                            }
-                            const penalty = Math.max(0, Math.min(3, lateDiff));
-                            classScoreSum -= penalty;
                         } else {
                             if (!isFuture) {
                                 const penalty = Math.min(3, diffDays + 1);
@@ -855,7 +844,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             studentRec.tasks[idx] = true;
             delete studentRec.lateTasks[idx];
         } else if (newStatus === 'late') {
-            studentRec.tasks[idx] = false;
+            studentRec.tasks[idx] = true;
             studentRec.lateTasks[idx] = dayjs().format('YYYY-MM-DD'); 
         } else if (newStatus === 'missed') {
             studentRec.tasks[idx] = false;
@@ -1423,11 +1412,23 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                     <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors">
                                                         <div className="flex flex-col text-left max-w-[55%]">
                                                             <span className="text-[10px] font-bold text-slate-400">{dayjs(td.date).format('MM/DD')}</span>
-                                                            <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
+                                                                {td.comment && (
+                                                                    <button onClick={(e) => { e.stopPropagation(); setExpandedComments(prev => ({...prev, [`${td.date}-${td.idx}`]: !prev[`${td.date}-${td.idx}`]})); }} className="text-slate-400 hover:text-indigo-500 transition-colors flex-shrink-0">
+                                                                        <Icon d={PATHS.right} size={12} className={`transition-transform duration-200 ${expandedComments[`${td.date}-${td.idx}`] ? 'rotate-90' : ''}`} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {td.comment && expandedComments[`${td.date}-${td.idx}`] && (
+                                                                <div className="text-[10px] text-slate-500 mt-1 whitespace-pre-wrap border-l-2 border-indigo-200 pl-1.5 py-0.5 animate-fade-in bg-white/50 rounded-r" onClick={(e) => e.stopPropagation()}>
+                                                                    {Array.isArray(td.comment) ? td.comment.join('\n') : td.comment}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div className="flex items-center gap-1.5 flex-shrink-0">
                                                             <span className={`text-[10px] font-bold w-8 text-right ${td.status === 'on-time' ? 'text-indigo-500' : td.status === 'late' ? 'text-amber-500' : 'text-rose-500'}`}>
-                                                                {td.status === 'on-time' ? `+${td.gained}점` : `-${td.penalty}점`}
+                                                                {td.status === 'missed' ? `-${td.penalty}점` : `+${td.gained}점`}
                                                             </span>
                                                             <select
                                                                 value={td.status}
