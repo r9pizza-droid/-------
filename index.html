@@ -14092,12 +14092,13 @@ useEffect(() => {
                                                                         comments.filter(c => !c.parentId).map(comment => {
                                                                             const isMyComment = firebase.auth().currentUser?.uid === comment.uid;
                                                                             const replies = comments.filter(r => r.parentId === comment.id);
+                                                                            const isPostAuthor = selectedPost.uid && comment.uid === selectedPost.uid;
                                                                             return (
                                                                                 <div key={comment.id} className="space-y-2">
                                                                                     <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                                                                                         <div className="flex justify-between items-start mb-1">
                                                                                             <div className="flex items-center gap-2">
-                                                                                                <span className="font-bold text-slate-700 text-sm">{comment.author || comment.authorName} <span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{comment.isAnonymous ? '🔒' : (comment.authorBadge || '🌱')}</span></span>
+                                                                                                <span className="font-bold text-slate-700 text-sm">{comment.author || comment.authorName} {isPostAuthor && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold align-middle mx-1">글쓴이</span>}<span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{comment.isAnonymous ? '🔒' : (comment.authorBadge || '🌱')}</span></span>
                                                                                                 <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
                                                                                             </div>
                                                                                             <div className="flex items-center gap-1">
@@ -14113,12 +14114,13 @@ useEffect(() => {
                                                                                     {/* Replies */}
                                                                                     {replies.map(reply => {
                                                                                         const isMyReply = firebase.auth().currentUser?.uid === reply.uid;
+                                                                                        const isReplyPostAuthor = selectedPost.uid && reply.uid === selectedPost.uid;
                                                                                         return (
                                                                                             <div key={reply.id} className="ml-6 bg-slate-100/50 p-3 rounded-xl border border-slate-200 relative">
                                                                                                 <div className="absolute top-[-10px] left-[-10px] w-4 h-6 border-l-2 border-b-2 border-slate-200 rounded-bl-xl"></div>
                                                                                                 <div className="flex justify-between items-start mb-1">
                                                                                                     <div className="flex items-center gap-2">
-                                                                                                        <span className="font-bold text-slate-700 text-sm">{reply.author || reply.authorName} <span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{reply.isAnonymous ? '🔒' : (reply.authorBadge || '🌱')}</span></span>
+                                                                                                        <span className="font-bold text-slate-700 text-sm">{reply.author || reply.authorName} {isReplyPostAuthor && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold align-middle mx-1">글쓴이</span>}<span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{reply.isAnonymous ? '🔒' : (reply.authorBadge || '🌱')}</span></span>
                                                                                                         <span className="text-[10px] text-slate-400">{dayjs(reply.createdAt).format('MM.DD HH:mm')}</span>
                                                                                                     </div>
                                                                                                     {(isAdmin || isMyReply) && (
