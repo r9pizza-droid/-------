@@ -255,6 +255,20 @@
             } catch (e) { console.error("System log write failure:", e); }
         };
 
+        const getRelativeTime = (dateInput) => {
+            const date = dayjs(dateInput);
+            const now = dayjs();
+            const diffMin = now.diff(date, 'minute');
+            if (diffMin < 1) return '방금 전';
+            if (diffMin < 60) return `${diffMin}분 전`;
+            const diffHour = now.diff(date, 'hour');
+            if (diffHour < 24 && date.date() === now.date()) return `${diffHour}시간 전`;
+            const diffDay = now.diff(date, 'day');
+            if (diffDay === 1) return '어제';
+            if (diffDay < 7) return `${diffDay}일 전`;
+            return date.format('MM.DD HH:mm');
+        };
+
         const GEMINI_MODEL_NAME = "gemini-2.5-flash-lite";
         // [New] Gemini 호출 함수 (리포트 생성용)
         window.callGemini = async (apiKey, prompt, temperature = 0.7) => {
@@ -1844,9 +1858,10 @@
                     </div>
                     <div className="relative z-10 space-y-4">
                         {!hasMissingData ? (
-                            <div className="text-center py-6 text-slate-400 flex flex-col items-center bg-slate-50 rounded-xl border border-slate-200 border-dashed">
-                                <Icon d={PATHS.check} size={32} className="mb-2 text-indigo-200"/>
-                                <p className="text-sm">미제출 내역이 없거나 등록된 과제가 없습니다. 🎉</p>
+                            <div className="text-center py-10 text-slate-400 flex flex-col items-center justify-center bg-slate-50 rounded-xl border border-slate-200 border-dashed gap-3 animate-fade-in">
+                                <div className="text-5xl animate-bounce drop-shadow-sm">🎉</div>
+                                <p className="text-sm font-bold text-indigo-500">미제출 내역이 없거나 등록된 과제가 없어요!</p>
+                                <p className="text-xs text-slate-400">우리 반 친구들 모두 훌륭해요.</p>
                             </div>
                         ) : (
                             Object.entries(missingData).map(([date, items]) => {
@@ -7656,9 +7671,12 @@ const firebaseConfig = {
                                     );})}
                                 </div>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
-                                    <Icon d={PATHS.list} size={32} className="opacity-20" />
-                                    <span className="text-sm font-medium">기록이 없습니다.</span>
+                                <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4 border-2 border-dashed border-slate-100 rounded-3xl bg-slate-50/50 mt-4">
+                                    <div className="text-6xl animate-pulse drop-shadow-sm">📝</div>
+                                    <div className="text-center">
+                                        <p className="text-base font-bold text-slate-500 mb-1">아직 기록된 내용이 없어요.</p>
+                                        <p className="text-xs text-slate-400">학생들의 소중한 순간을 남겨보세요!</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -9587,6 +9605,7 @@ const firebaseConfig = {
             const [viewNeedsHelpList, setViewNeedsHelpList] = useState(false);
             const isNotiFirstLoad = useRef(true);
             const commentsEndRef = useRef(null);
+            const [showStatsResetMenu, setShowStatsResetMenu] = useState(false);
 
             useEffect(() => {
                 window.triggerAiSecurityCheck = (prompt) => {
@@ -10224,6 +10243,26 @@ const firebaseConfig = {
                     setStudents(updatedStudents);
                     if(!isLocalMode) saveData('cls_students', updatedStudents);
                     setToastMessage("스티커가 초기화되었습니다.");
+                });
+            };
+
+            const handleResetScores = () => {
+                openConfirm("모든 학생의 활동 기록을 삭제하여 명예의 전당 등 '점수'를 0으로 초기화하시겠습니까?\n(과제 목록과 스티커는 유지됩니다)", () => {
+                    setRecords({});
+                    setSimpleChecks({});
+                    if (!isLocalMode) {
+                        saveData('cls_records', {});
+                        if (db && appId) {
+                            db.collection('classes').doc(appId).collection('records').get().then(snapshot => {
+                                const batch = db.batch();
+                                snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                                batch.commit();
+                            });
+                        }
+                    } else {
+                        localStorage.setItem('cls_records', JSON.stringify({}));
+                    }
+                    setToastMessage("활동 점수가 초기화되었습니다.");
                 });
             };
 
@@ -12877,7 +12916,7 @@ useEffect(() => {
                                                     <span className="font-bold text-indigo-600"> '{noti.postTitle}'</span>에 
                                                     {noti.type === 'like' ? ' 좋아요를 눌렀습니다. ❤️' : ' 댓글을 남겼습니다. 💬'}
                                                 </p>
-                                                <span className="text-[10px] text-slate-400 mt-1 block">{dayjs(noti.createdAt).format('MM.DD HH:mm')}</span>
+                                                                <span className="text-[10px] text-slate-400 mt-1 block">{getRelativeTime(noti.createdAt)}</span>
                                             </div>
                                         </div>
                                         <button 
@@ -13245,14 +13284,17 @@ useEffect(() => {
                                                         ); })}
                                                     </div>
                                                 ) : (
-                                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
-                                                        <Icon d={PATHS.users} size={48} className="opacity-20"/>
-                                                        <p>편성된 모둠 없음</p>
-                                                        <div className="flex gap-2">
-                                                            <Btn onClick={loadLastGroups} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all active:scale-95">
+                                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-5 py-12">
+                                                        <div className="text-6xl animate-bounce drop-shadow-sm">🧩</div>
+                                                        <div className="text-center">
+                                                            <p className="text-base font-bold text-slate-500 mb-1">아직 편성된 모둠이 없어요.</p>
+                                                            <p className="text-xs text-slate-400">새로운 모둠을 만들어보세요!</p>
+                                                        </div>
+                                                        <div className="flex gap-2 mt-2">
+                                                            <Btn onClick={loadLastGroups} className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all active:scale-95">
                                                                 <Icon d={PATHS.history} size={16}/> 지난 모둠
                                                             </Btn>
-                                                            <Btn onClick={() => setIsLoadGroupCalendarOpen(true)} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all active:scale-95">
+                                                            <Btn onClick={() => setIsLoadGroupCalendarOpen(true)} className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all active:scale-95">
                                                                 <Icon d={PATHS.calendar} size={16}/> 날짜 선택
                                                             </Btn>
                                                         </div>
@@ -13287,9 +13329,24 @@ useEffect(() => {
                             {mode === 'stats' && (
                                 <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-10">
                                 <div className="flex justify-end items-center gap-2">
-                                    <Btn onClick={handleResetStickers} className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded-xl text-xs font-bold hover:bg-yellow-100 shadow-sm flex items-center gap-2 transition-colors">
-                                        <Icon d={PATHS.refresh} size={16} /> 스티커 초기화
-                                    </Btn>
+                                    <div className="relative">
+                                        <Btn onClick={() => setShowStatsResetMenu(!showStatsResetMenu)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-colors">
+                                            <Icon d={PATHS.refresh} size={16} /> 초기화
+                                        </Btn>
+                                        {showStatsResetMenu && (
+                                            <>
+                                                <div className="fixed inset-0 z-40" onClick={() => setShowStatsResetMenu(false)}></div>
+                                                <div className="absolute right-0 top-full mt-2 w-36 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50 overflow-hidden animate-fade-in">
+                                                    <button onClick={() => { setShowStatsResetMenu(false); handleResetStickers(); }} className="w-full text-left px-3 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-yellow-600 flex items-center gap-2 transition-colors border-b border-slate-50">
+                                                        <span className="text-base leading-none">🌟</span> 스티커 초기화
+                                                    </button>
+                                                    <button onClick={() => { setShowStatsResetMenu(false); handleResetScores(); }} className="w-full text-left px-3 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2 transition-colors">
+                                                        <span className="text-base leading-none">📊</span> 점수 초기화
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                     <Btn onClick={() => setShowWeeklyBriefing(true)} disabled={isGenerating} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-colors ${apiKey ? 'bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50' : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'} ${isGenerating ? 'opacity-50' : ''}`}>
                                         <Icon d={PATHS.magic} size={16} /> AI 주간 브리핑
                                     </Btn>
@@ -13580,7 +13637,7 @@ useEffect(() => {
                                                                     <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all">🏆</div>
                                                                     <div className="flex items-center gap-2 mb-2">
                                                                         <span className="text-[10px] bg-white/80 text-orange-600 px-2 py-0.5 rounded-md font-bold border border-orange-100 shadow-sm backdrop-blur-sm">{post.category}</span>
-                                                                        <span className="text-[10px] text-orange-400 font-medium">{dayjs(post.createdAt).format('MM.DD')}</span>
+                                                                        <span className="text-[10px] text-orange-400 font-medium">{getRelativeTime(post.createdAt)}</span>
                                                                     </div>
                                                                     <h5 className="font-bold text-slate-800 text-sm line-clamp-2 mb-3 group-hover:text-orange-700 transition-colors leading-snug">{post.title}</h5>
                                                                     <div className="mt-auto flex items-center justify-between text-xs border-t border-orange-100/50 pt-2">
@@ -13745,7 +13802,7 @@ useEffect(() => {
                                                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
                                                                                 <span className="font-medium text-slate-500">{post.authorName} <span className="text-[10px] align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
                                                                                 <span className="w-px h-2 bg-slate-200"></span>
-                                                                                <span>{dayjs(post.createdAt).format('MM.DD')}</span>
+                                                                                <span>{getRelativeTime(post.createdAt)}</span>
                                                                                 <span className="w-px h-2 bg-slate-200"></span>
                                                                                 <span>조회 {post.viewCount || 0}</span>
                                                                                 
@@ -13833,7 +13890,7 @@ useEffect(() => {
                                                                                     <Icon key={likedPosts.includes(post.id)} d={PATHS.heart} size={10} className={likedPosts.includes(post.id) ? "fill-current text-rose-500 animate-pop" : ""} />
                                                                                     <span className={likedPosts.includes(post.id) ? "text-rose-500 font-bold" : ""}>{post.likes ? post.likes.length : 0}</span>
                                                                                 </div>
-                                                                                <span>{dayjs(post.createdAt).format('MM.DD')}</span>
+                                                                                <span>{getRelativeTime(post.createdAt)}</span>
                                                                             </div>
                                                                         </div>
                                                                         {isExpanded && (isAdmin || (currentUser && post.uid === currentUser.uid)) && (
@@ -13860,7 +13917,7 @@ useEffect(() => {
                                                                         {isPopular && <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-lg font-bold border border-rose-200">🔥 인기</span>}
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-[10px] text-slate-400 font-medium">{dayjs(post.createdAt).format('YYYY.MM.DD HH:mm')}</span>
+                                                                        <span className="text-[10px] text-slate-400 font-medium">{getRelativeTime(post.createdAt)}</span>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex gap-4">
@@ -13929,9 +13986,10 @@ useEffect(() => {
                                                     ))}
 
                                                     {!isLoadingPosts && sortedPosts.length === 0 && (
-                                                        <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                                                            <div className="text-4xl mb-2 opacity-50">📭</div>
-                                                            <p className="text-sm font-bold">게시글이 없습니다.</p>
+                                                        <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-3">
+                                                            <div className="text-5xl mb-2 animate-bounce drop-shadow-sm">📭</div>
+                                                            <p className="text-base font-bold text-slate-500">아직 작성된 꿀팁이 없어요.</p>
+                                                            <p className="text-xs text-slate-400">선생님만의 노하우를 가장 먼저 공유해 보세요!</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -13997,7 +14055,7 @@ useEffect(() => {
                                                             <div className="mb-6">
                                                                 <div className="flex items-center gap-2 mb-2">
                                                                     <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-bold border border-indigo-100">{selectedPost.category}{selectedPost.subCategory ? ` > ${selectedPost.subCategory}` : ''}</span>
-                                                                    <span className="text-xs text-slate-400">{dayjs(selectedPost.createdAt).format('YYYY.MM.DD HH:mm')}</span>
+                                                                    <span className="text-xs text-slate-400">{getRelativeTime(selectedPost.createdAt)}</span>
                                                                     <span className="w-px h-2 bg-slate-200"></span>
                                                                     <span className="text-xs text-slate-400">조회 {(communityPosts.find(p => p.id === selectedPost.id) || selectedPost).viewCount || 0}</span>
                                                                 </div>
@@ -14099,7 +14157,7 @@ useEffect(() => {
                                                                                         <div className="flex justify-between items-start mb-1">
                                                                                             <div className="flex items-center gap-2">
                                                                                                 <span className="font-bold text-slate-700 text-sm">{comment.author || comment.authorName} {isPostAuthor && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold align-middle mx-1">글쓴이</span>}<span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{comment.isAnonymous ? '🔒' : (comment.authorBadge || '🌱')}</span></span>
-                                                                                                <span className="text-[10px] text-slate-400">{dayjs(comment.createdAt).format('MM.DD HH:mm')}</span>
+                                                                                                <span className="text-[10px] text-slate-400">{getRelativeTime(comment.createdAt)}</span>
                                                                                             </div>
                                                                                             <div className="flex items-center gap-1">
                                                                                                 <button onClick={() => setReplyingToId(replyingToId === comment.id ? null : comment.id)} className="text-xs text-slate-400 hover:text-indigo-600 font-bold px-2 py-1 rounded hover:bg-slate-100 transition-colors">답글</button>
@@ -14121,7 +14179,7 @@ useEffect(() => {
                                                                                                 <div className="flex justify-between items-start mb-1">
                                                                                                     <div className="flex items-center gap-2">
                                                                                                         <span className="font-bold text-slate-700 text-sm">{reply.author || reply.authorName} {isReplyPostAuthor && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold align-middle mx-1">글쓴이</span>}<span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{reply.isAnonymous ? '🔒' : (reply.authorBadge || '🌱')}</span></span>
-                                                                                                        <span className="text-[10px] text-slate-400">{dayjs(reply.createdAt).format('MM.DD HH:mm')}</span>
+                                                                                                        <span className="text-[10px] text-slate-400">{getRelativeTime(reply.createdAt)}</span>
                                                                                                     </div>
                                                                                                     {(isAdmin || isMyReply) && (
                                                                                                         <button onClick={() => handleDeleteComment(selectedPost.id, reply.id, reply.uid)} className="text-slate-300 hover:text-rose-500 p-1 rounded hover:bg-rose-50 transition-colors"><Icon d={PATHS.trash} size={14} /></button>

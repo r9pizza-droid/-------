@@ -332,7 +332,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
     const level = Math.floor(stickerCount / 5) + 1;
     
-    const handleSticker = (delta) => { 
+    const handleSticker = (delta, e) => { 
         const newCount = Math.max(0, stickerCount + delta);
         setStickerCount(newCount); 
         onSaveStickers(student.id, newCount); 
@@ -346,6 +346,43 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             }
             else { 
                 confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 });
+            }
+
+            // [New] 스티커 날아가기 효과
+            if (e && e.clientX && e.clientY) {
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const target = document.getElementById('sticker-count-display');
+                if (target) {
+                    const targetRect = target.getBoundingClientRect();
+                    const endX = targetRect.left + targetRect.width / 2;
+                    const endY = targetRect.top + targetRect.height / 2;
+
+                    const star = document.createElement('div');
+                    star.innerText = '🌟';
+                    star.style.position = 'fixed';
+                    star.style.left = startX + 'px';
+                    star.style.top = startY + 'px';
+                    star.style.fontSize = '32px';
+                    star.style.zIndex = '9999';
+                    star.style.pointerEvents = 'none';
+                    star.style.transform = 'translate(-50%, -50%)';
+                    star.style.transition = 'all 0.6s cubic-bezier(0.25, 1, 0.5, 1)';
+                    document.body.appendChild(star);
+
+                    requestAnimationFrame(() => {
+                        star.style.left = endX + 'px';
+                        star.style.top = endY + 'px';
+                        star.style.transform = 'translate(-50%, -50%) scale(1.5) rotate(360deg)';
+                        star.style.opacity = '0';
+                    });
+
+                    setTimeout(() => {
+                        if (document.body.contains(star)) {
+                            document.body.removeChild(star);
+                        }
+                    }, 600);
+                }
             }
         }
     };
@@ -1329,7 +1366,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     })}
                                 </div>
                             ) : (
-                                <div className="text-center text-slate-400 text-sm py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">미흡한 과목이 없습니다! 🎉</div>
+                                <div className="text-center text-slate-400 text-sm py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center gap-3">
+                                    <div className="text-4xl animate-bounce drop-shadow-sm">🎊</div>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-bold text-indigo-500 text-base">훌륭해요!</span>
+                                        <span className="text-xs">모든 과목을 완벽하게 수행했어요.</span>
+                                    </div>
+                                </div>
                             )}
                         </div>
 
@@ -1523,6 +1566,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 <Btn onClick={() => handleSticker(-1)} className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-lg">-</Btn>
                                 <div className="relative">
                                     <span 
+                                        id="sticker-count-display"
                                         onClick={(e) => { e.stopPropagation(); setShowStickerHistory(!showStickerHistory); }}
                                         className={`text-4xl font-black text-yellow-500 w-16 text-center transition-transform duration-200 cursor-pointer hover:scale-110 inline-block ${stickerEffect ? 'scale-150 text-orange-500' : ''}`}
                                         title="기록 보기"
@@ -1553,7 +1597,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         </div>
                                     )}
                                 </div>
-                                <Btn onClick={() => handleSticker(1)} className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold text-lg shadow-sm">+</Btn>
+                                <Btn onClick={(e) => handleSticker(1, e)} className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold text-lg shadow-sm">+</Btn>
                             </div>
                         </div>
 
@@ -2027,9 +2071,9 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                 })}
                                                             </div>
                                                         ) : (
-                                                            <div className="flex flex-col items-center justify-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 gap-2">
-                                                                <span className="text-3xl opacity-50">📭</span>
-                                                                <span className="text-xs font-bold">등록된 과제가 없습니다.</span>
+                                                            <div className="flex flex-col items-center justify-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 gap-3">
+                                                                <div className="text-4xl animate-pulse drop-shadow-sm">📭</div>
+                                                                <span className="text-xs font-bold text-slate-500">이 날은 등록된 과제가 없어요.</span>
                                                             </div>
                                                         )}
                                                     </section>
