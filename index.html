@@ -7733,7 +7733,9 @@ const firebaseConfig = {
                             uid: doc.id, 
                             ...data,
                             lastActive: lastActive ? lastActive.toDate() : null,
-                            isBlocked: stat?.isBlocked || false
+                            isBlocked: stat?.isBlocked || false,
+                            postCount: stat?.postCount || 0,
+                            commentCount: stat?.commentCount || 0
                         };
                     });
 
@@ -14749,10 +14751,11 @@ useEffect(() => {
                                                                 {expandedUserId === user.uid && (
                                                                     <div className="p-4 border-t border-slate-100 space-y-3 animate-fade-in">
                                                                         <div className="text-xs space-y-1 text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                                            <p><strong>이메일:</strong> {user.email || '-'}</p>
+                                                                            <p className="flex items-center gap-1"><strong>이메일:</strong> <span>{user.email || '-'}</span> {user.email && <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(user.email); setToastMessage("이메일이 복사되었습니다."); }} className="text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 transition-colors" title="이메일 복사"><Icon d={PATHS.copy} size={12}/></button>}</p>
                                                                             <p><strong>최근 접속:</strong> {user.lastActive ? dayjs(user.lastActive).format('YY.MM.DD HH:mm') : '-'}</p>
                                                                             <p className="flex items-center gap-1"><strong>UID:</strong> <span className="font-mono text-slate-400 truncate max-w-[200px]">{user.uid}</span> <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(user.uid); setToastMessage("UID가 복사되었습니다."); }} className="text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 transition-colors" title="UID 복사"><Icon d={PATHS.copy} size={12}/></button></p>
                                                                             <p><strong>App ID:</strong> <span className="font-mono text-indigo-500 font-bold">{user.appId || "(미설정)"}</span></p>
+                                                                            <p><strong>활동 내역:</strong> 게시글 <span className="font-bold text-indigo-600">{user.postCount}</span>개 / 댓글 <span className="font-bold text-green-600">{user.commentCount}</span>개</p>
                                                                         </div>
                                                                         <div className="flex gap-2 flex-wrap justify-end pt-2 border-t border-slate-100">
                                                                             <button onClick={() => handleBlockUser(user.uid, user.isBlocked)} className={`text-[10px] px-2 py-1 rounded border ${user.isBlocked ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}>{user.isBlocked ? "해제" : "차단"}</button>
