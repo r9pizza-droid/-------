@@ -7965,6 +7965,7 @@ const firebaseConfig = {
                 // 1. 파이어베이스 서버에 저장
                 await sharedDb.collection('userProfiles').doc(user.uid).set({
                     uid: user.uid,
+                    email: user.email || "",
                             name: nickname,
                             userNickname: nickname, // [New] 별칭 필드 통일
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -10320,6 +10321,7 @@ const firebaseConfig = {
                     if (userDoc.exists && userDoc.data().userNickname) {
                         setCurrentUserProfile(userDoc.data());
                         await userDocRef.set({
+                            email: user.email || "",
                             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                         }, { merge: true });
                         logToSharedDb('LOGIN', '사용자 접속', user.uid, userDoc.data().userNickname);
@@ -10857,12 +10859,8 @@ useEffect(() => {
                                         pChanged = true;
                                     }
                                 } else {
-                                    // [New] 체크 해제 시 지각 제출(Late)로 표시된 과제는 다시 미제출 상태로 변경 (되돌리기)
-                                    if (isTaskDone && isTaskLate) {
-                                        pNewTasksStatus[idx] = false;
-                                        delete pNewLateStatus[idx];
-                                        pChanged = true;
-                                    }
+                                    // [Safe] 언체크(false) 시에는 과거 과제(지각 제출 상태)를 절대 건드리지 않습니다.
+                                    // 예: 3/11에 일괄체크를 해제하더라도 3/10에 지각 제출한 기록은 안전하게 유지됩니다.
                                 }
                             });
 
