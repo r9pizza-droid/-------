@@ -8445,6 +8445,7 @@ const firebaseConfig = {
             const [postViewMode, setPostViewMode] = useState('list');
             const [postSearchTerm, setPostSearchTerm] = useState("");
             const [filterCategory, setFilterCategory] = useState(null);
+            const [filterSubCategory, setFilterSubCategory] = useState(null);
             const [replyingToId, setReplyingToId] = useState(null);
             const [replyContent, setReplyContent] = useState("");
             const [postSortOrder, setPostSortOrder] = useState('latest');
@@ -8466,6 +8467,7 @@ const firebaseConfig = {
                     .filter(post => !filterAuthor || post.authorName === filterAuthor)
                     .filter(post => !filterUid || post.uid === filterUid)
                     .filter(post => !filterCategory || post.category === filterCategory)
+                    .filter(post => !filterSubCategory || post.subCategory === filterSubCategory)
                     .filter(post => {
                         if (showMyPosts) {
                             const user = currentUser;
@@ -8480,7 +8482,7 @@ const firebaseConfig = {
                             (post.tags && post.tags.some(tag => tag.toLowerCase().includes(lowerTerm)))
                         );
                     });
-            }, [communityPosts, filterAuthor, filterCategory, postSearchTerm, showMyPosts, filterUid]);
+            }, [communityPosts, filterAuthor, filterCategory, filterSubCategory, postSearchTerm, showMyPosts, filterUid]);
 
             const sortedPosts = useMemo(() => {
                 return [...filteredPosts].sort((a, b) => {
@@ -8877,7 +8879,7 @@ const firebaseConfig = {
             const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false });
 
             // [New] Community Logic
-            const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags, resourceLink, resourceTitle) => {
+            const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags, resourceLink, resourceTitle, subCategory) => {
                 try {
                      const user = currentUser;
                      // [New] 별칭 강제 적용 (수정 불가)
@@ -8888,7 +8890,7 @@ const firebaseConfig = {
 
                      if (editingPost) {
                         const updatedData = {
-                            title, content, authorName: finalAuthorName, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
+                            title, content, authorName: finalAuthorName, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || "", subCategory: subCategory || null
                         };
                         await sharedDb.collection('community').doc(editingPost.id).update(updatedData);
 
@@ -8934,6 +8936,7 @@ const firebaseConfig = {
                             authorName: finalAuthorName,
                             authorBadge: currentBadge,
                             category,
+                            subCategory: subCategory || null,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                             postPassword: password,
                             likes: [],
@@ -13619,11 +13622,11 @@ useEffect(() => {
                                                                 <>
                                                                     <div className="fixed inset-0 z-40" onClick={() => setShowCategoryMenu(false)}></div>
                                                                     <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in flex flex-col">
-                                                                        <button onClick={() => { setFilterCategory(null); setShowCategoryMenu(false); }} className={`px-3 py-2.5 text-xs font-bold text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 ${!filterCategory ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'}`}>
+                                                                        <button onClick={() => { setFilterCategory(null); setFilterSubCategory(null); setShowCategoryMenu(false); }} className={`px-3 py-2.5 text-xs font-bold text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 ${!filterCategory ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'}`}>
                                                                             전체
                                                                         </button>
                                                                         {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map(cat => (
-                                                                            <button key={cat} onClick={() => { setFilterCategory(cat); setShowCategoryMenu(false); }} className={`px-3 py-2.5 text-xs font-bold text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 ${filterCategory === cat ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'}`}>
+                                                                            <button key={cat} onClick={() => { setFilterCategory(cat); setFilterSubCategory(null); setShowCategoryMenu(false); }} className={`px-3 py-2.5 text-xs font-bold text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 ${filterCategory === cat ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'}`}>
                                                                                 {cat}
                                                                             </button>
                                                                         ))}
@@ -13690,6 +13693,25 @@ useEffect(() => {
                                                     </div>
                                                 </div>
 
+                                                {/* SubCategory Filter for 수업팁 */}
+                                                {filterCategory === '수업팁' && (
+                                                    <div className="flex gap-2 mb-4 overflow-x-auto custom-scroll pb-1 px-1 animate-fade-in">
+                                                        {['전체', '1학년', '2학년', '3학년', '4학년', '5학년', '6학년'].map(sub => (
+                                                            <button 
+                                                                key={sub} 
+                                                                onClick={() => setFilterSubCategory(sub === '전체' ? null : sub)}
+                                                                className={`px-3 py-1.5 text-xs font-bold rounded-full whitespace-nowrap transition-colors shadow-sm border ${
+                                                                    (sub === '전체' && !filterSubCategory) || filterSubCategory === sub
+                                                                        ? 'bg-blue-500 text-white border-blue-600' 
+                                                                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                                                }`}
+                                                            >
+                                                                {sub}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
                                                 {/* Post List */}
                                                 <div className={postViewMode === 'gallery' ? "grid grid-cols-2 sm:grid-cols-3 gap-4" : "space-y-4"}>
                                                     {sortedPosts.map(post => {
@@ -13709,7 +13731,7 @@ useEffect(() => {
                                                                     <div className="p-4 flex justify-between items-start gap-4">
                                                                         <div className="flex-1 min-w-0 flex flex-col gap-2">
                                                                             <div className="flex items-center gap-2">
-                                                                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}</span>
+                                                                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shrink-0 ${badgeColor}`}>{post.category}{post.subCategory ? ` > ${post.subCategory}` : ''}</span>
                                                                                 {isPopular && <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded font-bold border border-rose-200 shrink-0">🔥 인기</span>}
                                                                                 <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
                                                                                 {post.resourceLink && <span className="text-[10px]">💾</span>}
@@ -13767,7 +13789,7 @@ useEffect(() => {
                                                                             )}
                                                                             {images.length > 1 && <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{images.length - 1}</div>}
                                                                             <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
-                                                                                <div className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
+                                                                                <div className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}{post.subCategory ? ` > ${post.subCategory}` : ''}</div>
                                                                                 {isPopular && <div className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-md font-bold shadow-sm border border-rose-600">🔥 인기</div>}
                                                                             </div>
                                                                             {post.postPassword && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
@@ -13777,7 +13799,7 @@ useEffect(() => {
                                                                     <div className="p-3 flex flex-col flex-1">
                                                                         {isExpanded && (
                                                                             <div className="flex justify-between items-start mb-3">
-                                                                                <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
+                                                                                <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}{post.subCategory ? ` > ${post.subCategory}` : ''}</span>
                                                                                 <div className="flex gap-1">
                                                                                     {post.postPassword && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-full">🔒</span>}
                                                                                     {post.resourceLink && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full">💾</span>}
@@ -13830,7 +13852,7 @@ useEffect(() => {
                                                             <div key={post.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group" onClick={() => toggleInPlacePost(post.id)}>
                                                                 <div className="flex justify-between items-start mb-2">
                                                                     <div className="flex items-center gap-1">
-                                                                        <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
+                                                                        <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}{post.subCategory ? ` > ${post.subCategory}` : ''}</span>
                                                                         {isPopular && <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-lg font-bold border border-rose-200">🔥 인기</span>}
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
@@ -13970,7 +13992,7 @@ useEffect(() => {
                                                         <div className="flex-1 overflow-y-auto custom-scroll pr-2">
                                                             <div className="mb-6">
                                                                 <div className="flex items-center gap-2 mb-2">
-                                                                    <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-bold border border-indigo-100">{selectedPost.category}</span>
+                                                                    <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-bold border border-indigo-100">{selectedPost.category}{selectedPost.subCategory ? ` > ${selectedPost.subCategory}` : ''}</span>
                                                                     <span className="text-xs text-slate-400">{dayjs(selectedPost.createdAt).format('YYYY.MM.DD HH:mm')}</span>
                                                                     <span className="w-px h-2 bg-slate-200"></span>
                                                                     <span className="text-xs text-slate-400">조회 {(communityPosts.find(p => p.id === selectedPost.id) || selectedPost).viewCount || 0}</span>

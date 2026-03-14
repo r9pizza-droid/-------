@@ -11,6 +11,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     const [uploadProgress, setUploadProgress] = useState(0);
     const [tags, setTags] = useState([]);
     const [tagInput, setTagInput] = useState("");
+    const [subCategory, setSubCategory] = useState("");
     const [resourceLink, setResourceLink] = useState("");
     const [resourceTitle, setResourceTitle] = useState("");
     const [canUseQuill, setCanUseQuill] = useState(false);
@@ -42,6 +43,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 setPostPassword(initialPost.postPassword);
                 setImageUrls(initialPost.imageUrls || (initialPost.imageUrl ? [initialPost.imageUrl] : []));
                 setTags(initialPost.tags || []);
+                setSubCategory(initialPost.subCategory || "");
                 setResourceLink(initialPost.resourceLink || "");
                 setResourceTitle(initialPost.resourceTitle || "");
             } else {
@@ -59,6 +61,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             setPostPassword(p.postPassword || "");
                             setImageUrls(p.imageUrls || []);
                             setTags(p.tags || []);
+                            setSubCategory(p.subCategory || "");
                             setResourceLink(p.resourceLink || "");
                             setResourceTitle(p.resourceTitle || "");
                             draftContentRef.current = p.content || "";
@@ -77,6 +80,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     setPostPassword("");
                     setImageUrls([]);
                     setTags([]);
+                    setSubCategory("");
                     setResourceLink("");
                     setResourceTitle("");
                     draftContentRef.current = "";
@@ -90,11 +94,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         if (isOpen && !initialPost) {
             if (title.trim() || content.trim() || tags.length > 0 || imageUrls.length > 0 || resourceLink.trim()) {
                 const finalAuthorName = userNickname || authorName;
-                const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+                const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, timestamp: Date.now() };
                 localStorage.setItem('cls_post_draft', JSON.stringify(draft));
             }
         }
-    }, [category, title, authorName, userNickname, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
+    }, [category, title, authorName, userNickname, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, isOpen, initialPost]);
 
     useEffect(() => {
         if (isOpen && canUseQuill) {
@@ -286,7 +290,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
 
     const handleManualSaveDraft = () => {
         const finalAuthorName = userNickname || authorName;
-        const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+        const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, timestamp: Date.now() };
         localStorage.setItem('cls_post_draft', JSON.stringify(draft));
         if (showToast) showToast("임시 저장되었습니다.");
         else alert("임시 저장되었습니다.");
@@ -299,7 +303,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
             return;
         }
         localStorage.setItem('community_authorName', finalAuthorName);
-        onSave(title, content, finalAuthorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle);
+        onSave(title, content, finalAuthorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory);
     };
 
     if (!isOpen) return null;
@@ -313,7 +317,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                         {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map((cat, idx) => (
                             <button
                                 key={cat}
-                                onClick={() => setCategory(cat)}
+                                onClick={() => { setCategory(cat); if (cat !== '수업팁') setSubCategory(""); }}
                                 className={`py-3 rounded-xl text-xs font-bold transition-all animate-fade-in ${category === cat ? 'bg-indigo-600 text-white shadow-md transform scale-105' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                                 style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}
                             >
@@ -321,6 +325,19 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             </button>
                         ))}
                     </div>
+                    {category === '수업팁' && (
+                        <div className="flex gap-2 mt-2 overflow-x-auto custom-scroll pb-1">
+                            {['1학년', '2학년', '3학년', '4학년', '5학년', '6학년'].map(sub => (
+                                <button
+                                    key={sub}
+                                    onClick={() => setSubCategory(sub)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${subCategory === sub ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'}`}
+                                >
+                                    {sub}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">제목</label>
