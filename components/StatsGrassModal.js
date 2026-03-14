@@ -729,6 +729,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         let lost = 0;   // [New] 잃은 점수 (페널티)
         const pMissed = {};
         const tagStats = {};
+        const taskDetails = []; // [New] 상세 리스트 저장용
         let curr = dayjs(startStr);
         const end = dayjs(endStr);
         const today = dayjs().startOf('day');
@@ -751,21 +752,48 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     if (!tagStats[tag]) tagStats[tag] = { sTotal: 0, sDone: 0, cTotal: 0, cDone: 0 };
                 });
                 tasks.forEach((t, idx) => {
+                    const title = typeof t === 'object' ? t.title : t;
                     const tag = typeof t === 'object' ? t.tag : '기타';
                     const isDone = rec?.tasks ? rec.tasks[idx] : (rec?.done && !rec.tasks);
+                    const isLate = rec?.lateTasks ? !!rec.lateTasks[idx] : false;
+                    const lateDateStr = isLate ? (typeof rec.lateTasks[idx] === 'string' ? rec.lateTasks[idx] : null) : null;
+                    
                     tagStats[tag].sTotal++;
+                    
+                    let status = 'missed';
+                    let currentPenalty = 0;
+                    let currentGained = 0;
+
                     if(isDone) {
                         pDone++;
                         tagStats[tag].sDone++;
                         pScore += 0.5;
                         gained += 0.5;
+                        status = 'on-time';
+                        currentGained = 0.5;
+                    } else if (isLate) {
+                        status = 'late';
+                        let lateDiff = diffDays;
+                        if (lateDateStr) {
+                            const lD = dayjs(lateDateStr);
+                            if (lD.isValid()) lateDiff = Math.max(0, lD.diff(curr, 'day'));
+                        }
+                        const penalty = Math.max(0, Math.min(3, lateDiff));
+                        pScore -= penalty;
+                        lost += penalty;
+                        currentPenalty = penalty;
                     } else {
                         pMissed[tag] = (pMissed[tag] || 0) + 1;
                         if (!isFuture) {
                             const penalty = Math.min(3, diffDays + 1);
                             pScore -= penalty;
                             lost += penalty;
+                            currentPenalty = penalty;
                         }
+                    }
+                    
+                    if (!isFuture) {
+                        taskDetails.push({ date: dStr, idx, title, tag, status, penalty: currentPenalty, gained: currentGained });
                     }
                 });
                 const recs = records[dStr] || {};
@@ -777,10 +805,22 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         tagStats[tag].cTotal++;
                         let taskDone = false;
                         if (r && (r.tasks ? r.tasks[idx] : r.done)) taskDone = true;
+                        
+                        const isTaskLate = r?.lateTasks ? !!r.lateTasks[idx] : false;
+                        const taskLateDateStr = isTaskLate ? (typeof r.lateTasks[idx] === 'string' ? r.lateTasks[idx] : null) : null;
+
                         if (taskDone) { 
                             tagStats[tag].cDone++; 
                             classDone++; 
                             classScoreSum += 0.5;
+                        } else if (isTaskLate) {
+                            let lateDiff = diffDays;
+                            if (taskLateDateStr) {
+                                const lD = dayjs(taskLateDateStr);
+                                if (lD.isValid()) lateDiff = Math.max(0, lD.diff(curr, 'day'));
+                            }
+                            const penalty = Math.max(0, Math.min(3, lateDiff));
+                            classScoreSum -= penalty;
                         } else {
                             if (!isFuture) {
                                 const penalty = Math.min(3, diffDays + 1);
@@ -793,11 +833,51 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             curr = curr.add(1, 'day');
         }
         
+        taskDetails.sort((a, b) => b.date.localeCompare(a.date));
+
         const pRate = pTotal > 0 ? Math.round((pDone / pTotal) * 100) : 0;
         const classAvgRate = classTotal > 0 ? Math.round((classDone / classTotal) * 100) : 0;
         const classAvgScore = students.length > 0 ? (classScoreSum / students.length) : 0;
 
-        return { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore, scoreDetails: { gained, lost } };
+        return { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore, scoreDetails: { gained, lost }, taskDetails };
+    };
+
+    const handleTaskStatusChange = async (date, idx, newStatus) => {
+        let newRecords = { ...records };
+        if (!newRecords[date]) newRecords[date] = {};
+        if (!newRecords[date][student.id]) newRecords[date][student.id] = {};
+        
+        let studentRec = { ...newRecords[date][student.id] };
+        if (!studentRec.tasks) studentRec.tasks = {};
+        if (!studentRec.lateTasks) studentRec.lateTasks = {};
+
+        if (newStatus === 'on-time') {
+            studentRec.tasks[idx] = true;
+            delete studentRec.lateTasks[idx];
+        } else if (newStatus === 'late') {
+            studentRec.tasks[idx] = false;
+            studentRec.lateTasks[idx] = dayjs().format('YYYY-MM-DD'); 
+        } else if (newStatus === 'missed') {
+            studentRec.tasks[idx] = false;
+            delete studentRec.lateTasks[idx];
+        }
+
+        newRecords[date][student.id] = studentRec;
+        setRecords(newRecords);
+        
+        if (!isLocalMode && db && appId) {
+            try {
+                await db.collection('classes').doc(appId).collection('records').doc(date).set({
+                    [student.id]: studentRec
+                }, { merge: true });
+            } catch (e) {
+                console.error(e);
+            }
+        } else {
+            saveData('cls_records', newRecords);
+        }
+        
+        if (showToast) showToast(`제출 상태가 변경되었습니다.`);
     };
     
     useEffect(() => {
@@ -1326,8 +1406,58 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                             <span>⚠️ 지각/미제출 (최대 -3점/건)</span>
                                             <span className="font-bold text-rose-500">{reportStats.scoreDetails?.lost ? `-${reportStats.scoreDetails.lost}` : '0'}점</span>
                                         </div>
-                                        <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 leading-tight text-left">
+                                        <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 leading-tight text-left mb-3">
                                             * 마감일 내 제출 시 0.5점씩 오르고,<br/> 미제출 기간이 길어질수록 감점이 커집니다.
+                                        </div>
+                                        
+                                        {/* Task Details List */}
+                                        <div className="border-t border-slate-100 pt-3 max-h-60 overflow-y-auto custom-scroll" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h5 className="font-bold text-slate-700 text-left flex items-center gap-1">
+                                                    <Icon d={PATHS.list} size={12} /> 상세 내역 및 점수 수정
+                                                </h5>
+                                                <span className="text-[9px] text-slate-400 font-medium">* 클릭하여 상태 변경</span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {reportStats.taskDetails?.length > 0 ? reportStats.taskDetails.map((td, i) => (
+                                                    <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors">
+                                                        <div className="flex flex-col text-left max-w-[55%]">
+                                                            <span className="text-[10px] font-bold text-slate-400">{dayjs(td.date).format('MM/DD')}</span>
+                                                            <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                            <span className={`text-[10px] font-bold w-8 text-right ${td.status === 'on-time' ? 'text-indigo-500' : td.status === 'late' ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                                {td.status === 'on-time' ? `+${td.gained}점` : `-${td.penalty}점`}
+                                                            </span>
+                                                            <select
+                                                                value={td.status}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleTaskStatusChange(td.date, td.idx, e.target.value);
+                                                                }}
+                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all shadow-sm outline-none appearance-none cursor-pointer border ${
+                                                                    td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200' :
+                                                                    td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200' :
+                                                                    'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200'
+                                                                }`}
+                                                                style={{
+                                                                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='${td.status === 'on-time' ? '%234338ca' : td.status === 'late' ? '%23b45309' : '%23be123c'}' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                                                                    backgroundRepeat: 'no-repeat',
+                                                                    backgroundPosition: 'right 2px center',
+                                                                    backgroundSize: '12px'
+                                                                }}
+                                                            >
+                                                                <option value="on-time" className="text-indigo-700 font-bold bg-white">정상 제출</option>
+                                                                <option value="late" className="text-amber-700 font-bold bg-white">지각 제출</option>
+                                                                <option value="missed" className="text-rose-700 font-bold bg-white">미제출</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                )) : (
+                                                    <div className="text-center text-slate-400 py-4 text-[10px]">기록이 없습니다.</div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}

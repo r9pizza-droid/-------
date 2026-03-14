@@ -10859,6 +10859,39 @@ useEffect(() => {
                 if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } }); 
             };
             
+            const handleTaskStatusChange = async (studentId, targetDate, taskIndex, newStatus) => {
+                let newRecords = { ...records };
+                if (!newRecords[targetDate]) newRecords[targetDate] = {};
+                if (!newRecords[targetDate][studentId]) newRecords[targetDate][studentId] = {};
+                
+                let studentRec = { ...newRecords[targetDate][studentId] };
+                if (!studentRec.tasks) studentRec.tasks = {};
+                if (!studentRec.lateTasks) studentRec.lateTasks = {};
+
+                if (newStatus === 'on-time') {
+                    studentRec.tasks[taskIndex] = true;
+                    delete studentRec.lateTasks[taskIndex];
+                } else if (newStatus === 'late') {
+                    studentRec.tasks[taskIndex] = false;
+                    studentRec.lateTasks[taskIndex] = dayjs().format('YYYY-MM-DD'); 
+                } else if (newStatus === 'missed') {
+                    studentRec.tasks[taskIndex] = false;
+                    delete studentRec.lateTasks[taskIndex];
+                }
+
+                const dayTasks = dailyTasks[targetDate] || [];
+                const allDone = dayTasks.length > 0 && dayTasks.every((_, i) => studentRec.tasks[i]);
+                studentRec.done = allDone;
+
+                newRecords[targetDate][studentId] = studentRec;
+                setRecords(newRecords);
+                
+                if (!isLocalMode && db && appId) {
+                    try { await db.collection('classes').doc(appId).collection('records').doc(targetDate).set({ [studentId]: studentRec }, { merge: true }); } catch (e) { console.error(e); }
+                } else { saveData('cls_records', newRecords); }
+                if (setToastMessage) setToastMessage("제출 상태가 변경되었습니다.");
+            };
+
             const handleSaveTaskComment = (studentId, taskIndex, comment, targetDate) => {
                 const d = targetDate || date;
                 const currentRec = records[d]?.[studentId] || { done: false, tasks: {} };
@@ -11916,67 +11949,151 @@ useEffect(() => {
                 return map;
             }, [groupsByDate, groupRoles, date]);
 
-            const stats = useMemo(() => { const dates = Object.keys(records).sort(); const isWithinPeriod = (dStr, period) => { const d = dayjs(dStr); const now = dayjs(); if (period === 'weekly') return d.isAfter(now.subtract(7, 'day')) && d.isBefore(now.add(1, 'day')); if (period === 'monthly') return d.isAfter(now.subtract(30, 'day')) && d.isBefore(now.add(1, 'day')); return true; }; const calcStatsForStudent = (s, period, tag) => { let score = 0; let totalCount = 0; const onTimeItems = []; const lateItems = []; for(let i=34; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; if (!isWithinPeriod(d, period)) continue; const dayRecord = records[d]; const dayTasks = dailyTasks[d] || []; if (tag === '전체') { if (dayRecord) 
-            { const tasksForDay = dailyTasks[d] || []; if (tasksForDay.length > 0) { totalCount += tasksForDay.length; const sRec = dayRecord[s.id]; if (sRec) { tasksForDay.forEach((t, idx) => { const isDone = sRec.tasks ? sRec.tasks[idx] : sRec.done; const isLate = sRec.lateTasks ? sRec.lateTasks[idx] : false; const title = typeof t === 'object' ? t.title : t; if (isDone) { if(isLate) { score += 0.5; lateItems.push({date:d, title}); } else { score += 1; onTimeItems.push({date:d, title}); } } }); } } else { totalCount++;
-            if (dayRecord[s.id]?.done) { score += 1; onTimeItems.push({date:d, title:'완료'}); } } } } else { const tagTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
-            if (tagTasks.length > 0) { totalCount += tagTasks.length; tagTasks.forEach((t, idx) => { const originalIdx = dayTasks.indexOf(t); const sRec = dayRecord?.[s.id]; const isTaskDone = sRec?.done || sRec?.tasks?.[originalIdx]; const isLate = sRec?.lateTasks?.[originalIdx]; const title = typeof t === 'object' ? t.title : t; if(isTaskDone) { if(isLate) { score += 0.5; lateItems.push({date:d, title}); } else { score += 1; onTimeItems.push({date:d, title}); } } });
-            } } } return { count: score, total: totalCount, rate: totalCount > 0 ?
-            (score / totalCount) * 100 : 0, details: { onTimeItems, lateItems } }; }; const computedStudents = students.map(s => { let count = 0, currentStreak = 0; const history = []; const datesSorted = Object.keys(records).sort(); for(let i=29; i>=0; i--) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const dayIdx = dayjs(d).day(); if(dayIdx===0 || dayIdx===6) continue; let dailyDoneCount = 0; let dailyTotalCount = 0; const dayTasks = dailyTasks[d] || []; const dayRecord = records[d]; if(dayTasks.length > 0) { dailyTotalCount = dayTasks.length; if(dayRecord && dayRecord[s.id]) { dayTasks.forEach((_, idx) => { if(dayRecord[s.id].tasks && dayRecord[s.id].tasks[idx]) dailyDoneCount++; else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++; }); } } else { if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; } } const 
-            ratio = dailyTotalCount > 0 ? dailyDoneCount / dailyTotalCount : 0; history.push({ date: d, ratio: ratio, count: dailyDoneCount, total: dailyTotalCount, done: dailyDoneCount === dailyTotalCount && dailyTotalCount > 0 }); if(ratio === 1) count++; } for(let i=0; i<365;
-            i++) { const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD'); const rec = records[d]?.[s.id]; let isDoneDay = false;
-            if(rec) { if(rec.tasks) { if(rec.done) isDoneDay = true; } else if(rec.done) { isDoneDay = true; } } if(isDoneDay) currentStreak++;
-            else if(i===0 && !isDoneDay) continue; else break; } const honorStats = calcStatsForStudent(s, honorPeriod, honorTag); 
-            
-            // [New] 도움이 필요해요 점수 계산 (제출 +0.5, 미제출 -1~-3)
-            const calcHelpScore = (s, period, tag) => {
-                let score = 0;
-                let gained = 0;
-                let lost = 0;
-                const history = [];
-                const today = dayjs().startOf('day');
-                for(let i=34; i>=0; i--) {
-                    const dStr = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
-                    const dObj = dayjs(dStr);
-                    const dayIdx = dObj.day();
-                    if(dayIdx===0 || dayIdx===6) continue;
-                    if (!isWithinPeriod(dStr, period)) continue;
-                    
-                    const dayTasks = dailyTasks[dStr] || [];
-                    const dayRecord = records[dStr];
-                    const sRec = dayRecord ? dayRecord[s.id] : null;
-                    
-                    let targetTasks = dayTasks;
-                    if (tag !== '전체') {
-                        targetTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
-                    }
-                    
-                    if (targetTasks.length > 0) {
-                        targetTasks.forEach((t) => {
-                            const originalIdx = dayTasks.indexOf(t);
-                            const isDone = sRec ? (sRec.tasks ? sRec.tasks[originalIdx] : sRec.done) : false;
-                            const title = typeof t === 'object' ? t.title : t;
-                            
-                            if (isDone) {
-                                score += 0.5;
-                                gained += 0.5;
-                                history.push({ date: dStr, title, point: 0.5, type: 'gain' });
-                            } else {
-                                const diff = today.diff(dObj, 'day');
-                                let penalty = -(diff + 1);
-                                if (penalty < -3) penalty = -3;
-                                score += penalty;
-                                lost += Math.abs(penalty);
-                                history.push({ date: dStr, title, point: penalty, type: 'loss' });
-                            }
-                        });
-                    }
-                }
-                history.sort((a,b) => b.date.localeCompare(a.date));
-                return { score, details: { gained, lost, history } };
-            };
-            const helpData = calcHelpScore(s, helpPeriod, helpTag);
+            const stats = useMemo(() => {
+                const isWithinPeriod = (dStr, period) => {
+                    const d = dayjs(dStr); const now = dayjs();
+                    if (period === 'weekly') return d.isAfter(now.subtract(7, 'day')) && d.isBefore(now.add(1, 'day'));
+                    if (period === 'monthly') return d.isAfter(now.subtract(30, 'day')) && d.isBefore(now.add(1, 'day'));
+                    return true;
+                };
 
-            return { ...s, count, streak: currentStreak, history, honorStats, helpStats: helpData }; }); 
+                const calcStatsForStudent = (s, period, tag) => {
+                    let score = 0; let totalCount = 0;
+                    const onTimeItems = []; const lateItems = []; const taskDetails = [];
+                    for(let i=34; i>=0; i--) {
+                        const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
+                        const dayIdx = dayjs(d).day();
+                        if(dayIdx===0 || dayIdx===6) continue;
+                        if (!isWithinPeriod(d, period)) continue;
+                        
+                        const dayRecord = records[d];
+                        const dayTasks = dailyTasks[d] || [];
+                        const sRec = dayRecord ? dayRecord[s.id] : null;
+
+                        if (tag === '전체') {
+                            if (dayTasks.length > 0) {
+                                totalCount += dayTasks.length;
+                                dayTasks.forEach((t, idx) => {
+                                    const isDone = sRec ? (sRec.tasks ? sRec.tasks[idx] : sRec.done) : false;
+                                    const isLate = sRec ? (sRec.lateTasks ? !!sRec.lateTasks[idx] : false) : false;
+                                    const title = typeof t === 'object' ? t.title : t;
+                                    if (isDone) {
+                                        if (isLate) { score += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx, status:'late', point: 0.5}); }
+                                        else { score += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx, status:'on-time', point: 1}); }
+                                    } else {
+                                        taskDetails.push({date:d, title, idx, status:'missed', point: 0});
+                                    }
+                                });
+                            } else if (dayRecord) { // Legacy single task mode
+                                totalCount++;
+                                if (sRec?.done) {
+                                    score += 1; onTimeItems.push({date:d, title:'완료'}); taskDetails.push({date:d, title:'완료', idx:0, status:'on-time', point:1});
+                                } else {
+                                    taskDetails.push({date:d, title:'완료', idx:0, status:'missed', point:0});
+                                }
+                            }
+                        } else {
+                            const tagTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
+                            if (tagTasks.length > 0) {
+                                totalCount += tagTasks.length;
+                                tagTasks.forEach((t) => {
+                                    const originalIdx = dayTasks.indexOf(t);
+                                    const isDone = sRec ? (sRec.tasks ? sRec.tasks[originalIdx] : sRec.done) : false;
+                                    const isLate = sRec ? (sRec.lateTasks ? !!sRec.lateTasks[originalIdx] : false) : false;
+                                    const title = typeof t === 'object' ? t.title : t;
+                                    if (isDone) {
+                                        if (isLate) { score += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'late', point: 0.5}); }
+                                        else { score += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'on-time', point: 1}); }
+                                    } else {
+                                        taskDetails.push({date:d, title, idx:originalIdx, status:'missed', point: 0});
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    return { count: score, total: totalCount, rate: totalCount > 0 ? (score / totalCount) * 100 : 0, details: { onTimeItems, lateItems, taskDetails } };
+                };
+
+                const calcHelpScore = (s, period, tag) => {
+                    let score = 0; let gained = 0; let lost = 0;
+                    const history = []; const taskDetails = [];
+                    const today = dayjs().startOf('day');
+                    for(let i=34; i>=0; i--) {
+                        const dStr = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
+                        const dObj = dayjs(dStr);
+                        const dayIdx = dObj.day();
+                        if(dayIdx===0 || dayIdx===6) continue;
+                        if (!isWithinPeriod(dStr, period)) continue;
+                        
+                        const dayTasks = dailyTasks[dStr] || [];
+                        const dayRecord = records[dStr];
+                        const sRec = dayRecord ? dayRecord[s.id] : null;
+                        
+                        let targetTasks = dayTasks;
+                        if (tag !== '전체') targetTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
+                        
+                        if (targetTasks.length > 0) {
+                            targetTasks.forEach((t) => {
+                                const originalIdx = dayTasks.indexOf(t);
+                                const isDone = sRec ? (sRec.tasks ? sRec.tasks[originalIdx] : sRec.done) : false;
+                                const isLate = sRec ? (sRec.lateTasks ? !!sRec.lateTasks[originalIdx] : false) : false;
+                                const title = typeof t === 'object' ? t.title : t;
+                                
+                                if (isDone) {
+                                    score += 0.5; gained += 0.5;
+                                    history.push({ date: dStr, title, point: 0.5, type: 'gain' });
+                                    taskDetails.push({ date: dStr, title, idx: originalIdx, status: isLate ? 'late' : 'on-time', point: 0.5 });
+                                } else {
+                                    const diff = today.diff(dObj, 'day');
+                                    let penalty = -(diff + 1);
+                                    if (penalty < -3) penalty = -3;
+                                    score += penalty; lost += Math.abs(penalty);
+                                    history.push({ date: dStr, title, point: penalty, type: 'loss' });
+                                    taskDetails.push({ date: dStr, title, idx: originalIdx, status: 'missed', point: penalty });
+                                }
+                            });
+                        }
+                    }
+                    history.sort((a,b) => b.date.localeCompare(a.date));
+                    return { score, details: { gained, lost, history, taskDetails } };
+                };
+
+                const computedStudents = students.map(s => {
+                    let count = 0, currentStreak = 0; const history = [];
+                    for(let i=29; i>=0; i--) {
+                        const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
+                        const dayIdx = dayjs(d).day();
+                        if(dayIdx===0 || dayIdx===6) continue;
+                        let dailyDoneCount = 0; let dailyTotalCount = 0;
+                        const dayTasks = dailyTasks[d] || [];
+                        const dayRecord = records[d];
+                        if(dayTasks.length > 0) {
+                            dailyTotalCount = dayTasks.length;
+                            if(dayRecord && dayRecord[s.id]) {
+                                dayTasks.forEach((_, idx) => {
+                                    if(dayRecord[s.id].tasks && dayRecord[s.id].tasks[idx]) dailyDoneCount++;
+                                    else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++;
+                                });
+                            }
+                        } else {
+                            if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; }
+                        }
+                        const ratio = dailyTotalCount > 0 ? dailyDoneCount / dailyTotalCount : 0;
+                        history.push({ date: d, ratio: ratio, count: dailyDoneCount, total: dailyTotalCount, done: dailyDoneCount === dailyTotalCount && dailyTotalCount > 0 });
+                        if(ratio === 1) count++;
+                    }
+                    for(let i=0; i<365; i++) {
+                        const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
+                        const rec = records[d]?.[s.id];
+                        let isDoneDay = false;
+                        if(rec) { if(rec.tasks) { if(rec.done) isDoneDay = true; } else if(rec.done) { isDoneDay = true; } }
+                        if(isDoneDay) currentStreak++;
+                        else if(i===0 && !isDoneDay) continue; else break;
+                    }
+                    const honorStats = calcStatsForStudent(s, honorPeriod, honorTag);
+                    const helpData = calcHelpScore(s, helpPeriod, helpTag);
+                    return { ...s, count, streak: currentStreak, history, honorStats, helpStats: helpData };
+                });
             
             const sortedByHonor = [...computedStudents].sort((a,b) => b.honorStats.count - a.honorStats.count);
             let currentRank = 1;
@@ -12907,7 +13024,7 @@ useEffect(() => {
                                         </div>
                                         {viewHallOfFameList ? (
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
-                                                {stats.allRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank===1?'bg-yellow-500 text-white':s.rank===2?'bg-slate-400 text-white':s.rank===3?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.rank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'honor', score: s.honorStats.count, name: s.name, details: s.honorStats.details }); }} className="font-bold text-indigo-600 bg-white/80 px-2 py-1 rounded-lg border border-indigo-100 shadow-sm cursor-pointer hover:bg-indigo-50 transition-colors">{s.honorStats.count}점</span></div>))}
+                                                {stats.allRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank===1?'bg-yellow-500 text-white':s.rank===2?'bg-slate-400 text-white':s.rank===3?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.rank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'honor', studentId: s.id }); }} className="font-bold text-indigo-600 bg-white/80 px-2 py-1 rounded-lg border border-indigo-100 shadow-sm cursor-pointer hover:bg-indigo-50 transition-colors">{s.honorStats.count}점</span></div>))}
                                                 {stats.allRanked.length === 0 && <div className="text-center text-slate-400 py-4">데이터가 없습니다.</div>}
                                             </div>
                                         ) : (
@@ -12958,7 +13075,7 @@ useEffect(() => {
                                         </div>
                                         {viewNeedsHelpList ? (
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
-                                                {stats.allHelpRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.helpRank===1?'bg-rose-500 text-white':s.helpRank===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.helpRank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'help', score: s.helpStats.score, details: s.helpStats.details, name: s.name }); }} className={`font-bold px-2 py-1 rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-colors ${s.helpStats.score < 0 ? 'text-rose-500 bg-white/80 border-rose-100' : 'text-indigo-600 bg-white/80 border-indigo-100'}`}>{s.helpStats.score.toFixed(1)}점</span></div>))}
+                                                {stats.allHelpRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.helpRank===1?'bg-rose-500 text-white':s.helpRank===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.helpRank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'help', studentId: s.id }); }} className={`font-bold px-2 py-1 rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-colors ${s.helpStats.score < 0 ? 'text-rose-500 bg-white/80 border-rose-100' : 'text-indigo-600 bg-white/80 border-indigo-100'}`}>{s.helpStats.score.toFixed(1)}점</span></div>))}
                                                 {stats.allHelpRanked.length === 0 && <div className="text-center text-slate-400 py-4">데이터가 없습니다.</div>}
                                             </div>
                                         ) : (
@@ -14069,60 +14186,103 @@ useEffect(() => {
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} />}
-                    {scoreDetailTarget && (
-                        <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-fade-in" onClick={() => setScoreDetailTarget(null)}>
-                            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-5 w-full max-w-sm animate-pop-up flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-                                <div className="flex justify-between items-center mb-4 shrink-0">
-                                    <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                        <span>{scoreDetailTarget.type === 'honor' ? '🏆' : '📣'}</span>
-                                        {scoreDetailTarget.name} 점수 분석
-                                    </h4>
-                                    <button onClick={() => setScoreDetailTarget(null)} className="text-slate-400 hover:text-slate-600"><Icon d={PATHS.x} size={16} /></button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto custom-scroll pr-1 space-y-4">
-                                    {scoreDetailTarget.type === 'honor' && scoreDetailTarget.details && (
-                                        <>
-                                            <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-xl text-indigo-700">
-                                                <span className="text-xs font-bold">총 점수</span>
-                                                <span className="font-black text-2xl">{scoreDetailTarget.score}점</span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                                <div className="bg-green-50 p-2 rounded-lg border border-green-100">
-                                                    <div className="text-green-600 font-bold mb-1">✅ 제시간 제출</div>
-                                                    <div className="text-green-700 font-black text-lg">{scoreDetailTarget.details.onTimeItems.length}건 <span className="text-[10px] font-normal opacity-70">(+{scoreDetailTarget.details.onTimeItems.length}점)</span></div>
+                    {scoreDetailTarget && (() => {
+                        const studentStats = stats.students.find(s => s.id === scoreDetailTarget.studentId);
+                        if (!studentStats) return null;
+                            const currentData = scoreDetailTarget.type === 'honor' ? studentStats.honorStats : studentStats.helpStats;
+                            const details = currentData.details;
+                            
+                            return (
+                                <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-fade-in" onClick={() => setScoreDetailTarget(null)}>
+                                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-5 w-full max-w-sm animate-pop-up flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+                                        <div className="flex justify-between items-center mb-4 shrink-0">
+                                            <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                                <span>{scoreDetailTarget.type === 'honor' ? '🏆' : '📣'}</span>
+                                                {studentStats.name} 점수 분석
+                                            </h4>
+                                            <button onClick={() => setScoreDetailTarget(null)} className="text-slate-400 hover:text-slate-600"><Icon d={PATHS.x} size={16} /></button>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto custom-scroll pr-1 space-y-4">
+                                            {scoreDetailTarget.type === 'honor' && details && (
+                                                <>
+                                                    <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-xl text-indigo-700">
+                                                        <span className="text-xs font-bold">총 점수</span>
+                                                        <span className="font-black text-2xl">{currentData.count}점</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                        <div className="bg-green-50 p-2 rounded-lg border border-green-100">
+                                                            <div className="text-green-600 font-bold mb-1">✅ 제시간 제출</div>
+                                                            <div className="text-green-700 font-black text-lg">{details.onTimeItems.length}건 <span className="text-[10px] font-normal opacity-70">(+{details.onTimeItems.length}점)</span></div>
+                                                        </div>
+                                                        <div className="bg-amber-50 p-2 rounded-lg border border-amber-100">
+                                                            <div className="text-amber-600 font-bold mb-1">⏰ 지각 제출</div>
+                                                            <div className="text-amber-700 font-black text-lg">{details.lateItems.length}건 <span className="text-[10px] font-normal opacity-70">(+{details.lateItems.length * 0.5}점)</span></div>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+                                            {scoreDetailTarget.type === 'help' && details && (
+                                                <>
+                                                    <div className="flex justify-between items-center bg-rose-50 p-3 rounded-xl text-rose-700">
+                                                        <span className="text-xs font-bold">총 점수</span>
+                                                        <span className="font-black text-2xl">{currentData.score.toFixed(1)}점</span>
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg leading-relaxed">
+                                                        <span className="font-bold">계산 방식:</span> 제출하면 <span className="text-green-600 font-bold">+0.5점</span>, 미제출 시 하루마다 <span className="text-rose-500 font-bold">-1점</span>씩 누적 감점됩니다. (최대 -3점)
+                                                    </div>
+                                                </>
+                                            )}
+                                            
+                                            <div className="space-y-2 pt-2 border-t border-slate-100">
+                                                <div className="text-xs font-bold text-slate-500 sticky top-0 bg-white py-1 flex items-center justify-between">
+                                                    <span>상세 내역 및 점수 수정</span>
+                                                    <span className="text-[9px] font-normal text-slate-400">* 클릭하여 상태 변경</span>
                                                 </div>
-                                                <div className="bg-amber-50 p-2 rounded-lg border border-amber-100">
-                                                    <div className="text-amber-600 font-bold mb-1">⏰ 지각 제출</div>
-                                                    <div className="text-amber-700 font-black text-lg">{scoreDetailTarget.details.lateItems.length}건 <span className="text-[10px] font-normal opacity-70">(+{scoreDetailTarget.details.lateItems.length * 0.5}점)</span></div>
-                                                </div>
+                                                {details.taskDetails && details.taskDetails.sort((a,b) => b.date.localeCompare(a.date)).map((td) => (
+                                                    <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors">
+                                                        <div className="flex flex-col text-left max-w-[55%]">
+                                                            <span className="text-[10px] font-bold text-slate-400">{dayjs(td.date).format('MM.DD')}</span>
+                                                            <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                            <span className={`text-[10px] font-bold w-8 text-right ${td.status === 'on-time' ? 'text-indigo-500' : td.status === 'late' ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                                {td.point > 0 ? `+${td.point}점` : `${td.point}점`}
+                                                            </span>
+                                                            <select
+                                                                value={td.status}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleTaskStatusChange(studentStats.id, td.date, td.idx, e.target.value);
+                                                                }}
+                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all shadow-sm outline-none appearance-none cursor-pointer border ${
+                                                                    td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200' :
+                                                                    td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200' :
+                                                                    'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200'
+                                                                }`}
+                                                                style={{
+                                                                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='${td.status === 'on-time' ? '%234338ca' : td.status === 'late' ? '%23b45309' : '%23be123c'}' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                                                                    backgroundRepeat: 'no-repeat',
+                                                                    backgroundPosition: 'right 2px center',
+                                                                    backgroundSize: '12px'
+                                                                }}
+                                                            >
+                                                                <option value="on-time" className="text-indigo-700 font-bold bg-white">정상 제출</option>
+                                                                <option value="late" className="text-amber-700 font-bold bg-white">지각 제출</option>
+                                                                <option value="missed" className="text-rose-700 font-bold bg-white">미제출</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {(!details.taskDetails || details.taskDetails.length === 0) && (
+                                                    <div className="text-center text-xs text-slate-400 py-4">기록이 없습니다.</div>
+                                                )}
                                             </div>
-                                            <div className="space-y-2">
-                                                <div className="text-xs font-bold text-slate-500 sticky top-0 bg-white py-1">상세 내역</div>
-                                                {[...scoreDetailTarget.details.onTimeItems.map(i=>({...i, type:'ontime'})), ...scoreDetailTarget.details.lateItems.map(i=>({...i, type:'late'}))].sort((a,b) => b.date.localeCompare(a.date)).map((item, idx) => (<div key={idx} className="flex justify-between items-center text-xs p-2 rounded border border-slate-100 bg-slate-50/50"><div className="flex flex-col"><span className="font-bold text-slate-700">{item.title}</span><span className="text-[10px] text-slate-400">{dayjs(item.date).format('MM.DD')}</span></div><div className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${item.type === 'late' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>{item.type === 'late' ? '+0.5점 (지각)' : '+1.0점'}</div></div>))}
-                                                {scoreDetailTarget.details.onTimeItems.length === 0 && scoreDetailTarget.details.lateItems.length === 0 && <div className="text-center text-xs text-slate-400 py-4">기록이 없습니다.</div>}
-                                            </div>
-                                        </>
-                                    )}
-                                    {scoreDetailTarget.type === 'help' && scoreDetailTarget.details && (
-                                        <>
-                                            <div className="flex justify-between items-center bg-rose-50 p-3 rounded-xl text-rose-700">
-                                                <span className="text-xs font-bold">총 점수</span>
-                                                <span className="font-black text-2xl">{scoreDetailTarget.score.toFixed(1)}점</span>
-                                            </div>
-                                            <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg leading-relaxed">
-                                                <span className="font-bold">계산 방식:</span> 제출하면 <span className="text-green-600 font-bold">+0.5점</span>, 미제출 시 하루마다 <span className="text-rose-500 font-bold">-1점</span>씩 누적 감점됩니다. (최대 -3점)
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="text-xs font-bold text-slate-500 sticky top-0 bg-white py-1">상세 내역</div>
-                                                {scoreDetailTarget.details.history && scoreDetailTarget.details.history.map((item, idx) => (<div key={idx} className={`flex justify-between items-center text-xs p-2 rounded border ${item.type === 'gain' ? 'bg-green-50/30 border-green-100' : 'bg-rose-50/30 border-rose-100'}`}><div className="flex flex-col"><span className="font-bold text-slate-700">{item.title}</span><span className="text-[10px] text-slate-400">{dayjs(item.date).format('MM.DD')}</span></div><span className={`font-bold ${item.type === 'gain' ? 'text-green-600' : 'text-rose-500'}`}>{item.point > 0 ? '+' : ''}{item.point}점</span></div>))}
-                                                {(!scoreDetailTarget.details.history || scoreDetailTarget.details.history.length === 0) && <div className="text-center text-xs text-slate-400 py-4">기록이 없습니다.</div>}
-                                            </div>
-                                        </>
-                                    )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
+                            );
+                    })()}
                     <SettingsModal 
                         isOpen={isSettingOpen} 
                         onClose={()=>setIsSettingOpen(false)}
