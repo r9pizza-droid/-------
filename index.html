@@ -8981,7 +8981,8 @@ const firebaseConfig = {
             };
 
     const handleEditPost = (post) => {
-        if (isAdmin) {
+        const isMyPost = currentUser && post.uid === currentUser.uid;
+        if (isAdmin || isMyPost) {
             setEditingPost(post);
             setShowPostModal(true);
         } else {
@@ -8997,8 +8998,11 @@ const firebaseConfig = {
     };      
       
     const handleDeletePost = async (post) => {
+        const isMyPost = currentUser && post.uid === currentUser.uid;
         if (isAdmin) {
             if (!confirm("관리자 권한으로 이 글을 삭제하시겠습니까?")) return;
+        } else if (isMyPost) {
+            if (!confirm("정말 삭제하시겠습니까?")) return;
         } else {
             const inputPw = prompt("게시글 비밀번호 4자리를 입력하세요.");
             if (!inputPw) return;
