@@ -8182,7 +8182,8 @@ const firebaseConfig = {
 
             // [New] 관리자용 전체 사용자 목록 실시간 조회
             useEffect(() => {
-                if (isAdmin && mode === 'community' && sharedDb) {
+                const sharedUser = firebase.auth().currentUser;
+                if (isAdmin && mode === 'community' && sharedDb && sharedUser && sharedUser.uid === ADMIN_UID) {
                     const unsubscribe = sharedDb.collection('userProfiles').orderBy('lastLogin', 'desc').onSnapshot(snapshot => {
                         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                         setAllUsers(users);
@@ -8201,8 +8202,15 @@ const firebaseConfig = {
             const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
             const fetchUserList = async () => {
+                const user = currentUser;
                 const sharedUser = firebase.auth().currentUser;
+                
+                console.log("[fetchUserList] myClassApp UID:", user?.uid);
+                console.log("[fetchUserList] sharedApp UID:", sharedUser?.uid);
+                console.log("[fetchUserList] DB in use:", sharedDb ? "sharedDb" : "None");
+
                 if (!sharedUser || sharedUser.uid !== ADMIN_UID) {
+                    console.error("공용 DB 관리자 인증이 완료되지 않았습니다");
                     setToastMessage("공용 DB 관리자 인증이 완료되지 않았습니다. 다시 로그인 후 시도해주세요.");
                     return;
                 }
@@ -8553,6 +8561,7 @@ const firebaseConfig = {
 
                 console.log("[Admin Check] myClassApp UID:", user?.uid);
                 console.log("[Admin Check] sharedApp UID:", sharedUser?.uid);
+                console.log("[Admin Check] DB in use:", sharedDb ? "sharedDb" : "None");
 
                 if (!user || user.uid !== ADMIN_UID) {
                     alert("접근 권한이 없습니다. 최고 관리자만 이용 가능합니다.");
@@ -8560,7 +8569,7 @@ const firebaseConfig = {
                 }
 
                 if (!sharedUser || sharedUser.uid !== ADMIN_UID) {
-                    alert("공용 DB 관리자 인증이 완료되지 않았습니다. 다시 로그인 후 시도해주세요.");
+                    setToastMessage("공용 DB 관리자 인증이 완료되지 않았습니다. 다시 로그인 후 시도해주세요.");
                     return;
                 }
 
