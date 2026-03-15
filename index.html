@@ -6934,13 +6934,51 @@
                         targetAuth = userApp.auth();
                     }
                     
+                    let loggedInUser = null;
                     if (isSignUp) {
                         // [New] 회원가입 처리
-                        await targetAuth.createUserWithEmailAndPassword(authId, authPw);
+                        const cred = await targetAuth.createUserWithEmailAndPassword(authId, authPw);
+                        loggedInUser = cred.user;
                         showToast("🎉 가입을 환영합니다! 자동으로 로그인되었습니다.");
                     } else {
                         // 기존 로그인
-                        await targetAuth.signInWithEmailAndPassword(authId, authPw); 
+                        const cred = await targetAuth.signInWithEmailAndPassword(authId, authPw); 
+                        loggedInUser = cred.user;
+                    }
+
+                    // [New] 공용 DB(shared/default auth) 동시 로그인 처리
+                    if (config) {
+                        const sharedUser = firebase.auth().currentUser;
+                        
+                        console.log("[Auth Sync] myClassApp 로그인 성공.");
+                        console.log("[Auth Sync] myClassApp UID / Email:", loggedInUser?.uid, loggedInUser?.email);
+                        console.log("[Auth Sync] sharedApp UID / Email:", sharedUser?.uid, sharedUser?.email);
+
+                        // 공용 앱에 로그인되어 있지 않거나, 다른 이메일로 로그인되어 있는 경우
+                        if (!sharedUser || sharedUser.email !== authId) {
+                            try {
+                                console.log("[Auth Sync] sharedApp 로그인 시도 전...");
+                                if (isSignUp) await firebase.auth().createUserWithEmailAndPassword(authId, authPw);
+                                else await firebase.auth().signInWithEmailAndPassword(authId, authPw);
+                                console.log("[Auth Sync] sharedApp 로그인 시도 후 완료");
+                            } catch (sharedErr) {
+                                console.error("[Auth Sync] sharedApp 로그인/가입 실패:", sharedErr);
+                                // 개인 DB에는 계정이 있는데 공용 DB에는 없거나, 그 반대인 경우 교차 처리(Fallback)
+                                try {
+                                    if (sharedErr.code === 'auth/user-not-found') await firebase.auth().createUserWithEmailAndPassword(authId, authPw);
+                                    else if (sharedErr.code === 'auth/email-already-in-use') await firebase.auth().signInWithEmailAndPassword(authId, authPw);
+                                    else throw sharedErr;
+                                } catch (fallbackErr) {
+                                    console.error("[Auth Sync] sharedApp Fallback 실패:", fallbackErr);
+                                    showToast("공용 DB 인증에 실패했습니다. 다시 로그인해주세요.");
+                                    throw new Error("공용 DB 인증 실패");
+                                }
+                            }
+                        } else {
+                            console.log("[Auth Sync] 이미 sharedApp에 같은 계정으로 로그인되어 있습니다.");
+                        }
+                        console.log("[Auth Sync] 최종 myClassApp UID:", targetAuth.currentUser?.uid);
+                        console.log("[Auth Sync] 최종 sharedApp UID:", firebase.auth().currentUser?.uid);
                     }
 
                     if (rememberMe) { 
