@@ -259,7 +259,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         if (kInt < idx) { newObj[kInt] = obj[k]; hasData = true; } 
                         else if (kInt > idx) { newObj[kInt - 1] = obj[k]; hasData = true; }
                     });
-                    return hasData ? newObj : null;
+                    return hasData ? newObj : undefined;
                 };
                 if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); changed = true; }
                 if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); changed = true; }

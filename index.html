@@ -8902,7 +8902,7 @@ const firebaseConfig = {
                                 if (kInt < idx) { newObj[kInt] = obj[k]; hasData = true; } 
                                 else if (kInt > idx) { newObj[kInt - 1] = obj[k]; hasData = true; }
                             });
-                            return hasData ? newObj : null;
+                            return hasData ? newObj : undefined;
                         };
                         if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); changed = true; }
                         if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); changed = true; }
@@ -14574,7 +14574,7 @@ useEffect(() => {
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} />}
-                        tags={tags}
+                        
 
                     {scoreDetailTarget && (() => {
                         const studentStats = stats.students.find(s => s.id === scoreDetailTarget.studentId);

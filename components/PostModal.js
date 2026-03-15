@@ -377,7 +377,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                         <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} className="flex-1 min-w-[100px] text-sm outline-none bg-transparent" placeholder="태그 입력 (엔터)" />
                     </div>
                 </div>
-                
+    
                 <div className="space-y-1.5">
                     <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Icon d={PATHS.link} size={16} className="text-slate-400"/> 학습 자료(파일/링크) 공유</label>
                     <div className="flex flex-col sm:flex-row gap-2">
