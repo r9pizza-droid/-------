@@ -1,5 +1,25 @@
 const { useState, useEffect, useRef, useMemo } = React;
 
+const CountUp = ({ value, duration = 1000, decimals = 0 }) => {
+    const [count, setCount] = useState(0);
+    useEffect(() => {
+        let startTime = null;
+        let animationFrame;
+        const animate = (timestamp) => {
+            if (!startTime) startTime = timestamp;
+            const progress = Math.min((timestamp - startTime) / duration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 4);
+            setCount(easeProgress * value);
+            if (progress < 1) {
+                animationFrame = requestAnimationFrame(animate);
+            }
+        };
+        animationFrame = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(animationFrame);
+    }, [value, duration]);
+    return <>{count.toFixed(decimals)}</>;
+};
+
 const RadarChart = ({ data }) => {
     const tags = Object.entries(data).filter(([_, stat]) => stat.cDone > 0).map(([tag]) => tag);
     if (tags.length < 3) return <div className="text-center text-xs text-slate-400 py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">방사형 차트는 과목이 3개 이상일 때 표시됩니다.<br/>(현재 {tags.length}개)</div>;
@@ -32,6 +52,16 @@ const RadarChart = ({ data }) => {
     return (
         <div className="flex flex-col items-center py-2">
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+                <defs>
+                    <linearGradient id="studentGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(129, 140, 248, 0.7)" />
+                        <stop offset="100%" stopColor="rgba(129, 140, 248, 0.1)" />
+                    </linearGradient>
+                    <linearGradient id="classGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(203, 213, 225, 0.6)" />
+                        <stop offset="100%" stopColor="rgba(203, 213, 225, 0.1)" />
+                    </linearGradient>
+                </defs>
                 {[20, 40, 60, 80, 100].map((level, idx) => (
                     <polygon key={idx} points={tags.map((_, i) => getCoordinates(level, i).join(',')).join(' ')} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 2" />
                 ))}
@@ -45,8 +75,8 @@ const RadarChart = ({ data }) => {
                         </g>
                     );
                 })}
-                <polygon points={classPoints} fill="rgba(203, 213, 225, 0.4)" stroke="#cbd5e1" strokeWidth="2" />
-                <polygon points={studentPoints} fill="rgba(129, 140, 248, 0.4)" stroke="#818cf8" strokeWidth="3" />
+                <polygon points={classPoints} fill="url(#classGradient)" stroke="#cbd5e1" strokeWidth="2" />
+                <polygon points={studentPoints} fill="url(#studentGradient)" stroke="#818cf8" strokeWidth="3" />
                 {tags.map((tag, i) => {
                         const stat = data[tag];
                         const sRate = stat.sTotal > 0 ? (stat.sDone / stat.sTotal) * 100 : 0;
@@ -100,13 +130,38 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         }
     }, [isOpen]);
 
+    const handlePrevStudent = () => {
+        if (!students || students.length === 0 || !student || !onSwitchStudent) return;
+        const currentIndex = students.findIndex(s => s.id === student.id);
+        if (currentIndex > 0) {
+            onSwitchStudent(students[currentIndex - 1].id);
+        } else {
+            onSwitchStudent(students[students.length - 1].id);
+        }
+    };
+
+    const handleNextStudent = () => {
+        if (!students || students.length === 0 || !student || !onSwitchStudent) return;
+        const currentIndex = students.findIndex(s => s.id === student.id);
+        if (currentIndex < students.length - 1) {
+            onSwitchStudent(students[currentIndex + 1].id);
+        } else {
+            onSwitchStudent(students[0].id);
+        }
+    };
+
     useEffect(() => {
-        const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', handleEsc);
-        return () => {
-            window.removeEventListener('keydown', handleEsc);
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') onClose();
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+            if (e.key === 'ArrowLeft') handlePrevStudent();
+            if (e.key === 'ArrowRight') handleNextStudent();
         };
-    }, [onClose]);
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [onClose, student, students, onSwitchStudent]);
 
     const [notes, setNotes] = useState([]);
     const [stickerCount, setStickerCount] = useState(student.stickers || 0);
@@ -197,6 +252,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [openCommentIndex, setOpenCommentIndex] = useState(null); // [New] 과제별 메모 입력창 상태
     const [commentInput, setCommentInput] = useState(""); // [New] 과제별 메모 입력값
     const [expandedComments, setExpandedComments] = useState({}); // [New] 점수 분석 내 메모 토글 상태
+    const [isRecordsLoading, setIsRecordsLoading] = useState(true); // [New] 기록 로딩 상태 (스켈레톤 UI 용)
     
     // [New] 연동 상태 확인 및 기본값 설정 (초기화)
     const [hasNotionRecord, setHasNotionRecord] = useState(false);
@@ -297,21 +353,31 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
     useEffect(() => { 
         if (!student) return;
+        setIsRecordsLoading(true);
         setStickerCount(student.stickers || 0);
+        
+        let timer;
+        let unsubscribe = () => {};
+
         if (!isLocalMode && db && appId) {
-            const unsubscribe = db.collection('classes').doc(appId).collection('studentData').doc(String(student.id))
+            unsubscribe = db.collection('classes').doc(appId).collection('studentData').doc(String(student.id))
                 .onSnapshot(doc => {
                     if (doc.exists) {
                         const data = doc.data();
                         if (data.counseling) setNotes(data.counseling);
                     }
-                }, err => console.error("개별 데이터 로드 실패:", err));
-            return () => unsubscribe();
+                    if (timer) clearTimeout(timer);
+                    timer = setTimeout(() => setIsRecordsLoading(false), 300); // 300ms 로딩 애니메이션 유지
+                }, err => {
+                    console.error("개별 데이터 로드 실패:", err);
+                    setIsRecordsLoading(false);
+                });
         } else {
             const data = student.counseling;
             if (Array.isArray(data)) setNotes(data);
             else if (data) setNotes([{ id: Date.now(), date: dayjs().format('YYYY-MM-DD'), content: data }]);
             else setNotes([]);
+            timer = setTimeout(() => setIsRecordsLoading(false), 300);
         }
         setAiComment("");
         setSelectedStudents([student]);
@@ -324,6 +390,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         const key = localStorage.getItem('cls_notion_key');
         const dbId = localStorage.getItem('cls_notion_db_id');
         setHasNotionConfig(!!(key && dbId));
+
+        return () => {
+            unsubscribe();
+            if (timer) clearTimeout(timer);
+        };
     }, [student, isLocalMode, db, appId]);
 
     useEffect(() => {
@@ -350,8 +421,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
             // [New] 스티커 날아가기 효과
             if (e && e.clientX && e.clientY) {
-                const startX = e.clientX;
-                const startY = e.clientY;
+                const offsetX = (Math.random() - 0.5) * 40;
+                const offsetY = (Math.random() - 0.5) * 40;
+                const startX = e.clientX + offsetX;
+                const startY = e.clientY + offsetY;
                 const target = document.getElementById('sticker-count-display');
                 if (target) {
                     const targetRect = target.getBoundingClientRect();
@@ -359,7 +432,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     const endY = targetRect.top + targetRect.height / 2;
 
                     const star = document.createElement('div');
-                    star.innerText = '🌟';
+                    star.innerText = newCount % 5 === 0 ? '🎉' : '🌟';
                     star.style.position = 'fixed';
                     star.style.left = startX + 'px';
                     star.style.top = startY + 'px';
@@ -370,10 +443,12 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     star.style.transition = 'all 0.6s cubic-bezier(0.25, 1, 0.5, 1)';
                     document.body.appendChild(star);
 
+                    const rot = Math.random() * 60 - 30; // 약간의 랜덤 회전
+
                     requestAnimationFrame(() => {
                         star.style.left = endX + 'px';
                         star.style.top = endY + 'px';
-                        star.style.transform = 'translate(-50%, -50%) scale(1.5) rotate(360deg)';
+                        star.style.transform = `translate(-50%, -50%) scale(1.5) rotate(${360 + rot}deg)`;
                         star.style.opacity = '0';
                     });
 
@@ -1263,14 +1338,20 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 if (showStickerHistory) setShowStickerHistory(false);
                 if (showTaskCommentHistory) setShowTaskCommentHistory(false);
             }}>
-                <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0 relative z-40">
+                <div className="bg-white/85 backdrop-blur-md rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0 sticky top-0 z-[100] transition-all">
                     <div className="flex justify-between items-center flex-wrap gap-4">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4">
+                            <div className="flex items-center gap-1 mr-2 sm:mr-4 border-r border-slate-200 pr-2 sm:pr-4">
+                                <button onClick={handlePrevStudent} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-indigo-600" title="이전 학생 (←)"><Icon d={PATHS.left} size={20} /></button>
+                                <button onClick={handleNextStudent} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-indigo-600" title="다음 학생 (→)"><Icon d={PATHS.right} size={20} /></button>
+                            </div>
                             <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm flex-shrink-0 relative group cursor-pointer" onClick={(e) => e.stopPropagation()}>
                                 {student.photoUrl ? (
                                     <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="text-3xl">{student.gender === 'M' ? '👦' : '👧'}</span>
+                                    <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${student.gender === 'M' ? 'from-blue-100 to-indigo-100' : 'from-rose-100 to-pink-100'}`}>
+                                        <span className="text-3xl drop-shadow-sm">{student.gender === 'M' ? '👦' : '👧'}</span>
+                                    </div>
                                 )}
                                 <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                                     <span className="text-white text-[10px] font-bold">변경</span>
@@ -1313,8 +1394,9 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <div className="text-center text-slate-400 text-xs py-8">
-                                                            작성된 과제 메모가 없습니다.
+                                                        <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-2">
+                                                            <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-xl shadow-inner">💬</div>
+                                                            <span className="text-xs font-bold text-slate-500">작성된 과제 메모가 없습니다</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1389,19 +1471,19 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     <div className="flex flex-col">
                                         <span className="text-xs text-slate-400 font-bold mb-1">전체 점수 비교</span>
                                         <div className="flex items-baseline gap-1">
-                                            <span className={`text-2xl font-black ${getLevelTextColor(level)}`}>{reportStats.studentScore?.toFixed(1)}점</span>
-                                            <span className="text-xs text-slate-400 font-medium">vs {reportStats.classScore?.toFixed(1)}점 (학급)</span>
+                                            <span className={`text-2xl font-black ${getLevelTextColor(level)}`}><CountUp value={reportStats.studentScore || 0} decimals={1} />점</span>
+                                            <span className="text-xs text-slate-400 font-medium">vs <CountUp value={reportStats.classScore || 0} decimals={1} />점 (학급)</span>
                                         </div>
                                         <div className="flex items-baseline gap-1 mt-1">
                                             <span className="text-xs font-bold text-slate-500">수행률:</span>
-                                            <span className={`text-sm font-black ${reportStats.studentRate >= reportStats.classRate ? 'text-indigo-500' : 'text-rose-500'}`}>{reportStats.studentRate}%</span>
-                                            <span className="text-[10px] text-slate-400">(학급 {reportStats.classRate}%)</span>
+                                            <span className={`text-sm font-black ${reportStats.studentRate >= reportStats.classRate ? 'text-indigo-500' : 'text-rose-500'}`}><CountUp value={reportStats.studentRate || 0} />%</span>
+                                            <span className="text-[10px] text-slate-400">(학급 <CountUp value={reportStats.classRate || 0} />%)</span>
                                         </div>
                                     </div>
                                     <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 ${reportStats.studentScore >= reportStats.classScore ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-rose-50 border-rose-100 text-rose-500'}`}>
                                         <span className="text-[10px] font-bold opacity-60">GAP</span>
                                         <span className="text-xl font-black leading-none">
-                                            {reportStats.studentScore >= reportStats.classScore ? '+' : ''}{(reportStats.studentScore - reportStats.classScore).toFixed(1)}
+                                            {reportStats.studentScore >= reportStats.classScore ? '+' : '-'}<CountUp value={Math.abs((reportStats.studentScore || 0) - (reportStats.classScore || 0))} decimals={1} />
                                         </span>
                                     </div>
                                 </div>
@@ -1492,7 +1574,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                     e.stopPropagation();
                                                                     handleTaskStatusChange(td.date, td.idx, e.target.value);
                                                                 }}
-                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all shadow-sm outline-none appearance-none cursor-pointer border ${
+                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all shadow-sm outline-none appearance-none cursor-pointer border focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
                                                                     td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200' :
                                                                     td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200' :
                                                                     'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200'
@@ -1590,7 +1672,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                     </div>
                                                 ))}
                                                 {combinedNotes.filter(n => n.content && (n.content.includes('칭찬') || n.content.includes('스티커') || n.content.includes('상점'))).length === 0 && (
-                                                    <div className="text-center text-slate-400 text-xs py-2">칭찬 기록이 없습니다.</div>
+                                                    <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-2">
+                                                        <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-xl shadow-inner">🌟</div>
+                                                        <span className="text-xs font-bold text-slate-500">최근 칭찬 기록이 없습니다</span>
+                                                    </div>
                                                 )}
                                             </div>
                                             <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1.5 w-3 h-3 bg-white border-t border-l border-slate-100 transform rotate-45"></div>
@@ -1680,12 +1765,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 </div>
                                 
                                 {notionStatus === 'saving' ? (
-                                    <div className="w-full bg-slate-100 rounded-xl h-12 flex items-center justify-center relative overflow-hidden shadow-inner">
-                                        <div className="absolute left-0 top-0 h-full bg-indigo-100 transition-all duration-300 ease-out" style={{ width: `${saveProgress}%` }}></div>
-                                        <div className="relative z-10 flex items-center gap-2 text-indigo-700 font-bold text-sm">
-                                            <Icon d={PATHS.spinner} className="animate-spin" />
-                                            <span>저장 중... {saveProgress}%</span>
-                                        </div>
+                                    <div className="flex gap-2.5">
+                                        <button disabled className="relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-indigo-500 overflow-hidden cursor-wait animate-pulse">
+                                            <div className="absolute left-0 top-0 h-full bg-indigo-600 transition-all duration-300 ease-out" style={{ width: `${saveProgress}%` }}></div>
+                                            <span className="relative z-10 flex items-center gap-2">
+                                                <Icon d={PATHS.spinner} className="animate-spin" size={16} /> 저장 중... {saveProgress}%
+                                            </span>
+                                        </button>
                                     </div>
                                 ) : (
                                     <div className="flex gap-2.5">
@@ -1776,7 +1862,35 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                             </div>
 
                             <div className="flex-1 overflow-y-auto custom-scroll pr-1 max-h-[400px]">
-                                {displayedNotes.length > 0 ? (
+                                {isRecordsLoading ? (
+                                    <div className="relative space-y-7 py-2">
+                                        {[1, 2, 3].map((item, idx) => (
+                                            <div key={item} className="flex w-full animate-pulse">
+                                                <div className="w-12 flex flex-col items-end shrink-0 pt-1 pr-1.5">
+                                                    <div className="h-3 w-8 bg-slate-200 rounded mb-1"></div>
+                                                    <div className="h-2 w-5 bg-slate-100 rounded"></div>
+                                                </div>
+                                                <div className="relative w-3 flex flex-col items-center shrink-0 pt-1.5">
+                                                    <div className="w-2 h-2 rounded-full bg-slate-200 z-10 shadow-sm border-2 border-white"></div>
+                                                    {idx !== 2 && <div className="absolute top-2.5 bottom-[-40px] w-[1.5px] bg-slate-100"></div>}
+                                                </div>
+                                                <div className="flex-1 pl-2 pr-2">
+                                                    <div className="w-full border border-slate-100 rounded-xl p-3 bg-slate-50/50 shadow-sm">
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <div className="w-12 h-3 bg-slate-200 rounded-full"></div>
+                                                            <div className="w-8 h-3 bg-slate-200 rounded-full"></div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <div className="w-full h-2.5 bg-slate-200 rounded-full"></div>
+                                                            <div className="w-5/6 h-2.5 bg-slate-200 rounded-full"></div>
+                                                            <div className="w-4/6 h-2.5 bg-slate-200 rounded-full"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : displayedNotes.length > 0 ? (
                                     <div className="relative space-y-7 py-2">
                                         {Object.entries(displayedNotes.reduce((acc, note) => {
                                             if (!acc[note.date]) acc[note.date] = [];
@@ -1939,9 +2053,12 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         })}
                                     </div>
                                 ) : (
-                                    <div className="h-32 flex flex-col items-center justify-center text-slate-400 text-sm gap-3 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
-                                        <Icon d={PATHS.document} size={24} className="opacity-30" />
-                                        <span>아직 기록이 없습니다.</span>
+                                    <div className="h-40 flex flex-col items-center justify-center text-slate-400 gap-3 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-2xl">📝</div>
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className="text-sm font-bold text-slate-600">아직 작성된 기록이 없어요</span>
+                                            <span className="text-xs text-slate-400">위 입력창에서 첫 번째 관찰 기록을 남겨보세요!</span>
+                                        </div>
                                     </div>
                                 )}
                                 {hasMore && (
@@ -2071,9 +2188,12 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                 })}
                                                             </div>
                                                         ) : (
-                                                            <div className="flex flex-col items-center justify-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 gap-3">
-                                                                <div className="text-4xl animate-pulse drop-shadow-sm">📭</div>
-                                                                <span className="text-xs font-bold text-slate-500">이 날은 등록된 과제가 없어요.</span>
+                                                            <div className="flex flex-col items-center justify-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 gap-3 hover:bg-slate-50 transition-colors">
+                                                                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm text-3xl">📭</div>
+                                                                <div className="flex flex-col items-center gap-1 mt-1">
+                                                                    <span className="text-sm font-bold text-slate-600">이 날은 등록된 과제가 없어요</span>
+                                                                    <span className="text-[10px] text-slate-400">과제 설정 탭에서 과제를 먼저 등록해주세요.</span>
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </section>
@@ -2196,7 +2316,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         <div className="bg-slate-50 rounded-3xl p-8 mb-10 border border-slate-100 flex items-center justify-between shadow-sm">
                             <div className="flex items-center gap-6">
                                 <div className="w-24 h-24 rounded-full bg-white border-4 border-indigo-100 flex items-center justify-center text-5xl shadow-sm overflow-hidden">
-                                    {student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : (student.gender === 'M' ? '👦' : '👧')}
+                                    {student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : (
+                                        <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${student.gender === 'M' ? 'from-blue-100 to-indigo-100' : 'from-rose-100 to-pink-100'}`}>
+                                            <span className="text-5xl drop-shadow-sm">{student.gender === 'M' ? '👦' : '👧'}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <div className="flex items-baseline gap-2 mb-2">
@@ -2211,7 +2335,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                             </div>
                             <div className="text-right">
                                 <div className="text-sm font-bold text-slate-400 mb-1">과제 수행률</div>
-                                <div className="text-5xl font-black text-indigo-600">{reportStats.studentRate}%</div>
+                                <div className="text-5xl font-black text-indigo-600"><CountUp value={reportStats.studentRate || 0} />%</div>
                             </div>
                         </div>
 
