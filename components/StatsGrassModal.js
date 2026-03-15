@@ -1345,16 +1345,16 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 <button onClick={handlePrevStudent} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-indigo-600" title="이전 학생 (←)"><Icon d={PATHS.left} size={20} /></button>
                                 <button onClick={handleNextStudent} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-indigo-600" title="다음 학생 (→)"><Icon d={PATHS.right} size={20} /></button>
                             </div>
-                            <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm flex-shrink-0 relative group cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                        <div className="w-16 h-16 rounded-full bg-slate-100 border-2 border-white overflow-hidden flex items-center justify-center shadow-md ring-2 ring-slate-50 flex-shrink-0 relative group cursor-pointer transition-transform hover:scale-105" onClick={(e) => e.stopPropagation()}>
                                 {student.photoUrl ? (
-                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
+                                <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
                                 ) : (
-                                    <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${student.gender === 'M' ? 'from-blue-100 to-indigo-100' : 'from-rose-100 to-pink-100'}`}>
-                                        <span className="text-3xl drop-shadow-sm">{student.gender === 'M' ? '👦' : '👧'}</span>
+                                <div className={`w-full h-full flex items-center justify-center bg-gradient-to-b ${student.gender === 'M' ? 'from-blue-50 to-indigo-100' : 'from-rose-50 to-pink-100'}`}>
+                                    <span className="text-3xl drop-shadow-sm opacity-90 transition-transform duration-300 group-hover:scale-110">{student.gender === 'M' ? '👦' : '👧'}</span>
                                     </div>
                                 )}
-                                <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                    <span className="text-white text-[10px] font-bold">변경</span>
+                            <label className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer">
+                                <span className="text-white text-[10px] font-bold tracking-wider bg-black/30 px-2 py-1 rounded-full">사진 변경</span>
                                     <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhotoUpload(e, student.id)} />
                                 </label>
                             </div>
@@ -2315,10 +2315,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
                         <div className="bg-slate-50 rounded-3xl p-8 mb-10 border border-slate-100 flex items-center justify-between shadow-sm">
                             <div className="flex items-center gap-6">
-                                <div className="w-24 h-24 rounded-full bg-white border-4 border-indigo-100 flex items-center justify-center text-5xl shadow-sm overflow-hidden">
+                            <div className="w-24 h-24 rounded-full bg-slate-50 border-4 border-white flex items-center justify-center text-5xl shadow-lg ring-4 ring-indigo-50 overflow-hidden relative">
                                     {student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : (
-                                        <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${student.gender === 'M' ? 'from-blue-100 to-indigo-100' : 'from-rose-100 to-pink-100'}`}>
-                                            <span className="text-5xl drop-shadow-sm">{student.gender === 'M' ? '👦' : '👧'}</span>
+                                    <div className={`w-full h-full flex items-center justify-center bg-gradient-to-b ${student.gender === 'M' ? 'from-blue-50 to-indigo-100' : 'from-rose-50 to-pink-100'}`}>
+                                        <span className="text-4xl drop-shadow-md opacity-90">{student.gender === 'M' ? '👦' : '👧'}</span>
                                         </div>
                                     )}
                                 </div>
