@@ -156,11 +156,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                                     quillRef.current.insertEmbed(range.index, 'image', data.data.url);
                                     quillRef.current.setSelection(range.index + 1);
                                 } else {
-                                    alert("이미지 업로드 실패: " + (data.error?.message || "알 수 없는 오류"));
+                                    alert("이미지 업로드 중 문제가 발생했습니다: " + (data.error?.message || "원인을 알 수 없습니다."));
                                 }
                             } catch (e) {
                                 console.error(e);
-                                alert("이미지 업로드 중 오류가 발생했습니다.");
+                                alert("이미지 업로드 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.");
                             } finally {
                                 setIsUploading(false);
                             }
@@ -248,7 +248,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
             setIsUploading(false);
         } catch (err) {
             console.error(err);
-            alert("이미지 업로드 중 오류가 발생했습니다.");
+            alert("이미지 업로드 중 문제가 발생했습니다.");
             setIsUploading(false);
         }
     };
@@ -292,14 +292,14 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         const finalAuthorName = userNickname || authorName;
         const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, timestamp: Date.now() };
         localStorage.setItem('cls_post_draft', JSON.stringify(draft));
-        if (showToast) showToast("임시 저장되었습니다.");
-        else alert("임시 저장되었습니다.");
+        if (showToast) showToast("작성 중인 내용이 안전하게 임시 저장되었습니다.");
+        else alert("작성 중인 내용이 안전하게 임시 저장되었습니다.");
     };
 
     const handleSubmit = () => {
         const finalAuthorName = userNickname || authorName;
         if (!title.trim() || !finalAuthorName.trim() || !content.trim() || !postPassword.trim()) {
-            alert("모든 항목을 입력해주세요.");
+            alert("빠진 항목이 없는지 다시 한 번 확인해 주세요.");
             return;
         }
         localStorage.setItem('community_authorName', finalAuthorName);

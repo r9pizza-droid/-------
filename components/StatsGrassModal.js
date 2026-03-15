@@ -564,7 +564,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             onSaveTaskComment(student.id, taskComment.taskIndex, editNoteContent.trim(), taskComment.date);
             setEditingNoteId(null);
             setEditNoteContent("");
-            showToast("과제 메모가 수정되었습니다.");
+            showToast("과제 메모가 성공적으로 변경되었습니다.");
             return;
         }
 
@@ -661,11 +661,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 });
                 if (updateCount > 0) {
                     await batch.commit();
-                    showToast("기록이 수정 및 동기화되었습니다.");
+                    showToast("기록이 성공적으로 변경 및 동기화되었습니다.");
                 }
             } catch (e) {
                 console.error("동기화 저장 실패:", e);
-                showToast("저장 중 오류가 발생했습니다: " + e.message);
+                showToast("저장 중 문제가 발생했습니다: " + e.message);
             }
         }
 

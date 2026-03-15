@@ -462,6 +462,33 @@
                 return part;
             });
         };
+
+        // [New] 부드러운 알림음(띠링) 재생 함수
+        const playToastSound = () => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                // 밝고 경쾌한 띠링 소리 (실로폰/맑은 벨 느낌)
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1046.50, ctx.currentTime); // C6 노트
+                osc.frequency.exponentialRampToValueAtTime(1318.51, ctx.currentTime + 0.05); // 살짝 톤업 (E6)
+                
+                // 볼륨 조절 (0.05로 아주 작게 설정)
+                gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3); // 0.3초 동안 페이드아웃
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch (e) { console.log("Sound play prevented", e); }
+        };
+
         const BaseModal = ({ isOpen, onClose, title, icon, children, footer, maxWidth = "max-w-2xl", zIndex = "z-50", onTitleClick }) => {
             useEffect(() => {
                 if (isOpen) document.body.style.overflow = 'hidden';
@@ -505,6 +532,10 @@
             useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
             useEffect(() => { 
                 if (!message) { setOffsetY(0); return; }
+                
+                // 🎵 알림음 재생 (메시지가 나타날 때)
+                playToastSound();
+
                 let duration = action ? 4000 : 3000;
                 if (message.includes("연동 상태 확인 중")) duration = 600000; 
                 // 에러 배너도 5초 후 자동 닫힘 (기존 무한 유지 제거)
@@ -11434,7 +11465,7 @@ useEffect(() => {
                     if (!isLocalMode) saveData('cls_seat_assignments', newAssignments);
                 } catch (e) {
                     console.error("Sync seats error:", e);
-                    setToastMessage("자리 배치 동기화 중 오류: " + e.message);
+                        setToastMessage("자리 배치 동기화 중 문제가 발생했습니다: " + e.message);
                 }
             };
 
@@ -12658,7 +12689,7 @@ useEffect(() => {
                     } else {
                         saveData(updates);
                     }
-                    setToastMessage("선택한 데이터가 초기화되었습니다."); 
+                setToastMessage("선택한 데이터가 깔끔하게 초기화되었습니다."); 
                 });
             };
 
@@ -14004,7 +14035,7 @@ useEffect(() => {
                                                                         
                                                                         {images.length > 0 && (
                                                                             <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 shrink-0">
-                                                                                <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover" loading="lazy" />
+                                                                                <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover bg-slate-200 animate-pulse" onLoad={(e) => e.target.classList.remove('bg-slate-200', 'animate-pulse')} loading="lazy" />
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -14018,7 +14049,7 @@ useEffect(() => {
                                                                     {!isExpanded && (
                                                                         <div className="aspect-square bg-slate-100 relative overflow-hidden">
                                                                             {images.length > 0 ? (
-                                                                                <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                                                                                <img src={images[0]} alt="thumbnail" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-slate-200 animate-pulse" onLoad={(e) => e.target.classList.remove('bg-slate-200', 'animate-pulse')} loading="lazy" />
                                                                             ) : (
                                                                                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
                                                                                     <span className="text-4xl opacity-50">📝</span>
@@ -14061,7 +14092,12 @@ useEffect(() => {
                                                                             </div>
                                                                         )}
                                                                         <div className="flex justify-between items-center text-[10px] text-slate-400 mt-auto">
-                                                                            <span className="truncate max-w-[60px]">{post.authorName} <span className="text-[10px] align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
+                                                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                                                <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
+                                                                                    {profilesMap[post.uid]?.photoUrl ? <img src={profilesMap[post.uid].photoUrl} className="w-full h-full object-cover bg-slate-200 animate-pulse" onLoad={(e) => e.target.classList.remove('bg-slate-200', 'animate-pulse')} alt="profile"/> : <span className="text-[8px]">👤</span>}
+                                                                                </div>
+                                                                                <span className="truncate">{post.authorName} <span className="text-[10px] align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
+                                                                            </div>
                                                                             <div className="flex items-center gap-2 shrink-0">
                                                                                 <div className="flex items-center gap-0.5">
                                                                                     <Icon key={likedPosts.includes(post.id)} d={PATHS.heart} size={10} className={likedPosts.includes(post.id) ? "fill-current text-rose-500 animate-pop" : ""} />
@@ -14107,7 +14143,7 @@ useEffect(() => {
                                                                     </div>
                                                                     {images.length > 0 && (
                                                                         <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0 relative">
-                                                                            <img src={images[0]} alt="첨부 이미지" className="w-full h-full object-cover" loading="lazy"/>
+                                                                            <img src={images[0]} alt="첨부 이미지" className="w-full h-full object-cover bg-slate-200 animate-pulse" onLoad={(e) => e.target.classList.remove('bg-slate-200', 'animate-pulse')} loading="lazy"/>
                                                                             {images.length > 1 && <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 rounded-full font-bold">+{images.length - 1}</div>}
                                                                         </div>
                                                                     )}
@@ -14120,7 +14156,7 @@ useEffect(() => {
                                                                 <div className="flex items-center justify-between pt-3 border-t border-slate-50 mt-3">
                                                                     <div className="flex items-center gap-2">
                                                                         <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs overflow-hidden shrink-0">
-                                                                            {profilesMap[post.uid]?.photoUrl ? <img src={profilesMap[post.uid].photoUrl} className="w-full h-full object-cover" alt="profile"/> : "👤"}
+                                                                            {profilesMap[post.uid]?.photoUrl ? <img src={profilesMap[post.uid].photoUrl} className="w-full h-full object-cover bg-slate-200 animate-pulse" onLoad={(e) => e.target.classList.remove('bg-slate-200', 'animate-pulse')} alt="profile"/> : "👤"}
                                                                         </div>
                                                                         <span className="text-xs font-bold text-slate-500">{post.authorName} 선생님 <span className="text-[10px] align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{post.isAnonymous ? '🔒' : (post.authorBadge || '🌱')}</span></span>
                                                                     </div>
@@ -14167,7 +14203,7 @@ useEffect(() => {
                                                     {!isLoadingPosts && sortedPosts.length === 0 && (
                                                         <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-3">
                                                             <div className="text-5xl mb-2 animate-bounce drop-shadow-sm">📭</div>
-                                                            <p className="text-base font-bold text-slate-500">아직 작성된 꿀팁이 없어요.</p>
+                                                            <p className="text-base font-bold text-slate-500">아직 등록된 내용이 없습니다.</p>
                                                             <p className="text-xs text-slate-400">선생님만의 노하우를 가장 먼저 공유해 보세요!</p>
                                                         </div>
                                                     )}
@@ -14241,7 +14277,7 @@ useEffect(() => {
                                                                 <h2 className="text-2xl font-bold text-slate-800 mb-4 leading-tight">{selectedPost.title}</h2>
                                                                 <div className="flex items-center gap-2 pb-4 border-b border-slate-100">
                                                                     <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm overflow-hidden shrink-0">
-                                                                        {profilesMap[selectedPost.uid]?.photoUrl ? <img src={profilesMap[selectedPost.uid].photoUrl} className="w-full h-full object-cover" alt="profile"/> : "👤"}
+                                                                        {profilesMap[selectedPost.uid]?.photoUrl ? <img src={profilesMap[selectedPost.uid].photoUrl} className="w-full h-full object-cover bg-slate-200 animate-pulse" onLoad={(e) => e.target.classList.remove('bg-slate-200', 'animate-pulse')} alt="profile"/> : "👤"}
                                                                     </div>
                                                                     <span className="font-bold text-slate-700 text-sm">{selectedPost.authorName} 선생님 <span className="text-xs align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{selectedPost.isAnonymous ? '🔒' : (selectedPost.authorBadge || '🌱')}</span></span>
                                                                 </div>
@@ -14272,7 +14308,7 @@ useEffect(() => {
                                                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-8">
                                                                     {selectedPost.imageUrls.map((url, idx) => (
                                                                         <div key={idx} className="aspect-square rounded-xl border border-slate-200 bg-slate-50 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); openLightbox(selectedPost.imageUrls, idx); }}>
-                                                                            <img src={url} alt={`첨부 ${idx+1}`} className="w-full h-full object-cover" />
+                                                                            <img src={url} alt={`첨부 ${idx+1}`} className="w-full h-full object-cover bg-slate-200 animate-pulse" onLoad={(e) => e.target.classList.remove('bg-slate-200', 'animate-pulse')} loading="lazy" />
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -14338,7 +14374,7 @@ useEffect(() => {
                                                                                         <div className="flex justify-between items-start mb-1">
                                                                                             <div className="flex items-center gap-2">
                                                                                                 <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs overflow-hidden shrink-0">
-                                                                                                    {profilesMap[comment.uid]?.photoUrl ? <img src={profilesMap[comment.uid].photoUrl} className="w-full h-full object-cover" alt="profile"/> : "👤"}
+                                                                                                    {profilesMap[comment.uid]?.photoUrl ? <img src={profilesMap[comment.uid].photoUrl} className="w-full h-full object-cover bg-slate-200 animate-pulse" onLoad={(e) => e.target.classList.remove('bg-slate-200', 'animate-pulse')} alt="profile"/> : "👤"}
                                                                                                 </div>
                                                                                                 <span className="font-bold text-slate-700 text-sm">{comment.author || comment.authorName} {isPostAuthor && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold align-middle mx-1">글쓴이</span>}<span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{comment.isAnonymous ? '🔒' : (comment.authorBadge || '🌱')}</span></span>
                                                                                                 <span className="text-[10px] text-slate-400">{getRelativeTime(comment.createdAt)}</span>
@@ -14363,7 +14399,7 @@ useEffect(() => {
                                                                                                 <div className="flex justify-between items-start mb-1">
                                                                                                     <div className="flex items-center gap-2">
                                                                                                         <div className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] overflow-hidden shrink-0">
-                                                                                                            {profilesMap[reply.uid]?.photoUrl ? <img src={profilesMap[reply.uid].photoUrl} className="w-full h-full object-cover" alt="profile"/> : "👤"}
+                                                                                                            {profilesMap[reply.uid]?.photoUrl ? <img src={profilesMap[reply.uid].photoUrl} className="w-full h-full object-cover bg-slate-200 animate-pulse" onLoad={(e) => e.target.classList.remove('bg-slate-200', 'animate-pulse')} alt="profile"/> : "👤"}
                                                                                                         </div>
                                                                                                         <span className="font-bold text-slate-700 text-sm">{reply.author || reply.authorName} {isReplyPostAuthor && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold align-middle mx-1">글쓴이</span>}<span className="text-xs font-normal align-middle cursor-pointer hover:scale-110 inline-block transition-transform" onClick={(e) => { e.stopPropagation(); setShowLevelGuide(true); }} title="레벨 안내">{reply.isAnonymous ? '🔒' : (reply.authorBadge || '🌱')}</span></span>
                                                                                                         <span className="text-[10px] text-slate-400">{getRelativeTime(reply.createdAt)}</span>
