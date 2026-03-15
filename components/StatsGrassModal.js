@@ -1,5 +1,26 @@
 const { useState, useEffect, useRef, useMemo } = React;
 
+const AnimatedNumber = ({ value, decimals = 0 }) => {
+    const [displayValue, setDisplayValue] = useState(0);
+    useEffect(() => {
+        let start = displayValue;
+        const end = parseFloat(value) || 0;
+        if (start === end) return;
+        const duration = 1000;
+        const startTime = performance.now();
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const ease = 1 - Math.pow(1 - progress, 4);
+            setDisplayValue(start + (end - start) * ease);
+            if (progress < 1) requestAnimationFrame(animate);
+            else setDisplayValue(end);
+        };
+        requestAnimationFrame(animate);
+    }, [value]);
+    return <>{displayValue.toFixed(decimals)}</>;
+};
+
 const RadarChart = ({ data }) => {
     const tags = Object.entries(data).filter(([_, stat]) => stat.cDone > 0).map(([tag]) => tag);
     if (tags.length < 3) return <div className="text-center text-xs text-slate-400 py-8 bg-slate-50 rounded-xl border border-slate-100 border-dashed">방사형 차트는 과목이 3개 이상일 때 표시됩니다.<br/>(현재 {tags.length}개)</div>;
@@ -32,6 +53,16 @@ const RadarChart = ({ data }) => {
     return (
         <div className="flex flex-col items-center py-2">
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+                <defs>
+                    <linearGradient id="studentGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#818cf8" stopOpacity="0.7"/>
+                        <stop offset="100%" stopColor="#818cf8" stopOpacity="0.2"/>
+                    </linearGradient>
+                    <linearGradient id="classGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#cbd5e1" stopOpacity="0.6"/>
+                        <stop offset="100%" stopColor="#cbd5e1" stopOpacity="0.1"/>
+                    </linearGradient>
+                </defs>
                 {[20, 40, 60, 80, 100].map((level, idx) => (
                     <polygon key={idx} points={tags.map((_, i) => getCoordinates(level, i).join(',')).join(' ')} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 2" />
                 ))}
@@ -45,8 +76,8 @@ const RadarChart = ({ data }) => {
                         </g>
                     );
                 })}
-                <polygon points={classPoints} fill="rgba(203, 213, 225, 0.4)" stroke="#cbd5e1" strokeWidth="2" />
-                <polygon points={studentPoints} fill="rgba(129, 140, 248, 0.4)" stroke="#818cf8" strokeWidth="3" />
+                <polygon points={classPoints} fill="url(#classGrad)" stroke="#cbd5e1" strokeWidth="2" />
+                <polygon points={studentPoints} fill="url(#studentGrad)" stroke="#818cf8" strokeWidth="3" />
                 {tags.map((tag, i) => {
                         const stat = data[tag];
                         const sRate = stat.sTotal > 0 ? (stat.sDone / stat.sTotal) * 100 : 0;
@@ -101,12 +132,20 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     }, [isOpen]);
 
     useEffect(() => {
-        const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', handleEsc);
-        return () => {
-            window.removeEventListener('keydown', handleEsc);
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') { onClose(); return; }
+            
+            const tagName = e.target.tagName.toLowerCase();
+            if (tagName === 'input' || tagName === 'textarea' || e.target.isContentEditable) return;
+
+            if (!students || !student || !onSwitchStudent) return;
+            const currentIndex = students.findIndex(s => s.id === student.id);
+            if (e.key === 'ArrowLeft' && currentIndex > 0) onSwitchStudent(students[currentIndex - 1].id);
+            if (e.key === 'ArrowRight' && currentIndex >= 0 && currentIndex < students.length - 1) onSwitchStudent(students[currentIndex + 1].id);
         };
-    }, [onClose]);
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose, student, students, onSwitchStudent]);
 
     const [notes, setNotes] = useState([]);
     const [stickerCount, setStickerCount] = useState(student.stickers || 0);
@@ -332,7 +371,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
     const level = Math.floor(stickerCount / 5) + 1;
     
-    const handleSticker = (delta) => { 
+    const handleSticker = (delta, e) => { 
         const newCount = Math.max(0, stickerCount + delta);
         setStickerCount(newCount); 
         onSaveStickers(student.id, newCount); 
@@ -340,12 +379,24 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             setStickerEffect(true);
             setTimeout(() => setStickerEffect(false), 200);
             if (navigator.vibrate) navigator.vibrate(15);
+
+            let origin = { y: 0.7 };
+            if (e && e.currentTarget) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = (rect.left + rect.width / 2) / window.innerWidth;
+                const y = (rect.top + rect.height / 2) / window.innerHeight;
+                origin = {
+                    x: x + (Math.random() - 0.5) * 0.05,
+                    y: y + (Math.random() - 0.5) * 0.05
+                };
+            }
+
             if (newCount % 5 === 0) { 
-                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 });
+                confetti({ particleCount: 100, spread: 70, origin, zIndex: 2000 });
                 if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`);
             }
             else { 
-                confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 });
+                confetti({ particleCount: 30, spread: 60, startVelocity: 30, origin, colors: ['#fbbf24', '#f59e0b', '#fcd34d', '#ffffff'], shapes: ['circle', 'square'], zIndex: 2000 });
             }
         }
     };
@@ -585,7 +636,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         setSelectedStudents(prev => prev.filter(s => s.id !== id));
     };
 
-    const handleIntegratedSave = async (targetCategory) => {
+    const handleIntegratedSave = async (targetCategory, e) => {
         const category = targetCategory || '관찰';
         const content = notionContent.trim();
         const date = notionDate || dayjs().format('YYYY-MM-DD');
@@ -658,11 +709,19 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 setShowButtonEffect(true); setTimeout(() => setShowButtonEffect(false), 800);
                 setStickerEffect(true); setTimeout(() => setStickerEffect(false), 200);
                 if (navigator.vibrate) navigator.vibrate(15);
+
+                let origin = { y: 0.7 };
+                if (e && e.currentTarget) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = (rect.left + rect.width / 2) / window.innerWidth;
+                    const y = (rect.top + rect.height / 2) / window.innerHeight;
+                    origin = { x: x + (Math.random() - 0.5) * 0.05, y: y + (Math.random() - 0.5) * 0.05 };
+                }
                 if ((stickerCount + 1) % 5 === 0) { 
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 2000 });
+                    confetti({ particleCount: 100, spread: 70, origin, zIndex: 2000 });
                     if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor((stickerCount + 1) / 5) + 1} 달성!`);
                 } else { 
-                    confetti({ particleCount: 30, spread: 40, origin: { y: 0.7 }, colors: ['#fbbf24', '#f59e0b'], zIndex: 2000 });
+                    confetti({ particleCount: 30, spread: 60, startVelocity: 30, origin, colors: ['#fbbf24', '#f59e0b', '#fcd34d', '#ffffff'], shapes: ['circle', 'square'], zIndex: 2000 });
                 }
             }
         }
@@ -1215,18 +1274,32 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const defaultGrass = currentWeekGrass.length > 0 ? currentWeekGrass : grassHistory.slice(-5);
     const displayedGrass = isGrassExpanded ? grassHistory : defaultGrass;
 
+    const currentIndex = students ? students.findIndex(s => s.id === student.id) : -1;
+    const hasPrev = currentIndex > 0;
+    const hasNext = students && currentIndex >= 0 && currentIndex < students.length - 1;
+
     return (
         <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={(e) => {
              if (showStickerHistory) setShowStickerHistory(false);
              else if (showTaskCommentHistory) setShowTaskCommentHistory(false);
              else onClose();
         }}>
+            {hasPrev && (
+                <button onClick={(e) => { e.stopPropagation(); onSwitchStudent(students[currentIndex - 1].id); }} className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 w-10 h-10 md:w-14 md:h-14 flex items-center justify-center bg-white/20 hover:bg-white/50 text-white hover:text-slate-800 rounded-full backdrop-blur-md shadow-lg transition-all z-[1610] group">
+                    <Icon d={PATHS.left} size={28} className="group-hover:-translate-x-1 transition-transform" />
+                </button>
+            )}
+            {hasNext && (
+                <button onClick={(e) => { e.stopPropagation(); onSwitchStudent(students[currentIndex + 1].id); }} className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 w-10 h-10 md:w-14 md:h-14 flex items-center justify-center bg-white/20 hover:bg-white/50 text-white hover:text-slate-800 rounded-full backdrop-blur-md shadow-lg transition-all z-[1610] group">
+                    <Icon d={PATHS.right} size={28} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+            )}
             <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col" onClick={e => {
                 e.stopPropagation();
                 if (showStickerHistory) setShowStickerHistory(false);
                 if (showTaskCommentHistory) setShowTaskCommentHistory(false);
             }}>
-                <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0 relative z-40">
+                <div className="sticky top-0 bg-white/80 backdrop-blur-md rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0 z-[100] transition-all shadow-indigo-100/20">
                     <div className="flex justify-between items-center flex-wrap gap-4">
                         <div className="flex items-center gap-4">
                             <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm flex-shrink-0 relative group cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -1346,13 +1419,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     <div className="flex flex-col">
                                         <span className="text-xs text-slate-400 font-bold mb-1">전체 점수 비교</span>
                                         <div className="flex items-baseline gap-1">
-                                            <span className={`text-2xl font-black ${getLevelTextColor(level)}`}>{reportStats.studentScore?.toFixed(1)}점</span>
-                                            <span className="text-xs text-slate-400 font-medium">vs {reportStats.classScore?.toFixed(1)}점 (학급)</span>
+                                            <span className={`text-2xl font-black ${getLevelTextColor(level)}`}><AnimatedNumber value={reportStats.studentScore} decimals={1} />점</span>
+                                            <span className="text-xs text-slate-400 font-medium">vs <AnimatedNumber value={reportStats.classScore} decimals={1} />점 (학급)</span>
                                         </div>
                                         <div className="flex items-baseline gap-1 mt-1">
                                             <span className="text-xs font-bold text-slate-500">수행률:</span>
-                                            <span className={`text-sm font-black ${reportStats.studentRate >= reportStats.classRate ? 'text-indigo-500' : 'text-rose-500'}`}>{reportStats.studentRate}%</span>
-                                            <span className="text-[10px] text-slate-400">(학급 {reportStats.classRate}%)</span>
+                                            <span className={`text-sm font-black ${reportStats.studentRate >= reportStats.classRate ? 'text-indigo-500' : 'text-rose-500'}`}><AnimatedNumber value={reportStats.studentRate} decimals={0} />%</span>
+                                            <span className="text-[10px] text-slate-400">(학급 <AnimatedNumber value={reportStats.classRate} decimals={0} />%)</span>
                                         </div>
                                     </div>
                                     <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 ${reportStats.studentScore >= reportStats.classScore ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-rose-50 border-rose-100 text-rose-500'}`}>
@@ -1449,10 +1522,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                     e.stopPropagation();
                                                                     handleTaskStatusChange(td.date, td.idx, e.target.value);
                                                                 }}
-                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all shadow-sm outline-none appearance-none cursor-pointer border ${
-                                                                    td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200' :
-                                                                    td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200' :
-                                                                    'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200'
+                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all shadow-sm outline-none appearance-none cursor-pointer border focus:ring-2 focus:ring-offset-1 ${
+                                                                    td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200 focus:ring-indigo-400' :
+                                                                    td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200 focus:ring-amber-400' :
+                                                                    'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200 focus:ring-rose-400'
                                                                 }`}
                                                                 style={{
                                                                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='${td.status === 'on-time' ? '%234338ca' : td.status === 'late' ? '%23b45309' : '%23be123c'}' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
@@ -1520,7 +1593,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 <span className="text-xs text-slate-500 font-medium">긍정적 강화와 보상</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Btn onClick={() => handleSticker(-1)} className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-lg">-</Btn>
+                                <Btn onClick={(e) => handleSticker(-1, e)} className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-lg">-</Btn>
                                 <div className="relative">
                                     <span 
                                         onClick={(e) => { e.stopPropagation(); setShowStickerHistory(!showStickerHistory); }}
@@ -1553,7 +1626,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         </div>
                                     )}
                                 </div>
-                                <Btn onClick={() => handleSticker(1)} className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold text-lg shadow-sm">+</Btn>
+                                <Btn onClick={(e) => handleSticker(1, e)} className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold text-lg shadow-sm">+</Btn>
                             </div>
                         </div>
 
@@ -1636,7 +1709,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 </div>
                                 
                                 {notionStatus === 'saving' ? (
-                                    <div className="w-full bg-slate-100 rounded-xl h-12 flex items-center justify-center relative overflow-hidden shadow-inner">
+                                    <div className="w-full bg-indigo-50 rounded-xl h-12 flex items-center justify-center relative overflow-hidden shadow-inner ring-2 ring-indigo-200 animate-pulse">
                                         <div className="absolute left-0 top-0 h-full bg-indigo-100 transition-all duration-300 ease-out" style={{ width: `${saveProgress}%` }}></div>
                                         <div className="relative z-10 flex items-center gap-2 text-indigo-700 font-bold text-sm">
                                             <Icon d={PATHS.spinner} className="animate-spin" />
@@ -1645,10 +1718,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     </div>
                                 ) : (
                                     <div className="flex gap-2.5">
-                                        <button onClick={() => handleIntegratedSave('칭찬')} className="relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-rose-500 hover:bg-rose-600 active:scale-95">
+                                        <button onClick={(e) => handleIntegratedSave('칭찬', e)} className="relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-rose-500 hover:bg-rose-600 active:scale-95">
                                             칭찬하기 +1
                                         </button>
-                                        <button onClick={() => handleIntegratedSave('관찰')} className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 active:scale-95">
+                                        <button onClick={(e) => handleIntegratedSave('관찰', e)} className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 active:scale-95">
                                             관찰 기록 저장
                                         </button>
                                     </div>
