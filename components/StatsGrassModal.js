@@ -1221,7 +1221,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         else if (!rec.tasks && rec.done) done++;
                     });
                 }
-            } else { if (rec && rec.done) { total = 1; done = 1; } }
+            }
             const ratio = total > 0 ? done / total : 0;
             history.push({ date: dStr, ratio, count: done, total });
         }

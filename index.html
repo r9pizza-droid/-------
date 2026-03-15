@@ -12323,14 +12323,6 @@ useEffect(() => {
                                         taskDetails.push({date:d, title, idx, status:'missed', point: 0, comment});
                                     }
                                 });
-                            } else if (dayRecord) { // Legacy single task mode
-                                totalCount++;
-                                const comment = sRec ? (sRec.taskComments ? sRec.taskComments[0] : null) : null;
-                                if (sRec?.done) {
-                                    score += 1; onTimeItems.push({date:d, title:'완료'}); taskDetails.push({date:d, title:'완료', idx:0, status:'on-time', point:1, comment});
-                                } else {
-                                    taskDetails.push({date:d, title:'완료', idx:0, status:'missed', point:0, comment});
-                                }
                             }
                         } else {
                             const tagTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
@@ -12417,8 +12409,6 @@ useEffect(() => {
                                     else if(!dayRecord[s.id].tasks && dayRecord[s.id].done) dailyDoneCount++;
                                 });
                             }
-                        } else {
-                            if(dayRecord && dayRecord[s.id]?.done) { dailyTotalCount = 1; dailyDoneCount = 1; }
                         }
                         const ratio = dailyTotalCount > 0 ? dailyDoneCount / dailyTotalCount : 0;
                         history.push({ date: d, ratio: ratio, count: dailyDoneCount, total: dailyTotalCount, done: dailyDoneCount === dailyTotalCount && dailyTotalCount > 0 });
@@ -12427,8 +12417,9 @@ useEffect(() => {
                     for(let i=0; i<365; i++) {
                         const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
                         const rec = records[d]?.[s.id];
+                        const dayTasks = dailyTasks[d] || [];
                         let isDoneDay = false;
-                        if(rec) { if(rec.tasks) { if(rec.done) isDoneDay = true; } else if(rec.done) { isDoneDay = true; } }
+                        if(dayTasks.length > 0 && rec) { if(rec.tasks) { if(rec.done) isDoneDay = true; } else if(rec.done) { isDoneDay = true; } }
                         if(isDoneDay) currentStreak++;
                         else if(i===0 && !isDoneDay) continue; else break;
                     }
@@ -12593,15 +12584,16 @@ useEffect(() => {
                     const summary = targetDates.reverse().map(d => {
                         const tasks = dailyTasks[d] || [];
                         const recs = records[d] || {};
-                        const total = students.length * (tasks.length || 1);
+                        const total = students.length * tasks.length;
                         let done = 0;
-                        students.forEach(s => {
-                            const r = recs[s.id];
-                            if(r) {
-                                if(tasks.length > 0) tasks.forEach((_, i) => { if(r.tasks?.[i]) done++; });
-                                else if(r.done) done++;
-                            }
-                        });
+                        if (tasks.length > 0) {
+                            students.forEach(s => {
+                                const r = recs[s.id];
+                                if(r) {
+                                    tasks.forEach((_, i) => { if(r.tasks?.[i]) done++; });
+                                }
+                            });
+                        }
                         return `${d}: 수행률 ${total > 0 ? Math.round(done/total*100) : 0}%`;
                     }).join('\n');
 
@@ -12675,15 +12667,16 @@ useEffect(() => {
                 try {
                     const tasks = dailyTasks[date] || [];
                     const recs = records[date] || {};
-                    const total = students.length * (tasks.length || 1);
+                    const total = students.length * tasks.length;
                     let done = 0;
-                    students.forEach(s => {
-                        const r = recs[s.id];
-                        if(r) {
-                            if(tasks.length > 0) tasks.forEach((_, i) => { if(r.tasks?.[i]) done++; });
-                            else if(r.done) done++;
-                        }
-                    });
+                    if (tasks.length > 0) {
+                        students.forEach(s => {
+                            const r = recs[s.id];
+                            if(r) {
+                                tasks.forEach((_, i) => { if(r.tasks?.[i]) done++; });
+                            }
+                        });
+                    }
                     const rate = total > 0 ? Math.round(done/total*100) : 0;
                     
                     let genrePrompt = "오늘 하루 우리 반의 소소한 일상을 담은 따뜻한 학급 일기";
