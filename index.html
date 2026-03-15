@@ -8187,6 +8187,8 @@ const firebaseConfig = {
                     const unsubscribe = sharedDb.collection('userProfiles').orderBy('lastLogin', 'desc').onSnapshot(snapshot => {
                         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                         setAllUsers(users);
+                    }, error => {
+                        console.error("관리자 사용자 목록 실시간 구독 실패:", error);
                     });
                     return () => unsubscribe();
                 }
