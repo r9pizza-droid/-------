@@ -2202,6 +2202,14 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                                     <textarea 
                                                                                         value={commentInput}
                                                                                         onChange={(e) => setCommentInput(e.target.value)}
+                                                                                        onKeyDown={(e) => {
+                                                                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                                                                e.preventDefault();
+                                                                                                onSaveTaskComment(student.id, i, commentInput.trim() || null, detailDate);
+                                                                                                setOpenCommentIndex(null);
+                                                                                                showToast("메모가 저장되었습니다.");
+                                                                                            }
+                                                                                        }}
                                     className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 resize-none"
                                                                                         rows={3}
                                                                                         placeholder="과제에 대한 메모를 남겨보세요..."
