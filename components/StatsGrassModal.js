@@ -115,7 +115,7 @@ const renderTextWithLinks = (text) => {
     });
 };
 
-const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, records: propRecords, dates, dailyTasks: propDailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, setRecords, setDailyTasks, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment, initialShowScoreAnalysis = false }) => {
+const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, records: propRecords, dates, dailyTasks: propDailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, setRecords, setDailyTasks, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment, initialShowScoreAnalysis = false, tags }) => {
     // [실시간 연동] 부모로부터 받은 props(propRecords, propDailyTasks, propStudent)를 직접 사용합니다.
     // 아래 useEffect 훅이 부모의 state를 직접 업데이트하므로, 이 컴포넌트 내의 별도 state는 더 이상 필요 없습니다.
     const records = propRecords || {};
@@ -236,7 +236,63 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [openCommentIndex, setOpenCommentIndex] = useState(null); // [New] 과제별 메모 입력창 상태
     const [commentInput, setCommentInput] = useState(""); // [New] 과제별 메모 입력값
     const [expandedComments, setExpandedComments] = useState({}); // [New] 점수 분석 내 메모 토글 상태
-    
+    const [editingTask, setEditingTask] = useState(null);
+
+    const handleTaskDelete = async (date, idx) => {
+        if (!confirm("이 과제를 완전히 삭제하시겠습니까?\n(모든 학생의 해당 과제 기록도 함께 삭제되며, 점수도 재계산됩니다)")) return;
+        const newTasks = [...(dailyTasks[date] || [])];
+        newTasks.splice(idx, 1);
+        const newDailyTasks = { ...dailyTasks, [date]: newTasks };
+
+        const newRecords = { ...records };
+        if (newRecords[date]) {
+            newRecords[date] = { ...newRecords[date] };
+            Object.keys(newRecords[date]).forEach(studentId => {
+                const stuRec = { ...newRecords[date][studentId] };
+                let changed = false;
+                const shiftIndices = (obj) => {
+                    if (!obj) return obj;
+                    const newObj = {};
+                    let hasData = false;
+                    Object.keys(obj).forEach(k => {
+                        const kInt = parseInt(k);
+                        if (kInt < idx) { newObj[kInt] = obj[k]; hasData = true; } 
+                        else if (kInt > idx) { newObj[kInt - 1] = obj[k]; hasData = true; }
+                    });
+                    return hasData ? newObj : undefined;
+                };
+                if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); changed = true; }
+                if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); changed = true; }
+                if (stuRec.taskComments) { stuRec.taskComments = shiftIndices(stuRec.taskComments); changed = true; }
+                
+                if (changed) {
+                    if (newTasks.length === 0) stuRec.done = false;
+                    else if (stuRec.tasks) stuRec.done = newTasks.every((_, i) => stuRec.tasks[i]);
+                }
+                newRecords[date][studentId] = stuRec;
+            });
+        }
+        setDailyTasks(newDailyTasks);
+        setRecords(newRecords);
+        if (!isLocalMode && db && appId) {
+            db.collection('classes').doc(appId).collection('tasks').doc(date).set({ list: newTasks });
+            db.collection('classes').doc(appId).collection('records').doc(date).set(newRecords[date]);
+        } else { saveData('cls_daily_tasks', newDailyTasks); saveData('cls_records', newRecords); }
+        if (showToast) showToast("과제가 삭제되었습니다.");
+    };
+
+    const handleTaskEdit = (date, idx, newTitle, newTag) => {
+        if (!newTitle.trim()) return;
+        const newTasks = [...(dailyTasks[date] || [])];
+        newTasks[idx] = { title: newTitle, tag: newTag };
+        const newDailyTasks = { ...dailyTasks, [date]: newTasks };
+        setDailyTasks(newDailyTasks);
+        if (!isLocalMode && db && appId) db.collection('classes').doc(appId).collection('tasks').doc(date).set({ list: newTasks });
+        else saveData('cls_daily_tasks', newDailyTasks);
+        setEditingTask(null);
+        if (showToast) showToast("과제가 수정되었습니다.");
+    };
+
     // [New] 연동 상태 확인 및 기본값 설정 (초기화)
     const [hasNotionRecord, setHasNotionRecord] = useState(false);
     const [hasNotionPortfolio, setHasNotionPortfolio] = useState(false);
@@ -1536,17 +1592,36 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                             </div>
                                             <div className="space-y-2">
                                                 {reportStats.taskDetails?.length > 0 ? reportStats.taskDetails.map((td, idx) => (
-                                                    <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors animate-fade-in" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
+                                                    <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors animate-fade-in group/td" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
                                                         <div className="flex flex-col text-left max-w-[55%]">
                                                             <span className="text-[10px] font-bold text-slate-400">{dayjs(td.date).format('MM/DD')}</span>
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
-                                                                {td.comment && (
-                                                                    <button onClick={(e) => { e.stopPropagation(); setExpandedComments(prev => ({...prev, [`${td.date}-${td.idx}`]: !prev[`${td.date}-${td.idx}`]})); }} className="text-slate-400 hover:text-indigo-500 transition-colors flex-shrink-0">
-                                                                        <Icon d={PATHS.right} size={12} className={`transition-transform duration-200 ${expandedComments[`${td.date}-${td.idx}`] ? 'rotate-90' : ''}`} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
+
+                                                            {editingTask && editingTask.date === td.date && editingTask.idx === td.idx ? (
+                                                                <div className="flex items-center gap-1 mt-0.5 animate-fade-in">
+                                                                    <select value={editingTask.tag} onChange={(e) => setEditingTask({...editingTask, tag: e.target.value})} className="p-1 bg-white border border-slate-200 rounded text-[10px] outline-none text-slate-600 w-16">
+                                                                        {(tags || []).map(t => <option key={t} value={t}>{t}</option>)}
+                                                                    </select>
+                                                                    <input value={editingTask.title} onChange={(e) => setEditingTask({...editingTask, title: e.target.value})} className="p-1 bg-white border border-slate-200 rounded text-xs outline-none text-slate-700 w-24" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleTaskEdit(td.date, td.idx, editingTask.title, editingTask.tag); }} />
+                                                                    <div className="flex gap-0.5 ml-1">
+                                                                        <button onClick={() => setEditingTask(null)} className="p-1 text-slate-400 hover:bg-slate-200 rounded"><Icon d={PATHS.x} size={12}/></button>
+                                                                        <button onClick={() => handleTaskEdit(td.date, td.idx, editingTask.title, editingTask.tag)} className="p-1 text-indigo-500 hover:bg-indigo-100 rounded"><Icon d={PATHS.check} size={12}/></button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-1 mt-0.5">
+                                                                    <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
+                                                                    <div className="opacity-0 group-hover/td:opacity-100 transition-opacity flex items-center shrink-0 bg-white border border-slate-200 rounded ml-1">
+                                                                        <button onClick={(e) => { e.stopPropagation(); setEditingTask({ date: td.date, idx: td.idx, title: td.title, tag: td.tag || '기타' }); }} className="p-1 text-slate-400 hover:text-indigo-500 transition-colors" title="과제 수정"><Icon d={PATHS.edit} size={10} /></button>
+                                                                        <div className="w-px h-3 bg-slate-200"></div>
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleTaskDelete(td.date, td.idx); }} className="p-1 text-slate-400 hover:text-rose-500 transition-colors" title="과제 삭제"><Icon d={PATHS.trash} size={10} /></button>
+                                                                    </div>
+                                                                    {td.comment && (
+                                                                        <button onClick={(e) => { e.stopPropagation(); setExpandedComments(prev => ({...prev, [`${td.date}-${td.idx}`]: !prev[`${td.date}-${td.idx}`]})); }} className="text-slate-400 hover:text-indigo-500 transition-colors flex-shrink-0 ml-1">
+                                                                            <Icon d={PATHS.right} size={12} className={`transition-transform duration-200 ${expandedComments[`${td.date}-${td.idx}`] ? 'rotate-90' : ''}`} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                             {td.comment && expandedComments[`${td.date}-${td.idx}`] && (
                                                                 <div className="text-[10px] text-slate-500 mt-1 whitespace-pre-wrap border-l-2 border-indigo-200 pl-1.5 py-0.5 animate-fade-in bg-white/50 rounded-r" onClick={(e) => e.stopPropagation()}>
                                                                     {renderTextWithLinks(Array.isArray(td.comment) ? td.comment.join('\n') : td.comment)}

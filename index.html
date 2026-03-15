@@ -8878,6 +8878,64 @@ const firebaseConfig = {
             const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
             const [expandedScoreComments, setExpandedScoreComments] = useState({});
 
+            const [editingScoreTask, setEditingScoreTask] = useState(null);
+
+            const handleScoreTaskDelete = async (date, idx) => {
+                if (!confirm("이 과제를 완전히 삭제하시겠습니까?\n(모든 학생의 해당 과제 기록도 함께 삭제되며, 점수도 재계산됩니다)")) return;
+
+                const newTasks = [...(dailyTasks[date] || [])];
+                newTasks.splice(idx, 1);
+                const newDailyTasks = { ...dailyTasks, [date]: newTasks };
+
+                const newRecords = { ...records };
+                if (newRecords[date]) {
+                    newRecords[date] = { ...newRecords[date] };
+                    Object.keys(newRecords[date]).forEach(studentId => {
+                        const stuRec = { ...newRecords[date][studentId] };
+                        let changed = false;
+                        const shiftIndices = (obj) => {
+                            if (!obj) return obj;
+                            const newObj = {};
+                            let hasData = false;
+                            Object.keys(obj).forEach(k => {
+                                const kInt = parseInt(k);
+                                if (kInt < idx) { newObj[kInt] = obj[k]; hasData = true; } 
+                                else if (kInt > idx) { newObj[kInt - 1] = obj[k]; hasData = true; }
+                            });
+                            return hasData ? newObj : undefined;
+                        };
+                        if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); changed = true; }
+                        if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); changed = true; }
+                        if (stuRec.taskComments) { stuRec.taskComments = shiftIndices(stuRec.taskComments); changed = true; }
+                        
+                        if (changed) {
+                            if (newTasks.length === 0) stuRec.done = false;
+                            else if (stuRec.tasks) stuRec.done = newTasks.every((_, i) => stuRec.tasks[i]);
+                        }
+                        newRecords[date][studentId] = stuRec;
+                    });
+                }
+                setDailyTasks(newDailyTasks);
+                setRecords(newRecords);
+                if (!isLocalMode && db && appId) {
+                    saveTasksToFirestore({ dailyTasks: { [date]: newTasks } });
+                    saveRecordsToFirestore({ [date]: newRecords[date] });
+                } else { saveData('cls_daily_tasks', newDailyTasks); saveData('cls_records', newRecords); }
+                setToastMessage("과제가 삭제되었습니다.");
+            };
+
+            const handleScoreTaskEdit = (date, idx, newTitle, newTag) => {
+                if (!newTitle.trim()) return;
+                const newTasks = [...(dailyTasks[date] || [])];
+                newTasks[idx] = { title: newTitle, tag: newTag };
+                const newDailyTasks = { ...dailyTasks, [date]: newTasks };
+                setDailyTasks(newDailyTasks);
+                if (!isLocalMode && db && appId) saveTasksToFirestore({ dailyTasks: { [date]: newTasks } });
+                else saveData('cls_daily_tasks', newDailyTasks);
+                setEditingScoreTask(null);
+                setToastMessage("과제가 수정되었습니다.");
+            };
+
             useEffect(() => {
                 // 상세 점수 분석 팝업이 열렸을 때 배경 스크롤을 막습니다.
                 if (scoreDetailTarget) {
@@ -14516,6 +14574,8 @@ useEffect(() => {
                         saveData={saveData}
                         onSwitchStudent={(id) => setGrassStudentId(id)}
                         onPhotoUpload={handlePhotoUpload} />}
+                        tags={tags}
+
                     {scoreDetailTarget && (() => {
                         const studentStats = stats.students.find(s => s.id === scoreDetailTarget.studentId);
                         if (!studentStats) return null;
@@ -14569,17 +14629,36 @@ useEffect(() => {
                                                     <span className="text-[9px] font-normal text-slate-400">* 클릭하여 상태 변경</span>
                                                 </div>
                                                 {details.taskDetails && details.taskDetails.sort((a,b) => b.date.localeCompare(a.date)).map((td) => (
-                                                    <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors">
+                                                    <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors group/td">
                                                         <div className="flex flex-col text-left max-w-[55%]">
                                                             <span className="text-[10px] font-bold text-slate-400">{dayjs(td.date).format('MM.DD')}</span>
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
-                                                                {td.comment && (
-                                                                    <button onClick={(e) => { e.stopPropagation(); setExpandedScoreComments(prev => ({...prev, [`${td.date}-${td.idx}`]: !prev[`${td.date}-${td.idx}`]})); }} className="text-slate-400 hover:text-indigo-500 transition-colors flex-shrink-0">
-                                                                        <Icon d={PATHS.right} size={12} className={`transition-transform duration-200 ${expandedScoreComments[`${td.date}-${td.idx}`] ? 'rotate-90' : ''}`} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
+                                                            
+                                                            {editingScoreTask && editingScoreTask.date === td.date && editingScoreTask.idx === td.idx ? (
+                                                                <div className="flex items-center gap-1 mt-0.5 animate-fade-in">
+                                                                    <select value={editingScoreTask.tag} onChange={(e) => setEditingScoreTask({...editingScoreTask, tag: e.target.value})} className="p-1 bg-white border border-slate-200 rounded text-[10px] outline-none text-slate-600 w-16">
+                                                                        {tags.map(t => <option key={t} value={t}>{t}</option>)}
+                                                                    </select>
+                                                                    <input value={editingScoreTask.title} onChange={(e) => setEditingScoreTask({...editingScoreTask, title: e.target.value})} className="p-1 bg-white border border-slate-200 rounded text-xs outline-none text-slate-700 w-24" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleScoreTaskEdit(td.date, td.idx, editingScoreTask.title, editingScoreTask.tag); }} />
+                                                                    <div className="flex gap-0.5 ml-1">
+                                                                        <button onClick={() => setEditingScoreTask(null)} className="p-1 text-slate-400 hover:bg-slate-200 rounded"><Icon d={PATHS.x} size={12}/></button>
+                                                                        <button onClick={() => handleScoreTaskEdit(td.date, td.idx, editingScoreTask.title, editingScoreTask.tag)} className="p-1 text-indigo-500 hover:bg-indigo-100 rounded"><Icon d={PATHS.check} size={12}/></button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-1 mt-0.5">
+                                                                    <span className="text-xs font-bold text-slate-700 truncate" title={td.title}>{td.title}</span>
+                                                                    <div className="opacity-0 group-hover/td:opacity-100 transition-opacity flex items-center shrink-0 bg-white border border-slate-200 rounded ml-1">
+                                                                        <button onClick={(e) => { e.stopPropagation(); setEditingScoreTask({ date: td.date, idx: td.idx, title: td.title, tag: td.tag || '기타' }); }} className="p-1 text-slate-400 hover:text-indigo-500 transition-colors" title="과제 수정"><Icon d={PATHS.edit} size={10} /></button>
+                                                                        <div className="w-px h-3 bg-slate-200"></div>
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleScoreTaskDelete(td.date, td.idx); }} className="p-1 text-slate-400 hover:text-rose-500 transition-colors" title="과제 삭제"><Icon d={PATHS.trash} size={10} /></button>
+                                                                    </div>
+                                                                    {td.comment && (
+                                                                        <button onClick={(e) => { e.stopPropagation(); setExpandedScoreComments(prev => ({...prev, [`${td.date}-${td.idx}`]: !prev[`${td.date}-${td.idx}`]})); }} className="text-slate-400 hover:text-indigo-500 transition-colors flex-shrink-0 ml-1">
+                                                                            <Icon d={PATHS.right} size={12} className={`transition-transform duration-200 ${expandedScoreComments[`${td.date}-${td.idx}`] ? 'rotate-90' : ''}`} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                             {td.comment && expandedScoreComments[`${td.date}-${td.idx}`] && (
                                                                 <div className="text-[10px] text-slate-500 mt-1 whitespace-pre-wrap border-l-2 border-indigo-200 pl-1.5 py-0.5 animate-fade-in bg-white/50 rounded-r" onClick={(e) => e.stopPropagation()}>
                                                                     {renderTextWithLinks(Array.isArray(td.comment) ? td.comment.join('\n') : td.comment)}
