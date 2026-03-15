@@ -8160,7 +8160,7 @@ const firebaseConfig = {
                     });
                 }
                 
-                if (myAppUser && (!sUser || sUser.uid !== myAppUser.uid)) {
+                if (myAppUser && (!sUser || sUser.email !== myAppUser.email)) {
                     const savedId = localStorage.getItem('cls_fb_id');
                     const savedPw = localStorage.getItem('cls_fb_pw');
                     if (savedId && savedPw) {
@@ -8498,13 +8498,13 @@ const firebaseConfig = {
                 const user = currentUser;
                 const sharedUser = await getValidSharedUser(user);
                 
-                if (!sharedDb || !user || !sharedUser || sharedUser.uid !== user.uid) {
+                if (!sharedDb || !user || !sharedUser) {
                     console.error("공용 DB 인증이 완료되지 않았습니다.");
                     setShowNicknameModal(true); 
                     return;
                 }
 
-                sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
+                sharedDb.collection('userProfiles').doc(sharedUser.uid).get().then(doc => {
                     if (doc.exists) {
                         const data = doc.data();
                         const fetchedName = data.name || data.userNickname;
@@ -8537,14 +8537,14 @@ const firebaseConfig = {
 
         const user = currentUser;
         const sharedUser = await getValidSharedUser(user);
-        if (!sharedDb || !user || !sharedUser || sharedUser.uid !== user.uid) {
+        if (!sharedDb || !user || !sharedUser) {
             alert("공용 DB 인증이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.");
             return;
         }
 
         try {
             // [New] 중복 가입 방지 (이미 프로필이 있는지 확인 - UID 기준)
-            const doc = await sharedDb.collection('userProfiles').doc(user.uid).get();
+            const doc = await sharedDb.collection('userProfiles').doc(sharedUser.uid).get();
             if (doc.exists) {
                 const data = doc.data();
                 const existingName = data.name || data.userNickname;
@@ -8563,23 +8563,23 @@ const firebaseConfig = {
             const check2 = await sharedDb.collection('userProfiles').where('name', '==', nickname).get();
             
             // 이미 존재하는 닉네임이 있고, 그게 내 것이 아닐 경우
-            if ((!check1.empty && check1.docs[0].id !== user.uid) || (!check2.empty && check2.docs[0].id !== user.uid)) {
+            if ((!check1.empty && check1.docs[0].id !== sharedUser.uid) || (!check2.empty && check2.docs[0].id !== sharedUser.uid)) {
                 alert("이미 사용 중인 별칭입니다. 다른 별칭을 입력해주세요.");
                 return;
             }
 
             // 1. 파이어베이스 서버에 저장
-            await sharedDb.collection('userProfiles').doc(user.uid).set({
-                uid: user.uid,
-                email: user.email || "",
+            await sharedDb.collection('userProfiles').doc(sharedUser.uid).set({
+                uid: sharedUser.uid,
+                email: sharedUser.email || "",
                 name: nickname,
                 userNickname: nickname, // [New] 별칭 필드 통일
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true }); // [New] 기존 데이터 보존
 
             // [New] 접속 통계에도 저장
-            await sharedDb.collection('userStats').doc(user.uid).set({
-                uid: user.uid,
+            await sharedDb.collection('userStats').doc(sharedUser.uid).set({
+                uid: sharedUser.uid,
                 lastActive: new Date(),
                 nickname: nickname
             }, { merge: true });
@@ -11062,7 +11062,7 @@ const firebaseConfig = {
             });
         }
 
-        if (sUser && sUser.uid === myAppUser.uid) {
+        if (sUser && sUser.email === myAppUser.email) {
             return sUser;
         }
 
