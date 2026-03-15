@@ -8148,6 +8148,34 @@ const firebaseConfig = {
         };
 
         const App = () => {
+            // [New] 공용 DB 세션 자가 복구 및 비동기 대기 함수
+            const getValidSharedUser = async (myAppUser) => {
+                let sUser = firebase.auth().currentUser;
+                if (!sUser) {
+                    sUser = await new Promise(resolve => {
+                        const unsub = firebase.auth().onAuthStateChanged(u => {
+                            unsub();
+                            resolve(u);
+                        });
+                    });
+                }
+                
+                if (myAppUser && (!sUser || sUser.uid !== myAppUser.uid)) {
+                    const savedId = localStorage.getItem('cls_fb_id');
+                    const savedPw = localStorage.getItem('cls_fb_pw');
+                    if (savedId && savedPw) {
+                        try {
+                            console.log("[Auto-Recovery] 공용 앱 동기화 복구 시도...");
+                            await firebase.auth().signInWithEmailAndPassword(savedId, savedPw);
+                            sUser = firebase.auth().currentUser;
+                        } catch (e) {
+                            console.error("[Auto-Recovery] 공용 앱 로그인 복구 실패:", e);
+                        }
+                    }
+                }
+                return sUser;
+            };
+
             // [New] 레벨 시스템 설정 (관리자 밸런스 패치용)
             const [levelConfig, setLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1 });
             const [expandedUserId, setExpandedUserId] = useState(null);
@@ -8247,7 +8275,7 @@ const firebaseConfig = {
 
             const fetchUserList = async () => {
                 const user = currentUser;
-                const sharedUser = firebase.auth().currentUser;
+                const sharedUser = await getValidSharedUser(user);
                 
                 console.log("[fetchUserList] myClassApp UID:", user?.uid);
                 console.log("[fetchUserList] sharedApp UID:", sharedUser?.uid);
@@ -8466,9 +8494,9 @@ const firebaseConfig = {
             }
 
             // 내 컴퓨터에 없다면 파이어베이스 서버에 물어봅니다. (지연 시간 대비)
-            const checkFirebase = () => {
+            const checkFirebase = async () => {
                 const user = currentUser;
-                const sharedUser = firebase.auth().currentUser;
+                const sharedUser = await getValidSharedUser(user);
                 
                 if (!sharedDb || !user || !sharedUser || sharedUser.uid !== user.uid) {
                     console.error("공용 DB 인증이 완료되지 않았습니다.");
@@ -8494,8 +8522,7 @@ const firebaseConfig = {
                 }).catch(e => console.error("별칭 확인 오류:", e));
             };
 
-            // 파이어베이스가 로그인 상태를 확인하는 시간을 조금 기다려줍니다.
-            setTimeout(checkFirebase, 500); 
+            checkFirebase(); 
         } else {
             setShowNicknameModal(false);
         }
@@ -8509,7 +8536,7 @@ const firebaseConfig = {
         }
 
         const user = currentUser;
-        const sharedUser = firebase.auth().currentUser;
+        const sharedUser = await getValidSharedUser(user);
         if (!sharedDb || !user || !sharedUser || sharedUser.uid !== user.uid) {
             alert("공용 DB 인증이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.");
             return;
@@ -8610,7 +8637,7 @@ const firebaseConfig = {
 
             const handleOpenAdminDashboard = async () => {
                 const user = currentUser;
-                const sharedUser = firebase.auth().currentUser;
+                const sharedUser = await getValidSharedUser(user);
 
                 console.log("[Admin Check] myClassApp UID:", user?.uid);
                 console.log("[Admin Check] sharedApp UID:", sharedUser?.uid);
@@ -11034,8 +11061,22 @@ const firebaseConfig = {
             if (sharedDb) {
                 // [New] sharedDb 인증이 완료된 후에 데이터를 불러오도록 대기
                 unsubDefaultAuth = defaultAuth.onAuthStateChanged(async (sharedUser) => {
+                    // [Fix] 세션 자동 복구 시도
+                    if (user && (!sharedUser || sharedUser.uid !== user.uid)) {
+                         const savedId = localStorage.getItem('cls_fb_id');
+                         const savedPw = localStorage.getItem('cls_fb_pw');
+                         if (savedId && savedPw) {
+                             try {
+                                 await defaultAuth.signInWithEmailAndPassword(savedId, savedPw);
+                                 return; // 재로그인 성공 시 onAuthStateChanged가 다시 호출되므로 여기서 종료
+                             } catch (e) {
+                                 console.error("공용 앱 동기화 복구 실패:", e);
+                             }
+                         }
+                    }
+
                     if (!sharedDb || !sharedUser) {
-                        console.error("공용 DB 인증이 완료되지 않았습니다.");
+                        console.error("공용 DB 인증이 완료되지 않았습니다. (onAuthStateChanged)");
                         return;
                     }
                     
@@ -14860,7 +14901,7 @@ useEffect(() => {
                                         return;
                                     }
 
-                                    const sharedUser = firebase.auth().currentUser;
+                                    const sharedUser = await getValidSharedUser(currentUser);
                                     if (!sharedDb || !sharedUser) {
                                         alert("공용 DB 인증이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.");
                                         return;
