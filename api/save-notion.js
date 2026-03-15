@@ -72,10 +72,10 @@ export default async function handler(req, res) {
         
         const data = await response.json();
         if (!response.ok) {
-            let errorMsg = data.message || "노션 저장에 실패했습니다.";
+            let errorMsg = data.message || "노션 저장에 실패했습니다. 네트워크 상태나 설정을 확인해 주세요.";
             
             if (data.code === 'unauthorized') {
-                errorMsg = "API 키가 잘못되었습니다. 복사한 키에 공백이나 오타가 없는지 확인해 주세요.";
+                errorMsg = "API 키가 유효하지 않습니다. 복사한 키에 공백이나 오타가 없는지 다시 한 번 확인해 주세요.";
             } else if (data.code === 'object_not_found') {
                 errorMsg = "데이터베이스 ID를 찾을 수 없거나 접근 권한이 없습니다. (페이지 우측 상단 메뉴에서 연결(Connect)이 되었는지 확인해 주세요.)";
             } else if (data.code === 'validation_error') {

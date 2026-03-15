@@ -130,7 +130,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             if (!file) return;
 
                             if (!imgbbApiKey) {
-                                alert("이미지 업로드를 위해서는 설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 설정해야 합니다.");
+                                alert("설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 먼저 등록해 주세요.");
                                 return;
                             }
 
@@ -156,7 +156,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                                     quillRef.current.insertEmbed(range.index, 'image', data.data.url);
                                     quillRef.current.setSelection(range.index + 1);
                                 } else {
-                                    alert("이미지 업로드 중 문제가 발생했습니다: " + (data.error?.message || "원인을 알 수 없습니다."));
+                                    alert("이미지 업로드 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요:\n" + (data.error?.message || "원인을 알 수 없습니다."));
                                 }
                             } catch (e) {
                                 console.error(e);
@@ -213,7 +213,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         if (!files || files.length === 0) return;
         
         if (!imgbbApiKey) {
-            alert("이미지 업로드를 위해서는 설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 설정해야 합니다.");
+            alert("설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 먼저 등록해 주세요.");
             return;
         }
 
@@ -244,7 +244,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 setUploadProgress(Math.round(((i + 1) / files.length) * 100));
             }
             
-            if (successCount < files.length) alert(`일부 이미지 업로드 실패 (${successCount}/${files.length} 성공)`);
+            if (successCount < files.length) alert(`일부 이미지를 업로드하지 못했습니다. (${successCount}/${files.length} 성공)\n파일 크기나 네트워크 상태를 확인해 주세요.`);
             setIsUploading(false);
         } catch (err) {
             console.error(err);
@@ -292,14 +292,14 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         const finalAuthorName = userNickname || authorName;
         const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, timestamp: Date.now() };
         localStorage.setItem('cls_post_draft', JSON.stringify(draft));
-        if (showToast) showToast("작성 중인 내용이 안전하게 임시 저장되었습니다.");
+        if (showToast) showToast("💾 작성 중인 내용이 안전하게 임시 저장되었습니다.");
         else alert("작성 중인 내용이 안전하게 임시 저장되었습니다.");
     };
 
     const handleSubmit = () => {
         const finalAuthorName = userNickname || authorName;
         if (!title.trim() || !finalAuthorName.trim() || !content.trim() || !postPassword.trim()) {
-            alert("빠진 항목이 없는지 다시 한 번 확인해 주세요.");
+            alert("제목, 작성자, 내용, 비밀번호 중 빠진 항목이 없는지 확인해 주세요.");
             return;
         }
         localStorage.setItem('community_authorName', finalAuthorName);
@@ -310,9 +310,9 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
 
     const footerContent = (
         <div className="flex gap-2 w-full">
-            <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">취소</Btn>
+            <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors active:scale-95">취소</Btn>
             {!initialPost && (
-                <Btn onClick={handleManualSaveDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm">임시 저장</Btn>
+                <Btn onClick={handleManualSaveDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm active:scale-95">임시 저장</Btn>
             )}
             <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">{initialPost ? "수정" : "등록"}</Btn>
         </div>

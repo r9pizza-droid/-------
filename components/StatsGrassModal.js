@@ -467,7 +467,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         if (taskComment) {
             if (confirm("이 과제 메모를 삭제하시겠습니까?")) {
                 onSaveTaskComment(student.id, taskComment.taskIndex, null, taskComment.date);
-                showToast("과제 메모가 삭제되었습니다.");
+                showToast("🗑️ 과제 메모가 삭제되었습니다.");
             }
             return;
         }
@@ -499,7 +499,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 setStudents(updatedStudentsList);
                 saveData('cls_students', updatedStudentsList);
                 setNotes(notes.filter(n => n.id !== id));
-                showToast("관련된 모든 학생의 기록이 삭제되었습니다.");
+                showToast("🗑️ 관련된 모든 학생의 기록이 완전히 삭제되었습니다.");
             } else if (db && appId) {
                 try {
                     const batch = db.batch();
@@ -527,10 +527,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     setStudents(updatedStudentsList);
                     saveData('cls_students', updatedStudentsList);
                     setNotes(notes.filter(n => n.id !== id));
-                    showToast("관련된 모든 학생의 기록이 삭제되었습니다.");
+                    showToast("🗑️ 관련된 모든 학생의 기록이 완전히 삭제되었습니다.");
                 } catch (e) {
                     console.error("Batch delete failed", e);
-                    showToast("삭제 중 오류가 발생했습니다: " + e.message);
+                    showToast("⚠️ 삭제 중 오류가 발생했습니다.\n" + e.message);
                 }
             }
         };
@@ -564,7 +564,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             onSaveTaskComment(student.id, taskComment.taskIndex, editNoteContent.trim(), taskComment.date);
             setEditingNoteId(null);
             setEditNoteContent("");
-            showToast("과제 메모가 성공적으로 변경되었습니다.");
+            showToast("✅ 과제 메모가 성공적으로 변경되었습니다.");
             return;
         }
 
@@ -622,7 +622,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
             setStudents(updatedStudentsList);
             saveData('cls_students', updatedStudentsList);
-            showToast("기록이 수정 및 동기화되었습니다.");
+            showToast("✅ 기록이 성공적으로 수정 및 동기화되었습니다.");
         } else if (db && appId) {
             try {
                 const promises = [];
@@ -661,11 +661,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 });
                 if (updateCount > 0) {
                     await batch.commit();
-                    showToast("기록이 성공적으로 변경 및 동기화되었습니다.");
+                    showToast("✅ 기록이 성공적으로 변경 및 동기화되었습니다.");
                 }
             } catch (e) {
                 console.error("동기화 저장 실패:", e);
-                showToast("저장 중 문제가 발생했습니다: " + e.message);
+                showToast("⚠️ 저장 중 문제가 발생했습니다.\n" + e.message);
             }
         }
 
@@ -702,7 +702,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         const content = notionContent.trim();
         const date = notionDate || dayjs().format('YYYY-MM-DD');
 
-        if (!content) return showToast("내용을 입력해주세요.");
+        if (!content) return showToast("📝 저장할 내용을 먼저 입력해 주세요.");
         setNotionStatus('saving');
         setSaveProgress(0);
 
@@ -790,7 +790,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 setNotionStatus('success'); 
                 if (!keepContent) setNotionContent(''); 
                 setTimeout(() => setNotionStatus('idle'), 3000); 
-                showToast("✅ 기록이 저장되었습니다!");
+                showToast("✅ 작성하신 기록이 안전하게 저장되었습니다.");
                 if (closeAfterSave) onClose();
             }
         }
@@ -841,9 +841,9 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             }
             setSaveProgress(100);
             setNotionStatus('success'); if(typeof showToast !== 'undefined') showToast("✨ 외부 서비스 연동이 안전하게 완료되었습니다!"); if (!keepContent) setNotionContent(''); setTimeout(() => setNotionStatus('idle'), 3000);
-            showToast("✅ 기록이 저장되었습니다!");
+            showToast("✅ 작성하신 기록이 안전하게 저장되었습니다.");
         } catch (e) {
-            console.error(e); setNotionStatus('error'); setTimeout(() => setNotionStatus('idle'), 3000);
+            console.error(e); setNotionStatus('error'); setTimeout(() => setNotionStatus('idle'), 3000); showToast("⚠️ 연동 중 문제가 발생했습니다.\n" + e.message);
         }
     };
     
@@ -990,7 +990,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             saveData('cls_records', newRecords);
         }
         
-        if (showToast) showToast(`제출 상태가 변경되었습니다.`);
+        if (showToast) showToast(`✅ 과제 제출 상태가 변경되었습니다.`);
     };
     
     useEffect(() => {
@@ -1056,7 +1056,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             }
             const weakSubjectsStr = weakSubjects.length > 0 ? weakSubjects.join(', ') : '없음';
             if (apiKey) {
-                if(showToast) showToast("AI가 리포트를 작성 중입니다...");
+                if(showToast) showToast("✨ AI가 꼼꼼하게 리포트를 작성 중입니다. 잠시만 기다려 주세요...");
                 
                 // [보안] 데이터 익명화 처리
                 const safeName = "[STUDENT_TOKEN]";
@@ -1139,7 +1139,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 setTempComment(tpl);
             }
         } catch (e) {
-            if(showToast) showToast("리포트 생성 실패: " + e.message);
+            if(showToast) showToast("⚠️ 리포트 생성 실패\n" + e.message);
         } finally { setIsGenerating(false); }
     };
     
@@ -1159,7 +1159,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
     const handleDownloadReport = async () => {
         setShowReportEdit(false); setAiComment(tempComment); setIsGenerating(true);
-        if(showToast) showToast("이미지를 생성하고 있습니다...");
+        if(showToast) showToast("🖼️ 이미지를 생성하고 있습니다. 잠시만 기다려 주세요...");
         await new Promise(resolve => setTimeout(resolve, 1000));
         try {
             const canvas = await window.html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
@@ -1168,11 +1168,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             link.href = canvas.toDataURL('image/png');
             link.click();
         } catch (e) {
-            if(showToast) showToast("이미지 저장 실패: " + e.message);
+            if(showToast) showToast("⚠️ 이미지 저장 실패\n" + e.message);
         } finally { setIsGenerating(false); }
     };
     
-    const handleCopyText = () => { navigator.clipboard.writeText(tempComment).then(() => { if(showToast) showToast("복사되었습니다."); }); };
+    const handleCopyText = () => { navigator.clipboard.writeText(tempComment).then(() => { if(showToast) showToast("📝 텍스트가 클립보드에 복사되었습니다."); }); };
 
     const grassHistory = useMemo(() => {
         const start = dayjs(grassStart);
@@ -1258,12 +1258,12 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     };
     
     const handleOpenCounselingAI = () => {
-        if (!apiKey) return showToast("설정에서 API 키를 먼저 입력해주세요.");
+        if (!apiKey) return showToast("⚙️ 설정 > 앱 설정에서 AI API 키를 먼저 등록해 주세요.");
         setShowCounselingAI(true);
     };
     
     const handleOpenStudentRecordAI = () => {
-        if (!apiKey) return showToast("설정에서 API 키를 먼저 입력해주세요.");
+        if (!apiKey) return showToast("⚙️ 설정 > 앱 설정에서 AI API 키를 먼저 등록해 주세요.");
         setShowStudentRecordAI(true);
     };
     
@@ -1291,11 +1291,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     };
 
     const handleAddPhrase = () => {
-        if (!tempComment.trim()) return showToast("저장할 내용이 없습니다.");
+        if (!tempComment.trim()) return showToast("⚠️ 저장할 내용이 없습니다.");
         const newPhrases = [...phrases, tempComment.trim()];
         setPhrases(newPhrases);
         localStorage.setItem('cls_report_phrases', JSON.stringify(newPhrases));
-        showToast("상용구로 저장되었습니다.");
+        showToast("✅ 현재 내용이 상용구로 저장되었습니다.");
     };
     
     const handleDeletePhrase = (idx) => {
@@ -1408,9 +1408,9 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         </div>
                         
                         <div className="flex items-center gap-2" id="export-hide-area">
-                            <button onClick={handleOpenCounselingAI} className="p-2 hover:bg-rose-50 text-rose-500 rounded-xl transition-colors border border-transparent hover:border-rose-100 flex items-center gap-1 text-sm font-bold"><Icon d={PATHS.heart} size={18}/> <span className="hidden md:inline">AI 상담소</span></button>
-                            <button onClick={handleOpenStudentRecordAI} className="p-2 hover:bg-blue-50 text-blue-500 rounded-xl transition-colors border border-transparent hover:border-blue-100 flex items-center gap-1 text-sm font-bold"><Icon d={PATHS.document} size={18}/> <span className="hidden md:inline">총평 초안</span></button>
-                            <button onClick={handlePrepareReport} disabled={isGenerating} className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors border border-transparent hover:border-indigo-100 flex items-center gap-1 text-sm font-bold"><Icon d={PATHS.edit} size={18}/> <span className="hidden md:inline">리포트 작성</span></button>
+                            <button onClick={handleOpenCounselingAI} className="p-2 hover:bg-rose-50 text-rose-500 rounded-xl transition-colors border border-transparent hover:border-rose-100 flex items-center gap-1 text-sm font-bold active:scale-95"><Icon d={PATHS.heart} size={18}/> <span className="hidden md:inline">AI 상담소</span></button>
+                            <button onClick={handleOpenStudentRecordAI} className="p-2 hover:bg-blue-50 text-blue-500 rounded-xl transition-colors border border-transparent hover:border-blue-100 flex items-center gap-1 text-sm font-bold active:scale-95"><Icon d={PATHS.document} size={18}/> <span className="hidden md:inline">총평 초안</span></button>
+                            <button onClick={handlePrepareReport} disabled={isGenerating} className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors border border-transparent hover:border-indigo-100 flex items-center gap-1 text-sm font-bold active:scale-95 disabled:opacity-50"><Icon d={PATHS.edit} size={18}/> <span className="hidden md:inline">리포트 작성</span></button>
                             <div className="w-px h-6 bg-slate-200 mx-1"></div>
                             <button onClick={onClose} className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition-colors group"><Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" /></button>
                         </div>
@@ -1574,7 +1574,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                     e.stopPropagation();
                                                                     handleTaskStatusChange(td.date, td.idx, e.target.value);
                                                                 }}
-                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all shadow-sm outline-none appearance-none cursor-pointer border focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
+                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all shadow-sm outline-none appearance-none cursor-pointer border focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 active:scale-95 ${
                                                                     td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200' :
                                                                     td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200' :
                                                                     'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200'
@@ -1682,7 +1682,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         </div>
                                     )}
                                 </div>
-                                <Btn onClick={(e) => handleSticker(1, e)} className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold text-lg shadow-sm">+</Btn>
+                                <Btn onClick={(e) => handleSticker(1, e)} className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 font-bold text-lg shadow-sm active:scale-90 transition-transform">+</Btn>
                             </div>
                         </div>
 
@@ -2120,7 +2120,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                     return (
                                                                         <div key={i} className={`flex flex-col p-3 rounded-2xl border-2 transition-all duration-200 animate-fade-in ${isDone ? 'bg-indigo-50/30 border-indigo-100 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`} style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'both' }}>
                                                                             <div className="flex items-center">
-                                                                                <div className={`flex items-center justify-center w-6 h-6 rounded-full border-2 mr-3 transition-colors ${isDone ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-slate-200 text-transparent'}`}>
+                                                                                <div className={`flex items-center justify-center w-6 h-6 rounded-full border-2 mr-3 transition-all duration-300 ${isDone ? 'bg-indigo-500 border-indigo-500 text-white scale-110 shadow-sm' : 'bg-white border-slate-200 text-transparent scale-100'}`}>
                                                                                     <Icon d={PATHS.check} size={14} strokeWidth={4} />
                                                                                 </div>
                                                                                 <div className="flex-1 min-w-0">
@@ -2174,9 +2174,9 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                                             onClick={() => {
                                                                                                 onSaveTaskComment(student.id, i, commentInput.trim() || null, detailDate);
                                                                                                 setOpenCommentIndex(null);
-                                                                                                showToast("메모가 저장되었습니다.");
+                                                                                                showToast("✅ 과제 메모가 성공적으로 저장되었습니다.");
                                                                                             }} 
-                                                                                            className="px-2 py-1 bg-indigo-600 text-white rounded-md text-[10px] font-bold hover:bg-indigo-700"
+                                                                                            className="px-2 py-1 bg-indigo-600 text-white rounded-md text-[10px] font-bold hover:bg-indigo-700 active:scale-95 transition-transform"
                                                                                         >
                                                                                             저장
                                                                                         </button>
@@ -2507,7 +2507,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         <select value={reportFocus} onChange={e=>setReportFocus(e.target.value)} className="text-xs p-1.5 border rounded bg-white outline-none"><option value="comprehensive">🏫 학교생활 종합</option><option value="study">📝 학습 태도</option><option value="relationship">🤝 교우 관계</option><option value="habit">⏰ 생활 습관</option></select>
                                     </div>
                                 </div>
-                                <Btn onClick={generateReportContent} disabled={isGenerating} className={`w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 ${apiKey ? 'bg-violet-100 text-violet-700 hover:bg-violet-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
+                                <Btn onClick={generateReportContent} disabled={isGenerating} className={`w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all ${isGenerating ? 'cursor-wait opacity-80 bg-violet-200 text-violet-600' : apiKey ? 'bg-violet-100 text-violet-700 hover:bg-violet-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
                                     {isGenerating ? '작성 중...' : apiKey ? '✨ AI로 리포트 새로 작성하기' : '🔄 기간 설정 적용하여 다시 쓰기'}
                                 </Btn>
                                 {!apiKey && <div className="text-[10px] text-slate-400 mt-1 text-center">* 설정에서 API 키를 입력하면 AI가 더 풍성한 내용을 작성해줍니다.</div>}
@@ -2542,9 +2542,9 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 </div>
                                 <textarea className="w-full h-48 p-4 border border-slate-200 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 resize-none custom-scroll" value={tempComment} onChange={(e) => setTempComment(e.target.value)} placeholder="리포트에 들어갈 내용을 작성해주세요." />
                                 <div className="flex gap-2">
-                                    <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap"><Icon d={PATHS.check} size={14} /> 초안 저장</Btn>
-                                    <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap"><Icon d={PATHS.copy} size={14} /> 텍스트 복사</Btn>
-                                    <Btn onClick={handleDownloadReport} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap"><Icon d={PATHS.download} size={14} /> 이미지 저장</Btn>
+                                    <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap active:scale-95 transition-transform"><Icon d={PATHS.check} size={14} /> 초안 저장</Btn>
+                                    <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap active:scale-95 transition-transform"><Icon d={PATHS.copy} size={14} /> 텍스트 복사</Btn>
+                                    <Btn onClick={handleDownloadReport} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap active:scale-95 transition-transform"><Icon d={PATHS.download} size={14} /> 이미지 저장</Btn>
                                 </div>
                             </div>
                         </div>
