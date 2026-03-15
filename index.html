@@ -9499,6 +9499,16 @@ const firebaseConfig = {
                 uidsToFetch.forEach(uid => fetchedUidsRef.current.add(uid));
 
                 const fetchMissingProfiles = async () => {
+                    const sharedUser = firebase.auth().currentUser;
+                    console.log("[fetchMissingProfiles] myClassApp UID:", currentUser?.uid);
+                    console.log("[fetchMissingProfiles] sharedApp UID:", sharedUser?.uid);
+                    console.log("[fetchMissingProfiles] DB in use:", sharedDb ? "sharedDb" : "None");
+
+                    if (!sharedDb || !sharedUser || !currentUser || sharedUser.uid !== currentUser.uid) {
+                        console.error("공용 DB 인증이 완료되지 않았습니다.");
+                        return;
+                    }
+
                     const uidsArray = Array.from(uidsToFetch);
                     const newProfiles = {};
                     
@@ -9524,12 +9534,17 @@ const firebaseConfig = {
             // [New] 내 프로필 실시간 감시 (본인이 사진 변경 시 화면에 즉시 자동 반영 유지)
             useEffect(() => {
                 if (mode === 'community' && sharedDb && currentUser) {
+                    const sharedUser = firebase.auth().currentUser;
+                    if (!sharedDb || !currentUser || !sharedUser || sharedUser.uid !== currentUser.uid) return;
+
                     const unsub = sharedDb.collection('userProfiles').doc(currentUser.uid).onSnapshot(doc => {
                         if (doc.exists) {
                             const data = doc.data();
                             setCurrentUserProfile(data);
                             setProfilesMap(prev => ({ ...prev, [currentUser.uid]: data }));
                         }
+                    }, error => {
+                        console.error("현재 사용자 프로필 실시간 구독 실패:", error);
                     });
                     return () => unsub();
                 }
@@ -14795,9 +14810,16 @@ useEffect(() => {
                                         alert("사용자 정보 또는 데이터베이스 연결이 확인되지 않았습니다.");
                                         return;
                                     }
+
+                                    const sharedUser = firebase.auth().currentUser;
+                                    if (!sharedDb || !sharedUser || sharedUser.uid !== currentUser.uid) {
+                                        alert("공용 DB 인증이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.");
+                                        return;
+                                    }
+
                                     try {
-                                        // 🚨 핵심: 닉네임과 함께 UID, 이메일을 자동 수집하여 저장
-                                        const dbRef = db;
+                                        // 🚨 핵심: 닉네임과 함께 UID, 이메일을 자동 수집하여 '공용 DB'에 저장
+                                        const dbRef = sharedDb;
 
                                         // [New] 중복 닉네임 체크
                                         const nickname = tempNickname.trim();
