@@ -8643,13 +8643,9 @@ const firebaseConfig = {
                 console.log("[Admin Check] sharedApp UID:", sharedUser?.uid);
                 console.log("[Admin Check] DB in use:", sharedDb ? "sharedDb" : "None");
 
-                if (!user || user.uid !== ADMIN_UID) {
+                const isAdminAuthenticated = (user && user.uid === ADMIN_UID) || (sharedUser && sharedUser.uid === ADMIN_UID);
+                if (!isAdminAuthenticated) {
                     alert("접근 권한이 없습니다. 최고 관리자만 이용 가능합니다.");
-                    return;
-                }
-
-                if (!sharedUser || sharedUser.uid !== ADMIN_UID) {
-                    setToastMessage("공용 DB 관리자 인증이 완료되지 않았습니다. 다시 로그인 후 시도해주세요.");
                     return;
                 }
 
