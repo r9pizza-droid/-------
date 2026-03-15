@@ -1823,6 +1823,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 <textarea 
                                     value={notionContent}
                                     onChange={(e) => setNotionContent(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+                                        if (!isMobile && e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleIntegratedSave('관찰', e);
+                                        }
+                                    }}
                                     className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 resize-none h-24 placeholder-slate-400 shadow-sm"
                                     placeholder="관찰한 내용이나 칭찬할 내용을 입력하세요..."
                                 />
@@ -2008,6 +2015,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                             <textarea 
                                                                                 value={editNoteContent}
                                                                                 onChange={(e) => setEditNoteContent(e.target.value)}
+                                                                                onKeyDown={(e) => {
+                                                                                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+                                                                                    if (!isMobile && e.key === 'Enter' && !e.shiftKey) {
+                                                                                        e.preventDefault();
+                                                                                        saveEditing();
+                                                                                    }
+                                                                                }}
                                                                                 className="w-full p-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500 resize-none h-24 mb-2"
                                                                             />
                                                                             <div className="flex justify-end gap-2">
@@ -2203,7 +2217,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                                         value={commentInput}
                                                                                         onChange={(e) => setCommentInput(e.target.value)}
                                                                                         onKeyDown={(e) => {
-                                                                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                                                            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+                                                                                            if (!isMobile && e.key === 'Enter' && !e.shiftKey) {
                                                                                                 e.preventDefault();
                                                                                                 onSaveTaskComment(student.id, i, commentInput.trim() || null, detailDate);
                                                                                                 setOpenCommentIndex(null);
@@ -2583,7 +2598,20 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     </div>
                                     <button onClick={() => { let comment = `${student.name} 학생은 현재 레벨 ${level}로, 평균 수행률 ${avgRate}%를 기록하며 성실하게 학교 생활을 하고 있습니다. ${missedTags.length > 0 ? `특히 ${missedTags.map(t=>t[0]).join(', ')} 과목에 조금 더 관심을 기울인다면 더욱 성장할 수 있을 것입니다.` : "모든 과목에서 고르게 우수한 모습을 보이고 있습니다."} 가정에서도 많은 칭찬과 격려 부탁드립니다.`; setTempComment(comment); }} className="text-[10px] text-slate-400 hover:text-rose-500 underline">초기화</button>
                                 </div>
-                                <textarea className="w-full h-48 p-4 border border-slate-200 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 resize-none custom-scroll" value={tempComment} onChange={(e) => setTempComment(e.target.value)} placeholder="리포트에 들어갈 내용을 작성해주세요." />
+                                <textarea 
+                                    className="w-full h-48 p-4 border border-slate-200 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 resize-none custom-scroll" 
+                                    value={tempComment} 
+                                    onChange={(e) => setTempComment(e.target.value)} 
+                                    onKeyDown={(e) => {
+                                        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+                                        if (!isMobile && e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSaveReportDraft();
+                                            if (showToast) showToast("초안이 저장되었습니다.");
+                                        }
+                                    }}
+                                    placeholder="리포트에 들어갈 내용을 작성해주세요." 
+                                />
                                 <div className="flex gap-2 pt-4 mt-2 border-t border-slate-100">
                                     <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-sm whitespace-nowrap transition-colors"><Icon d={PATHS.check} size={16} /> 초안 저장</Btn>
                                     <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-sm whitespace-nowrap transition-colors"><Icon d={PATHS.copy} size={16} /> 텍스트 복사</Btn>
