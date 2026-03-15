@@ -14756,9 +14756,13 @@ useEffect(() => {
                                         alert("닉네임을 입력해주세요!");
                                         return;
                                     }
+                                    if (!currentUser?.uid || !db) {
+                                        alert("사용자 정보 또는 데이터베이스 연결이 확인되지 않았습니다.");
+                                        return;
+                                    }
                                     try {
                                         // 🚨 핵심: 닉네임과 함께 UID, 이메일을 자동 수집하여 저장
-                                        const dbRef = typeof sharedDb !== 'undefined' ? sharedDb : db;
+                                        const dbRef = db;
 
                                         // [New] 중복 닉네임 체크
                                         const nickname = tempNickname.trim();
