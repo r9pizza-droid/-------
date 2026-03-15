@@ -1328,17 +1328,17 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const displayedGrass = isGrassExpanded ? grassHistory : defaultGrass;
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={(e) => {
+        <div className="fixed inset-0 bg-slate-900/40 z-[1600] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in" onClick={(e) => {
              if (showStickerHistory) setShowStickerHistory(false);
              else if (showTaskCommentHistory) setShowTaskCommentHistory(false);
              else onClose();
         }}>
-            <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col" onClick={e => {
+            <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-2xl shadow-2xl ring-1 ring-black/5 p-4 md:p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col animate-modal-enter will-change-transform" onClick={e => {
                 e.stopPropagation();
                 if (showStickerHistory) setShowStickerHistory(false);
                 if (showTaskCommentHistory) setShowTaskCommentHistory(false);
             }}>
-                <div className="bg-white/85 backdrop-blur-md rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0 sticky top-0 z-[100] transition-all">
+                <div className="bg-white/95 backdrop-blur-md rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0 sticky top-0 z-[100] transition-all ring-1 ring-black/5">
                     <div className="flex justify-between items-center flex-wrap gap-4">
                         <div className="flex items-center gap-2 sm:gap-4">
                             <div className="flex items-center gap-1 mr-2 sm:mr-4 border-r border-slate-200 pr-2 sm:pr-4">

@@ -308,8 +308,18 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
 
     if (!isOpen) return null;
 
+    const footerContent = (
+        <div className="flex gap-2 w-full">
+            <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">취소</Btn>
+            {!initialPost && (
+                <Btn onClick={handleManualSaveDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm">임시 저장</Btn>
+            )}
+            <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">{initialPost ? "수정" : "등록"}</Btn>
+        </div>
+    );
+
     return (
-        <BaseModal isOpen={isOpen} onClose={onClose} title={initialPost ? "게시글 수정" : "새 꿀팁 쓰기"} icon={PATHS.edit}>
+        <BaseModal isOpen={isOpen} onClose={onClose} title={initialPost ? "게시글 수정" : "새 꿀팁 쓰기"} icon={PATHS.edit} footer={footerContent}>
             <div className="space-y-4">
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">카테고리</label>
@@ -414,13 +424,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                         </label>
                     </div>
                     {!imgbbApiKey && <p className="text-[10px] text-rose-500">* 사진을 올리려면 설정에서 ImgBB API 키를 등록해주세요.</p>}
-                </div>
-                <div className="flex gap-2 pt-2">
-                    <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">취소</Btn>
-                    {!initialPost && (
-                        <Btn onClick={handleManualSaveDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50">임시 저장</Btn>
-                    )}
-                    <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">{initialPost ? "수정" : "등록"}</Btn>
                 </div>
             </div>
         </BaseModal>

@@ -90,7 +90,7 @@
                         bounceIn: { '0%': { transform: 'scale(0.9)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         fadeIn: { 'from': { opacity: 0 }, 'to': { opacity: 1 } },
                         popUp: { 'from': { transform: 'scale(0.9)', opacity: 0 }, 'to': { transform: 'scale(1)', opacity: 1 } },
-                        modalEnter: { '0%': { opacity: 0, transform: 'scale(0.95) translateY(10px)' }, '100%': { opacity: 1, transform: 'scale(1) translateY(0)' } },
+                        modalEnter: { '0%': { opacity: 0, transform: 'scale(0.98) translateY(16px)' }, '100%': { opacity: 1, transform: 'scale(1) translateY(0)' } },
                         slideInRight: { '0%': { transform: 'translateX(20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
                         slideInLeft: { '0%': { transform: 'translateX(-20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
                         slideInRight: { '0%': { transform: 'translateX(50%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
@@ -507,18 +507,18 @@
 
             if (!isOpen) return null;
             return (
-                <div className={`fixed inset-0 bg-black/40 ${zIndex} flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in`} onClick={onClose}>
+                <div className={`fixed inset-0 bg-slate-900/40 ${zIndex} flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in`} onClick={onClose}>
                     <div 
-                        className={`bg-white w-full ${maxWidth} rounded-xl shadow-xl border border-notion-border p-6 h-auto flex flex-col animate-modal-enter`} 
-                        style={{ maxHeight: 'calc(85vh / var(--ui-scale, 1))' }}
+                        className={`bg-white w-full ${maxWidth} rounded-2xl shadow-2xl ring-1 ring-black/5 flex flex-col animate-modal-enter overflow-hidden will-change-transform`} 
+                        style={{ maxHeight: 'calc(90vh / var(--ui-scale, 1))' }}
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="flex justify-between items-center mb-6 flex-shrink-0">
-                            <h3 className={`text-lg font-bold flex items-center gap-2 text-notion-text ${onTitleClick ? 'cursor-pointer select-none' : ''}`} onClick={onTitleClick}>{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
-                            <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light group transition-colors"><Icon d={PATHS.x} className="transition-transform duration-300 group-hover:rotate-90" /></button>
+                        <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 flex-shrink-0 bg-white z-10">
+                            <h3 className={`text-lg font-bold flex items-center gap-2 text-slate-800 ${onTitleClick ? 'cursor-pointer select-none hover:text-indigo-600 transition-colors' : ''}`} onClick={onTitleClick}>{icon ? <Icon d={icon} className="text-indigo-500" /> : null} {title}</h3>
+                            <button onClick={onClose} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors group"><Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" /></button>
                         </div>
-                        <div className="overflow-y-auto overflow-x-hidden custom-scroll flex-1 pr-2 space-y-6">{children}</div>
-                        {footer && <div className="pt-4 border-t mt-4 flex-shrink-0">{footer}</div>}
+                        <div className="overflow-y-auto overflow-x-hidden custom-scroll flex-1 p-6 space-y-6 bg-white relative">{children}</div>
+                        {footer && <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex-shrink-0 z-10 rounded-b-2xl">{footer}</div>}
                     </div>
                 </div>
             );
@@ -604,14 +604,14 @@
 
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 bg-black/40 z-[2500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 bg-slate-900/40 z-[2500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
                     <div 
-                        className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm animate-modal-enter relative"
+                        className="bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 p-6 w-full max-w-sm animate-modal-enter relative"
                     >
                         <button onClick={onCancel} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors group">
                             <Icon d={PATHS.x} size={18} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
-                        <div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-white text-slate-600 rounded border border-slate-200 font-medium hover:bg-slate-100 hover:border-slate-300 transition-colors">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:bg-red-600 shadow-sm transition-colors">확인</Btn></div></div></div>
+                        <div className="flex items-center gap-2 mb-4 text-slate-800 text-lg font-bold"><Icon d={PATHS.warning} className="text-amber-500" /> 확인</div><p className="text-slate-600 mb-6 text-sm whitespace-pre-wrap leading-relaxed">{message}</p><div className="flex gap-2"><Btn onClick={onCancel} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">확인</Btn></div></div></div>
             );
         };
         const UpdateNotificationModal = ({ isOpen, onUpdate, onClose }) => {
@@ -14746,7 +14746,7 @@ useEffect(() => {
                     </div>
                 </div>
             </BaseModal>
-                    <Toast message={toastMessage} action={toastAction} onClose={()=>{ setToastMessage(null); setToastAction(null); }} />
+                    <Toast message={toastMessage} action={toastAction} onClose={()=>{ setToastMessage(null); setToastAction(null); }} enableSound={appConfig.enableSound !== false} />
                     {!!grassStudentId && <StatsGrassModal 
                         isOpen={!!grassStudentId} 
                         onClose={()=>{setGrassStudentId(null); setShowScoreAnalysisOnOpen(false);}} 
