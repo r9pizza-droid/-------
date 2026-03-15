@@ -1697,12 +1697,10 @@
                                         </div>
                                     ))}
                                     {tasks.length === 0 && (
-                                        <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
-                                            <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
-                                                <span className="text-2xl opacity-60">📋</span>
-                                            </div>
-                                            <h4 className="text-xs font-bold text-slate-600 mb-1">오늘 등록된 과제가 없습니다</h4>
-                                            <p className="text-[10px] text-slate-500">상단의 입력창을 이용해 과제를 추가해 보세요.</p>
+                                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
+                                            <div className="mb-4"><span className="text-4xl inline-block animate-bounce drop-shadow-md">📋</span></div>
+                                            <h4 className="text-sm font-bold text-slate-700 mb-1">오늘 등록된 과제가 없습니다</h4>
+                                            <p className="text-xs text-slate-500 mt-1">상단의 입력창을 이용해 새로운 과제를 추가해 보세요.</p>
                                         </div>
                                     )}
                                 </div>
@@ -1910,12 +1908,10 @@
                     </div>
                     <div className="relative z-10 space-y-4">
                         {!hasMissingData ? (
-                            <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200 h-full min-h-[250px]">
-                                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-4">
-                                    <span className="text-4xl opacity-60">✨</span>
-                                </div>
+                            <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200 h-full min-h-[250px]">
+                                <div className="mb-5"><span className="text-5xl inline-block animate-bounce drop-shadow-md">✨</span></div>
                                 <h4 className="text-base font-bold text-slate-700 mb-1">미제출 내역이 없습니다</h4>
-                                <p className="text-sm text-slate-500">모든 학생이 과제를 훌륭하게 제출했어요!</p>
+                                <p className="text-sm text-slate-500 mt-1">선택하신 기간 동안 모든 학생이 과제를 훌륭하게 제출했어요!</p>
                             </div>
                         ) : (
                             Object.entries(missingData).map(([date, items]) => {
@@ -6684,10 +6680,10 @@
                                     </div>
                                 </div>
                                 )) : (
-                                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200 mt-2">
-                                        <div className="text-3xl mb-3 opacity-40">👫</div>
+                                    <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
+                                        <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">👫</span></div>
                                         <h4 className="text-sm font-bold text-slate-600 mb-1">{searchTerm ? "검색 결과가 없습니다" : "중복된 짝꿍 기록이 없습니다"}</h4>
-                                        <p className="text-xs text-slate-400">아직 조건을 만족하는 짝꿍 이력이 충분하지 않습니다.</p>
+                                        <p className="text-xs text-slate-500 mt-1">지정한 기간 및 횟수 조건을 만족하는<br/>짝꿍 이력이 아직 충분하지 않습니다.</p>
                                     </div>
                                 )}
                         </div>
@@ -7699,12 +7695,10 @@ const firebaseConfig = {
                                     );})}
                                 </div>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center py-16 px-4 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
-                                    <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-5">
-                                        <span className="text-4xl opacity-60">📝</span>
-                                    </div>
-                                    <h4 className="text-lg font-bold text-slate-700 mb-2">기록이 없습니다</h4>
-                                    <p className="text-sm text-slate-500">선택한 날짜나 검색어에 해당하는 기록이 없어요.</p>
+                                <div className="h-full flex flex-col items-center justify-center py-20 px-4 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+                                    <div className="mb-6"><span className="text-6xl inline-block animate-bounce drop-shadow-lg">📝</span></div>
+                                    <h4 className="text-lg font-bold text-slate-700 mb-2">아직 활동 기록이 없습니다</h4>
+                                    <p className="text-sm text-slate-500 mt-1">선택하신 날짜나 검색어에 해당하는 기록이 발견되지 않았어요.</p>
                                 </div>
                             )}
                         </div>
@@ -12902,12 +12896,10 @@ useEffect(() => {
                                         </button>
                                     </div>
                                 )) : (
-                                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/30 m-2 rounded-2xl border border-dashed border-slate-200">
-                                        <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
-                                            <span className="text-2xl opacity-60">🔔</span>
-                                        </div>
-                                        <h4 className="text-sm font-bold text-slate-600 mb-1">새로운 알림이 없습니다</h4>
-                                        <p className="text-xs text-slate-400">새로운 소식이 생기면 이곳에 표시됩니다.</p>
+                                    <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/30 m-2 rounded-2xl border-2 border-dashed border-slate-200">
+                                        <div className="mb-4"><span className="text-4xl inline-block animate-bounce drop-shadow-md">🔔</span></div>
+                                        <h4 className="text-sm font-bold text-slate-700 mb-1">새로운 알림이 없습니다</h4>
+                                        <p className="text-xs text-slate-500 mt-1">게시글에 달린 댓글이나 좋아요 등<br/>새로운 소식이 생기면 이곳에 표시됩니다.</p>
                                     </div>
                                 )}
                             </div>
@@ -13264,12 +13256,10 @@ useEffect(() => {
                                                         ); })}
                                                     </div>
                                                 ) : (
-                                                    <div className="h-full flex flex-col items-center justify-center text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200 p-10 min-h-[300px]">
-                                                        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-5">
-                                                            <span className="text-5xl opacity-60">🧩</span>
-                                                        </div>
-                                                        <h4 className="text-lg font-bold text-slate-700 mb-2">편성된 모둠이 없습니다</h4>
-                                                        <p className="text-sm text-slate-500 mb-6">좌측의 편성 옵션을 선택하고 '모둠 편성'을 시작해보세요.</p>
+                                                    <div className="h-full flex flex-col items-center justify-center text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200 p-10 min-h-[350px]">
+                                                        <div className="mb-6"><span className="text-6xl inline-block animate-bounce drop-shadow-lg">🧩</span></div>
+                                                        <h4 className="text-xl font-bold text-slate-700 mb-2">아직 편성된 모둠이 없습니다</h4>
+                                                        <p className="text-sm text-slate-500 mb-8">좌측의 편성 옵션을 자유롭게 설정한 뒤<br/>'모둠 편성' 버튼을 눌러보세요.</p>
                                                         <div className="flex gap-2">
                                                             <Btn onClick={loadLastGroups} className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all active:scale-95">
                                                                 <Icon d={PATHS.history} size={16}/> 지난 모둠
@@ -13333,12 +13323,10 @@ useEffect(() => {
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
                                                 {stats.allRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank===1?'bg-yellow-500 text-white':s.rank===2?'bg-slate-400 text-white':s.rank===3?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.rank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'honor', studentId: s.id }); }} className="font-bold text-indigo-600 bg-white/80 px-2 py-1 rounded-lg border border-indigo-100 shadow-sm cursor-pointer hover:bg-indigo-50 transition-colors">{s.honorStats.count}점</span></div>))}
                                                 {stats.allRanked.length === 0 && (
-                                                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
-                                                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
-                                                            <span className="text-3xl opacity-60">📊</span>
-                                                        </div>
-                                                        <h4 className="text-sm font-bold text-slate-600 mb-1">아직 통계 데이터가 없습니다</h4>
-                                                        <p className="text-xs text-slate-500">과제 제출 기록이 쌓이면 순위가 표시됩니다.</p>
+                                                    <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
+                                                        <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">📊</span></div>
+                                                        <h4 className="text-sm font-bold text-slate-700 mb-1">아직 통계 데이터가 없습니다</h4>
+                                                        <p className="text-xs text-slate-500 mt-1">과제 제출 기록이 쌓이면 여기에 자랑스러운 순위가 표시됩니다.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -13370,12 +13358,10 @@ useEffect(() => {
                                                     </div>
                                                 ))}
                                                 {stats.top5.length === 0 && (
-                                                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
-                                                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
-                                                            <span className="text-3xl opacity-60">📊</span>
-                                                        </div>
-                                                        <h4 className="text-sm font-bold text-slate-600 mb-1">아직 통계 데이터가 없습니다</h4>
-                                                        <p className="text-xs text-slate-500">과제 제출 기록이 쌓이면 순위가 표시됩니다.</p>
+                                                    <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
+                                                        <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">📊</span></div>
+                                                        <h4 className="text-sm font-bold text-slate-700 mb-1">아직 통계 데이터가 없습니다</h4>
+                                                        <p className="text-xs text-slate-500 mt-1">과제 제출 기록이 쌓이면 여기에 자랑스러운 순위가 표시됩니다.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -13400,9 +13386,10 @@ useEffect(() => {
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
                                                 {stats.allHelpRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.helpRank===1?'bg-rose-500 text-white':s.helpRank===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.helpRank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'help', studentId: s.id }); }} className={`font-bold px-2 py-1 rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-colors ${s.helpStats.score < 0 ? 'text-rose-500 bg-white/80 border-rose-100' : 'text-indigo-600 bg-white/80 border-indigo-100'}`}>{s.helpStats.score.toFixed(1)}점</span></div>))}
                                                 {stats.allHelpRanked.length === 0 && (
-                                                    <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200 mt-2">
-                                                        <div className="text-3xl mb-2 opacity-40">🎉</div>
-                                                        <h4 className="text-sm font-bold text-slate-600 mb-1">모두 잘하고 있어요!</h4>
+                                                    <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
+                                                        <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">🎉</span></div>
+                                                        <h4 className="text-sm font-bold text-slate-700 mb-1">모두 잘하고 있어요!</h4>
+                                                        <p className="text-xs text-slate-500 mt-1">현재 제출을 놓치거나 도움이 필요한 학생이 없네요.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -13434,12 +13421,10 @@ useEffect(() => {
                                                     </div>
                                                 ))}
                                                 {stats.bottom5.length === 0 && (
-                                                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
-                                                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
-                                                            <span className="text-3xl opacity-60">🎉</span>
-                                                        </div>
-                                                        <h4 className="text-sm font-bold text-slate-600 mb-1">모두 잘하고 있어요!</h4>
-                                                        <p className="text-xs text-slate-500">현재 도움이 필요한 학생이 없습니다.</p>
+                                                    <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
+                                                        <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">🎉</span></div>
+                                                        <h4 className="text-sm font-bold text-slate-700 mb-1">모두 잘하고 있어요!</h4>
+                                                        <p className="text-xs text-slate-500 mt-1">현재 제출을 놓치거나 도움이 필요한 학생이 없네요.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -13961,10 +13946,10 @@ useEffect(() => {
                                                     ))}
 
                                                     {!isLoadingPosts && sortedPosts.length === 0 && (
-                                                        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
-                                                            <div className="text-5xl mb-4 opacity-40">📭</div>
-                                                            <h4 className="text-base font-bold text-slate-700 mb-1">아직 게시글이 없습니다</h4>
-                                                            <p className="text-sm text-slate-500">우측 상단의 글쓰기 버튼을 눌러 첫 번째 꿀팁을 공유해 보세요!</p>
+                                                        <div className="flex flex-col items-center justify-center py-24 px-4 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+                                                            <div className="mb-6"><span className="text-6xl inline-block animate-bounce drop-shadow-lg">📭</span></div>
+                                                            <h4 className="text-lg font-bold text-slate-700 mb-2">아직 게시글이 없습니다</h4>
+                                                            <p className="text-sm text-slate-500">상단의 '글쓰기' 버튼을 눌러 선생님만의 첫 번째 꿀팁을 공유해 보세요!</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -14183,12 +14168,10 @@ useEffect(() => {
                                                                             );
                                                                         })
                                                                     ) : (
-                                                                        <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
-                                                                            <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
-                                                                                <span className="text-2xl opacity-60">💬</span>
-                                                                            </div>
+                                                                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
+                                                                            <div className="mb-4"><span className="text-4xl inline-block animate-bounce drop-shadow-md">💬</span></div>
                                                                             <h4 className="text-sm font-bold text-slate-700 mb-1">아직 댓글이 없습니다</h4>
-                                                                            <p className="text-xs text-slate-500">따뜻한 첫 번째 댓글을 남겨주세요!</p>
+                                                                            <p className="text-xs text-slate-500 mt-1">응원과 질문 등 따뜻한 첫 번째 댓글을 남겨주세요!</p>
                                                                         </div>
                                                                     )}
                                                                     <div ref={commentsEndRef} />
@@ -15459,10 +15442,10 @@ useEffect(() => {
                                 </div>
                             </div>
                         )) : (
-                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200 mt-2">
-                                <div className="text-3xl mb-3 opacity-40">🎭</div>
-                                <h4 className="text-sm font-bold text-slate-600 mb-1">등록된 역할이 없습니다</h4>
-                                <p className="text-xs text-slate-400">새로운 역할을 추가하여 모둠원들에게 배정해 보세요.</p>
+                            <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
+                                <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">🎭</span></div>
+                                <h4 className="text-sm font-bold text-slate-700 mb-1">등록된 역할이 없습니다</h4>
+                                <p className="text-xs text-slate-500 mt-1">새로운 역할을 추가하여<br/>모둠원들에게 즐겁게 배정해 보세요.</p>
                             </div>
                         )}
                     </div>

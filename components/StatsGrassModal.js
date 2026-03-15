@@ -1393,12 +1393,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <div className="flex flex-col items-center justify-center py-8 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                                                            <div className="mb-3">
-                                                                <span className="text-3xl inline-block animate-bounce">📝</span>
-                                                            </div>
-                                                            <h4 className="text-xs font-bold text-slate-600 mb-1">작성된 과제 메모가 없습니다</h4>
-                                                            <p className="text-[10px] text-slate-500">체크리스트의 연필 아이콘을 눌러<br/>학생을 위한 메모를 남겨보세요.</p>
+                                                        <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                                                            <div className="mb-4"><span className="text-4xl inline-block animate-bounce drop-shadow-md">📝</span></div>
+                                                            <h4 className="text-xs font-bold text-slate-700 mb-1">작성된 과제 메모가 없습니다</h4>
+                                                            <p className="text-[10px] text-slate-500 mt-1">체크리스트의 연필 아이콘을 눌러<br/>학생을 위한 짧은 메모를 남겨보세요.</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1451,12 +1449,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     })}
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-8 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 mt-2">
-                                    <div className="mb-3">
-                                        <span className="text-3xl inline-block animate-bounce">🎉</span>
-                                    </div>
+                                <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 mt-2">
+                                    <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">🎉</span></div>
                                     <h4 className="text-sm font-bold text-slate-700 mb-1">미흡한 과목이 없습니다</h4>
-                                    <p className="text-xs text-slate-500">모든 과목을 훌륭하게 수행하고 있어요!</p>
+                                    <p className="text-xs text-slate-500 mt-1">모든 과목의 과제를 훌륭하게 수행하고 있어요!</p>
                                 </div>
                             )}
                         </div>
@@ -1596,12 +1592,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                         </div>
                                                     </div>
                                                 )) : (
-                                                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 mt-2">
-                                                        <div className="mb-3">
-                                                            <span className="text-3xl inline-block animate-bounce">📋</span>
-                                                        </div>
-                                                        <h4 className="text-xs font-bold text-slate-700 mb-1">과제 제출 기록이 없습니다</h4>
-                                                        <p className="text-[10px] text-slate-500">과제를 부여하고 제출 상태를 기록해보세요.</p>
+                                                    <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 mt-2">
+                                                        <div className="mb-4"><span className="text-4xl inline-block animate-bounce drop-shadow-md">📋</span></div>
+                                                        <h4 className="text-xs font-bold text-slate-700 mb-1">과제 제출 기록이 아직 없습니다</h4>
+                                                        <p className="text-[10px] text-slate-500 mt-1">오늘의 과제를 등록하고 제출 상태를 체크해 보세요.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -1680,12 +1674,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                     </div>
                                                 ))}
                                                 {combinedNotes.filter(n => n.content && (n.content.includes('칭찬') || n.content.includes('스티커') || n.content.includes('상점'))).length === 0 && (
-                                                    <div className="flex flex-col items-center justify-center py-8 px-2 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                                                        <div className="mb-2">
-                                                            <span className="text-3xl inline-block animate-bounce">🌟</span>
-                                                        </div>
-                                                        <h4 className="text-xs font-bold text-slate-700 mb-1">칭찬 기록이 없습니다</h4>
-                                                        <p className="text-[10px] text-slate-500">따뜻한 칭찬 한마디를 남겨주세요.</p>
+                                                    <div className="flex flex-col items-center justify-center py-10 px-2 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                                        <div className="mb-3"><span className="text-4xl inline-block animate-bounce drop-shadow-md">🌟</span></div>
+                                                        <h4 className="text-xs font-bold text-slate-700 mb-1">칭찬 기록이 아직 없습니다</h4>
+                                                        <p className="text-[10px] text-slate-500 mt-1">학생에게 따뜻한 칭찬 한마디를 남겨주세요.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -2035,12 +2027,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         })}
                                     </div>
                                 ) : (
-                                    <div className="h-48 flex flex-col items-center justify-center py-8 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
-                                        <div className="mb-4">
-                                            <span className="text-4xl inline-block animate-bounce">📂</span>
-                                        </div>
-                                        <h4 className="text-sm font-bold text-slate-700 mb-1">아직 기록이 없습니다</h4>
-                                        <p className="text-xs text-slate-500">관찰 및 칭찬 내용을 입력하여 첫 기록을 남겨보세요.</p>
+                                    <div className="h-56 flex flex-col items-center justify-center py-8 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
+                                        <div className="mb-5"><span className="text-5xl inline-block animate-bounce drop-shadow-md">📂</span></div>
+                                        <h4 className="text-sm font-bold text-slate-700 mb-1">아직 활동 기록이 없습니다</h4>
+                                        <p className="text-xs text-slate-500 mt-1">하단의 입력창을 이용해<br/>학생의 첫 번째 기록을 남겨보세요.</p>
                                     </div>
                                 )}
                                 {hasMore && (
@@ -2170,14 +2160,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                 })}
                                                             </div>
                                                         ) : (
-                                                            <div className="flex flex-col items-center justify-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 gap-3">
-                                                                <div className="mb-2">
-                                                                    <span className="text-4xl inline-block animate-bounce">📭</span>
-                                                                </div>
-                                                                <div className="text-center">
-                                                                    <h4 className="text-sm font-bold text-slate-700 mb-1">등록된 과제가 없습니다</h4>
-                                                                    <p className="text-[10px] text-slate-500">이 날짜에는 부여된 과제가 없어요.</p>
-                                                                </div>
+                                                            <div className="flex flex-col items-center justify-center py-14 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 text-center gap-2">
+                                                                <div className="mb-3"><span className="text-5xl inline-block animate-bounce drop-shadow-md">📭</span></div>
+                                                                <h4 className="text-sm font-bold text-slate-700 mb-1">등록된 과제가 없습니다</h4>
+                                                                <p className="text-xs text-slate-500">선택하신 날짜에는 부여된 과제가 없어요.</p>
                                                             </div>
                                                         )}
                                                     </section>
