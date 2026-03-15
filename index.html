@@ -7065,6 +7065,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2';
+    }
+
     function myProfile() {
       return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid));
     }
@@ -7081,69 +7085,69 @@ service cloud.firestore {
       return hasProfile() && myAppId() == appId;
     }
 
-    // 1. 설정
-    // 일반 사용자는 읽기만 가능, 수정 불가
+    // 1. 공통 설정 (관리자만 수정)
     match /settings/{document=**} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     // 2. 사용자 프로필
-    // 본인 프로필만 수정 가능
     match /userProfiles/{userId} {
       allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && request.auth.uid == userId;
-      allow delete: if false;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update, delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
-    // 3. 사용자 통계
-    // 본인 것만 읽기/쓰기 가능
+    // 3. 사용자 활동 통계
     match /userStats/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
-    // 4. 선생님 개인 데이터
-    // 본인 appId 경로만 접근 가능
+    // 4. 선생님 개인 데이터 (본인 학급만)
     match /classes/{appId}/{document=**} {
-      allow read, write: if isMyApp(appId);
+      allow read, write: if isMyApp(appId) || isAdmin();
     }
 
-    // 5. artifacts
-    // 본인 appId 경로만 접근 가능
+    // 5. 공유 백업 (artifacts)
     match /artifacts/{appId}/{document=**} {
-      allow read, write: if isMyApp(appId);
+      allow read, write: if isMyApp(appId) || isAdmin();
     }
 
-    // 6. 커뮤니티 글
+    // 6. 게시판 본문
     match /community/{postId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn()
-        && resource.data.uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+
+      // 7. 게시판 댓글 (하위 컬렉션 매칭)
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      }
     }
 
-    // 7. 댓글
-    match /comments/{commentId} {
-      allow read: if true;
+    // 8. 알림 기능 (누구나 발송, 본인만 조회/삭제)
+    match /notifications/{notiId} {
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn()
-        && resource.data.uid == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && (resource.data.targetUid == request.auth.uid || isAdmin());
     }
 
-    // 8. 관리자 컬렉션
-    // 일반 사용자는 접근 불가
-    match /admin/{document=**} {
-      allow read, write: if false;
+    // 9. 활동 로그
+    match /activityLogs/{logId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
     }
 
-    // 9. 나머지 전부 차단
+    // 10. 나머지 차단
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }`}
                                     </div>
-                                    <button onClick={() => { const code = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    function isSignedIn() {\n      return request.auth != null;\n    }\n\n    function myProfile() {\n      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid));\n    }\n\n    function hasProfile() {\n      return isSignedIn() && myProfile().data != null;\n    }\n\n    function myAppId() {\n      return myProfile().data.appId;\n    }\n\n    function isMyApp(appId) {\n      return hasProfile() && myAppId() == appId;\n    }\n\n    // 1. 설정\n    // 일반 사용자는 읽기만 가능, 수정 불가\n    match /settings/{document=**} {\n      allow read: if isSignedIn();\n      allow write: if false;\n    }\n\n    // 2. 사용자 프로필\n    // 본인 프로필만 수정 가능\n    match /userProfiles/{userId} {\n      allow read: if isSignedIn();\n      allow create, update: if isSignedIn() && request.auth.uid == userId;\n      allow delete: if false;\n    }\n\n    // 3. 사용자 통계\n    // 본인 것만 읽기/쓰기 가능\n    match /userStats/{userId} {\n      allow read, write: if isSignedIn() && request.auth.uid == userId;\n    }\n\n    // 4. 선생님 개인 데이터\n    // 본인 appId 경로만 접근 가능\n    match /classes/{appId}/{document=**} {\n      allow read, write: if isMyApp(appId);\n    }\n\n    // 5. artifacts\n    // 본인 appId 경로만 접근 가능\n    match /artifacts/{appId}/{document=**} {\n      allow read, write: if isMyApp(appId);\n    }\n\n    // 6. 커뮤니티 글\n    match /community/{postId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn()\n        && resource.data.uid == request.auth.uid;\n    }\n\n    // 7. 댓글\n    match /comments/{commentId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn()\n        && resource.data.uid == request.auth.uid;\n    }\n\n    // 8. 관리자 컬렉션\n    // 일반 사용자는 접근 불가\n    match /admin/{document=**} {\n      allow read, write: if false;\n    }\n\n    // 9. 나머지 전부 차단\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}`; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                                    <button onClick={() => { const code = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    function isSignedIn() {\n      return request.auth != null;\n    }\n\n    function isAdmin() {\n      return request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2';\n    }\n\n    function myProfile() {\n      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid));\n    }\n\n    function hasProfile() {\n      return isSignedIn() && myProfile().data != null;\n    }\n\n    function myAppId() {\n      return myProfile().data.appId;\n    }\n\n    function isMyApp(appId) {\n      return hasProfile() && myAppId() == appId;\n    }\n\n    match /settings/{document=**} {\n      allow read: if isSignedIn();\n      allow write: if isAdmin();\n    }\n\n    match /userProfiles/{userId} {\n      allow read: if isSignedIn();\n      allow create: if isSignedIn() && request.auth.uid == userId;\n      allow update, delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());\n    }\n\n    match /userStats/{userId} {\n      allow read: if isSignedIn();\n      allow create, update, delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());\n    }\n\n    match /classes/{appId}/{document=**} {\n      allow read, write: if isMyApp(appId) || isAdmin();\n    }\n\n    match /artifacts/{appId}/{document=**} {\n      allow read, write: if isMyApp(appId) || isAdmin();\n    }\n\n    match /community/{postId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());\n\n      match /comments/{commentId} {\n        allow read: if true;\n        allow create: if isSignedIn();\n        allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());\n      }\n    }\n\n    match /notifications/{notiId} {\n      allow create: if isSignedIn();\n      allow read, update, delete: if isSignedIn() && (resource.data.targetUid == request.auth.uid || isAdmin());\n    }\n\n    match /activityLogs/{logId} {\n      allow create: if isSignedIn();\n      allow read, update, delete: if isAdmin();\n    }\n\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}`; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
                                         <Icon d={PATHS.copy} size={12} /> 코드 복사
                                     </button>
                                 </div>
@@ -8197,6 +8201,12 @@ const firebaseConfig = {
             const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
             const fetchUserList = async () => {
+                const sharedUser = firebase.auth().currentUser;
+                if (!sharedUser || sharedUser.uid !== ADMIN_UID) {
+                    setToastMessage("공용 DB 관리자 인증이 완료되지 않았습니다. 다시 로그인 후 시도해주세요.");
+                    return;
+                }
+
                 if (!sharedDb) return;
                 setIsLoadingUsers(true);
                 try {
@@ -8538,10 +8548,19 @@ const firebaseConfig = {
             }, [showAdminDashboard]);
 
             const handleOpenAdminDashboard = async () => {
-                // 철통 보안 검사
                 const user = currentUser;
-                if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
+                const sharedUser = firebase.auth().currentUser;
+
+                console.log("[Admin Check] myClassApp UID:", user?.uid);
+                console.log("[Admin Check] sharedApp UID:", sharedUser?.uid);
+
+                if (!user || user.uid !== ADMIN_UID) {
                     alert("접근 권한이 없습니다. 최고 관리자만 이용 가능합니다.");
+                    return;
+                }
+
+                if (!sharedUser || sharedUser.uid !== ADMIN_UID) {
+                    alert("공용 DB 관리자 인증이 완료되지 않았습니다. 다시 로그인 후 시도해주세요.");
                     return;
                 }
 
