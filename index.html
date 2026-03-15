@@ -11052,6 +11052,16 @@ const firebaseConfig = {
         const sharedAuth = firebase.auth();
         let sUser = sharedAuth.currentUser;
         
+        // [Fix] sharedAuth가 아직 초기화 전일 수 있으므로 완료될 때까지 대기
+        if (!sUser) {
+            sUser = await new Promise(resolve => {
+                const unsub = sharedAuth.onAuthStateChanged(u => {
+                    unsub();
+                    resolve(u);
+                });
+            });
+        }
+
         if (sUser && sUser.uid === myAppUser.uid) {
             return sUser;
         }
