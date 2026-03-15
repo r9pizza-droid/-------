@@ -140,6 +140,7 @@
                             '0%, 100%': { transform: 'rotate(-8deg) scale(1.15)' },
                             '50%': { transform: 'rotate(8deg) scale(1.15)' }
                         },
+                            toastProgress: { '0%': { width: '100%' }, '100%': { width: '0%' } },
                     }
                 }
             }
@@ -490,7 +491,7 @@
             );
         };
         const Btn = ({ onClick, className, children, ...props }) => (
-            <button onClick={onClick} className={`transition-all duration-200 ease-out active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center rounded hover:bg-notion-bg-hover ${className}`} {...props}>{children}</button>
+            <button onClick={onClick} className={`transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center rounded hover:bg-notion-bg-hover ${className}`} {...props}>{children}</button>
         );
         const renderTextWithLinks = (text) => {
             if (!text || typeof text !== 'string') return text;
@@ -541,6 +542,7 @@
             const onCloseRef = useRef(onClose);
             const [offsetY, setOffsetY] = useState(0);
             const [isDragging, setIsDragging] = useState(false);
+            const [duration, setDuration] = useState(3000);
             const startY = useRef(0);
 
             useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
@@ -584,23 +586,28 @@
             return (
                 <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[7000] w-full max-w-sm px-4 animate-[slideInDown_0.5s_cubic-bezier(0.16,1,0.3,1)] pointer-events-none">
                     <div 
-                        className={`bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-3 border ${borderColor} flex items-center gap-3 ring-1 ring-black/5 pointer-events-auto touch-none transition-transform will-change-transform`}
+                        className={`bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border ${borderColor} flex flex-col ring-1 ring-black/5 pointer-events-auto touch-none transition-transform will-change-transform overflow-hidden`}
                         style={{ transform: `translateY(${offsetY}px)`, transition: isDragging ? 'none' : 'transform 0.2s ease-out' }}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
                     >
-                        <div className={`w-10 h-10 bg-gradient-to-br ${iconBg} rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}>
-                            <span className="text-lg animate-bounce">{emoji}</span>
+                        <div className="flex items-center gap-3 p-3">
+                            <div className={`w-10 h-10 bg-gradient-to-br ${iconBg} rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                                <span className="text-lg animate-bounce">{emoji}</span>
+                            </div>
+                            <div className="flex-1 min-w-0 pr-2">
+                                <h4 className="font-bold text-slate-800 text-sm leading-tight break-keep whitespace-pre-wrap">{message}</h4>
+                            </div>
+                            {action && (
+                                <button onClick={action.onClick} className="ml-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
+                                    {action.label}
+                                </button>
+                            )}
                         </div>
-                        <div className="flex-1 min-w-0 pr-2">
-                            <h4 className="font-bold text-slate-800 text-sm leading-tight break-keep whitespace-pre-wrap">{message}</h4>
+                        <div className="h-1 w-full bg-slate-100/50">
+                            <div className="h-full bg-indigo-400/40" style={{ animation: `toast-progress ${duration}ms linear forwards` }}></div>
                         </div>
-                        {action && (
-                            <button onClick={action.onClick} className="ml-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
-                                {action.label}
-                            </button>
-                        )}
                     </div>
                 </div>
             );
@@ -625,7 +632,7 @@
                         <p className="text-slate-600 mb-8 text-sm whitespace-pre-wrap leading-relaxed px-2">{message}</p>
                         <div className="flex justify-center gap-3 w-full">
                             <Btn onClick={onCancel} className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm">취소</Btn>
-                            <Btn onClick={onConfirm} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md transition-all active:scale-95 text-sm">확인</Btn>
+                                    <Btn onClick={onConfirm} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md transition-all active:scale-[0.98] text-sm">확인</Btn>
                         </div>
                     </div>
                 </div>
@@ -680,7 +687,7 @@
                         </div>
 
                         <div className="flex flex-col gap-2">
-                            <button onClick={onUpdate} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-violet-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                <button onClick={onUpdate} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-violet-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                                 <span>✨ 지금 업데이트 (새로고침)</span>
                             </button>
                             <div className="flex gap-2">
@@ -752,7 +759,7 @@
                             <button onClick={() => onClose('today')} className="flex-1 py-2 text-slate-500 text-[11px] font-bold bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">
                                 오늘 하루 숨김
                             </button>
-                            <button onClick={onUpdate} className="flex-1 py-2 bg-indigo-600 text-white text-[11px] font-bold rounded-xl hover:bg-indigo-700 shadow-sm active:scale-95 transition-all">
+                            <button onClick={onUpdate} className="flex-1 py-2 bg-indigo-600 text-white text-[11px] font-bold rounded-xl hover:bg-indigo-700 shadow-sm active:scale-[0.98] transition-all">
                                 ✨ 지금 업데이트
                             </button>
                         </div>
@@ -1129,7 +1136,7 @@
                         
                         <div className="flex flex-col gap-2">
                             <label className="text-xs font-bold text-slate-500">추가 강조하고 싶은 키워드 (선택)</label>
-                            <input value={keywords} onChange={e => setKeywords(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-blue-500" placeholder="예: 봉사정신, 창의력, 독서왕..." />
+                            <input value={keywords} onChange={e => setKeywords(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300" placeholder="예: 봉사정신, 창의력, 독서왕..." />
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -1186,7 +1193,7 @@
                             )}
                         </div>
 
-                        <Btn onClick={handleGenerate} disabled={isGenerating} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-md flex items-center justify-center gap-2">
+                        <Btn onClick={handleGenerate} disabled={isGenerating} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-md flex items-center justify-center gap-2 active:scale-[0.98]">
                             {isGenerating ? <><Icon d={PATHS.spinner} className="animate-spin" /> 작성 중... {Math.round(progress)}%</> : <><Icon d={PATHS.magic} /> 초안 생성하기</>}
                         </Btn>
 
@@ -1642,7 +1649,7 @@
                                             <input 
                                                 value={newTask} 
                                                 onChange={e => setNewTask(e.target.value)} 
-                                                className="w-full p-2 pl-3 bg-slate-50 border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50 rounded text-sm outline-none transition-all placeholder-slate-400" 
+                                                className="w-full p-2 pl-3 bg-slate-50 border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/20 rounded text-sm outline-none transition-all duration-300 placeholder-slate-400" 
                                                 placeholder="할 일을 입력하세요 (예: 수학 익힘책 30쪽)" 
                                                 onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addTask() }} 
                                             />
@@ -1731,7 +1738,7 @@
                                         <input 
                                             value={wNewTask} 
                                             onChange={e => setWNewTask(e.target.value)} 
-                                            className="w-full p-2 pl-3 bg-slate-50 border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50 rounded text-sm outline-none transition-all placeholder-slate-400" 
+                                            className="w-full p-2 pl-3 bg-slate-50 border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/20 rounded text-sm outline-none transition-all duration-300 placeholder-slate-400" 
                                             placeholder="고정 과제 내용 (예: 일기 쓰기)" 
                                             onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addWeeklyTask() }} 
                                         />
@@ -2422,7 +2429,7 @@
                             <label className="text-xs font-bold text-slate-500">Notion API Key (Secret)</label>
                             <div className="flex gap-2">
                                 <div className="relative flex-1">
-                                    <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${apiKey.startsWith('secret_') ? 'border-green-500 focus:border-green-500 bg-green-50/10' : 'focus:border-indigo-500'}`} placeholder="secret_..." />
+                                            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${apiKey.startsWith('secret_') ? 'border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 bg-green-50/10' : 'focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20'}`} placeholder="secret_..." />
                                     {apiKey && (
                                         <button onClick={() => setApiKey("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
                                             <Icon d={PATHS.x} size={14} />
@@ -2443,7 +2450,7 @@
                                 <label className="text-xs font-bold text-slate-500 flex items-center gap-2">일반 기록용 DB ID {dbId && validateIdFormat(dbId) && <span className="text-green-600 text-[10px] bg-green-50 px-1.5 py-0.5 rounded-full">✅ 형식 확인됨</span>}</label>
                                 <div className="flex gap-2">
                                     <div className="relative flex-1">
-                                        <input type="text" value={dbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); else setDbId(val); }} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${dbId && validateIdFormat(dbId) ? 'border-green-500 focus:border-green-500 bg-green-50/10' : 'focus:border-indigo-500'}`} placeholder="32자리 ID (URL 붙여넣기 가능)" />
+                                            <input type="text" value={dbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); else setDbId(val); }} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${dbId && validateIdFormat(dbId) ? 'border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 bg-green-50/10' : 'focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20'}`} placeholder="32자리 ID (URL 붙여넣기 가능)" />
                                         {dbId && (
                                             <button onClick={() => setDbId("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
                                                 <Icon d={PATHS.x} size={14} />
@@ -2473,7 +2480,7 @@
                                     <label className="text-xs font-bold text-slate-500 flex items-center gap-2">포트폴리오용 DB ID {portfolioDbId && validateIdFormat(portfolioDbId) && <span className="text-green-600 text-[10px] bg-green-50 px-1.5 py-0.5 rounded-full">✅ 형식 확인됨</span>}</label>
                                     <div className="flex gap-2">
                                         <div className="relative flex-1">
-                                            <input type="text" value={portfolioDbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); else setPortfolioDbId(val); }} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${portfolioDbId && validateIdFormat(portfolioDbId) ? 'border-green-500 focus:border-green-500 bg-green-50/10' : 'focus:border-indigo-500'}`} placeholder="32자리 ID (URL 붙여넣기 가능)" />
+                                            <input type="text" value={portfolioDbId} onChange={e => { const val = e.target.value.replace(/"/g, ''); if(extractAndSetDbId(val)) showToast("URL에서 ID를 추출했습니다."); else setPortfolioDbId(val); }} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${portfolioDbId && validateIdFormat(portfolioDbId) ? 'border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 bg-green-50/10' : 'focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20'}`} placeholder="32자리 ID (URL 붙여넣기 가능)" />
                                             {portfolioDbId && (
                                                 <button onClick={() => setPortfolioDbId("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
                                                     <Icon d={PATHS.x} size={14} />
@@ -2670,7 +2677,7 @@
                             <label className="text-xs font-bold text-slate-500 flex items-center gap-2">Web App URL {url && validateUrl(url) && <span className="text-green-600 text-[10px] bg-green-50 px-1.5 py-0.5 rounded-full">✅ 형식 확인됨</span>}</label>
                             <div className="flex gap-2">
                                 <div className="relative flex-1">
-                                    <input type="text" value={url} onChange={e => setUrl(e.target.value)} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${url && validateUrl(url) ? 'border-green-500 focus:border-green-500 bg-green-50/10' : 'focus:border-green-500'}`} placeholder="https://script.google.com/macros/s/..." />
+                                    <input type="text" value={url} onChange={e => setUrl(e.target.value)} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${url && validateUrl(url) ? 'border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 bg-green-50/10' : 'focus:border-green-500 focus:ring-4 focus:ring-green-500/20'}`} placeholder="https://script.google.com/macros/s/..." />
                                     {url && (
                                         <button onClick={() => setUrl("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
                                             <Icon d={PATHS.x} size={14} />
@@ -2688,7 +2695,7 @@
                             <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3.5 rounded-xl font-bold transition-colors text-sm ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
                                 {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : testSuccess ? '✅ 연동 성공!' : '🔌 연동 테스트'}
                             </Btn>
-                            <Btn onClick={handleSave} className="flex-1 py-3.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-md text-sm transition-colors active:scale-95">설정 저장</Btn>
+                            <Btn onClick={handleSave} className="flex-1 py-3.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-md text-sm transition-colors active:scale-[0.98]">설정 저장</Btn>
                         </div>
 
                     </div>
@@ -2805,7 +2812,7 @@
             const modalFooter = (
                 <div className="flex justify-end gap-2 w-full">
                     <Btn onClick={onClose} className="px-6 py-3.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors">취소</Btn>
-                    <Btn onClick={handleSaveAndClose} className="px-8 py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">저장 및 닫기</Btn>
+                    <Btn onClick={handleSaveAndClose} className="px-8 py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-[0.98]">저장 및 닫기</Btn>
                 </div>
             );
 
@@ -2834,7 +2841,7 @@
                             </div>
                             <div className="flex gap-2">
                                 <div className="relative flex-1">
-                                    <input type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${apiKey && validateKeyFormat(apiKey) ? 'border-green-500 focus:border-green-500 bg-green-50/10' : 'focus:border-indigo-500'}`} placeholder="AIza..." />
+                                    <input type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className={`w-full p-3 pr-8 border rounded-xl text-sm outline-none font-mono transition-colors ${apiKey && validateKeyFormat(apiKey) ? 'border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 bg-green-50/10' : 'focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20'}`} placeholder="AIza..." />
                                     {apiKey && (
                                         <button onClick={() => setApiKey("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors" title="지우기">
                                             <Icon d={PATHS.x} size={14} />
@@ -3352,7 +3359,7 @@
                             <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3.5 rounded-xl font-bold transition-colors text-sm ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
                                 {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : testSuccess ? '✅ 연동 성공!' : '🔌 연동 테스트'}
                             </Btn>
-                            <Btn onClick={handleSave} className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md transition-colors active:scale-95">설정 저장</Btn>
+                            <Btn onClick={handleSave} className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md transition-colors active:scale-[0.98]">설정 저장</Btn>
                         </div>
                     </div>
                 </BaseModal>

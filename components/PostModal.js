@@ -308,7 +308,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
             {!initialPost && (
                 <Btn onClick={handleManualSaveDraft} className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm">임시 저장</Btn>
             )}
-            <Btn onClick={handleSubmit} className="px-8 py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">{initialPost ? "수정 완료" : "게시글 등록"}</Btn>
+                <Btn onClick={handleSubmit} className="px-8 py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-[0.98]">{initialPost ? "수정 완료" : "게시글 등록"}</Btn>
         </div>
     );
 
@@ -335,7 +335,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 
                 <div className="space-y-1.5">
                     <label className="text-sm font-bold text-slate-700">제목</label>
-                    <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow bg-slate-50 hover:bg-white focus:bg-white" placeholder="제목을 입력하세요" />
+                    <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-300 bg-slate-50 hover:bg-white focus:bg-white" placeholder="제목을 입력하세요" />
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -345,7 +345,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-sm font-bold text-slate-700">비밀번호</label>
-                        <input type="password" maxLength={4} value={postPassword} onChange={(e) => setPostPassword(e.target.value.replace(/[^0-9]/g, ''))} className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow bg-slate-50 hover:bg-white focus:bg-white" placeholder="비밀번호 4자리" required />
+                        <input type="password" maxLength={4} value={postPassword} onChange={(e) => setPostPassword(e.target.value.replace(/[^0-9]/g, ''))} className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-300 bg-slate-50 hover:bg-white focus:bg-white" placeholder="비밀번호 4자리" required />
                     </div>
                 </div>
                 
@@ -367,7 +367,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 
                 <div className="space-y-1.5">
                     <label className="text-sm font-bold text-slate-700">해시태그</label>
-                    <div className="flex flex-wrap gap-2 p-2.5 border border-slate-200 rounded-xl bg-slate-50 hover:bg-white focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                    <div className="flex flex-wrap gap-2 p-2.5 border border-slate-200 rounded-xl bg-slate-50 hover:bg-white focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/20 transition-all duration-300">
                         {tags.map((tag, index) => (
                             <span key={index} className="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
                                 #{tag}
@@ -381,8 +381,8 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 <div className="space-y-1.5">
                     <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Icon d={PATHS.link} size={16} className="text-slate-400"/> 학습 자료(파일/링크) 공유</label>
                     <div className="flex flex-col sm:flex-row gap-2">
-                        <input value={resourceTitle} onChange={(e) => setResourceTitle(e.target.value)} className="w-full sm:w-1/3 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow bg-slate-50 hover:bg-white focus:bg-white" placeholder="버튼 이름 (예: 학습지)" />
-                        <input value={resourceLink} onChange={(e) => setResourceLink(e.target.value)} className="w-full sm:flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow bg-slate-50 hover:bg-white focus:bg-white" placeholder="https://..." />
+                        <input value={resourceTitle} onChange={(e) => setResourceTitle(e.target.value)} className="w-full sm:w-1/3 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-300 bg-slate-50 hover:bg-white focus:bg-white" placeholder="버튼 이름 (예: 학습지)" />
+                        <input value={resourceLink} onChange={(e) => setResourceLink(e.target.value)} className="w-full sm:flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-300 bg-slate-50 hover:bg-white focus:bg-white" placeholder="https://..." />
                     </div>
                 </div>
                 

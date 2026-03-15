@@ -388,8 +388,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 const x = (rect.left + rect.width / 2) / window.innerWidth;
                 const y = (rect.top + rect.height / 2) / window.innerHeight;
                 origin = {
-                    x: x + (Math.random() - 0.5) * 0.05,
-                    y: y + (Math.random() - 0.5) * 0.05
+                    x: x + (Math.random() - 0.5) * 0.15,
+                    y: y + (Math.random() - 0.5) * 0.15
                 };
             }
 
@@ -717,7 +717,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     const rect = e.currentTarget.getBoundingClientRect();
                     const x = (rect.left + rect.width / 2) / window.innerWidth;
                     const y = (rect.top + rect.height / 2) / window.innerHeight;
-                    origin = { x: x + (Math.random() - 0.5) * 0.05, y: y + (Math.random() - 0.5) * 0.05 };
+                    origin = { x: x + (Math.random() - 0.5) * 0.15, y: y + (Math.random() - 0.5) * 0.15 };
                 }
                 if ((stickerCount + 1) % 5 === 0) { 
                     confetti({ particleCount: 100, spread: 70, origin, zIndex: 2000 });
@@ -1564,10 +1564,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                     e.stopPropagation();
                                                                     handleTaskStatusChange(td.date, td.idx, e.target.value);
                                                                 }}
-                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all shadow-sm outline-none appearance-none cursor-pointer border focus:ring-2 focus:ring-offset-1 ${
-                                                                    td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200 focus:ring-indigo-400' :
-                                                                    td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200 focus:ring-amber-400' :
-                                                                    'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200 focus:ring-rose-400'
+                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all duration-300 shadow-sm outline-none appearance-none cursor-pointer border focus:ring-4 ${
+                                                                    td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200 focus:border-indigo-400 focus:ring-indigo-500/20' :
+                                                                    td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200 focus:border-amber-400 focus:ring-amber-500/20' :
+                                                                    'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200 focus:border-rose-400 focus:ring-rose-500/20'
                                                                 }`}
                                                                 style={{
                                                                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='${td.status === 'on-time' ? '%234338ca' : td.status === 'late' ? '%23b45309' : '%23be123c'}' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
@@ -1718,7 +1718,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         </div>
                                         <input 
                                             placeholder="다른 학생 함께 태그하기..." 
-                                            className="w-full p-2.5 pl-9 bg-white border border-slate-300 rounded-xl text-xs font-medium outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm" 
+                                            className="w-full p-2.5 pl-9 bg-white border border-slate-300 rounded-xl text-xs font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 shadow-sm" 
                                             value={searchText}
                                             onChange={(e) => { setSearchText(e.target.value); setShowStudentDropdown(true); }}
                                             onFocus={() => setShowStudentDropdown(true)}
@@ -1741,13 +1741,14 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                             </div>
                                         )}
                                     </div>
-                                    <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className="p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 shadow-sm" />
+                            <input type="date" value={notionDate} onChange={(e) => setNotionDate(e.target.value)} className="p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-600 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 shadow-sm" />
+
                                 </div>
                                 
                                 <textarea 
                                     value={notionContent}
                                     onChange={(e) => setNotionContent(e.target.value)}
-                                    className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none h-24 placeholder-slate-400 shadow-sm"
+                                    className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 resize-none h-24 placeholder-slate-400 shadow-sm"
                                     placeholder="관찰한 내용이나 칭찬할 내용을 입력하세요..."
                                 />
                                 
@@ -1768,10 +1769,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     </div>
                                 ) : (
                                     <div className="flex gap-2.5">
-                                        <button onClick={(e) => handleIntegratedSave('칭찬', e)} className="relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-rose-500 hover:bg-rose-600 active:scale-95">
+                                <button onClick={(e) => handleIntegratedSave('칭찬', e)} className="relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-rose-500 hover:bg-rose-600 active:scale-[0.98]">
                                             칭찬하기 +1
                                         </button>
-                                        <button onClick={(e) => handleIntegratedSave('관찰', e)} className="flex-[2] py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 active:scale-95">
+                                <button onClick={(e) => handleIntegratedSave('관찰', e)} className="flex-[2] py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98]">
                                             관찰 기록 저장
                                         </button>
                                     </div>
@@ -2126,7 +2127,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                                     <textarea 
                                                                                         value={commentInput}
                                                                                         onChange={(e) => setCommentInput(e.target.value)}
-                                                                                        className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 resize-none"
+                                    className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 resize-none"
                                                                                         rows={3}
                                                                                         placeholder="과제에 대한 메모를 남겨보세요..."
                                                                                         autoFocus
@@ -2463,10 +2464,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <label className="text-[10px] font-bold text-slate-500">중점 분석 분야 (Focus)</label>
-                                        <select value={reportFocus} onChange={e=>setReportFocus(e.target.value)} className="text-xs p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-500"><option value="comprehensive">🏫 학교생활 종합</option><option value="study">📝 학습 태도</option><option value="relationship">🤝 교우 관계</option><option value="habit">⏰ 생활 습관</option></select>
+                                        <select value={reportFocus} onChange={e=>setReportFocus(e.target.value)} className="text-xs p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300"><option value="comprehensive">🏫 학교생활 종합</option><option value="study">📝 학습 태도</option><option value="relationship">🤝 교우 관계</option><option value="habit">⏰ 생활 습관</option></select>
                                     </div>
                                 </div>
-                                <Btn onClick={generateReportContent} disabled={isGenerating} className={`w-full py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-1 shadow-sm transition-transform active:scale-95 ${apiKey ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
+                                <Btn onClick={generateReportContent} disabled={isGenerating} className={`w-full py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-1 shadow-sm transition-transform active:scale-[0.98] ${apiKey ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
                                     {isGenerating ? '작성 중...' : apiKey ? '✨ AI로 리포트 새로 작성하기' : '🔄 기간 설정 적용하여 다시 쓰기'}
                                 </Btn>
                                 {!apiKey && <div className="text-[10px] text-slate-400 mt-1 text-center">* 설정에서 API 키를 입력하면 AI가 더 풍성한 내용을 작성해줍니다.</div>}
@@ -2499,7 +2500,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     </div>
                                     <button onClick={() => { let comment = `${student.name} 학생은 현재 레벨 ${level}로, 평균 수행률 ${avgRate}%를 기록하며 성실하게 학교 생활을 하고 있습니다. ${missedTags.length > 0 ? `특히 ${missedTags.map(t=>t[0]).join(', ')} 과목에 조금 더 관심을 기울인다면 더욱 성장할 수 있을 것입니다.` : "모든 과목에서 고르게 우수한 모습을 보이고 있습니다."} 가정에서도 많은 칭찬과 격려 부탁드립니다.`; setTempComment(comment); }} className="text-[10px] text-slate-400 hover:text-rose-500 underline">초기화</button>
                                 </div>
-                                <textarea className="w-full h-48 p-4 border border-slate-200 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 resize-none custom-scroll" value={tempComment} onChange={(e) => setTempComment(e.target.value)} placeholder="리포트에 들어갈 내용을 작성해주세요." />
+                                <textarea className="w-full h-48 p-4 border border-slate-200 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 resize-none custom-scroll" value={tempComment} onChange={(e) => setTempComment(e.target.value)} placeholder="리포트에 들어갈 내용을 작성해주세요." />
                                 <div className="flex gap-2 pt-4 mt-2 border-t border-slate-100">
                                     <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-sm whitespace-nowrap transition-colors"><Icon d={PATHS.check} size={16} /> 초안 저장</Btn>
                                     <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-sm whitespace-nowrap transition-colors"><Icon d={PATHS.copy} size={16} /> 텍스트 복사</Btn>
