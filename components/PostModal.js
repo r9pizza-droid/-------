@@ -11,7 +11,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     const [uploadProgress, setUploadProgress] = useState(0);
     const [tags, setTags] = useState([]);
     const [tagInput, setTagInput] = useState("");
-    const [subCategory, setSubCategory] = useState("");
     const [resourceLink, setResourceLink] = useState("");
     const [resourceTitle, setResourceTitle] = useState("");
     const [canUseQuill, setCanUseQuill] = useState(false);
@@ -43,7 +42,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 setPostPassword(initialPost.postPassword);
                 setImageUrls(initialPost.imageUrls || (initialPost.imageUrl ? [initialPost.imageUrl] : []));
                 setTags(initialPost.tags || []);
-                setSubCategory(initialPost.subCategory || "");
                 setResourceLink(initialPost.resourceLink || "");
                 setResourceTitle(initialPost.resourceTitle || "");
             } else {
@@ -61,7 +59,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             setPostPassword(p.postPassword || "");
                             setImageUrls(p.imageUrls || []);
                             setTags(p.tags || []);
-                            setSubCategory(p.subCategory || "");
                             setResourceLink(p.resourceLink || "");
                             setResourceTitle(p.resourceTitle || "");
                             draftContentRef.current = p.content || "";
@@ -80,7 +77,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     setPostPassword("");
                     setImageUrls([]);
                     setTags([]);
-                    setSubCategory("");
                     setResourceLink("");
                     setResourceTitle("");
                     draftContentRef.current = "";
@@ -94,11 +90,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         if (isOpen && !initialPost) {
             if (title.trim() || content.trim() || tags.length > 0 || imageUrls.length > 0 || resourceLink.trim()) {
                 const finalAuthorName = userNickname || authorName;
-                const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, timestamp: Date.now() };
+                const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
                 localStorage.setItem('cls_post_draft', JSON.stringify(draft));
             }
         }
-    }, [category, title, authorName, userNickname, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, isOpen, initialPost]);
+    }, [category, title, authorName, userNickname, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
 
     useEffect(() => {
         if (isOpen && canUseQuill) {
@@ -130,7 +126,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             if (!file) return;
 
                             if (!imgbbApiKey) {
-                                alert("설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 먼저 등록해 주세요.");
+                                alert("이미지 업로드를 위해서는 설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 설정해야 합니다.");
                                 return;
                             }
 
@@ -156,11 +152,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                                     quillRef.current.insertEmbed(range.index, 'image', data.data.url);
                                     quillRef.current.setSelection(range.index + 1);
                                 } else {
-                                    alert("이미지 업로드 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요:\n" + (data.error?.message || "원인을 알 수 없습니다."));
+                                    alert("이미지 업로드 실패: " + (data.error?.message || "알 수 없는 오류"));
                                 }
                             } catch (e) {
                                 console.error(e);
-                                alert("이미지 업로드 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+                                alert("이미지 업로드 중 오류가 발생했습니다.");
                             } finally {
                                 setIsUploading(false);
                             }
@@ -213,7 +209,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         if (!files || files.length === 0) return;
         
         if (!imgbbApiKey) {
-            alert("설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 먼저 등록해 주세요.");
+            alert("이미지 업로드를 위해서는 설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 설정해야 합니다.");
             return;
         }
 
@@ -244,11 +240,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 setUploadProgress(Math.round(((i + 1) / files.length) * 100));
             }
             
-            if (successCount < files.length) alert(`일부 이미지를 업로드하지 못했습니다. (${successCount}/${files.length} 성공)\n파일 크기나 네트워크 상태를 확인해 주세요.`);
+            if (successCount < files.length) alert(`일부 이미지 업로드 실패 (${successCount}/${files.length} 성공)`);
             setIsUploading(false);
         } catch (err) {
             console.error(err);
-            alert("이미지 업로드 중 문제가 발생했습니다.");
+            alert("이미지 업로드 중 오류가 발생했습니다.");
             setIsUploading(false);
         }
     };
@@ -290,36 +286,26 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
 
     const handleManualSaveDraft = () => {
         const finalAuthorName = userNickname || authorName;
-        const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, timestamp: Date.now() };
+        const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
         localStorage.setItem('cls_post_draft', JSON.stringify(draft));
-        if (showToast) showToast("💾 작성 중인 내용이 안전하게 임시 저장되었습니다.");
-        else alert("작성 중인 내용이 안전하게 임시 저장되었습니다.");
+        if (showToast) showToast("임시 저장되었습니다.");
+        else alert("임시 저장되었습니다.");
     };
 
     const handleSubmit = () => {
         const finalAuthorName = userNickname || authorName;
         if (!title.trim() || !finalAuthorName.trim() || !content.trim() || !postPassword.trim()) {
-            alert("제목, 작성자, 내용, 비밀번호 중 빠진 항목이 없는지 확인해 주세요.");
+            alert("모든 항목을 입력해주세요.");
             return;
         }
         localStorage.setItem('community_authorName', finalAuthorName);
-        onSave(title, content, finalAuthorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory);
+        onSave(title, content, finalAuthorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle);
     };
 
     if (!isOpen) return null;
 
-    const footerContent = (
-        <div className="flex gap-2 w-full">
-            <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors active:scale-95">취소</Btn>
-            {!initialPost && (
-                <Btn onClick={handleManualSaveDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm active:scale-95">임시 저장</Btn>
-            )}
-            <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">{initialPost ? "수정" : "등록"}</Btn>
-        </div>
-    );
-
     return (
-        <BaseModal isOpen={isOpen} onClose={onClose} title={initialPost ? "게시글 수정" : "새 꿀팁 쓰기"} icon={PATHS.edit} footer={footerContent}>
+        <BaseModal isOpen={isOpen} onClose={onClose} title={initialPost ? "게시글 수정" : "새 꿀팁 쓰기"} icon={PATHS.edit}>
             <div className="space-y-4">
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">카테고리</label>
@@ -327,7 +313,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                         {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map((cat, idx) => (
                             <button
                                 key={cat}
-                                onClick={() => { setCategory(cat); if (cat !== '수업팁') setSubCategory(""); }}
+                                onClick={() => setCategory(cat)}
                                 className={`py-3 rounded-xl text-xs font-bold transition-all animate-fade-in ${category === cat ? 'bg-indigo-600 text-white shadow-md transform scale-105' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                                 style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}
                             >
@@ -335,19 +321,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             </button>
                         ))}
                     </div>
-                    {category === '수업팁' && (
-                        <div className="flex gap-2 mt-2 overflow-x-auto custom-scroll pb-1">
-                            {['1학년', '2학년', '3학년', '4학년', '5학년', '6학년'].map(sub => (
-                                <button
-                                    key={sub}
-                                    onClick={() => setSubCategory(sub)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${subCategory === sub ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'}`}
-                                >
-                                    {sub}
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">제목</label>
@@ -424,6 +397,13 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                         </label>
                     </div>
                     {!imgbbApiKey && <p className="text-[10px] text-rose-500">* 사진을 올리려면 설정에서 ImgBB API 키를 등록해주세요.</p>}
+                </div>
+                <div className="flex gap-2 pt-2">
+                    <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">취소</Btn>
+                    {!initialPost && (
+                        <Btn onClick={handleManualSaveDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50">임시 저장</Btn>
+                    )}
+                    <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">{initialPost ? "수정" : "등록"}</Btn>
                 </div>
             </div>
         </BaseModal>
