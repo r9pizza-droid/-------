@@ -17,8 +17,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     const [canUseQuill, setCanUseQuill] = useState(false);
     const quillRef = useRef(null);
     const draftContentRef = useRef("");
-    const [authorProfilePic, setAuthorProfilePic] = useState(() => localStorage.getItem('community_authorProfilePic') || "");
-    const [isProfileUploading, setIsProfileUploading] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -48,7 +46,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 setSubCategory(initialPost.subCategory || "");
                 setResourceLink(initialPost.resourceLink || "");
                 setResourceTitle(initialPost.resourceTitle || "");
-                setAuthorProfilePic(initialPost.authorProfilePic || localStorage.getItem('community_authorProfilePic') || "");
             } else {
                 // [New] 임시 저장 불러오기 로직
                 const savedDraft = localStorage.getItem('cls_post_draft');
@@ -67,7 +64,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             setSubCategory(p.subCategory || "");
                             setResourceLink(p.resourceLink || "");
                             setResourceTitle(p.resourceTitle || "");
-                            setAuthorProfilePic(p.authorProfilePic || localStorage.getItem('community_authorProfilePic') || "");
                             draftContentRef.current = p.content || "";
                             loaded = true;
                         } catch(e) { console.error(e); }
@@ -98,11 +94,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         if (isOpen && !initialPost) {
             if (title.trim() || content.trim() || tags.length > 0 || imageUrls.length > 0 || resourceLink.trim()) {
                 const finalAuthorName = userNickname || authorName;
-                const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, authorProfilePic, timestamp: Date.now() };
+                const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, timestamp: Date.now() };
                 localStorage.setItem('cls_post_draft', JSON.stringify(draft));
             }
         }
-    }, [category, title, authorName, userNickname, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, authorProfilePic, isOpen, initialPost]);
+    }, [category, title, authorName, userNickname, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, isOpen, initialPost]);
 
     useEffect(() => {
         if (isOpen && canUseQuill) {
@@ -279,38 +275,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         return () => window.removeEventListener('paste', handlePaste);
     }, [isOpen, imgbbApiKey]);
 
-    const handleProfileUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        if (!imgbbApiKey) {
-            alert("프로필 사진 업로드를 위해서는 설정 > 데이터 관리 > 외부 서비스 연동에서 ImgBB API 키를 설정해야 합니다.");
-            return;
-        }
-        
-        setIsProfileUploading(true);
-        try {
-            let uploadFile = file;
-            // 프로필은 작아도 되므로 최대 너비 400px로 압축
-            if (file.size > 1024 * 1024) uploadFile = await compressImage(file, 400, 0.8);
-            
-            const formData = new FormData();
-            formData.append("image", uploadFile);
-            
-            const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, { method: "POST", body: formData });
-            const data = await res.json();
-            
-            if (data.success) {
-                setAuthorProfilePic(data.data.url);
-                localStorage.setItem('community_authorProfilePic', data.data.url);
-                if (showToast) showToast("프로필 사진이 적용되었습니다.");
-            } else alert("프로필 업로드 실패: " + (data.error?.message || "알 수 없는 오류"));
-        } catch (err) {
-            console.error(err); alert("프로필 업로드 중 오류가 발생했습니다.");
-        } finally { setIsProfileUploading(false); }
-        e.target.value = '';
-    };
-
     const handleTagKeyDown = (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -326,7 +290,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
 
     const handleManualSaveDraft = () => {
         const finalAuthorName = userNickname || authorName;
-        const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, authorProfilePic, timestamp: Date.now() };
+        const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, timestamp: Date.now() };
         localStorage.setItem('cls_post_draft', JSON.stringify(draft));
         if (showToast) showToast("임시 저장되었습니다.");
         else alert("임시 저장되었습니다.");
@@ -339,7 +303,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
             return;
         }
         localStorage.setItem('community_authorName', finalAuthorName);
-        onSave(title, content, finalAuthorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory, authorProfilePic);
+        onSave(title, content, finalAuthorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle, subCategory);
     };
 
     if (!isOpen) return null;
@@ -380,18 +344,8 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="제목을 입력하세요" />
                 </div>
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">작성자 및 프로필 사진</label>
-                    <div className="flex items-center gap-2">
-                        <label className="relative cursor-pointer group shrink-0" title="프로필 사진 변경">
-                            <div className={`w-11 h-11 rounded-full bg-slate-100 border-2 border-slate-200 flex items-center justify-center overflow-hidden transition-all ${isProfileUploading ? 'opacity-50' : 'group-hover:border-indigo-400 group-hover:shadow-sm'}`}>
-                                {authorProfilePic ? <img src={authorProfilePic} alt="프로필" className="w-full h-full object-cover" /> : <span className="text-lg">👤</span>}
-                            </div>
-                            {isProfileUploading && <div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded-full"><Icon d={PATHS.spinner} className="animate-spin" size={14} /></div>}
-                            {!authorProfilePic && !isProfileUploading && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-indigo-500 text-white rounded-full flex items-center justify-center border border-white text-[8px]">+</div>}
-                            <input type="file" accept="image/*" className="hidden" onChange={handleProfileUpload} disabled={isProfileUploading} />
-                        </label>
-                        <input value={userNickname || authorName} readOnly className="flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none bg-slate-100 text-slate-500 font-bold cursor-not-allowed" placeholder="작성자 이름" />
-                    </div>
+                    <label className="text-xs font-bold text-slate-500">작성자</label>
+                    <input value={userNickname || authorName} readOnly className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none bg-slate-100 text-slate-500 font-bold cursor-not-allowed" placeholder="작성자 이름" />
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500">비밀번호</label>
