@@ -8902,8 +8902,8 @@ const firebaseConfig = {
                     .filter(post => !filterSubCategory || post.subCategory === filterSubCategory)
                     .filter(post => {
                         if (showMyPosts) {
-                            const user = currentUser;
-                            if (!user || post.uid !== user.uid) return false;
+                            const sharedUser = firebase.auth().currentUser;
+                            if (!sharedUser || post.uid !== sharedUser.uid) return false;
                         }
                         if (!postSearchTerm) return true;
                         const lowerTerm = postSearchTerm.toLowerCase().replace(/^#/, '');
@@ -9313,7 +9313,7 @@ const firebaseConfig = {
             // [New] Community Logic
             const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags, resourceLink, resourceTitle, subCategory) => {
                 try {
-                     const user = currentUser;
+                     const sharedUser = firebase.auth().currentUser;
                      // [New] 별칭 강제 적용 (수정 불가)
                      const finalAuthorName = userNickname || authorName;
 
@@ -9326,9 +9326,10 @@ const firebaseConfig = {
                         };
                         await sharedDb.collection('community').doc(editingPost.id).update(updatedData);
 
-                        if (user) {
-                            await sharedDb.collection('userProfiles').doc(user.uid).set({
-                                uid: user.uid,
+                        if (sharedUser) {
+                            console.log("[SharedDB Access - savePost(Edit)] using doc id:", sharedUser.uid);
+                            await sharedDb.collection('userProfiles').doc(sharedUser.uid).set({
+                                uid: sharedUser.uid,
                                 nickname: finalAuthorName,
                                 userNickname: finalAuthorName,
                                 name: finalAuthorName,
@@ -9347,8 +9348,9 @@ const firebaseConfig = {
                     } else {
                         // [New] 뱃지 시스템: 글 작성 시 통계 업데이트 및 뱃지 획득
                         let currentBadge = '🌱';
-                        if (user) {
-                            const statsRef = sharedDb.collection('userStats').doc(user.uid);
+                        if (sharedUser) {
+                            console.log("[SharedDB Access - savePost(New)] using doc id:", sharedUser.uid);
+                            const statsRef = sharedDb.collection('userStats').doc(sharedUser.uid);
                             const doc = await statsRef.get();
                             let pCount = 0;
                             let cCount = 0;
@@ -9378,12 +9380,12 @@ const firebaseConfig = {
                             tags: tags || [],
                             resourceLink: resourceLink || "",
                             resourceTitle: resourceTitle || "",
-                            uid: user ? user.uid : null
+                            uid: sharedUser ? sharedUser.uid : null
                         });
 
-                        if (user) {
-                            await sharedDb.collection('userProfiles').doc(user.uid).set({
-                                uid: user.uid,
+                        if (sharedUser) {
+                            await sharedDb.collection('userProfiles').doc(sharedUser.uid).set({
+                                uid: sharedUser.uid,
                                 nickname: finalAuthorName,
                                 userNickname: finalAuthorName,
                                 name: finalAuthorName,
@@ -9394,15 +9396,15 @@ const firebaseConfig = {
 
                         setToastMessage("✅ 게시글이 안전하게 등록되었습니다.");
                         localStorage.removeItem('cls_post_draft'); // [New] 등록 성공 시 임시 저장 삭제
-                        logToSharedDb('POST_CREATE', `게시글 작성: ${title}`, user?.uid, finalAuthorName);
+                        logToSharedDb('POST_CREATE', `게시글 작성: ${title}`, sharedUser?.uid, finalAuthorName);
                     }
 
                     // [New] 글 작성자 사용자 명단 등록 (수정 시에도 갱신)
-                    if (user) {
-                        await sharedDb.collection('userStats').doc(user.uid).set({ 
+                    if (sharedUser) {
+                        await sharedDb.collection('userStats').doc(sharedUser.uid).set({ 
                             nickname: finalAuthorName, 
                             lastActive: new Date(), 
-                            uid: user.uid 
+                            uid: sharedUser.uid 
                         }, { merge: true });
                     }
                     setShowPostModal(false);
@@ -9413,7 +9415,8 @@ const firebaseConfig = {
             };
 
     const handleEditPost = (post) => {
-        const isMyPost = currentUser && post.uid === currentUser.uid;
+        const sharedUser = firebase.auth().currentUser;
+        const isMyPost = sharedUser && post.uid === sharedUser.uid;
         if (isAdmin || isMyPost) {
             setEditingPost(post);
             setShowPostModal(true);
@@ -9430,7 +9433,8 @@ const firebaseConfig = {
     };      
       
     const handleDeletePost = async (post) => {
-        const isMyPost = currentUser && post.uid === currentUser.uid;
+        const sharedUser = firebase.auth().currentUser;
+        const isMyPost = sharedUser && post.uid === sharedUser.uid;
         if (isAdmin) {
             if (!confirm("관리자 권한으로 이 글을 삭제하시겠습니까?")) return;
         } else if (isMyPost) {
@@ -9460,7 +9464,7 @@ const firebaseConfig = {
             await batch.commit();
 
             setToastMessage("🗑️ 게시글과 소속 댓글이 모두 삭제되었습니다.");
-            logToSharedDb('POST_DELETE', `게시글 삭제: ${post.title}`, currentUser?.uid, userNickname || 'Unknown');
+            logToSharedDb('POST_DELETE', `게시글 삭제: ${post.title}`, sharedUser?.uid, userNickname || 'Unknown');
             setCommunityPosts(prev => prev.filter(p => p.id !== post.id)); // 화면 즉시 반영
             
             // [Fix] 상세 보기 중인 글이 삭제되면 목록으로 돌아가기
@@ -9478,7 +9482,8 @@ const firebaseConfig = {
         const post = communityPosts.find(p => p.id === postId);
         if (!post) return;
 
-        const uid = currentUser?.uid || "anonymous";
+        const sharedUser = firebase.auth().currentUser;
+        const uid = sharedUser?.uid || "anonymous";
         const currentLikes = post.likes || [];
         
         // 좋아요 상태 판단 (서버 데이터 우선, 없으면 로컬 스토리지 확인)
@@ -9706,13 +9711,14 @@ const firebaseConfig = {
                     return;
                 }
 
-        const uid = currentUser?.uid || "anonymous";
+        const sharedUser = firebase.auth().currentUser;
+        const uid = sharedUser?.uid || "anonymous";
         
         // [New] 뱃지 시스템: 댓글 작성 시 통계 업데이트 및 뱃지 획득
         let currentBadge = '🌱';
-        const user = currentUser;
-        if (user) {
-            const statsRef = sharedDb.collection('userStats').doc(user.uid);
+        if (sharedUser) {
+            console.log("[SharedDB Access - addComment] using doc id:", sharedUser.uid);
+            const statsRef = sharedDb.collection('userStats').doc(sharedUser.uid);
             const doc = await statsRef.get();
             let pCount = 0;
             let cCount = 0;
@@ -9759,15 +9765,15 @@ const firebaseConfig = {
             }
             
             // [New] 댓글 작성자 사용자 명단 등록
-            if (user) {
-                await sharedDb.collection('userStats').doc(user.uid).set({ 
+            if (sharedUser) {
+                await sharedDb.collection('userStats').doc(sharedUser.uid).set({ 
                     nickname: userNickname, 
                     lastActive: new Date(), 
-                    uid: user.uid 
+                    uid: sharedUser.uid 
                 }, { merge: true });
 
-                await sharedDb.collection('userProfiles').doc(user.uid).set({
-                    uid: user.uid,
+                await sharedDb.collection('userProfiles').doc(sharedUser.uid).set({
+                    uid: sharedUser.uid,
                     name: userNickname,
                     nickname: userNickname,
                     lastActive: new Date(),
@@ -9818,7 +9824,8 @@ const firebaseConfig = {
 
     // ❌ 댓글 삭제 함수
     const handleDeleteComment = async (postId, commentId, commentUid) => {
-        const currentUid = currentUser?.uid;
+        const sharedUser = firebase.auth().currentUser;
+        const currentUid = sharedUser?.uid;
         if (!isAdmin && currentUid !== commentUid) {
             alert("본인이 작성한 댓글만 삭제할 수 있습니다.");
             return;
