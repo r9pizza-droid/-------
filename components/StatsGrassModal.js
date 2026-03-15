@@ -271,6 +271,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [hasNotionConfig, setHasNotionConfig] = useState(false);
     const [hasGoogleSheetConfig, setHasGoogleSheetConfig] = useState(false);
     const [saveProgress, setSaveProgress] = useState(0);
+    const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
     
     useEffect(() => {
         if (isOpen) {
@@ -376,6 +377,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         setStickerCount(newCount); 
         onSaveStickers(student.id, newCount); 
         if(delta > 0) {
+            if (window.playAppSound) window.playAppSound(appConfig?.soundType || 'pop');
             setStickerEffect(true);
             setTimeout(() => setStickerEffect(false), 200);
             if (navigator.vibrate) navigator.vibrate(15);
@@ -1121,6 +1123,19 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     
     const handleCopyText = () => { navigator.clipboard.writeText(tempComment).then(() => { if(showToast) showToast("📋 내용이 클립보드에 안전하게 복사되었습니다."); }); };
 
+    const handlePhotoUploadWithState = async (e, id) => {
+        setIsUploadingPhoto(true);
+        try {
+            await onPhotoUpload(e, id);
+            if (showToast) showToast("사진이 업데이트되었습니다.");
+        } catch (err) {
+            console.error("사진 업로드 에러:", err);
+            if (showToast) showToast("사진 업로드 중 문제가 발생했습니다.");
+        } finally {
+            setIsUploadingPhoto(false);
+        }
+    };
+
     const grassHistory = useMemo(() => {
         const start = dayjs(grassStart);
         const end = dayjs(grassEnd);
@@ -1300,24 +1315,52 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 if (showStickerHistory) setShowStickerHistory(false);
                 if (showTaskCommentHistory) setShowTaskCommentHistory(false);
             }}>
+                <style>{`
+                    @keyframes wiggle-big {
+                        0%, 100% { transform: rotate(-8deg) scale(1.15); }
+                        50% { transform: rotate(8deg) scale(1.15); }
+                    }
+                    .animate-wiggle-big {
+                        animation: wiggle-big 1.2s ease-in-out infinite;
+                        display: inline-block;
+                    }
+                `}</style>
                 <div className="bg-white px-6 py-5 border-b border-slate-100 flex-shrink-0 z-10 flex items-center justify-between">
                     <div className="flex justify-between items-center flex-wrap gap-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center shadow-sm flex-shrink-0 relative group cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                            <div className="w-16 h-16 rounded-full bg-indigo-50/50 border-2 border-white ring-1 ring-slate-100 overflow-hidden flex items-center justify-center shadow-md flex-shrink-0 relative group cursor-pointer transition-all hover:shadow-lg" onClick={(e) => e.stopPropagation()}>
                                 {student.photoUrl ? (
-                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
+                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                                 ) : (
-                                    <span className="text-3xl">{student.gender === 'M' ? '👦' : '👧'}</span>
+                                    <div className="flex flex-col items-center justify-center text-indigo-300">
+                                        <span className="text-3xl group-hover:scale-110 transition-transform">{student.gender === 'M' ? '👦' : '👧'}</span>
+                                    </div>
                                 )}
-                                <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                    <span className="text-white text-[10px] font-bold">변경</span>
-                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhotoUpload(e, student.id)} />
+                                <label className={`absolute inset-0 flex flex-col items-center justify-center bg-slate-900/50 transition-all duration-300 cursor-pointer backdrop-blur-[1px] ${isUploadingPhoto ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                    {isUploadingPhoto ? (
+                                        <Icon d={PATHS.spinner} size={20} className="text-white animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Icon d={PATHS.upload} size={16} className="text-white mb-0.5 transform -translate-y-2 group-hover:translate-y-0 transition-transform duration-300" />
+                                            <span className="text-white text-[10px] font-bold tracking-wide transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">사진 변경</span>
+                                        </>
+                                    )}
+                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUploadWithState(e, student.id)} disabled={isUploadingPhoto} />
                                 </label>
                             </div>
                             <div>
                                 <div className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                                     {student.name}
                                     <span className="text-sm font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{student.order}번</span>
+                                    {taskComments.length > 0 && (
+                                        <span 
+                                            className="animate-wiggle-big drop-shadow-sm cursor-pointer ml-1" 
+                                            title="작성된 과제 메모가 있습니다" 
+                                            onClick={(e) => { e.stopPropagation(); setShowTaskCommentHistory(true); }}
+                                        >
+                                            📮
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="text-sm font-bold text-indigo-500 mt-1 flex items-center gap-2 flex-wrap">
                                     <span>Level {level}</span>
@@ -1350,8 +1393,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <div className="text-center text-slate-400 text-xs py-8">
-                                                            작성된 과제 메모가 없습니다.
+                                                        <div className="flex flex-col items-center justify-center py-8 px-4 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                                            <div className="text-2xl mb-2 opacity-40">📝</div>
+                                                            <h4 className="text-xs font-bold text-slate-600 mb-1">작성된 과제 메모가 없습니다</h4>
+                                                            <p className="text-[10px] text-slate-400">체크리스트의 연필 아이콘을 눌러 메모를 남겨보세요.</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1404,7 +1449,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     })}
                                 </div>
                             ) : (
-                                <div className="text-center text-slate-400 text-sm py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">미흡한 과목이 없습니다! 🎉</div>
+                                <div className="flex flex-col items-center justify-center py-8 px-4 text-center bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200 mt-2">
+                                    <div className="text-3xl mb-2 opacity-50">🎉</div>
+                                    <h4 className="text-sm font-bold text-slate-700 mb-1">미흡한 과목이 없습니다</h4>
+                                    <p className="text-xs text-slate-500">모든 과목을 성실하게 잘 수행하고 있어요!</p>
+                                </div>
                             )}
                         </div>
 
@@ -1543,7 +1592,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                         </div>
                                                     </div>
                                                 )) : (
-                                                    <div className="text-center text-slate-400 py-4 text-[10px]">기록이 없습니다.</div>
+                                                    <div className="flex flex-col items-center justify-center py-6 px-4 text-center bg-slate-50/50 rounded-lg border border-dashed border-slate-200 mt-2">
+                                                        <span className="text-xl mb-1 opacity-40">📋</span>
+                                                        <span className="text-[10px] font-bold text-slate-500">과제 제출 기록이 없습니다</span>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -1621,7 +1673,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                     </div>
                                                 ))}
                                                 {combinedNotes.filter(n => n.content && (n.content.includes('칭찬') || n.content.includes('스티커') || n.content.includes('상점'))).length === 0 && (
-                                                    <div className="text-center text-slate-400 text-xs py-2">칭찬 기록이 없습니다.</div>
+                                                    <div className="flex flex-col items-center justify-center py-6 px-2 text-center">
+                                                        <div className="text-2xl mb-2 opacity-40">🌟</div>
+                                                        <p className="text-xs font-bold text-slate-500">최근 칭찬 기록이 없습니다</p>
+                                                    </div>
                                                 )}
                                             </div>
                                             <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1.5 w-3 h-3 bg-white border-t border-l border-slate-100 transform rotate-45"></div>
@@ -1970,9 +2025,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         })}
                                     </div>
                                 ) : (
-                                    <div className="h-32 flex flex-col items-center justify-center text-slate-400 text-sm gap-3 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
-                                        <Icon d={PATHS.document} size={24} className="opacity-30" />
-                                        <span>아직 기록이 없습니다.</span>
+                                    <div className="h-32 flex flex-col items-center justify-center py-8 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
+                                        <div className="text-3xl mb-2 opacity-40">📂</div>
+                                        <h4 className="text-sm font-bold text-slate-600 mb-1">아직 기록이 없습니다</h4>
+                                        <p className="text-xs text-slate-400">관찰 및 칭찬 내용을 입력하여 첫 기록을 남겨보세요.</p>
                                     </div>
                                 )}
                                 {hasMore && (
@@ -2227,8 +2283,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
                         <div className="bg-slate-50 rounded-3xl p-8 mb-10 border border-slate-100 flex items-center justify-between shadow-sm">
                             <div className="flex items-center gap-6">
-                                <div className="w-24 h-24 rounded-full bg-white border-4 border-indigo-100 flex items-center justify-center text-5xl shadow-sm overflow-hidden">
-                                    {student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : (student.gender === 'M' ? '👦' : '👧')}
+                                <div className="w-24 h-24 rounded-full bg-indigo-50/50 border-4 border-white ring-2 ring-indigo-100 flex items-center justify-center text-5xl shadow-md overflow-hidden relative">
+                                    {student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : <span className="drop-shadow-sm group-hover:scale-105 transition-transform">{student.gender === 'M' ? '👦' : '👧'}</span>}
                                 </div>
                                 <div>
                                     <div className="flex items-baseline gap-2 mb-2">

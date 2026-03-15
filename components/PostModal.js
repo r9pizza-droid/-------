@@ -391,16 +391,17 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     {imageUrls.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mb-2">
                             {imageUrls.map((url, idx) => (
-                                <div key={idx} className="relative aspect-square bg-slate-50 rounded-xl border border-slate-200 overflow-hidden group/img animate-fade-in" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
-                                    <img src={url} alt={`첨부 ${idx + 1}`} className="w-full h-full object-cover" />
-                                    <button onClick={() => setImageUrls(prev => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1.5 hover:bg-rose-500 transition-colors shadow-sm"><Icon d={PATHS.x} size={12}/></button>
+                                <div key={idx} className="relative aspect-square bg-slate-50 rounded-xl border border-slate-200 overflow-hidden group/img animate-fade-in shadow-sm hover:shadow-md transition-shadow" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
+                                    <img src={url} alt={`첨부 ${idx + 1}`} className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors duration-300"></div>
+                                    <button onClick={() => setImageUrls(prev => prev.filter((_, i) => i !== idx))} className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1.5 opacity-0 group-hover/img:opacity-100 hover:bg-rose-500 transition-all duration-300 shadow-sm transform scale-90 group-hover/img:scale-100" title="사진 삭제"><Icon d={PATHS.x} size={12}/></button>
                                 </div>
                             ))}
                         </div>
                     )}
                     <div className="flex items-center gap-2">
                         <label 
-                            className={`flex-1 py-6 border-2 border-slate-200 border-dashed rounded-xl text-sm font-bold flex flex-col items-center justify-center gap-3 transition-all duration-300 ${isUploading ? 'bg-indigo-50 border-indigo-300 text-indigo-600 shadow-inner cursor-wait' : 'border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-indigo-300 hover:text-indigo-500 cursor-pointer'}`}
+                            className={`flex-1 py-8 border-2 border-dashed rounded-2xl text-sm font-bold flex flex-col items-center justify-center gap-3 transition-all duration-300 relative overflow-hidden ${isUploading ? 'bg-indigo-50 border-indigo-300 text-indigo-600 cursor-wait' : 'bg-slate-50/50 border-slate-300 text-slate-500 hover:bg-indigo-50/50 hover:border-indigo-400 hover:text-indigo-600 cursor-pointer'}`}
                             onDragOver={(e) => e.preventDefault()}
                             onDrop={(e) => {
                                 e.preventDefault();
@@ -409,8 +410,16 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                                 }
                             }}
                         >
-                            {isUploading ? <Icon d={PATHS.spinner} size={28} className="animate-spin" /> : <Icon d={PATHS.upload} size={28} />}
-                            <span className="mt-1">{isUploading ? `사진을 안전하게 업로드하는 중입니다... ${uploadProgress}%` : "여기를 클릭하거나 사진을 드래그해서 추가하세요"}</span>
+                            {isUploading && (
+                                <div className="absolute left-0 bottom-0 h-1.5 bg-indigo-500 transition-all duration-300 ease-out" style={{ width: `${uploadProgress}%` }}></div>
+                            )}
+                            <div className={`p-3 rounded-full transition-colors duration-300 ${isUploading ? 'bg-indigo-100' : 'bg-white shadow-sm'}`}>
+                                {isUploading ? <Icon d={PATHS.spinner} size={24} className="animate-spin text-indigo-600" /> : <Icon d={PATHS.image} size={24} className="text-slate-400 group-hover:text-indigo-500" />}
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <span className="text-sm">{isUploading ? `안전하게 업로드 중입니다... ${uploadProgress}%` : "여기를 클릭하거나 사진을 드래그하세요"}</span>
+                                {!isUploading && <span className="text-[10px] text-slate-400 font-medium mt-1">최대 2MB (자동 압축 지원)</span>}
+                            </div>
                             <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} disabled={isUploading} />
                         </label>
                     </div>
