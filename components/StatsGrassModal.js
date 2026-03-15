@@ -1352,15 +1352,6 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 <div className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                                     {student.name}
                                     <span className="text-sm font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{student.order}번</span>
-                                    {taskComments.length > 0 && (
-                                        <span 
-                                            className="animate-wiggle-big drop-shadow-sm cursor-pointer ml-1" 
-                                            title="작성된 과제 메모가 있습니다" 
-                                            onClick={(e) => { e.stopPropagation(); setShowTaskCommentHistory(true); }}
-                                        >
-                                            📮
-                                        </span>
-                                    )}
                                 </div>
                                 <div className="text-sm font-bold text-indigo-500 mt-1 flex items-center gap-2 flex-wrap">
                                     <span>Level {level}</span>
