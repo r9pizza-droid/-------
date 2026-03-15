@@ -8339,6 +8339,49 @@ const firebaseConfig = {
                 } finally { setIsLoadingStats(false); }
             };
 
+            const handleSendGlobalNotice = async () => {
+                if (!sharedDb) return;
+                if (userList.length === 0) {
+                    alert("사용자 목록이 아직 로딩되지 않았습니다. 잠시 후 다시 시도해주세요.");
+                    return;
+                }
+                const message = prompt(`총 ${userList.length}명의 사용자에게 보낼 공지 메시지를 입력하세요:\n(예: "이번 주 기능 업데이트가 완료되었습니다!")`);
+                if (!message || message.trim() === "") return;
+                if (!confirm(`다음 메시지를 전체 발송하시겠습니까?\n\n"${message}"`)) return;
+
+                setIsLoadingStats(true);
+                try {
+                    const batchSize = 450;
+                    let batches = [];
+                    let currentBatch = sharedDb.batch();
+                    let operationCount = 0;
+
+                    userList.forEach(user => {
+                        if (user.uid) {
+                            const notiRef = sharedDb.collection('notifications').doc();
+                            currentBatch.set(notiRef, {
+                                targetUid: user.uid,
+                                type: 'notice',
+                                senderName: '👑 시스템 공지',
+                                message: message,
+                                isRead: false,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            operationCount++;
+                            if (operationCount >= batchSize) {
+                                batches.push(currentBatch);
+                                currentBatch = sharedDb.batch();
+                                operationCount = 0;
+                            }
+                        }
+                    });
+                    if (operationCount > 0) batches.push(currentBatch);
+                    await Promise.all(batches.map(b => b.commit()));
+                    setToastMessage("전체 공지가 성공적으로 발송되었습니다.");
+                } catch (e) { console.error(e); setToastMessage("공지 발송 실패: " + e.message); }
+                finally { setIsLoadingStats(false); }
+            };
+
             const [editingPost, setEditingPost] = useState(null);
             const [commentAuthor, setCommentAuthor] = useState(() => localStorage.getItem('community_authorName') || "");
             const [commentContent, setCommentContent] = useState("");
@@ -12904,11 +12947,18 @@ useEffect(() => {
                                         <div className="flex items-start gap-2">
                                             <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${!noti.isRead ? 'bg-rose-500' : 'bg-slate-300'}`}></div>
                                             <div className="flex-1 pr-4">
-                                                <p className="text-xs text-slate-700 leading-snug">
-                                                    <span className="font-bold">{noti.senderName}</span>님이 
-                                                    <span className="font-bold text-indigo-600"> '{noti.postTitle}'</span>에 
-                                                    {noti.type === 'like' ? ' 좋아요를 눌렀습니다. ❤️' : ' 댓글을 남겼습니다. 💬'}
-                                                </p>
+                                                {noti.type === 'like' || noti.type === 'comment' ? (
+                                                    <p className="text-xs text-slate-700 leading-snug">
+                                                        <span className="font-bold">{noti.senderName}</span>님이 
+                                                        <span className="font-bold text-indigo-600"> '{noti.postTitle}'</span>에 
+                                                        {noti.type === 'like' ? ' 좋아요를 눌렀습니다. ❤️' : ' 댓글을 남겼습니다. 💬'}
+                                                    </p>
+                                                ) : (
+                                                    <div className="text-xs text-slate-700 leading-snug">
+                                                        <span className="font-bold text-indigo-600">{noti.senderName}</span>
+                                                        <p className="mt-0.5 whitespace-pre-wrap">{noti.message}</p>
+                                                    </div>
+                                                )}
                                                 <span className="text-[10px] text-slate-400 mt-1 block">{dayjs(noti.createdAt).format('MM.DD HH:mm')}</span>
                                             </div>
                                         </div>
@@ -15043,6 +15093,20 @@ useEffect(() => {
                                                         <span className="text-orange-800 font-bold text-xs sm:text-sm block mb-1 whitespace-nowrap">🔔 오늘 알림</span>
                                                         <span className="text-lg sm:text-2xl font-black text-orange-600">{adminStats?.notis || 0}</span>
                                                     </div>
+                                                </div>
+
+                                                {/* [New] 전체 공지 발송 섹션 */}
+                                                <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl shrink-0">📢</div>
+                                                        <div>
+                                                            <h4 className="font-bold text-indigo-800 text-sm">전체 사용자 공지 발송</h4>
+                                                            <p className="text-[10px] text-indigo-600 mt-0.5">모든 사용자({userList.length}명)의 종 모양 알림함으로 즉시 메시지를 보냅니다.</p>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={handleSendGlobalNotice} disabled={isLoadingStats} className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-md transition-colors active:scale-95 whitespace-nowrap">
+                                                        공지 발송하기
+                                                    </button>
                                                 </div>
 
                                                 {/* [New] 전체 사용자 관리 섹션 (테이블) */}
