@@ -8182,16 +8182,20 @@ const firebaseConfig = {
 
             // [New] 관리자용 전체 사용자 목록 실시간 조회
             useEffect(() => {
+                if (!isAdmin) return;
+                if (mode !== 'community') return;
+                if (!sharedDb) return;
+
                 const sharedUser = firebase.auth().currentUser;
-                if (isAdmin && mode === 'community' && sharedDb && sharedUser && sharedUser.uid === ADMIN_UID) {
-                    const unsubscribe = sharedDb.collection('userProfiles').orderBy('lastLogin', 'desc').onSnapshot(snapshot => {
-                        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        setAllUsers(users);
-                    }, error => {
-                        console.error("관리자 사용자 목록 실시간 구독 실패:", error);
-                    });
-                    return () => unsubscribe();
-                }
+                if (!sharedUser || sharedUser.uid !== ADMIN_UID) return;
+
+                const unsubscribe = sharedDb.collection('userProfiles').orderBy('lastLogin', 'desc').onSnapshot(snapshot => {
+                    const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setAllUsers(users);
+                }, error => {
+                    console.error("관리자 사용자 목록 실시간 구독 실패:", error);
+                });
+                return () => unsubscribe();
             }, [isAdmin, mode, sharedDb]);
 
             // [New] 게시판용 프로필 맵 상태 선언 (최적화 로직은 하단 선언부 참고)
@@ -8211,13 +8215,14 @@ const firebaseConfig = {
                 console.log("[fetchUserList] sharedApp UID:", sharedUser?.uid);
                 console.log("[fetchUserList] DB in use:", sharedDb ? "sharedDb" : "None");
 
+                if (!sharedDb) return;
+
                 if (!sharedUser || sharedUser.uid !== ADMIN_UID) {
-                    console.error("공용 DB 관리자 인증이 완료되지 않았습니다");
+                    console.error("공용 DB 관리자 인증이 완료되지 않았습니다.");
                     setToastMessage("공용 DB 관리자 인증이 완료되지 않았습니다. 다시 로그인 후 시도해주세요.");
                     return;
                 }
 
-                if (!sharedDb) return;
                 setIsLoadingUsers(true);
                 try {
                     const [profilesSnap, statsSnap, postsSnap, commentsSnap] = await Promise.all([
