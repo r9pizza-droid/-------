@@ -12658,13 +12658,13 @@ useEffect(() => {
 
             const handleLoadAllData = async () => {
                 if (isLocalMode) {
-                    setToastMessage("로컬 모드에서는 이미 모든 데이터가 로드되어 있습니다.");
+                    setToastMessage("현재 기기에 저장된 모든 기록을 불러왔습니다.");
                     return;
                 }
                 if (!db || !appId) return;
 
                 try {
-                    setToastMessage(`클라우드(${appId})에서 데이터를 동기화 중...`);
+                    setToastMessage("클라우드에서 과거 데이터를 안전하게 불러오는 중입니다... ⏳");
                     
                     // 1. 학생 데이터
                     const studentSnapshot = await db.collection('classes').doc(appId).collection('studentData').get();
@@ -12720,10 +12720,10 @@ useEffect(() => {
                     const hydratedGroups = hydrateGroups({ ...groupsByDate, ...newGroups }, updatedStudents);
                     setGroupsByDate(hydratedGroups);
                     
-                    setToastMessage(`동기화 완료! (기록: ${Object.keys(newRecords).length}건, 모둠: ${Object.keys(newGroups).length}건)`);
+                    setToastMessage(`✅ 과거 데이터를 성공적으로 불러왔습니다! (기록 ${Object.keys(newRecords).length}건, 모둠 ${Object.keys(newGroups).length}건)`);
                 } catch (e) {
                     console.error(e);
-                    setToastMessage(`데이터 로드 실패(${appId}): ` + e.message);
+                    setToastMessage("❌ 데이터를 불러오는 데 실패했습니다: " + e.message);
                 }
             };
 
