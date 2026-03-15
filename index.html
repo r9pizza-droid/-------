@@ -10917,10 +10917,12 @@ const firebaseConfig = {
 
     React.useEffect(() => {
         let unsubStats, unsubNoti, unsubArtifacts, unsubSettings;
+        let unsubDefaultAuth;
     
     // [Fix] myClassApp이 존재하면 해당 앱의 Auth를 사용, 아니면 Default(shared) 사용
     const userApp = firebase.apps.find(app => app.name === 'myClassApp');
     const authInstance = userApp ? userApp.auth() : firebase.auth();
+    const defaultAuth = firebase.auth();
 
     const unsubscribeAuth = authInstance.onAuthStateChanged(async (user) => {
         setCurrentUser(user);
@@ -10929,33 +10931,47 @@ const firebaseConfig = {
         if (unsubNoti) unsubNoti();
         if (unsubArtifacts) unsubArtifacts();
         if (unsubSettings) unsubSettings();
+        if (unsubDefaultAuth) unsubDefaultAuth();
+        
         if (user) {
+            if (!user.uid) return;
             if (sharedDb) {
-                unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
-                    if (doc.exists) setCurrentUserStats(doc.data());
-                    else setCurrentUserStats({ postCount: 0, commentCount: 0 });
-                });
-                try {
-                    const userDocRef = sharedDb.collection('userProfiles').doc(user.uid);
-                    const userDoc = await userDocRef.get();
+                // [New] sharedDb 인증이 완료된 후에 데이터를 불러오도록 대기
+                unsubDefaultAuth = defaultAuth.onAuthStateChanged(async (sharedUser) => {
+                    if (!sharedUser || sharedUser.uid !== user.uid) return;
                     
-                    if (userDoc.exists && userDoc.data().userNickname) {
-                        setCurrentUserProfile(userDoc.data());
-                        await userDocRef.set({
-                            email: user.email || "",
-                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
-                        logToSharedDb('LOGIN', '사용자 접속', user.uid, userDoc.data().userNickname);
-                    } // 프로필이 없으면, 게시판 탭에 진입할 때 설정 모달을 띄웁니다.
-                } catch (e) {
-                    console.error("프로필 확인 실패:", e);
-                }
-                isNotiFirstLoad.current = true;
-                unsubNoti = sharedDb.collection('notifications')
-                    .where('targetUid', '==', user.uid)
-                    .orderBy('createdAt', 'desc')
-                    .limit(50)
-                    .onSnapshot(snapshot => {
+                    console.log("=== [Auth Status Check] ===");
+                    console.log("myClassApp Auth User:", user.uid, user.email);
+                    console.log("shared/default Auth User:", sharedUser.uid, sharedUser.email);
+                    console.log("[Data Load] sharedDb 읽기 시작 (인증 완료)");
+
+                    if (unsubStats) unsubStats();
+                    unsubStats = sharedDb.collection('userStats').doc(sharedUser.uid).onSnapshot(doc => {
+                        if (doc.exists) setCurrentUserStats(doc.data());
+                        else setCurrentUserStats({ postCount: 0, commentCount: 0 });
+                    });
+                    try {
+                        const userDocRef = sharedDb.collection('userProfiles').doc(sharedUser.uid);
+                        const userDoc = await userDocRef.get();
+                        
+                        if (userDoc.exists && userDoc.data().userNickname) {
+                            setCurrentUserProfile(userDoc.data());
+                            await userDocRef.set({
+                                email: sharedUser.email || "",
+                                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+                            logToSharedDb('LOGIN', '사용자 접속', sharedUser.uid, userDoc.data().userNickname);
+                        } // 프로필이 없으면, 게시판 탭에 진입할 때 설정 모달을 띄웁니다.
+                    } catch (e) {
+                        console.error("프로필 확인 실패:", e);
+                    }
+                    if (unsubNoti) unsubNoti();
+                    isNotiFirstLoad.current = true;
+                    unsubNoti = sharedDb.collection('notifications')
+                        .where('targetUid', '==', sharedUser.uid)
+                        .orderBy('createdAt', 'desc')
+                        .limit(50)
+                        .onSnapshot(snapshot => {
                         const notis = snapshot.docs.map(doc => ({
                             id: doc.id,
                             ...doc.data(),
@@ -10979,6 +10995,7 @@ const firebaseConfig = {
                         }
                         isNotiFirstLoad.current = false;
                     }, err => console.error("알림 동기화 오류:", err));
+                });
             }
             if (firestore && config) {
                 let classId = "";
@@ -11087,6 +11104,7 @@ const firebaseConfig = {
         if (unsubNoti) unsubNoti();
         if (unsubArtifacts) unsubArtifacts();
         if (unsubSettings) unsubSettings();
+        if (unsubDefaultAuth) unsubDefaultAuth();
     };
     }, [sharedDb, firestore, config?.projectId, isLocalMode]); // [Fix] appConfig 의존성 제거 (Ref 사용)
 
