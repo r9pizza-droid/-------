@@ -1086,7 +1086,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 setTempComment(tpl);
             }
         } catch (e) {
-            if(showToast) showToast("리포트 생성 실패: " + e.message);
+            if(showToast) showToast("❌ 리포트 생성에 실패했습니다: " + e.message);
         } finally { setIsGenerating(false); }
     };
     
@@ -1106,7 +1106,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
     const handleDownloadReport = async () => {
         setShowReportEdit(false); setAiComment(tempComment); setIsGenerating(true);
-        if(showToast) showToast("이미지를 생성하고 있습니다...");
+        if(showToast) showToast("⏳ 리포트를 고화질 이미지로 변환 중입니다...");
         await new Promise(resolve => setTimeout(resolve, 1000));
         try {
             const canvas = await window.html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
@@ -1115,11 +1115,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             link.href = canvas.toDataURL('image/png');
             link.click();
         } catch (e) {
-            if(showToast) showToast("이미지 저장 실패: " + e.message);
+            if(showToast) showToast("❌ 이미지 저장에 실패했습니다: " + e.message);
         } finally { setIsGenerating(false); }
     };
     
-    const handleCopyText = () => { navigator.clipboard.writeText(tempComment).then(() => { if(showToast) showToast("복사되었습니다."); }); };
+    const handleCopyText = () => { navigator.clipboard.writeText(tempComment).then(() => { if(showToast) showToast("📋 내용이 클립보드에 안전하게 복사되었습니다."); }); };
 
     const grassHistory = useMemo(() => {
         const start = dayjs(grassStart);
@@ -1254,6 +1254,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const handleApplyPhrase = (text) => {
         setTempComment(prev => prev + (prev ? "\n\n" : "") + text);
         setShowPhraseList(false);
+        showToast("✨ 상용구 내용이 추가되었습니다.");
     };
 
    const filteredNotes = combinedNotes.filter(n => {
@@ -1279,30 +1280,30 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const hasNext = students && currentIndex >= 0 && currentIndex < students.length - 1;
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-[1600] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={(e) => {
+        <div className="fixed inset-0 bg-slate-900/40 z-[1600] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={(e) => {
              if (showStickerHistory) setShowStickerHistory(false);
              else if (showTaskCommentHistory) setShowTaskCommentHistory(false);
              else onClose();
         }}>
             {hasPrev && (
-                <button onClick={(e) => { e.stopPropagation(); onSwitchStudent(students[currentIndex - 1].id); }} className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 w-10 h-10 md:w-14 md:h-14 flex items-center justify-center bg-white/20 hover:bg-white/50 text-white hover:text-slate-800 rounded-full backdrop-blur-md shadow-lg transition-all z-[1610] group">
+                <button onClick={(e) => { e.stopPropagation(); onSwitchStudent(students[currentIndex - 1].id); }} className="hidden sm:flex absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/80 hover:bg-white text-slate-700 rounded-full backdrop-blur-md shadow-lg transition-all z-[1610] group border border-white/20 hover:scale-110">
                     <Icon d={PATHS.left} size={28} className="group-hover:-translate-x-1 transition-transform" />
                 </button>
             )}
             {hasNext && (
-                <button onClick={(e) => { e.stopPropagation(); onSwitchStudent(students[currentIndex + 1].id); }} className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 w-10 h-10 md:w-14 md:h-14 flex items-center justify-center bg-white/20 hover:bg-white/50 text-white hover:text-slate-800 rounded-full backdrop-blur-md shadow-lg transition-all z-[1610] group">
+                <button onClick={(e) => { e.stopPropagation(); onSwitchStudent(students[currentIndex + 1].id); }} className="hidden sm:flex absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/80 hover:bg-white text-slate-700 rounded-full backdrop-blur-md shadow-lg transition-all z-[1610] group border border-white/20 hover:scale-110">
                     <Icon d={PATHS.right} size={28} className="group-hover:translate-x-1 transition-transform" />
                 </button>
             )}
-            <div ref={modalRef} className="bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl p-4 md:p-6 max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scroll flex flex-col" onClick={e => {
+            <div ref={modalRef} className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col overflow-hidden animate-modal-enter relative" onClick={e => {
                 e.stopPropagation();
                 if (showStickerHistory) setShowStickerHistory(false);
                 if (showTaskCommentHistory) setShowTaskCommentHistory(false);
             }}>
-                <div className="sticky top-0 bg-white/80 backdrop-blur-md rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 mb-6 flex-shrink-0 z-[100] transition-all shadow-indigo-100/20">
+                <div className="bg-white px-6 py-5 border-b border-slate-100 flex-shrink-0 z-10 flex items-center justify-between">
                     <div className="flex justify-between items-center flex-wrap gap-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm flex-shrink-0 relative group cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                            <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center shadow-sm flex-shrink-0 relative group cursor-pointer" onClick={(e) => e.stopPropagation()}>
                                 {student.photoUrl ? (
                                     <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
                                 ) : (
@@ -1314,7 +1315,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 </label>
                             </div>
                             <div>
-                                <div className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                                <div className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                                     {student.name}
                                     <span className="text-sm font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{student.order}번</span>
                                 </div>
@@ -1362,20 +1363,21 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         </div>
                         
                         <div className="flex items-center gap-2" id="export-hide-area">
-                            <button onClick={handleOpenCounselingAI} className="p-2 hover:bg-rose-50 text-rose-500 rounded-xl transition-colors border border-transparent hover:border-rose-100 flex items-center gap-1 text-sm font-bold"><Icon d={PATHS.heart} size={18}/> <span className="hidden md:inline">AI 상담소</span></button>
-                            <button onClick={handleOpenStudentRecordAI} className="p-2 hover:bg-blue-50 text-blue-500 rounded-xl transition-colors border border-transparent hover:border-blue-100 flex items-center gap-1 text-sm font-bold"><Icon d={PATHS.document} size={18}/> <span className="hidden md:inline">총평 초안</span></button>
-                            <button onClick={handlePrepareReport} disabled={isGenerating} className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors border border-transparent hover:border-indigo-100 flex items-center gap-1 text-sm font-bold"><Icon d={PATHS.edit} size={18}/> <span className="hidden md:inline">리포트 작성</span></button>
-                            <div className="w-px h-6 bg-slate-200 mx-1"></div>
-                            <button onClick={onClose} className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition-colors group"><Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" /></button>
+                            <button onClick={handleOpenCounselingAI} className="px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl transition-colors border border-rose-100 flex items-center gap-1.5 text-sm font-bold shadow-sm"><Icon d={PATHS.heart} size={16}/> <span className="hidden md:inline">AI 상담소</span></button>
+                            <button onClick={handleOpenStudentRecordAI} className="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-colors border border-blue-100 flex items-center gap-1.5 text-sm font-bold shadow-sm"><Icon d={PATHS.document} size={16}/> <span className="hidden md:inline">총평 초안</span></button>
+                            <button onClick={handlePrepareReport} disabled={isGenerating} className="px-3 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl transition-colors border border-transparent flex items-center gap-1.5 text-sm font-bold shadow-sm"><Icon d={PATHS.edit} size={16}/> <span className="hidden md:inline">리포트 작성</span></button>
+                            <div className="w-px h-8 bg-slate-200 mx-2"></div>
+                            <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all group"><Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" /></button>
                         </div>
                     </div>
                 </div>
 
-                <div className="lg:grid lg:grid-cols-12 lg:gap-6 space-y-6 lg:space-y-0 flex-1">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scroll p-6 bg-slate-50/30">
+                    <div className="lg:grid lg:grid-cols-12 lg:gap-8 space-y-6 lg:space-y-0">
                     
-                    <div className="lg:col-span-5 space-y-6 flex flex-col">
+                    <div className="lg:col-span-5 space-y-8 flex flex-col">
                         
-                        <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md">
+                        <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm hover:border-indigo-300 transition-all hover:shadow-md">
                             <h4 className="text-base font-bold text-slate-700 mb-4 flex items-center gap-2"><Icon d={PATHS.chart} size={18} className="text-indigo-500"/> 자주 놓치는 과목</h4>
                             {missedTags.length > 0 ? (
                                 <div className="space-y-3">
@@ -1406,7 +1408,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                             )}
                         </div>
 
-                        <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm cursor-pointer hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md active:scale-[0.98] group" onClick={() => setShowDetailStats(!showDetailStats)}>
+                        <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm cursor-pointer hover:border-indigo-300 transition-all hover:shadow-md active:scale-[0.99] group" onClick={() => setShowDetailStats(!showDetailStats)}>
                             <div className="flex justify-between items-center mb-4">
                                 <h4 className="text-base font-bold text-slate-700 flex items-center gap-2"><Icon d={PATHS.users} size={18} className="text-blue-500"/> 학급 평균 비교</h4>
                                 <div className="flex items-center gap-1 text-xs font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">
@@ -1585,9 +1587,9 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 
                     </div>
 
-                    <div className="lg:col-span-7 space-y-6 flex flex-col h-full">
+                    <div className="lg:col-span-7 space-y-8 flex flex-col h-full">
 
-                        <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md relative z-30">
+                        <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all hover:shadow-md relative z-30">
                             <div className="flex flex-col">
                                 <h4 className="text-base font-bold text-slate-700 mb-1 flex items-center gap-2"><span className="text-xl">🌟</span> 칭찬 스티커</h4>
                                 <span className="text-xs text-slate-500 font-medium">긍정적 강화와 보상</span>
@@ -1630,7 +1632,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                             </div>
                         </div>
 
-                        <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm flex flex-col flex-1 hover:border-indigo-300 transition-all hover:-translate-y-1 hover:shadow-md">
+                        <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm flex flex-col flex-1 hover:border-indigo-300 transition-all hover:shadow-md">
                             <div className="flex justify-between items-center mb-4">
                                 <h4 className="text-base font-bold text-slate-700 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 items-start">
                                     <span className="flex items-center gap-2 whitespace-nowrap"><Icon d={PATHS.document} size={18} className="text-green-500"/> 교사 관찰 및 칭찬 기록</span>
@@ -1721,7 +1723,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         <button onClick={(e) => handleIntegratedSave('칭찬', e)} className="relative flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-rose-500 hover:bg-rose-600 active:scale-95">
                                             칭찬하기 +1
                                         </button>
-                                        <button onClick={(e) => handleIntegratedSave('관찰', e)} className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 active:scale-95">
+                                        <button onClick={(e) => handleIntegratedSave('관찰', e)} className="flex-[2] py-3 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 active:scale-95">
                                             관찰 기록 저장
                                         </button>
                                     </div>
@@ -2210,6 +2212,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         </div>
 
                     </div>
+                    </div>
                 </div>
 
                 <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
@@ -2350,13 +2353,14 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 )}
 
                 {showReportEdit && (
-                    <div className="fixed inset-0 bg-black/50 z-[1700] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowReportEdit(false)}>
-                        <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-center mb-3">
+                    <div className="fixed inset-0 bg-slate-900/40 z-[1700] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowReportEdit(false)}>
+                        <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl p-0 overflow-hidden transform transition-all" onClick={e => e.stopPropagation()}>
+                            <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
                                 <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800"><Icon d={PATHS.edit} className="text-indigo-500" /> 리포트 작성</h3>
-                                <button onClick={() => setShowReportEdit(false)} className="p-2 hover:bg-slate-100 rounded-full"><Icon d={PATHS.x} /></button>
+                                <button onClick={() => setShowReportEdit(false)} className="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 rounded-full transition-colors"><Icon d={PATHS.x} /></button>
                             </div>
-                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4">
+                            <div className="p-6">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className="text-xs font-bold text-slate-500">분석 기간:</span>
                                     <input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)} className="text-xs p-1 border rounded bg-white"/>
@@ -2409,10 +2413,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <label className="text-[10px] font-bold text-slate-500">중점 분석 분야 (Focus)</label>
-                                        <select value={reportFocus} onChange={e=>setReportFocus(e.target.value)} className="text-xs p-1.5 border rounded bg-white outline-none"><option value="comprehensive">🏫 학교생활 종합</option><option value="study">📝 학습 태도</option><option value="relationship">🤝 교우 관계</option><option value="habit">⏰ 생활 습관</option></select>
+                                        <select value={reportFocus} onChange={e=>setReportFocus(e.target.value)} className="text-xs p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-500"><option value="comprehensive">🏫 학교생활 종합</option><option value="study">📝 학습 태도</option><option value="relationship">🤝 교우 관계</option><option value="habit">⏰ 생활 습관</option></select>
                                     </div>
                                 </div>
-                                <Btn onClick={generateReportContent} disabled={isGenerating} className={`w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 ${apiKey ? 'bg-violet-100 text-violet-700 hover:bg-violet-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
+                                <Btn onClick={generateReportContent} disabled={isGenerating} className={`w-full py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-1 shadow-sm transition-transform active:scale-95 ${apiKey ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
                                     {isGenerating ? '작성 중...' : apiKey ? '✨ AI로 리포트 새로 작성하기' : '🔄 기간 설정 적용하여 다시 쓰기'}
                                 </Btn>
                                 {!apiKey && <div className="text-[10px] text-slate-400 mt-1 text-center">* 설정에서 API 키를 입력하면 AI가 더 풍성한 내용을 작성해줍니다.</div>}
@@ -2446,10 +2450,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                     <button onClick={() => { let comment = `${student.name} 학생은 현재 레벨 ${level}로, 평균 수행률 ${avgRate}%를 기록하며 성실하게 학교 생활을 하고 있습니다. ${missedTags.length > 0 ? `특히 ${missedTags.map(t=>t[0]).join(', ')} 과목에 조금 더 관심을 기울인다면 더욱 성장할 수 있을 것입니다.` : "모든 과목에서 고르게 우수한 모습을 보이고 있습니다."} 가정에서도 많은 칭찬과 격려 부탁드립니다.`; setTempComment(comment); }} className="text-[10px] text-slate-400 hover:text-rose-500 underline">초기화</button>
                                 </div>
                                 <textarea className="w-full h-48 p-4 border border-slate-200 rounded-xl text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 resize-none custom-scroll" value={tempComment} onChange={(e) => setTempComment(e.target.value)} placeholder="리포트에 들어갈 내용을 작성해주세요." />
-                                <div className="flex gap-2">
-                                    <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap"><Icon d={PATHS.check} size={14} /> 초안 저장</Btn>
-                                    <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap"><Icon d={PATHS.copy} size={14} /> 텍스트 복사</Btn>
-                                    <Btn onClick={handleDownloadReport} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg flex items-center justify-center gap-1 text-xs sm:text-sm whitespace-nowrap"><Icon d={PATHS.download} size={14} /> 이미지 저장</Btn>
+                                <div className="flex gap-2 pt-4 mt-2 border-t border-slate-100">
+                                    <Btn onClick={handleSaveReportDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-sm whitespace-nowrap transition-colors"><Icon d={PATHS.check} size={16} /> 초안 저장</Btn>
+                                    <Btn onClick={handleCopyText} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 text-sm whitespace-nowrap transition-colors"><Icon d={PATHS.copy} size={16} /> 텍스트 복사</Btn>
+                                    <Btn onClick={handleDownloadReport} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-1 text-sm whitespace-nowrap transition-colors"><Icon d={PATHS.download} size={16} /> 이미지 저장</Btn>
+                                </div>
                                 </div>
                             </div>
                         </div>

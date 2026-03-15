@@ -302,19 +302,29 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         onSave(title, content, finalAuthorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle);
     };
 
+    const modalFooter = (
+        <div className="flex items-center justify-end gap-3 w-full">
+            <button onClick={onClose} className="px-6 py-3.5 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">취소</button>
+            {!initialPost && (
+                <Btn onClick={handleManualSaveDraft} className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm">임시 저장</Btn>
+            )}
+            <Btn onClick={handleSubmit} className="px-8 py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">{initialPost ? "수정 완료" : "게시글 등록"}</Btn>
+        </div>
+    );
+
     if (!isOpen) return null;
 
     return (
-        <BaseModal isOpen={isOpen} onClose={onClose} title={initialPost ? "게시글 수정" : "새 꿀팁 쓰기"} icon={PATHS.edit}>
-            <div className="space-y-4">
+        <BaseModal isOpen={isOpen} onClose={onClose} title={initialPost ? "게시글 수정" : "새 꿀팁 쓰기"} icon={PATHS.edit} footer={modalFooter}>
+            <div className="space-y-6">
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">카테고리</label>
+                    <label className="text-sm font-bold text-slate-700">카테고리</label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map((cat, idx) => (
                             <button
                                 key={cat}
                                 onClick={() => setCategory(cat)}
-                                className={`py-3 rounded-xl text-xs font-bold transition-all animate-fade-in ${category === cat ? 'bg-indigo-600 text-white shadow-md transform scale-105' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                className={`py-3 rounded-xl text-sm font-bold transition-all animate-fade-in ${category === cat ? 'bg-indigo-600 text-white shadow-md transform scale-[1.02] ring-2 ring-indigo-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
                                 style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}
                             >
                                 {cat}
@@ -322,26 +332,31 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                         ))}
                     </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">제목</label>
-                    <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="제목을 입력하세요" />
+                
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700">제목</label>
+                    <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow bg-slate-50 hover:bg-white focus:bg-white" placeholder="제목을 입력하세요" />
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">작성자</label>
-                    <input value={userNickname || authorName} readOnly className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none bg-slate-100 text-slate-500 font-bold cursor-not-allowed" placeholder="작성자 이름" />
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-slate-700">작성자</label>
+                        <input value={userNickname || authorName} readOnly className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none bg-slate-100 text-slate-500 font-bold cursor-not-allowed" placeholder="작성자 이름" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-slate-700">비밀번호</label>
+                        <input type="password" maxLength={4} value={postPassword} onChange={(e) => setPostPassword(e.target.value.replace(/[^0-9]/g, ''))} className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow bg-slate-50 hover:bg-white focus:bg-white" placeholder="비밀번호 4자리" required />
+                    </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">비밀번호</label>
-                    <input type="password" maxLength={4} value={postPassword} onChange={(e) => setPostPassword(e.target.value.replace(/[^0-9]/g, ''))} className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="비밀번호 4자리" required />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">내용</label>
+                
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700">내용</label>
                     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                         {canUseQuill ? (
                             <div id="quill-editor" className="text-sm" style={{ border: 'none', height: '400px' }}></div>
                         ) : (
                             <textarea 
-                                className="w-full h-96 p-4 text-sm outline-none resize-none" 
+                                className="w-full h-96 p-4 text-sm outline-none resize-none bg-slate-50 focus:bg-white transition-colors" 
                                 placeholder="내용을 입력하세요..." 
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
@@ -349,27 +364,30 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                         )}
                     </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">해시태그</label>
-                    <div className="flex flex-wrap gap-2 p-2 border border-slate-200 rounded-xl bg-white focus-within:border-indigo-500 transition-colors">
+                
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700">해시태그</label>
+                    <div className="flex flex-wrap gap-2 p-2.5 border border-slate-200 rounded-xl bg-slate-50 hover:bg-white focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
                         {tags.map((tag, index) => (
-                            <span key={index} className="bg-indigo-50 text-indigo-600 text-xs px-2 py-1 rounded-lg font-bold flex items-center gap-1">
+                            <span key={index} className="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
                                 #{tag}
-                                <button onClick={() => setTags(tags.filter((_, i) => i !== index))} className="hover:text-indigo-800"><Icon d={PATHS.x} size={10}/></button>
+                                <button onClick={() => setTags(tags.filter((_, i) => i !== index))} className="hover:text-indigo-900 bg-indigo-200/50 rounded-full p-0.5"><Icon d={PATHS.x} size={10}/></button>
                             </span>
                         ))}
                         <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} className="flex-1 min-w-[100px] text-sm outline-none bg-transparent" placeholder="태그 입력 (엔터)" />
                     </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">📎 학습 자료(파일/링크) 공유 (선택)</label>
+                
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Icon d={PATHS.link} size={16} className="text-slate-400"/> 학습 자료(파일/링크) 공유</label>
                     <div className="flex flex-col sm:flex-row gap-2">
-                        <input value={resourceTitle} onChange={(e) => setResourceTitle(e.target.value)} className="w-full sm:w-1/3 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="버튼 이름 (예: 학습지)" />
-                        <input value={resourceLink} onChange={(e) => setResourceLink(e.target.value)} className="w-full sm:flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500" placeholder="https://..." />
+                        <input value={resourceTitle} onChange={(e) => setResourceTitle(e.target.value)} className="w-full sm:w-1/3 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow bg-slate-50 hover:bg-white focus:bg-white" placeholder="버튼 이름 (예: 학습지)" />
+                        <input value={resourceLink} onChange={(e) => setResourceLink(e.target.value)} className="w-full sm:flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow bg-slate-50 hover:bg-white focus:bg-white" placeholder="https://..." />
                     </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">사진 첨부 (선택)</label>
+                
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Icon d={PATHS.image} size={16} className="text-slate-400"/> 사진 첨부</label>
                     {imageUrls.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mb-2">
                             {imageUrls.map((url, idx) => (
@@ -382,7 +400,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     )}
                     <div className="flex items-center gap-2">
                         <label 
-                            className={`flex-1 p-3 border border-slate-200 border-dashed rounded-xl text-xs text-slate-400 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex-1 py-6 border-2 border-slate-200 border-dashed rounded-xl text-sm font-bold flex flex-col items-center justify-center gap-3 transition-all duration-300 ${isUploading ? 'bg-indigo-50 border-indigo-300 text-indigo-600 shadow-inner cursor-wait' : 'border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-indigo-300 hover:text-indigo-500 cursor-pointer'}`}
                             onDragOver={(e) => e.preventDefault()}
                             onDrop={(e) => {
                                 e.preventDefault();
@@ -391,19 +409,12 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                                 }
                             }}
                         >
-                            {isUploading ? <Icon d={PATHS.spinner} className="animate-spin" /> : <Icon d={PATHS.upload} />}
-                            <span>{isUploading ? `업로드 중... ${uploadProgress}%` : "이미지 추가 (클릭, 드래그, 붙여넣기)"}</span>
+                            {isUploading ? <Icon d={PATHS.spinner} size={28} className="animate-spin" /> : <Icon d={PATHS.upload} size={28} />}
+                            <span className="mt-1">{isUploading ? `사진을 안전하게 업로드하는 중입니다... ${uploadProgress}%` : "여기를 클릭하거나 사진을 드래그해서 추가하세요"}</span>
                             <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} disabled={isUploading} />
                         </label>
                     </div>
                     {!imgbbApiKey && <p className="text-[10px] text-rose-500">* 사진을 올리려면 설정에서 ImgBB API 키를 등록해주세요.</p>}
-                </div>
-                <div className="flex gap-2 pt-2">
-                    <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">취소</Btn>
-                    {!initialPost && (
-                        <Btn onClick={handleManualSaveDraft} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50">임시 저장</Btn>
-                    )}
-                    <Btn onClick={handleSubmit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">{initialPost ? "수정" : "등록"}</Btn>
                 </div>
             </div>
         </BaseModal>

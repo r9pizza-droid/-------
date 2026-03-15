@@ -65,7 +65,7 @@
                         'bounce-in': 'bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                         'fade-in': 'fadeIn 0.2s ease-out',
                         'pop-up': 'popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                        'modal-enter': 'modalEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                        'modal-enter': 'modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                         'slide-in-right': 'slideInRight 0.3s ease-out',
                         'slide-in-left': 'slideInLeft 0.3s ease-out',
                         'expand-from': 'expandFrom 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -90,7 +90,7 @@
                         bounceIn: { '0%': { transform: 'scale(0.9)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         fadeIn: { 'from': { opacity: 0 }, 'to': { opacity: 1 } },
                         popUp: { 'from': { transform: 'scale(0.9)', opacity: 0 }, 'to': { transform: 'scale(1)', opacity: 1 } },
-                        modalEnter: { '0%': { opacity: 0, transform: 'scale(0.95) translateY(10px)' }, '100%': { opacity: 1, transform: 'scale(1) translateY(0)' } },
+                        modalEnter: { '0%': { opacity: 0, transform: 'translateY(20px) scale(0.98)' }, '100%': { opacity: 1, transform: 'translateY(0) scale(1)' } },
                         slideInRight: { '0%': { transform: 'translateX(20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
                         slideInLeft: { '0%': { transform: 'translateX(-20%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
                         slideInRight: { '0%': { transform: 'translateX(50%)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } },
@@ -435,7 +435,7 @@
             );
         };
         const Btn = ({ onClick, className, children, ...props }) => (
-            <button onClick={onClick} className={`transition-all duration-200 active:scale-95 active:opacity-80 flex items-center justify-center rounded hover:bg-notion-bg-hover ${className}`} {...props}>{children}</button>
+            <button onClick={onClick} className={`transition-all duration-200 ease-out active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center rounded hover:bg-notion-bg-hover ${className}`} {...props}>{children}</button>
         );
         const renderTextWithLinks = (text) => {
             if (!text || typeof text !== 'string') return text;
@@ -466,18 +466,18 @@
 
             if (!isOpen) return null;
             return (
-                <div className={`fixed inset-0 bg-black/40 ${zIndex} flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in`} onClick={onClose}>
+                <div className={`fixed inset-0 bg-slate-900/50 ${zIndex} flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in`} onClick={onClose}>
                     <div 
-                        className={`bg-white w-full ${maxWidth} rounded-xl shadow-xl border border-notion-border p-6 h-auto flex flex-col animate-modal-enter`} 
-                        style={{ maxHeight: 'calc(85vh / var(--ui-scale, 1))' }}
+                        className={`bg-white w-full ${maxWidth} rounded-2xl shadow-2xl border border-slate-100 flex flex-col animate-modal-enter relative overflow-hidden`} 
+                        style={{ maxHeight: 'calc(90vh / var(--ui-scale, 1))' }}
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="flex justify-between items-center mb-6 flex-shrink-0">
-                            <h3 className={`text-lg font-bold flex items-center gap-2 text-notion-text ${onTitleClick ? 'cursor-pointer select-none' : ''}`} onClick={onTitleClick}>{icon ? <Icon d={icon} className="text-notion-text" /> : null} {title}</h3>
-                            <button onClick={onClose} className="p-1 hover:bg-notion-bg-hover rounded text-notion-text-light group transition-colors"><Icon d={PATHS.x} className="transition-transform duration-300 group-hover:rotate-90" /></button>
+                        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 z-10">
+                            <h3 className={`text-xl font-extrabold flex items-center gap-2.5 text-slate-800 ${onTitleClick ? 'cursor-pointer select-none hover:text-indigo-600 transition-colors' : ''}`} onClick={onTitleClick}>{icon ? <Icon d={icon} size={24} className="text-indigo-500" /> : null} {title}</h3>
+                            <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all group"><Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" /></button>
                         </div>
-                        <div className="overflow-y-auto overflow-x-hidden custom-scroll flex-1 pr-2 space-y-6">{children}</div>
-                        {footer && <div className="pt-4 border-t mt-4 flex-shrink-0">{footer}</div>}
+                        <div className="p-6 overflow-y-auto overflow-x-hidden custom-scroll flex-1 space-y-6">{children}</div>
+                        {footer && <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30 shrink-0 z-10">{footer}</div>}
                     </div>
                 </div>
             );
@@ -559,14 +559,21 @@
 
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 bg-black/40 z-[2500] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 bg-slate-900/50 z-[2500] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in">
                     <div 
-                        className="bg-white rounded-xl shadow-xl border border-notion-border p-6 w-full max-w-sm animate-modal-enter relative"
+                        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 sm:p-8 w-full max-w-sm animate-modal-enter relative flex flex-col text-center"
                     >
-                        <button onClick={onCancel} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors group">
-                            <Icon d={PATHS.x} size={18} className="transition-transform duration-300 group-hover:rotate-90" />
-                        </button>
-                        <div className="flex items-center gap-2 mb-4 text-notion-text font-bold"><Icon d={PATHS.warning} /> 확인</div><p className="text-notion-text mb-6 text-sm whitespace-pre-wrap">{message}</p><div className="flex gap-3"><Btn onClick={onCancel} className="flex-1 py-2 bg-white text-slate-600 rounded border border-slate-200 font-medium hover:bg-slate-100 hover:border-slate-300 transition-colors">취소</Btn><Btn onClick={onConfirm} className="flex-1 py-2 bg-notion-red text-white rounded font-medium hover:bg-red-600 shadow-sm transition-colors">확인</Btn></div></div></div>
+                        <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-5 shadow-sm ring-4 ring-rose-50/50">
+                            <Icon d={PATHS.warning} size={32} />
+                        </div>
+                        <h3 className="text-xl font-extrabold text-slate-800 mb-3">확인</h3>
+                        <p className="text-slate-600 mb-8 text-sm whitespace-pre-wrap leading-relaxed px-2">{message}</p>
+                        <div className="flex justify-center gap-3 w-full">
+                            <Btn onClick={onCancel} className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm">취소</Btn>
+                            <Btn onClick={onConfirm} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md transition-all active:scale-95 text-sm">확인</Btn>
+                        </div>
+                    </div>
+                </div>
             );
         };
         const UpdateNotificationModal = ({ isOpen, onUpdate, onClose }) => {
@@ -583,9 +590,9 @@
             const changes = latestUpdate.list || latestUpdate.changes || [];
 
             return (
-                <div className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center animate-bounce-in relative overflow-hidden border border-white/50">
-                        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors z-20 group">
+                <div className="fixed inset-0 bg-slate-900/50 z-[3000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 sm:p-8 text-center animate-modal-enter relative overflow-hidden border border-slate-100">
+                        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors z-20 group">
                             <Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
@@ -2386,8 +2393,8 @@
                                         )}
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <Btn onClick={handleExtractId} className="flex-1 px-3 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100 whitespace-nowrap border border-indigo-100">ID 추출</Btn>
-                                        <Btn onClick={handlePasteDbId} className="flex-1 px-3 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
+                                            <Btn onClick={handleExtractId} className="flex-1 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100 whitespace-nowrap border border-indigo-100">ID 추출</Btn>
+                                            <Btn onClick={handlePasteDbId} className="flex-1 px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                                     </div>
                                 </div>
                                 <p className="text-[10px] text-slate-400">학생의 활동을 날짜별로 단순 기록하는 데이터베이스입니다.</p>
@@ -2416,8 +2423,8 @@
                                             )}
                                         </div>
                                         <div className="flex flex-col gap-1">
-                                            <Btn onClick={handleExtractId} className="flex-1 px-3 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100 whitespace-nowrap border border-indigo-100">ID 추출</Btn>
-                                            <Btn onClick={handlePasteDbId} className="flex-1 px-3 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
+                                            <Btn onClick={handleExtractId} className="flex-1 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100 whitespace-nowrap border border-indigo-100">ID 추출</Btn>
+                                            <Btn onClick={handlePasteDbId} className="flex-1 px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
                                         </div>
                                     </div>
                                 </div>
@@ -2450,10 +2457,10 @@
                             <span className="text-sm text-slate-700 font-bold">이 기기에 정보 저장하기</span>
                         </label>
                         <div className="flex gap-2 pt-2">
-                            <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3 rounded-xl font-bold transition-colors ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
+                            <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-colors ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
                                 {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : testSuccess ? '✅ 연동 성공!' : '🔌 연동 테스트'}
                             </Btn>
-                            <Btn onClick={handleSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-colors">설정 저장하기</Btn>
+                            <Btn onClick={handleSave} className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md transition-colors active:scale-95">설정 저장</Btn>
                         </div>
                     </div>
                 </BaseModal>
@@ -2620,10 +2627,10 @@
                             <span className="text-sm text-slate-700 font-bold">이 기기에 정보 저장하기</span>
                         </label>
                         <div className="flex gap-2 pt-2">
-                            <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3 rounded-xl font-bold transition-colors ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
+                            <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3.5 rounded-xl font-bold transition-colors text-sm ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
                                 {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : testSuccess ? '✅ 연동 성공!' : '🔌 연동 테스트'}
                             </Btn>
-                            <Btn onClick={handleSave} className="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-md transition-colors">설정 저장하기</Btn>
+                            <Btn onClick={handleSave} className="flex-1 py-3.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-md text-sm transition-colors active:scale-95">설정 저장</Btn>
                         </div>
 
                     </div>
@@ -2736,8 +2743,16 @@
             };
 
             if (!isOpen) return null;
+            
+            const modalFooter = (
+                <div className="flex justify-end gap-2 w-full">
+                    <Btn onClick={onClose} className="px-6 py-3.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors">취소</Btn>
+                    <Btn onClick={handleSaveAndClose} className="px-8 py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">저장 및 닫기</Btn>
+                </div>
+            );
+
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="🤖 AI 설정" icon={null}>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="AI 설정" icon={PATHS.bot} footer={modalFooter}>
                     <ApiKeyHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
                     <div className="space-y-4">
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm text-slate-600">
@@ -2768,8 +2783,8 @@
                                         </button>
                                     )}
                                 </div>
-                                <Btn onClick={handlePasteKey} className="px-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
-                                <Btn onClick={handleCheck} className="bg-indigo-600 text-white px-4 rounded-xl text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">{isChecking ? '확인 중...' : '확인'}</Btn>
+                                <Btn onClick={handlePasteKey} className="px-4 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 whitespace-nowrap">붙여넣기</Btn>
+                                <Btn onClick={handleCheck} className="bg-indigo-600 text-white px-5 py-3 rounded-xl text-xs font-bold hover:bg-indigo-700 whitespace-nowrap">{isChecking ? '확인 중...' : '확인'}</Btn>
                             </div>
                         </div>
                         
@@ -2781,7 +2796,6 @@
                                 <span className="text-sm text-slate-700 font-bold">이 기기에 키 저장하기</span>
                             </label>
                         </div>
-                        <Btn onClick={handleSaveAndClose} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 mt-4 shadow-md">저장 및 닫기</Btn>
                     </div>
                 </BaseModal>
             );
@@ -2795,10 +2809,10 @@
                         {content}
                     </div>
                     <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
-                        <Btn onClick={onDownload} className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center gap-2 shadow-md transition-transform active:scale-95">
+                        <Btn onClick={onClose} className="px-6 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm">닫기</Btn>
+                        <Btn onClick={onDownload} className="px-6 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center gap-2 shadow-md transition-transform active:scale-95 text-sm">
                             <Icon d={PATHS.download} size={18} /> 텍스트 파일로 다운로드
                         </Btn>
-                        <Btn onClick={onClose} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">닫기</Btn>
                     </div>
                 </BaseModal>
             );
@@ -2858,7 +2872,7 @@
                     {activeTab === 'picker' && (
                         <div className="flex flex-col items-center py-4 space-y-6">
                             <div className="text-4xl font-bold text-slate-800 h-20 flex items-center justify-center">{pickedStudent ? pickedStudent.name : <span className="text-slate-300 text-6xl">?</span>}</div>
-                            <Btn onClick={handlePick} disabled={isPicking} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg hover:bg-indigo-700 active:scale-95 transition-all">
+                            <Btn onClick={handlePick} disabled={isPicking} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-base shadow-md hover:bg-indigo-700 active:scale-95 transition-all">
                                 {isPicking ? '두구두구...' : '발표자 뽑기!'}
                             </Btn>
                         </div>
@@ -2873,8 +2887,8 @@
                                 ))}
                             </div>
                             <div className="flex gap-3 w-full">
-                                <Btn onClick={() => { setIsTimerRunning(false); setTimerTime(0); }} className="flex-1 py-3 bg-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-300">초기화</Btn>
-                                <Btn onClick={() => setIsTimerRunning(!isTimerRunning)} className={`flex-1 py-3 rounded-xl font-bold text-white shadow-md ${isTimerRunning ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'}`}>{isTimerRunning ? '일시정지' : '시작'}</Btn>
+                                <Btn onClick={() => { setIsTimerRunning(false); setTimerTime(0); }} className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 text-sm">초기화</Btn>
+                                <Btn onClick={() => setIsTimerRunning(!isTimerRunning)} className={`flex-1 py-3.5 rounded-xl font-bold text-white shadow-md text-sm active:scale-95 ${isTimerRunning ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'}`}>{isTimerRunning ? '일시정지' : '시작'}</Btn>
                             </div>
                         </div>
                     )}
@@ -2910,8 +2924,8 @@
                                 </ol>
                             </div>
                         ) : (
-                            <Btn onClick={onInstall} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2">
-                                <Icon d={PATHS.download} /> 지금 설치하기
+                            <Btn onClick={onInstall} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-md hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2 text-base">
+                                <Icon d={PATHS.download} size={20} /> 지금 설치하기
                             </Btn>
                         )}
                     </div>
@@ -2962,8 +2976,16 @@
             };
 
             if (!isOpen) return null;
+            
+            const modalFooter = (
+                <div className="flex justify-end gap-2 w-full">
+                    <Btn onClick={onClose} className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors">취소</Btn>
+                    <Btn onClick={handleCleanup} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"><Icon d={PATHS.trash} size={18} /> 정리 시작하기</Btn>
+                </div>
+            );
+
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="🧹 데이터 정리 도구" icon={PATHS.trash}>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="데이터 정리 도구" icon={PATHS.trash} footer={modalFooter}>
                     <div className="space-y-4">
                         <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 text-sm text-orange-800"><p className="font-bold mb-1">⚠️ 오래된 데이터 정리</p><p className="text-xs opacity-80">저장 용량 확보를 위해 오래된 기록을 삭제합니다.<br/>삭제 기준일 이전의 데이터가 모두 지워집니다.</p></div>
                         <div className="flex flex-col gap-2"><label className="text-xs font-bold text-slate-500">삭제 기준일 (이 날짜 이전 데이터 삭제)</label><input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:border-orange-500" /><div className="flex justify-end gap-2 mt-1"><button onClick={() => setTargetDate(dayjs().subtract(6, 'month').format('YYYY-MM-DD'))} className="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-600 hover:bg-slate-200">6개월 전</button><button onClick={() => setTargetDate(dayjs().subtract(1, 'year').format('YYYY-MM-DD'))} className="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-600 hover:bg-slate-200">1년 전</button></div></div>
@@ -2972,7 +2994,6 @@
                             <div className="flex justify-between text-sm"><span className="text-slate-600">삭제될 활동 기록</span><span className="font-bold text-rose-500">{cleanupStats.recordCount}건</span></div>
                             <div className="flex justify-between text-sm"><span className="text-slate-600">삭제될 과제 기록</span><span className="font-bold text-rose-500">{cleanupStats.taskCount}건</span></div>
                         </div>
-                        <Btn onClick={handleCleanup} className="w-full py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md flex items-center justify-center gap-2"><Icon d={PATHS.trash} /> 정리 시작하기</Btn>
                     </div>
                 </BaseModal>
             );
@@ -3036,8 +3057,8 @@
                         </div>
 
                         <div className="flex gap-2 mt-4">
-                            <Btn onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">취소</Btn>
-                            <Btn onClick={handleReset} className="flex-1 py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md">
+                            <Btn onClick={onClose} className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 text-sm transition-colors">취소</Btn>
+                            <Btn onClick={handleReset} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md text-sm transition-all active:scale-95">
                                 선택 항목 삭제
                             </Btn>
                         </div>
@@ -3094,9 +3115,9 @@
                             <p className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed">{prompt}</p>
                         </div>
                         <div className="flex justify-end gap-2">
-                            <Btn onClick={onClose} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">전송 취소</Btn>
-                            <Btn onClick={onConfirm} className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md flex items-center gap-2">
-                                <Icon d={PATHS.send} size={16} /> 전송하기
+                            <Btn onClick={onClose} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors">전송 취소</Btn>
+                            <Btn onClick={onConfirm} className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center gap-2 transition-all active:scale-95">
+                                <Icon d={PATHS.send} size={18} /> 전송하기
                             </Btn>
                         </div>
                     </div>
@@ -3270,10 +3291,10 @@
                         </label>
 
                         <div className="flex gap-2 pt-2">
-                            <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3 rounded-xl font-bold transition-colors ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
+                            <Btn onClick={handleTestConnection} disabled={isTesting} className={`flex-1 py-3.5 rounded-xl font-bold transition-colors text-sm ${testSuccess ? 'bg-green-500 text-white border border-green-500 hover:bg-green-600' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
                                 {isTesting ? <><Icon d={PATHS.spinner} className="animate-spin mr-2" size={16}/>확인 중...</> : testSuccess ? '✅ 연동 성공!' : '🔌 연동 테스트'}
                             </Btn>
-                            <Btn onClick={handleSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-colors">설정 저장하기</Btn>
+                            <Btn onClick={handleSave} className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md transition-colors active:scale-95">설정 저장</Btn>
                         </div>
                     </div>
                 </BaseModal>
@@ -5622,8 +5643,8 @@
                                                 return (
                                                     <div key={idx} onClick={(e) => { e.stopPropagation(); toggleCheck(s.id, idx); }} className="flex flex-col p-1 rounded hover:bg-notion-bg-alt group/task transition-colors">
                                                         <div className="flex items-center gap-2">
-                                                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${taskDone ? 'bg-notion-blue border-notion-blue text-white' : 'border-notion-border bg-white group-hover/task:border-notion-text-light'}`}>
-                                                            {taskDone && <Icon d={PATHS.check} size={10} />}
+                                                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all duration-200 ease-out ${taskDone ? 'bg-notion-blue border-notion-blue text-white scale-110 shadow-sm' : 'border-notion-border bg-white group-hover/task:border-notion-text-light'}`}>
+                                                        {taskDone && <Icon d={PATHS.check} size={10} className="animate-bounce-in" />}
                                                         </div>
                                                         <span className={`text-xs truncate flex-1 ${taskDone ? 'text-notion-text-light line-through' : 'text-notion-text'}`}>
                                                             {typeof t === 'object' ? t.title : t}
@@ -5733,7 +5754,7 @@
                             <div key={s.id} onClick={() => toggleCheck(s.id)} onDoubleClick={(e) => { if(onLongPress) { e.preventDefault(); onLongPress(s.id); } }} className={`group relative flex flex-col items-center justify-center p-6 rounded-xl border transition-all duration-200 cursor-pointer hover:-translate-y-1 active:scale-95 ${isDone ? "bg-indigo-50/40 border-indigo-200 border-2 shadow-md" : "bg-white border-slate-200 shadow-sm hover:border-indigo-100 hover:shadow-md"}`}>
                                 <div className={`text-xl font-bold mb-1 ${isDone ? 'text-indigo-600' : 'text-slate-700'}`}>{s.name}</div>
                                 <div className="text-xs text-notion-text-light">{s.order}번</div>
-                                {isDone && <div className="absolute top-3 right-3 bg-indigo-500 text-white rounded-full p-1 shadow-sm"><Icon d={PATHS.check} size={14} strokeWidth={3} /></div>}
+                            {isDone && <div className="absolute top-3 right-3 bg-indigo-500 text-white rounded-full p-1 shadow-sm animate-bounce-in"><Icon d={PATHS.check} size={14} strokeWidth={3} /></div>}
                             </div>
                         );
                     })}
@@ -9695,7 +9716,7 @@ const firebaseConfig = {
                     const { outcome } = await deferredPrompt.userChoice;
                     if (outcome === 'accepted') { setDeferredPrompt(null); setShowInstallGuide(false); }
                 } else if (!isIOS) {
-                    setToastMessage("이미 설치되어 있거나 설치를 지원하지 않는 브라우저입니다.");
+                    setToastMessage("⚠️ 이미 설치되어 있거나 설치를 지원하지 않는 브라우저입니다.");
                 }
             };
 
@@ -10178,7 +10199,7 @@ const firebaseConfig = {
                     setToastMessage("모둠 편성 결과가 이미지로 저장되었습니다.");
                 } catch (e) { 
                     logSystemEvent(`모둠 편성 이미지 저장 실패: ${e.message}`, 'error');
-                    setToastMessage("이미지 저장 실패: " + e.message); 
+                    setToastMessage("❌ 이미지 저장에 실패했습니다: " + e.message); 
                 } 
                 finally { setIsGenerating(false); }
             };
@@ -10186,7 +10207,7 @@ const firebaseConfig = {
         const handleCopyAiReport = () => {
             if (!aiReason) return;
             navigator.clipboard.writeText(aiReason);
-            setToastMessage("리포트 내용이 복사되었습니다.");
+            setToastMessage("📋 리포트 내용이 클립보드에 복사되었습니다.");
         };
 
         const handleSaveAiReport = () => {
@@ -10197,7 +10218,7 @@ const firebaseConfig = {
             link.href = url;
             link.download = `AI_모둠편성_리포트_${dayjs().format('YYYYMMDD')}.txt`;
             link.click();
-            setToastMessage("리포트가 텍스트 파일로 저장되었습니다.");
+            setToastMessage("✅ 리포트가 텍스트 파일로 안전하게 저장되었습니다.");
         };
 
             const handleExportDrafts = () => {
@@ -10243,7 +10264,7 @@ const firebaseConfig = {
                 link.href = url;
                 link.download = `총평초안_일괄내보내기_${dayjs().format('YYYYMMDD')}.txt`;
                 link.click();
-                setToastMessage(`${count}명의 초안을 텍스트 파일로 저장했습니다.`);
+                setToastMessage(`✅ ${count}명의 초안을 텍스트 파일로 저장했습니다.`);
             };
 
             const handleSaveStickerWithNote = (studentId, count, note) => {
@@ -10251,7 +10272,7 @@ const firebaseConfig = {
                 setStudents(updatedStudents);
                 if (!isLocalMode) saveData('cls_students', updatedStudents);
                 if (!isLocalMode) saveStudentDataToFirestore(studentId, { counseling: note });
-                setToastMessage("칭찬 스티커 일지가 저장되었습니다.");
+                setToastMessage("✨ 칭찬 스티커 및 일지가 성공적으로 저장되었습니다.");
             };
 
             const handleSaveRecordDraft = (studentId, draftKey, draftText) => {
@@ -10264,10 +10285,10 @@ const firebaseConfig = {
                 });
                 setStudents(updatedStudents);
                 if (!isLocalMode) saveStudentDataToFirestore(studentId, { recordDrafts: updatedStudents.find(s=>s.id===studentId).recordDrafts });
-                setToastMessage("초안이 저장되었습니다.");
+                setToastMessage("📝 작성하신 초안이 저장되었습니다.");
             };
 
-            const exportData = useCallback(() => { const data = { version: appConfig.version, date: dayjs().format('YYYY-MM-DD HH:mm:ss'), students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig }; const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"}); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `Checklist_Backup_${dayjs().format('YYYYMMDD_HHmm')}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); setToastMessage("자동 백업이 완료되었습니다."); }, [students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig]);
+            const exportData = useCallback(() => { const data = { version: appConfig.version, date: dayjs().format('YYYY-MM-DD HH:mm:ss'), students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig }; const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"}); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `Checklist_Backup_${dayjs().format('YYYYMMDD_HHmm')}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); setToastMessage("✅ 자동 백업 파일이 다운로드되었습니다."); }, [students, records, groupsByDate, avoidancePairs, mustPairs, dailyTasks, weeklyTasks, tags, appConfig, groupNames, groupRoles, rolesList, roleDescriptions, seatAssignments, seatConfig]);
             
             useEffect(() => { const checkTime = () => { const isEnabled = localStorage.getItem('cls_auto_backup') === 'true'; if (!isEnabled) return; const now = dayjs(); const nowStr = now.format('HH:mm'); if (backupTimes.includes(nowStr) && lastBackupTime.current !== nowStr) { lastBackupTime.current = nowStr; exportData(); } }; const interval = setInterval(checkTime, 10000); return () => clearInterval(interval); }, [exportData, backupTimes]);
             
@@ -14093,17 +14114,17 @@ useEffect(() => {
                         <footer onClick={() => setShowUpdateNotes(true)} className="md:hidden flex items-start justify-center pt-3 pb-[calc(3.5rem+env(safe-area-inset-bottom)+0.01rem)] text-[10px] text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors bg-slate-50 border-t border-slate-200 -mx-4 mt-4">{CURRENT_VERSION} | spk </footer>
                     {/* 📛 [별칭 시스템] 별칭 등록 모달 */}
             {showNicknameModal && mode === 'community' && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-bounce-in border border-slate-100 relative">
-                        <button onClick={() => setShowNicknameModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors group">
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 sm:p-8 animate-modal-enter border border-slate-100 relative overflow-hidden">
+                        <button onClick={() => setShowNicknameModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors group">
                             <Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
-                        <div className="text-center mb-5">
-                            <div className="text-4xl mb-3">👋</div>
-                            <h3 className="text-lg font-bold text-slate-800">환영합니다!</h3>
+                        <div className="text-center mb-6 mt-2">
+                            <div className="text-5xl mb-4 animate-bounce-in">👋</div>
+                            <h3 className="text-2xl font-extrabold text-slate-800">환영합니다!</h3>
                             <p className="text-sm text-slate-600 mt-2 break-keep leading-relaxed">
                                 동료 교사 간의 원활한 소통을 위해<br/>
-                                <span className="font-bold text-indigo-600">별칭</span>을 입력해 주세요.
+                                <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">별칭</span>을 입력해 주세요.
                             </p>
                         </div>
                         <input 
@@ -14111,17 +14132,17 @@ useEffect(() => {
                             value={tempNickname} 
                             onChange={(e) => setTempNickname(e.target.value)}
                             placeholder="예: 평강" 
-                            className="w-full p-3 border border-slate-200 rounded-xl mb-4 text-center text-base font-bold text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                            className="w-full p-4 border border-slate-200 rounded-xl mb-6 text-center text-lg font-bold text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all shadow-sm bg-slate-50 focus:bg-white"
                             maxLength={10}
                         />
                         <button 
                             onClick={handleSaveNickname}
-                            className="w-full py-3.5 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition-colors active:scale-95"
+                            className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:bg-indigo-700 hover:-translate-y-0.5 transition-all active:scale-95 text-base"
                         >
                             시작하기
                         </button>
-                        <p className="text-[11px] text-slate-400 mt-4 text-center">
-                            ⚠️ 한 번 등록한 별칭은 변경할 수 없습니다.
+                        <p className="text-xs text-slate-400 mt-5 text-center font-medium flex items-center justify-center gap-1">
+                            <Icon d={PATHS.warning} size={14} /> 한 번 등록한 별칭은 변경할 수 없습니다.
                         </p>
                     </div>
                 </div>
@@ -14129,24 +14150,24 @@ useEffect(() => {
 
             {/* 최초 가입 (닉네임 설정) 모달 */}
             {needProfileSetup && currentUser && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm transform transition-all relative">
-                        <button onClick={() => setNeedProfileSetup(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors group">
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-sm animate-modal-enter relative overflow-hidden border border-slate-100">
+                        <button onClick={() => setNeedProfileSetup(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors group">
                             <Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
-                        <div className="text-center mb-6">
-                            <div className="text-5xl mb-3">👋</div>
-                            <h2 className="text-2xl font-bold text-slate-800">환영합니다!</h2>
-                            <p className="text-sm text-slate-500 mt-2">게시판에서 사용할 별칭(닉네임)을 정해주세요.<br/>(이후 관리자 승인 등에 사용됩니다)</p>
+                        <div className="text-center mb-6 mt-2">
+                            <div className="text-5xl mb-4 animate-bounce-in">👋</div>
+                            <h2 className="text-2xl font-extrabold text-slate-800">환영합니다!</h2>
+                            <p className="text-sm text-slate-600 mt-3 break-keep leading-relaxed">게시판에서 사용할 <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">별칭(닉네임)</span>을 정해주세요.<br/>(이후 관리자 승인 등에 사용됩니다)</p>
                         </div>
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             <div>
                                 <input 
                                     type="text" 
                                     value={tempNickname} 
                                     onChange={(e) => setTempNickname(e.target.value)}
-                                    placeholder="예: 은샘(별칭을 적어주세요)"
-                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-center font-medium"
+                                    placeholder="예: 은샘 (별칭을 적어주세요)"
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 outline-none text-center text-lg font-bold text-slate-700 transition-all shadow-sm"
                                     autoFocus
                                 />
                             </div>
@@ -14189,7 +14210,7 @@ useEffect(() => {
                                         alert("저장에 실패했습니다.");
                                     }
                                 }}
-                                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg"
+                                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-base hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-0.5 transition-all shadow-lg active:scale-95"
                             >
                                 시작하기
                             </button>
@@ -14246,31 +14267,31 @@ useEffect(() => {
                     <Lightbox isOpen={lightboxState.isOpen} onClose={() => setLightboxState(prev => ({ ...prev, isOpen: false }))} images={lightboxState.images} initialIndex={lightboxState.index} />
                     {/* 🌟 튜토리얼 모달창 */}
             {showTutorial && (
-                <div className="fixed inset-0 bg-black/60 z-[6000] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-pop-up origin-center flex flex-col">
+                <div className="fixed inset-0 bg-slate-900/50 z-[6000] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-md overflow-hidden animate-modal-enter flex flex-col relative">
                         {/* 상단 프로그레스 바 */}
-                        <div className="flex gap-1 p-4 bg-slate-50 border-b border-slate-100">
+                        <div className="flex gap-1 p-5 bg-white border-b border-slate-100 shrink-0 z-10">
                             {tutorialSlides.map((_, idx) => (
                                 <div key={idx} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${idx <= tutorialStep ? 'bg-indigo-500' : 'bg-slate-200'}`} />
                             ))}
                         </div>
                         
                         {/* 슬라이드 내용 */}
-                        <div className="p-8 text-center flex-1 flex flex-col justify-center min-h-[250px]">
+                        <div className="p-8 sm:p-10 text-center flex-1 flex flex-col justify-center min-h-[280px] bg-slate-50/30">
                             <div className="text-6xl mb-4 animate-bounce">{tutorialSlides[tutorialStep].emoji}</div>
-                            <h3 className="text-xl font-black text-slate-800 mb-3 break-keep">{tutorialSlides[tutorialStep].title}</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed break-keep">{tutorialSlides[tutorialStep].desc}</p>
+                            <h3 className="text-2xl font-extrabold text-slate-800 mb-4 break-keep">{tutorialSlides[tutorialStep].title}</h3>
+                            <p className="text-slate-600 text-base leading-relaxed break-keep px-2">{tutorialSlides[tutorialStep].desc}</p>
                         </div>
                         
                         {/* 하단 버튼 */}
-                        <div className="p-4 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                        <div className="p-5 bg-white flex items-center justify-between border-t border-slate-100 shrink-0 z-10">
                             <button 
                                 onClick={() => {
                                     setShowTutorial(false);
                                     localStorage.setItem('cls_last_tutorial_version', CURRENT_VERSION);
                                     setTutorialSeen(true);
                                 }} 
-                                className="text-slate-400 hover:text-slate-600 text-sm font-bold px-3 py-2"
+                                className="text-slate-400 hover:text-slate-600 text-sm font-bold px-4 py-2 hover:bg-slate-50 rounded-xl transition-colors"
                             >
                                 건너뛰기
                             </button>
@@ -14278,7 +14299,7 @@ useEffect(() => {
                                 {tutorialStep > 0 && (
                                     <button 
                                         onClick={() => setTutorialStep(prev => prev - 1)} 
-                                        className="px-4 py-2 rounded-xl bg-white text-slate-600 font-bold border border-slate-200 hover:bg-slate-50 shadow-sm"
+                                        className="px-6 py-3.5 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors text-sm"
                                     >
                                         이전
                                     </button>
@@ -14286,7 +14307,7 @@ useEffect(() => {
                                 {tutorialStep < tutorialSlides.length - 1 ? (
                                     <button 
                                         onClick={() => setTutorialStep(prev => prev + 1)} 
-                                        className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-md transition-colors"
+                                        className="px-8 py-3.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-md transition-colors text-sm active:scale-95"
                                     >
                                         다음
                                     </button>
@@ -14297,7 +14318,7 @@ useEffect(() => {
                                             localStorage.setItem('cls_last_tutorial_version', CURRENT_VERSION);
                                             setTutorialSeen(true);
                                         }} 
-                                        className="px-6 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold hover:from-indigo-700 hover:to-purple-700 shadow-md transition-all transform hover:scale-105"
+                                        className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold hover:from-indigo-700 hover:to-purple-700 shadow-lg transition-all active:scale-95 text-sm"
                                     >
                                         시작하기!
                                     </button>
@@ -14807,8 +14828,8 @@ useEffect(() => {
                                 이제 인터넷을 끊어도 됩니다.<br/>(새로고침 금지)
                             </div>
                         </div>
-                        <Btn onClick={() => setShowOfflineModal(false)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold mt-2">
-                            확인 ({autoCloseTimer}초 후 닫힘)
+                        <Btn onClick={() => setShowOfflineModal(false)} className="w-full py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-bold mt-2 shadow-md active:scale-95">
+                            확인 {autoCloseTimer > 0 && `(${autoCloseTimer}초 후 닫힘)`}
                         </Btn>
                     </BaseModal>
                     <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => { setShowUpdateNotes(false); localStorage.setItem('cls_last_version', CURRENT_VERSION); }} showToast={setToastMessage} notes={UPDATE_NOTES} />
@@ -15059,8 +15080,8 @@ useEffect(() => {
                                     </div>
                                     
                                     {/* --- 모달 푸터 (닫기 버튼) --- */}
-                                    <div className="p-4 bg-slate-50 border-t border-slate-100">
-                                        <button onClick={() => setShowAdminDashboard(false)} className="w-full py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors">
+                                    <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100">
+                                        <button onClick={() => setShowAdminDashboard(false)} className="w-full py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm">
                                             닫기
                                         </button>
                                     </div>
@@ -15151,13 +15172,13 @@ useEffect(() => {
             if (!isOpen) return null;
             return (
                 <BaseModal isOpen={isOpen} onClose={onClose} title="역할 선택 (중복 가능)" icon={PATHS.users} maxWidth="max-w-xs" footer={
-                    <Btn onClick={handleSave} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">저장하기</Btn>
+                    <Btn onClick={handleSave} className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md text-sm active:scale-95">저장하기</Btn>
                 }>
                     <div className="grid grid-cols-1 gap-2 max-h-[50vh] overflow-y-auto custom-scroll pr-1">
                         {roles.map((role, i) => {
                             const isSelected = selected.includes(role);
                             return (
-                                <button key={i} onClick={() => toggle(role)} className={`p-3 rounded-xl border text-sm font-bold transition-all flex justify-between items-center ${isSelected ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                <button key={i} onClick={() => toggle(role)} className={`p-3 rounded-xl border text-sm font-bold transition-all flex justify-between items-center active:scale-[0.98] ${isSelected ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                     <span>{role}</span>
                                     {isSelected && <Icon d={PATHS.check} size={16} />}
                                 </button>
@@ -15227,8 +15248,8 @@ useEffect(() => {
                 return (
                     <BaseModal isOpen={isOpen} onClose={() => setEditingRole(null)} title={`${editingRole} 설명 편집`} icon={PATHS.edit} footer={
                         <div className="flex gap-2">
-                            <Btn onClick={() => setEditingRole(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">취소</Btn>
-                            <Btn onClick={saveDesc} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">저장</Btn>
+                            <Btn onClick={() => setEditingRole(null)} className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm">취소</Btn>
+                            <Btn onClick={saveDesc} className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95 text-sm">저장</Btn>
                         </div>
                     }>
                         <div className="space-y-4">
@@ -15259,7 +15280,7 @@ useEffect(() => {
             }
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title="역할 목록 편집" icon={PATHS.edit} footer={<Btn onClick={() => onSave(tempRoles)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">저장하기</Btn>}>
+                <BaseModal isOpen={isOpen} onClose={onClose} title="역할 목록 편집" icon={PATHS.edit} footer={<Btn onClick={() => onSave(tempRoles)} className="w-full py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">저장하기</Btn>}>
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-4">
                         <div className="flex gap-2">
                             <input 
@@ -15269,7 +15290,7 @@ useEffect(() => {
                                 className="flex-1 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" 
                                 placeholder="새로운 역할 이름 입력 (예: 기록이)" 
                             />
-                            <Btn onClick={handleAdd} className="bg-indigo-600 text-white px-5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition-all active:scale-95 whitespace-nowrap">추가</Btn>
+                            <Btn onClick={handleAdd} className="bg-indigo-600 text-white px-6 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md transition-all active:scale-95 whitespace-nowrap">추가</Btn>
                         </div>
                     </div>
                     
