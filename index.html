@@ -8466,8 +8466,15 @@ const firebaseConfig = {
             alert("별칭은 2글자 이상 입력해주세요.");
             return;
         }
+
+        const user = currentUser;
+        const sharedUser = firebase.auth().currentUser;
+        if (!sharedDb || !sharedUser || !user || sharedUser.uid !== user.uid) {
+            alert("공용 DB 인증이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.");
+            return;
+        }
+
         try {
-            const user = currentUser;
             if (user && sharedDb) {
                         // [New] 중복 가입 방지 (이미 프로필이 있는지 확인 - UID 기준)
                         const doc = await sharedDb.collection('userProfiles').doc(user.uid).get();
