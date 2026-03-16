@@ -7765,8 +7765,8 @@ const firebaseConfig = {
         let isFirebaseInitialized = false;
         let sharedApp;
         let sharedDb;
+        const sharedFirebaseConfig = { apiKey: "AIzaSyCeHxv8oRMA7xhk4u6ZHmoeMzb7JhcRuVc", authDomain: "homework-14674.firebaseapp.com", projectId: "homework-14674", storageBucket: "homework-14674.firebasestorage.app", messagingSenderId: "358784571550", appId: "1:358784571550:web:0419abd2dcee35779b038f" };
         try {
-            const sharedFirebaseConfig = { apiKey: "AIzaSyCeHxv8oRMA7xhk4u6ZHmoeMzb7JhcRuVc", authDomain: "homework-14674.firebaseapp.com", projectId: "homework-14674", storageBucket: "homework-14674.firebasestorage.app", messagingSenderId: "358784571550", appId: "1:358784571550:web:0419abd2dcee35779b038f" };
             if (!firebase.apps.length) {
                 sharedApp = firebase.initializeApp(sharedFirebaseConfig);
             } else {
