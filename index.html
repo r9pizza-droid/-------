@@ -7778,24 +7778,6 @@ const firebaseConfig = {
 
             if (!isOpen || !images || images.length === 0) return null;
 
-            const handleDataManagementClick = () => { 
-                const user = currentUser;
-                if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
-                    return;
-                }
-                const newCount = adminClickCount + 1; 
-                if(newCount >= 3) { 
-                    const newMode = !isAdminMode;
-                    setIsAdminMode(newMode);
-                    setIsDevMode(newMode);
-                    localStorage.setItem('cls_dev_mode', newMode);
-                    setToastMessage(newMode ? "관리자 및 개발자 모드가 활성화되었습니다." : "관리자 및 개발자 모드가 해제되었습니다."); 
-                    setAdminClickCount(0);
-                } else {
-                    setAdminClickCount(newCount);
-                }
-            };
-
             return (
                 <div className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center animate-fade-in backdrop-blur-sm" onClick={onClose}>
                     <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white p-2 z-50 rounded-full hover:bg-white/10 transition-colors group"><Icon d={PATHS.x} size={32} className="transition-transform duration-300 group-hover:rotate-90" /></button>
@@ -8214,6 +8196,24 @@ const firebaseConfig = {
             const [isUserListExpanded, setIsUserListExpanded] = useState(false);
             const [adminBoardData, setAdminBoardData] = useState({ posts: [], comments: [] });
             const [expandedActivityUid, setExpandedActivityUid] = useState(null);
+
+            const handleDataManagementClick = () => { 
+                const user = currentUser;
+                if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
+                    return;
+                }
+                const newCount = adminClickCount + 1; 
+                if(newCount >= 3) { 
+                    const newMode = !isAdminMode;
+                    setIsAdminMode(newMode);
+                    setIsDevMode(newMode);
+                    localStorage.setItem('cls_dev_mode', newMode);
+                    setToastMessage(newMode ? "관리자 및 개발자 모드가 활성화되었습니다." : "관리자 및 개발자 모드가 해제되었습니다."); 
+                    setAdminClickCount(0);
+                } else {
+                    setAdminClickCount(newCount);
+                }
+            };
 
             const handleOpenAdminDashboard = async () => {
                 // 철통 보안 검사
