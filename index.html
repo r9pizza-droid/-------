@@ -15585,11 +15585,9 @@ useEffect(() => {
         // [New] Firebase 초기화 및 앱 렌더링 보호 래퍼 (안전 가드)
         const RootApp = () => {
             const [isInitialized, setIsInitialized] = useState(false);
-            const [showSetup, setShowSetup] = useState(false);
-            const [tempConfig, setTempConfig] = useState("");
 
             useEffect(() => {
-                const savedConfigStr = safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
+                const savedConfigStr = safeLocalStorage.getItem('checklist_config') || localStorage.getItem('checklist_config') || safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
                 if (savedConfigStr) {
                     try {
                         const config = JSON.parse(savedConfigStr);
@@ -15601,64 +15599,15 @@ useEffect(() => {
                             }
                             sharedDb = sharedApp.firestore();
                             isFirebaseInitialized = true;
-                            setIsInitialized(true);
-                        } else {
-                            setShowSetup(true);
                         }
                     } catch (e) {
                         console.error("Firebase init err:", e);
-                        setShowSetup(true);
                     }
-                } else {
-                    setShowSetup(true);
                 }
+                
+                // 설정 유무와 관계없이 무조건 앱 렌더링 (로컬 모드 사용 보장)
+                setIsInitialized(true);
             }, []);
-
-            const handleSaveConfig = () => {
-                try {
-                    let clean = tempConfig.trim();
-                    clean = clean.replace(/\/\*[\s\S]*?\*\//g, '');
-                    clean = clean.replace(/([^\\:]|^)\/\/.*$/gm, '$1');
-                    clean = clean.replace(/(?:^|[\s\r\n]+)(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*/, '');
-                    clean = clean.replace(/;+\s*$/, '');
-                    const parsed = JSON.parse(clean);
-                    
-                    if (!parsed.apiKey || !parsed.projectId) {
-                        alert("유효한 Firebase 설정 코드가 아닙니다.");
-                        return;
-                    }
-                    safeLocalStorage.setItem('myFirebaseConfig', JSON.stringify(parsed));
-                    window.location.reload();
-                } catch (e) {
-                    alert("설정 코드를 파싱할 수 없습니다. 형식을 확인해주세요.");
-                }
-            };
-
-            if (showSetup) {
-                return (
-                    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-                        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-200">
-                            <div className="text-center mb-6">
-                                <span className="text-5xl inline-block mb-4">⚙️</span>
-                                <h2 className="text-2xl font-black text-slate-800 tracking-tight"><span>DB 초기 설정</span></h2>
-                                <p className="text-sm text-slate-500 mt-2 font-medium"><span>원활한 사용을 위해 Firebase 설정 코드를 입력해주세요.</span></p>
-                            </div>
-                            <textarea 
-                                className="w-full h-48 p-4 border border-slate-200 rounded-xl text-xs font-mono bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all mb-4 custom-scroll"
-                                placeholder={'// Firebase SDK snippet을 여기에 붙여넣으세요\\nconst firebaseConfig = {\\n  apiKey: "...",\\n  authDomain: "...",\\n  projectId: "..."\\n};'}
-                                value={tempConfig}
-                                onChange={(e) => setTempConfig(e.target.value)}
-                            />
-                            <button 
-                                onClick={handleSaveConfig} 
-                                className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 shadow-md active:scale-95 transition-all"
-                            >
-                                <span>설정 저장 및 시작하기</span>
-                            </button>
-                        </div>
-                    </div>
-                );
-            }
 
             if (!isInitialized) {
                 return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><span className="text-slate-500 font-bold animate-pulse">앱 준비 중...</span></div>;
