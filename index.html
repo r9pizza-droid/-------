@@ -19,8 +19,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" data-app-script="true"></script>
     <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js" data-app-script="true"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" data-app-script="true"></script>
-    <script type="text/babel" src="components/PostModal.js" data-app-script="true"></script>
-    <script type="text/babel" src="components/StatsGrassModal.js" data-app-script="true"></script>        
+    <script type="text/babel" src="./StatsGrassModal.js"></script>
+    <script type="text/babel" src="./PostModal.js"></script>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css" data-app-style="true">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -4205,8 +4205,8 @@
                                                     <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">📱</div> 
                                                     앱 기본 설정
                                                     <div className="flex flex-col md:flex-row gap-1 ml-auto">
-                                                        {isAdminMode && <span className="w-fit text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">관리자</span>}
-                                                        {isDevMode && <span className="w-fit text-[10px] bg-slate-800 text-white px-2 py-0.5 rounded-full">개발자</span>}
+                                                        {isAdminMode && <span className="w-fit text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full"><span>관리자</span></span>}
+                                                        {isDevMode && <span className="w-fit text-[10px] bg-slate-800 text-white px-2 py-0.5 rounded-full"><span>개발자</span></span>}
                                                     </div>
                                                 </h4>
 
@@ -4888,7 +4888,7 @@
                                                         disabled={isTestingAll}
                                                         className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm whitespace-nowrap ${isTestingAll ? 'bg-slate-100 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                                                     >
-                                                        {isTestingAll ? '점검 중...' : '전체 점검'}
+                                                        <span>{isTestingAll ? '점검 중...' : '전체 점검'}</span>
                                                     </button>
                                                 </div>
                                                 {isSyncPanelOpen && (
@@ -4911,7 +4911,7 @@
                                                                     <div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-600">{item.label}</span></div>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className={`text-[10px] font-bold ${isError ? 'text-rose-500' : isSuccess ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                                                            {isPending ? '확인 중...' : isSuccess ? '연동 성공' : isError ? '연동 실패' : '대기'}
+                                                                            <span>{isPending ? '확인 중...' : isSuccess ? '연동 성공' : isError ? '연동 실패' : '대기'}</span>
                                                                         </span>
                                                                         <div className="w-4 h-4 flex items-center justify-center text-xs">
                                                                             {isPending ? '⏳' : isSuccess ? '✅' : isError ? '❌' : '⚪'}
@@ -4952,7 +4952,7 @@
                                                         <div className="flex justify-between items-center">
                                                             <div className="flex items-center gap-1 cursor-pointer hover:opacity-80" onClick={(e) => { e.stopPropagation(); setShowStorageHelp(!showStorageHelp); }}>
                                                                 <div className="flex flex-col items-start">
-                                                                    <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span>
+                                                                    <span className={`font-bold text-sm ${isLocalMode ? 'text-slate-600' : 'text-green-700'}`}><span>{isLocalMode ? "로컬 저장소" : "클라우드 동기화"}</span></span>
                                                                     {!isLocalMode && currentUser && <span className="text-[10px] text-slate-400 font-medium -mt-0.5">{currentUser.email}</span>}
                                                                 </div>
                                                                 <Icon d={PATHS.right} size={24} className={`text-slate-400 hover:text-indigo-500 transition-colors transition-transform duration-300 ${showStorageHelp ? 'rotate-90' : ''}`} />
@@ -7726,24 +7726,6 @@ const firebaseConfig = {
         let isFirebaseInitialized = false;
         let sharedApp;
         let sharedDb;
-        try {
-            const savedConfigStr = safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
-            if (savedConfigStr) {
-                const savedConfig = JSON.parse(savedConfigStr);
-                if (savedConfig && savedConfig.apiKey) {
-                    if (!firebase.apps.length) {
-                        sharedApp = firebase.initializeApp(savedConfig);
-                    } else {
-                        sharedApp = firebase.app();
-                    }
-                    sharedDb = sharedApp.firestore();
-                    isFirebaseInitialized = true;
-                    console.log("✅ Firebase 연결 성공!");
-                }
-            }
-        } catch (e) {
-            console.error("❌ Firebase 초기화 실패:", e);
-        }
 
         // [New] 활동 로그 저장 헬퍼 함수 (전역)
         const logToSharedDb = async (type, message, uid, nickname) => {
@@ -8195,24 +8177,6 @@ const firebaseConfig = {
             const [isUserListExpanded, setIsUserListExpanded] = useState(false);
             const [adminBoardData, setAdminBoardData] = useState({ posts: [], comments: [] });
             const [expandedActivityUid, setExpandedActivityUid] = useState(null);
-
-            const handleDataManagementClick = () => { 
-                const user = currentUser;
-                if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
-                    return;
-                }
-                const newCount = adminClickCount + 1; 
-                if(newCount >= 3) { 
-                    const newMode = !isAdminMode;
-                    setIsAdminMode(newMode);
-                    setIsDevMode(newMode);
-                    localStorage.setItem('cls_dev_mode', newMode);
-                    setToastMessage(newMode ? "관리자 및 개발자 모드가 활성화되었습니다." : "관리자 및 개발자 모드가 해제되었습니다."); 
-                    setAdminClickCount(0);
-                } else {
-                    setAdminClickCount(newCount);
-                }
-            };
 
             const handleOpenAdminDashboard = async () => {
                 // 철통 보안 검사
@@ -8866,9 +8830,6 @@ const firebaseConfig = {
             const [seatConfig, setSeatConfig] = useState({ rows: 4, cols: 6, disabledSeats: [] });
             const [groupDuration, setGroupDuration] = useState(1);
             const [historyDuration, setHistoryDuration] = useState(14);
-            const [isDevMode, setIsDevMode] = React.useState(() => localStorage.getItem('cls_dev_mode') === 'true');
-            const [isAdminMode, setIsAdminMode] = React.useState(false);
-            const [adminClickCount, setAdminClickCount] = React.useState(0);
             const [gearClickCount, setGearClickCount] = useState(0);
             const gearClickTimer = useRef(null);
             
@@ -8893,6 +8854,27 @@ const firebaseConfig = {
             const [showScoreAnalysisOnOpen, setShowScoreAnalysisOnOpen] = useState(false);
             const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
             const [expandedScoreComments, setExpandedScoreComments] = useState({});
+            
+            // [Fix] 변수 초기화 순서 문제 방지를 위해 상태와 핸들러를 안전한 위치(하단)로 이동
+            const [isAdminMode, setIsAdminMode] = useState(false);
+            const [isDevMode, setIsDevMode] = useState(() => localStorage.getItem('cls_dev_mode') === 'true');
+            const [adminClickCount, setAdminClickCount] = useState(0);
+            
+            const handleDataManagementClick = () => { 
+                const user = currentUser;
+                if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') return;
+                const newCount = adminClickCount + 1; 
+                if(newCount >= 3) { 
+                    const newMode = !isAdminMode;
+                    setIsAdminMode(newMode);
+                    setIsDevMode(newMode);
+                    localStorage.setItem('cls_dev_mode', newMode);
+                    setToastMessage(newMode ? "관리자 및 개발자 모드가 활성화되었습니다." : "관리자 및 개발자 모드가 해제되었습니다."); 
+                    setAdminClickCount(0);
+                } else {
+                    setAdminClickCount(newCount);
+                }
+            };
 
             const [editingScoreTask, setEditingScoreTask] = useState(null);
 
@@ -10682,8 +10664,15 @@ const firebaseConfig = {
                     if (profileSnap.exists && profileSnap.data().appId) {
                         classId = profileSnap.data().appId;
                     } else {
-                        // [Init] 2. 없으면 uid로 초기화 및 저장 (최초 1회)
-                        classId = user.uid;
+                        // [Init] 2. 없으면 uid로 초기화 하되, 기존 homework-14674 등 이전 경로(config.projectId)에 데이터가 존재한다면 그 경로를 유지 (호환성 보장)
+                        let fallbackId = user.uid;
+                        if (config && config.projectId) {
+                            const oldSnap = await firestore.collection('artifacts').doc(config.projectId).collection('public').doc('data').get();
+                            if (oldSnap.exists) {
+                                fallbackId = config.projectId;
+                            }
+                        }
+                        classId = fallbackId;
                         await profileRef.set({ 
                             appId: classId,
                             email: user.email,
@@ -13164,13 +13153,13 @@ useEffect(() => {
                                                     <input type="number" value={groupNumber} onChange={e=>setGroupNumber(parseInt(e.target.value))} className="flex-1 p-2 border rounded-lg text-center font-bold" min="1" max="20"/>
                                                     <span className="text-sm text-slate-500 shrink-0">{groupMethod==='count'?'개':'명'}</span>
                                                     <Btn onClick={generateGroups} disabled={isGenerating} className={`w-auto px-4 py-2 rounded-lg font-bold shadow-md text-sm whitespace-nowrap flex items-center gap-2 transition-all ${isGenerating ? 'bg-slate-400 text-slate-100 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-                                                        {isGenerating ? (
+                                                        <span>{isGenerating ? (
                                                             <>
                                                                 <Icon d={PATHS.spinner} className="animate-spin" size={14} />
                                                                 <span>편성 중...</span>
                                                             </>
                                                         ) : (useAI ? 'AI 편성' : '모둠 편성')}
-                                                    </Btn>
+                                                    </span></Btn>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2 mt-2">
                                                     <div className={`flex items-center border rounded-xl font-bold text-sm transition-all relative ${isRotationDay ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-md ring-2 ring-amber-100' : 'bg-white border-slate-300 text-slate-700'}`}>
@@ -15593,8 +15582,94 @@ useEffect(() => {
             );
         };
         
+        // [New] Firebase 초기화 및 앱 렌더링 보호 래퍼 (안전 가드)
+        const RootApp = () => {
+            const [isInitialized, setIsInitialized] = useState(false);
+            const [showSetup, setShowSetup] = useState(false);
+            const [tempConfig, setTempConfig] = useState("");
+
+            useEffect(() => {
+                const savedConfigStr = safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
+                if (savedConfigStr) {
+                    try {
+                        const config = JSON.parse(savedConfigStr);
+                        if (config && config.projectId) {
+                            if (!firebase.apps.length) {
+                                sharedApp = firebase.initializeApp(config);
+                            } else {
+                                sharedApp = firebase.app();
+                            }
+                            sharedDb = sharedApp.firestore();
+                            isFirebaseInitialized = true;
+                            setIsInitialized(true);
+                        } else {
+                            setShowSetup(true);
+                        }
+                    } catch (e) {
+                        console.error("Firebase init err:", e);
+                        setShowSetup(true);
+                    }
+                } else {
+                    setShowSetup(true);
+                }
+            }, []);
+
+            const handleSaveConfig = () => {
+                try {
+                    let clean = tempConfig.trim();
+                    clean = clean.replace(/\/\*[\s\S]*?\*\//g, '');
+                    clean = clean.replace(/([^\\:]|^)\/\/.*$/gm, '$1');
+                    clean = clean.replace(/(?:^|[\s\r\n]+)(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*/, '');
+                    clean = clean.replace(/;+\s*$/, '');
+                    const parsed = JSON.parse(clean);
+                    
+                    if (!parsed.apiKey || !parsed.projectId) {
+                        alert("유효한 Firebase 설정 코드가 아닙니다.");
+                        return;
+                    }
+                    safeLocalStorage.setItem('myFirebaseConfig', JSON.stringify(parsed));
+                    window.location.reload();
+                } catch (e) {
+                    alert("설정 코드를 파싱할 수 없습니다. 형식을 확인해주세요.");
+                }
+            };
+
+            if (showSetup) {
+                return (
+                    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-200">
+                            <div className="text-center mb-6">
+                                <span className="text-5xl inline-block mb-4">⚙️</span>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight"><span>DB 초기 설정</span></h2>
+                                <p className="text-sm text-slate-500 mt-2 font-medium"><span>원활한 사용을 위해 Firebase 설정 코드를 입력해주세요.</span></p>
+                            </div>
+                            <textarea 
+                                className="w-full h-48 p-4 border border-slate-200 rounded-xl text-xs font-mono bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all mb-4 custom-scroll"
+                                placeholder={'// Firebase SDK snippet을 여기에 붙여넣으세요\\nconst firebaseConfig = {\\n  apiKey: "...",\\n  authDomain: "...",\\n  projectId: "..."\\n};'}
+                                value={tempConfig}
+                                onChange={(e) => setTempConfig(e.target.value)}
+                            />
+                            <button 
+                                onClick={handleSaveConfig} 
+                                className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 shadow-md active:scale-95 transition-all"
+                            >
+                                <span>설정 저장 및 시작하기</span>
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!isInitialized) {
+                return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><span className="text-slate-500 font-bold animate-pulse">앱 준비 중...</span></div>;
+            }
+
+            return <App />;
+        };
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        root.render(<RootApp />);
     </script>
 
-<!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><iframe ng-non-bindable="" frameborder="0" hspace="0" marginheight="0" marginwidth="0" scrolling="no" style="position: absolute; top: -100px; width: 1px; height: 1px;" tabindex="-1" vspace="0" width="100%" aria-hidden="true" id="I0_1773120034600" name="I0_1773120034600" src="https://homework-14674.firebaseapp.com/__/auth/iframe?apiKey=AIzaSyCeHxv8oRMA7xhk4u6ZHmoeMzb7JhcRuVc&amp;appName=%5BDEFAULT%5D&amp;v=10.7.1&amp;eid=p&amp;usegapi=1&amp;jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.ko.RZQ_hK-51ao.O%2Fd%3D1%2Frs%3DAHpOoo9Br98xJ0Prs7-3lgcjTAx7D_6W8w%2Fm%3D__features__#id=I0_1773120034600&amp;_gfid=I0_1773120034600&amp;parent=file%3A%2F%2F&amp;pfname=&amp;rpctoken=64668616" bis_size="{&quot;x&quot;:0,&quot;y&quot;:-100,&quot;w&quot;:1,&quot;h&quot;:1,&quot;abs_x&quot;:0,&quot;abs_y&quot;:-100}"></iframe><!----comment node----></body><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch></html>
+</body>
+</html>
