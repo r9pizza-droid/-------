@@ -3411,14 +3411,14 @@
             );
         };
 
-        const SettingsModal = ({ isOpen, onClose, allUsers, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, setIsDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers, handleUpdateAppId, adminLogs, currentUser, handleMigration }) => {
+        const SettingsModal = ({ isOpen, onClose, allUsers, students, setStudents, appConfig, setAppConfig, isLocalMode, saveData, showToast, openConfirm, handleResetAllData, onOpenSetup, onOpenNotionSetup, onOpenGoogleSheetSetup, onOpenApiKeySetup, records, groupsByDate, avoidancePairs, dailyTasks, weeklyTasks, tags, setRecords, setGroupsByDate, setAvoidancePairs, setDailyTasks, setWeeklyTasks, setTags, backupTimes, setBackupTimes, apiKey, setApiKey, mustPairs, setMustPairs, groupNames, setGroupNames, groupRoles, setGroupRoles, rolesList, setRolesList, roleDescriptions, setRoleDescriptions, seatAssignments, setSeatAssignments, seatConfig, setSeatConfig, db, appId, deferredPrompt, isIOS, isStandalone, onInstallApp, isDevMode, setIsDevMode, onDevModeClick, deleteTasksFromFirestore, onTestUpdate, isImgbbConnected, onOpenImgbbSetup, onBulkPhotoUpload, onPhotoUpload, onPhotoDelete, imgbbApiKey, onSyncPhotos, isAdmin, onTestCommentLike, userList, isLoadingUsers, fetchUserList, handleUpdateUserName, handleSyncCommunityUsers, handleUpdateAppId, adminLogs, currentUser, handleMigration, isAdminMode, handleDataManagementClick }) => {
             const [name, setName] = useState("");
             const [gender, setGender] = useState("M"); const [skill, setSkill] = useState(2); const [note, setNote] = useState(""); const [isLeader, setIsLeader] = useState(false);
             const fileRef = useRef(null); const jsonFileRef = useRef(null); const runnerImgRef = useRef(null); const cloudIconRef = useRef(null); const faviconRef = useRef(null);
             const [deleteTargetId, setDeleteTargetId] = useState(null); const [isDeletingAll, setIsDeletingAll] = useState(false); const [editingId, setEditingId] = useState(null); const [editData, setEditData] = useState({});
             const [isDeleteLocked, setIsDeleteLocked] = useState(true);
-            const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => localStorage.getItem('cls_auto_backup') === 'true'); const [showBackupHelp, setShowBackupHelp] = useState(false); const [isAdminMode, setIsAdminMode] = useState(false);
-            const [adminClickCount, setAdminClickCount] = useState(0); const [ampm, setAmpm] = useState("PM"); const [hour, setHour] = useState("12"); const [minute, setMinute] = useState("00");
+            const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => localStorage.getItem('cls_auto_backup') === 'true'); const [showBackupHelp, setShowBackupHelp] = useState(false); 
+            const [ampm, setAmpm] = useState("PM"); const [hour, setHour] = useState("12"); const [minute, setMinute] = useState("00");
             const [newVacStart, setNewVacStart] = useState(""); const [newVacEnd, setNewVacEnd] = useState("");
             const [showFontList, setShowFontList] = useState(false);
             
@@ -3733,26 +3733,6 @@
             } };
             const removeBackupTime = (time) => { const newTimes = backupTimes.filter(t => t !== time); setBackupTimes(newTimes); localStorage.setItem('cls_backup_times', JSON.stringify(newTimes)); };
             
-            // 관리자 모드 토글
-            const handleDataManagementClick = () => { 
-                const user = currentUser;
-                if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
-                    return;
-                }
-
-                const newCount = adminClickCount + 1; 
-                if(newCount >= 3) { 
-                    const newMode = !isAdminMode;
-                    setIsAdminMode(newMode);
-                    setIsDevMode(newMode);
-                    localStorage.setItem('cls_dev_mode', newMode);
-                    showToast(newMode ? "관리자 및 개발자 모드가 활성화되었습니다." : "관리자 및 개발자 모드가 해제되었습니다."); 
-                    setAdminClickCount(0);
-                } else {
-                    setAdminClickCount(newCount);
-                }
-            };
-
             const handleLogout = async () => {
                 try {
                     // 1. 파이어베이스 계정 로그아웃 (myClassApp)
@@ -7784,18 +7764,23 @@ const firebaseConfig = {
         let isFirebaseInitialized = false;
         let sharedApp;
         let sharedDb;
-        const sharedFirebaseConfig = { apiKey: "AIzaSyCeHxv8oRMA7xhk4u6ZHmoeMzb7JhcRuVc", authDomain: "homework-14674.firebaseapp.com", projectId: "homework-14674", storageBucket: "homework-14674.firebasestorage.app", messagingSenderId: "358784571550", appId: "1:358784571550:web:0419abd2dcee35779b038f" };
         try {
-            if (!firebase.apps.length) {
-                sharedApp = firebase.initializeApp(sharedFirebaseConfig);
-            } else {
-                sharedApp = firebase.app();
+            const savedConfigStr = safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
+            if (savedConfigStr) {
+                const savedConfig = JSON.parse(savedConfigStr);
+                if (savedConfig && savedConfig.apiKey) {
+                    if (!firebase.apps.length) {
+                        sharedApp = firebase.initializeApp(savedConfig);
+                    } else {
+                        sharedApp = firebase.app();
+                    }
+                    sharedDb = sharedApp.firestore();
+                    isFirebaseInitialized = true;
+                    console.log("✅ Firebase 연결 성공!");
+                }
             }
-            sharedDb = sharedApp.firestore();
-            isFirebaseInitialized = true;
-            console.log("✅ 공용 Firebase 연결 성공!");
         } catch (e) {
-            console.error("❌ 공용 Firebase 연결 실패:", e);
+            console.error("❌ Firebase 초기화 실패:", e);
         }
 
         // [New] 활동 로그 저장 헬퍼 함수 (전역)
@@ -7829,6 +7814,24 @@ const firebaseConfig = {
             }, [isOpen, onClose, images]);
 
             if (!isOpen || !images || images.length === 0) return null;
+
+            const handleDataManagementClick = () => { 
+                const user = currentUser;
+                if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
+                    return;
+                }
+                const newCount = adminClickCount + 1; 
+                if(newCount >= 3) { 
+                    const newMode = !isAdminMode;
+                    setIsAdminMode(newMode);
+                    setIsDevMode(newMode);
+                    localStorage.setItem('cls_dev_mode', newMode);
+                    setToastMessage(newMode ? "관리자 및 개발자 모드가 활성화되었습니다." : "관리자 및 개발자 모드가 해제되었습니다."); 
+                    setAdminClickCount(0);
+                } else {
+                    setAdminClickCount(newCount);
+                }
+            };
 
             return (
                 <div className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center animate-fade-in backdrop-blur-sm" onClick={onClose}>
@@ -8901,7 +8904,9 @@ const firebaseConfig = {
             const [seatConfig, setSeatConfig] = useState({ rows: 4, cols: 6, disabledSeats: [] });
             const [groupDuration, setGroupDuration] = useState(1);
             const [historyDuration, setHistoryDuration] = useState(14);
-            const [isDevMode, setIsDevMode] = useState(() => localStorage.getItem('cls_dev_mode') === 'true');
+            const [isDevMode, setIsDevMode] = React.useState(() => localStorage.getItem('cls_dev_mode') === 'true');
+            const [isAdminMode, setIsAdminMode] = React.useState(false);
+            const [adminClickCount, setAdminClickCount] = React.useState(0);
             const [gearClickCount, setGearClickCount] = useState(0);
             const gearClickTimer = useRef(null);
             
@@ -10821,7 +10826,14 @@ const cachedTasksRef = useRef(null);   // [New] 메모리 캐싱 (Tasks)
 const currentAppIdRef = useRef(null);  // [Safe] AppID 변경 감지
 
 useEffect(() => {
-    const targetAppId = appId || (config ? config.projectId : sharedFirebaseConfig.projectId);
+    let targetAppId = appId;
+    if (!targetAppId && config) targetAppId = config.projectId;
+    if (!targetAppId) {
+        try {
+            const lsCfg = JSON.parse(localStorage.getItem('myFirebaseConfig'));
+            if (lsCfg && lsCfg.projectId) targetAppId = lsCfg.projectId;
+        } catch(e) {}
+    }
     
     // [Safe] 계정(AppID) 변경 시 캐시 및 데이터 혼용 방지
     if (currentAppIdRef.current && currentAppIdRef.current !== targetAppId) {
@@ -10831,8 +10843,8 @@ useEffect(() => {
     currentAppIdRef.current = targetAppId;
 
     if (isLocalMode || !firestore || !currentUser) return;
-    if (!targetAppId) {
-        console.log("No App ID found, skipping data fetch.");
+    if (!targetAppId || targetAppId === 'undefined') {
+        console.warn("유효하지 않은 targetAppId 입니다. 데이터 로드를 중단합니다.");
         return;
     }
 
@@ -10922,7 +10934,14 @@ useEffect(() => {
 const cachedGroupsRef = useRef(null); // [New] 메모리 캐싱 (Groups)
 
 useEffect(() => {
-    const targetAppId = appId || (config ? config.projectId : sharedFirebaseConfig.projectId);
+    let targetAppId = appId;
+    if (!targetAppId && config) targetAppId = config.projectId;
+    if (!targetAppId) {
+        try {
+            const lsCfg = JSON.parse(localStorage.getItem('myFirebaseConfig'));
+            if (lsCfg && lsCfg.projectId) targetAppId = lsCfg.projectId;
+        } catch(e) {}
+    }
     
     // [Safe] 계정 변경 시 캐시 초기화
     if (currentAppIdRef.current !== targetAppId) {
@@ -10961,7 +10980,14 @@ useEffect(() => {
             // [New] 기록 탭 실시간 동기화 (onSnapshot 최적화)
             // 현재 선택된 날짜의 활동 기록(records) 문서 '하나만' 실시간으로 감시합니다.
             useEffect(() => {
-                const targetAppId = appId || (config ? config.projectId : sharedFirebaseConfig.projectId);
+                let targetAppId = appId;
+                if (!targetAppId && config) targetAppId = config.projectId;
+                if (!targetAppId) {
+                    try {
+                        const lsCfg = JSON.parse(localStorage.getItem('myFirebaseConfig'));
+                        if (lsCfg && lsCfg.projectId) targetAppId = lsCfg.projectId;
+                    } catch(e) {}
+                }
 
                 // '기록' 탭이 아니거나, 로컬 모드이거나, 연결 준비가 안 됐으면 실행하지 않습니다.
                 if (mode !== 'record' || isLocalMode || !firestore || !targetAppId || !currentUser || !date) {
@@ -12863,10 +12889,10 @@ useEffect(() => {
                             {/* Text */}
                             <div className="text-center space-y-2 mb-10">
                                 <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-                                    다했나요?
+                                    <span>다했나요?</span>
                                 </h2>
                                 <p className="text-xs text-slate-400 font-bold tracking-wide uppercase">
-                                    데이터를 불러오고 있습니다. 잠시만 기다려주세요.
+                                    <span>데이터를 불러오고 있습니다. 잠시만 기다려주세요.</span>
                                 </p>
                             </div>
                             
@@ -14825,6 +14851,8 @@ useEffect(() => {
                         adminLogs={adminLogs}
                         currentUser={currentUser}
                         handleMigration={handleMigration}
+                        isAdminMode={isAdminMode}
+                        handleDataManagementClick={handleDataManagementClick}
                     />
                     {showImgbbModal && (
                         <ImgbbSetupModal 
