@@ -8137,44 +8137,66 @@ const firebaseConfig = {
             // 🔔 [알림 기능] 상태 및 로직 시작
             const [notifications, setNotifications] = useState([]);
             const [globalNotices, setGlobalNotices] = useState([]); // [New] 관리자 전체 공지 상태
+            // [New] 닫은 메인 공지 ID 상태 관리 (로컬 스토리지 연동)
+            const [dismissedNoticeIds, setDismissedNoticeIds] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('cls_dismissed_notices') || '[]'); }
+                catch (e) { return []; }
+            });
             const [showNotifications, setShowNotifications] = useState(false);
             const unreadCount = notifications.filter(n => !n.isRead).length;
             const [forceRender, setForceRender] = useState(0); // 화면 새로고침용 스위치
             const CURRENT_VERSION = UPDATE_NOTES[0].version; // 무조건 json의 첫번째(최신)를 내 버전으로 인식!
             const updateDate = UPDATE_NOTES[0].date;
 
+            // [New] 메인 공지 닫기 핸들러
+            const handleDismissNotice = (e, noticeId) => {
+                e.stopPropagation();
+                const newDismissed = [...dismissedNoticeIds, noticeId];
+                setDismissedNoticeIds(newDismissed);
+                localStorage.setItem('cls_dismissed_notices', JSON.stringify(newDismissed));
+            };
+
+            // [New] 종 알림창 상단 고정용 공지 전용 변수 (showInBell === true 인 최신 3개)
+            const bellPinnedNotices = useMemo(() => {
+                if (!globalNotices || globalNotices.length === 0) return [];
+                return globalNotices.filter(notice => notice.showInBell === true).slice(0, 3);
+            }, [globalNotices]);
+
             // [New] 관리자 전체 공지 실시간 동기화
             useEffect(() => {
                 if (!adminDb) return;
                 
-                const unsubscribe = adminDb.collection('notifications')
-                    .where('type', '==', 'notice')
-                    .orderBy('createdAt', 'desc')
-                    .limit(50)
-                    .onSnapshot(snapshot => {
-                        const uniqueNotices = [];
-                        const seenMessages = new Set();
-                        
-                        snapshot.docs.forEach(doc => {
-                            const data = doc.data();
-                            const msg = data.message || data.content;
-                            
-                            // 내용(메시지) 기준으로 중복을 제거하여 마스터 공지 효과 유지
-                            if (msg && !seenMessages.has(msg)) {
-                                seenMessages.add(msg);
-                                uniqueNotices.push({
-                                    id: doc.id,
-                                    ...data,
-                                    createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
-                                });
-                            }
-                        });
-                        setGlobalNotices(uniqueNotices);
-                    }, err => {
-                        console.error('전체 공지 불러오기 실패:', err);
-                    });
+const unsubscribe = adminDb.collection('notifications')
+  .orderBy('createdAt', 'desc')
+  .limit(50)
+  .onSnapshot(snapshot => {
+    const uniqueNotices = [];
+    const seenMessages = new Set();
 
-                return () => unsubscribe();
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const msg = data.message || data.content;
+
+      // 공지 타입만 JS에서 필터링
+      if (data.type !== 'notice') return;
+
+      // 내용 기준 중복 제거
+      if (msg && !seenMessages.has(msg)) {
+        seenMessages.add(msg);
+        uniqueNotices.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
+        });
+      }
+    });
+
+    setGlobalNotices(uniqueNotices);
+  }, err => {
+    console.error('전체 공지 불러오기 실패:', err);
+  });
+
+return () => unsubscribe();
             }, []);
 
             const [isLocalMode, setIsLocalMode] = useState(true); 
@@ -8194,10 +8216,11 @@ const firebaseConfig = {
             const [isLoadingStats, setIsLoadingStats] = useState(false);
             const [adminLevelConfig, setAdminLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60 });
             const [showLogs, setShowLogs] = useState(false);
-            const [isUserListExpanded, setIsUserListExpanded] = useState(false);
             const [adminBoardData, setAdminBoardData] = useState({ posts: [], comments: [] });
             const [expandedActivityUid, setExpandedActivityUid] = useState(null);
             const [showAdminNoticeHistory, setShowAdminNoticeHistory] = useState(false);
+            const [userListPage, setUserListPage] = useState(1);
+            const USERS_PER_PAGE = 5;
 
             const handleOpenAdminDashboard = async () => {
                 // 철통 보안 검사
@@ -8210,6 +8233,7 @@ const firebaseConfig = {
                 if (!sharedDb) return setToastMessage("서버 연결을 확인해주세요.");
                 
                 setShowAdminDashboard(true);
+                setUserListPage(1); // [New] 페이지네이션 1페이지로 초기화
                 setIsLoadingStats(true);
                 setAdminLevelConfig({ grass: 5, tree: 15, forest: 30, king: 60, writeLevel: 1, ...levelConfig });
                 fetchUserList();
@@ -13007,6 +13031,30 @@ useEffect(() => {
                                 </div>
                             </div>
                             <div className="overflow-y-auto custom-scroll flex-1">
+                                        {/* [New] 관리자 전체 공지 고정 영역 (Pinned) */}
+                                        {bellPinnedNotices && bellPinnedNotices.length > 0 && (
+                                            <div className="bg-blue-50 border-b-4 border-slate-100 mb-1 shadow-sm">
+                                                {bellPinnedNotices.map(notice => (
+                                                    <div key={`bell-notice-${notice.id}`} className="p-3 border-b border-blue-100/60 last:border-0 relative">
+                                                        <div className="flex items-start gap-2.5">
+                                                            <div className="mt-0.5 w-6 h-6 rounded-full bg-white border border-blue-200 shadow-sm flex items-center justify-center flex-shrink-0 text-[10px]">📢</div>
+                                                            <div className="flex-1 pr-2">
+                                                                <div className="text-xs text-blue-900 leading-relaxed">
+                                                                    <span className="font-extrabold text-blue-700 bg-blue-100/80 px-1.5 py-0.5 rounded text-[10px] mr-1 border border-blue-200/50">
+                                                                        [{notice.title || '전체 공지'}]
+                                                                    </span>
+                                                                    <span className="font-bold">{notice.senderName || '시스템 공지'}</span>
+                                                                <p className="mt-1 whitespace-pre-wrap">{notice.message || notice.content || ''}</p>
+                                                                </div>
+                                                                <span className="text-[10px] text-blue-400 mt-1.5 block font-medium">{notice.createdAt ? dayjs(notice.createdAt).format('MM.DD HH:mm') : ''}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* 기존 일반 알림(댓글/좋아요) 영역 */}
                                 {notifications.length > 0 ? notifications.map(noti => (
                                     <div key={noti.id} onClick={() => handleReadNotification(noti)} className={`p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors ${!noti.isRead ? 'bg-indigo-50/30' : ''} group relative`}>
                                         <div className="flex items-start gap-2">
@@ -13069,13 +13117,16 @@ useEffect(() => {
                         <div key={date} className="flex-1">
                             {mode === 'record' && (
                                 <>
-                                    {/* [New] 관리자 전체 공지 영역 */}
-                                    {globalNotices && globalNotices.length > 0 && (
+                                    {/* [New] 관리자 전체 공지 영역 (닫은 공지는 필터링) */}
+                                    {globalNotices && globalNotices.filter(n => !dismissedNoticeIds.includes(n.id)).length > 0 && (
                                         <div className="mb-5 space-y-2 animate-fade-in">
-                                            {globalNotices.slice(0, 5).map(notice => {
+                                            {globalNotices.filter(n => !dismissedNoticeIds.includes(n.id)).slice(0, 5).map(notice => {
                                                 const isNew = notice.createdAt && dayjs().diff(dayjs(notice.createdAt), 'day') <= 3;
                                                 return (
-                                                    <div key={`global-notice-${notice.id}`} className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 shadow-sm transition-all hover:shadow hover:border-blue-300">
+                                                    <div key={`global-notice-${notice.id}`} className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 shadow-sm transition-all hover:shadow hover:border-blue-300 relative group">
+                                                        <button onClick={(e) => handleDismissNotice(e, notice.id)} className="absolute top-2 right-2 text-blue-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="공지 숨기기">
+                                                            <Icon d={PATHS.x} size={14} />
+                                                        </button>
                                                         <div className="flex items-center justify-between mb-1.5">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-bold text-blue-700 text-[10px] sm:text-xs bg-blue-100/50 px-2 py-0.5 rounded border border-blue-200/50 flex items-center gap-1">
@@ -15257,9 +15308,14 @@ useEffect(() => {
                                                                 {isLoadingUsers ? <Icon d={PATHS.spinner} size={12} className="animate-spin"/> : <Icon d={PATHS.refresh} size={12}/>} 새로고침
                                                             </Btn>
                                                         </div>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        {(isUserListExpanded ? userList : userList.slice(0, 5)).map((user) => (
+                                                </div> 
+                                                {(() => {
+                                                    const totalUserPages = Math.ceil(userList.length / USERS_PER_PAGE);
+                                                    const paginatedUsers = userList.slice((userListPage - 1) * USERS_PER_PAGE, userListPage * USERS_PER_PAGE);
+                                                    return (
+                                                        <>
+                                                            <div className="space-y-2">
+                                                            {paginatedUsers.map((user) => (
                                                             <div key={user.uid} className="bg-white rounded-xl border border-slate-200 shadow-sm">
                                                                 <div 
                                                                     className="flex justify-between items-center p-3 cursor-pointer"
@@ -15327,20 +15383,32 @@ useEffect(() => {
                                                                 )}
                                                             </div>
                                                         ))}
-                                                        {userList.length > 5 && (
-                                                            <button 
-                                                                onClick={() => setIsUserListExpanded(!isUserListExpanded)}
-                                                                className="w-full py-2 text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                                                            >
-                                                                {isUserListExpanded ? (
-                                                                    <>접기 <Icon d={PATHS.down} size={14} className="rotate-180" /></>
-                                                                ) : (
-                                                                    <>+{userList.length - 5}명 더 보기 <Icon d={PATHS.down} size={14} /></>
-                                                                )}
-                                                            </button>
-                                                        )}
                                                         {userList.length === 0 && <div className="text-center text-xs text-slate-400 py-4">사용자 데이터가 없습니다.</div>}
                                                     </div>
+                                                    {totalUserPages > 1 && (
+                                                        <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+                                                            <button 
+                                                                onClick={() => setUserListPage(p => Math.max(1, p - 1))}
+                                                                disabled={userListPage === 1}
+                                                                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 transition-colors shadow-sm"
+                                                            >
+                                                                <Icon d={PATHS.left} size={12} /> 이전
+                                                            </button>
+                                                            <span className="text-xs font-bold text-slate-500">
+                                                                {userListPage} / {totalUserPages}
+                                                            </span>
+                                                            <button 
+                                                                onClick={() => setUserListPage(p => Math.min(totalUserPages, p + 1))}
+                                                                disabled={userListPage === totalUserPages}
+                                                                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 transition-colors shadow-sm"
+                                                            >
+                                                                다음 <Icon d={PATHS.right} size={12} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                                 </div>
 
                                                 {/* [New] 활동 로그 조회 섹션 */}
