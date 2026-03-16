@@ -15621,9 +15621,15 @@ useEffect(() => {
                     clean = clean.replace(/([^\\:]|^)\/\/.*$/gm, '$1');
                     clean = clean.replace(/(?:^|[\s\r\n]+)(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*/, '');
                     clean = clean.replace(/;+\s*$/, '');
-                    const parsed = JSON.parse(clean);
                     
-                    if (!parsed.apiKey || !parsed.projectId) {
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(clean);
+                    } catch (err) {
+                        parsed = new Function("return " + clean)();
+                    }
+                    
+                    if (!parsed || !parsed.apiKey || !parsed.projectId) {
                         alert("유효한 Firebase 설정 코드가 아닙니다.");
                         return;
                     }
