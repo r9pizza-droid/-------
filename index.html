@@ -3558,7 +3558,7 @@
             };
 
             const handleTestCommentLikeNotification = async () => {
-                const user = firebase.auth().currentUser;
+                const user = currentUser;
                 if (!user) {
                     setToastMessage("알림 테스트를 위해서는 로그인이 필요합니다. (게시판 등에서 로그인)");
                     return;
@@ -3704,7 +3704,10 @@
                     }
                     
                     // [추가] 기본 인증 인스턴스(게시판 등)도 로그아웃
-                    await firebase.auth().signOut();
+                    const defaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
+                    if (defaultApp) {
+                        await defaultApp.auth().signOut();
+                    }
                     
                     // 2. 브라우저에 저장된 API 키(설정값), UID, 아이디/비번을 흔적도 없이 지움!
                     const keysToRemove = [
@@ -10627,7 +10630,13 @@ const firebaseConfig = {
 
     // [Fix] myClassApp이 존재하면 해당 앱의 Auth를 사용, 아니면 Default(shared) 사용
     const userApp = firebase.apps.find(app => app.name === 'myClassApp');
-    const authInstance = userApp ? userApp.auth() : firebase.auth();
+    const defaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
+    const authInstance = userApp ? userApp.auth() : (defaultApp ? defaultApp.auth() : null);
+
+    if (!authInstance) {
+        setIsLoading(false);
+        return;
+    }
 
     const unsubscribeAuth = authInstance.onAuthStateChanged(async (user) => {
         setCurrentUser(user);
@@ -14145,7 +14154,7 @@ useEffect(() => {
                                                 const currentIndex = sortedPosts.findIndex(p => p.id === selectedPost.id);
                                                 const prevPost = currentIndex > 0 ? sortedPosts[currentIndex - 1] : null;
                                                 const nextPost = currentIndex < sortedPosts.length - 1 ? sortedPosts[currentIndex + 1] : null;
-                                                const isMyPost = firebase.auth().currentUser?.uid === selectedPost.uid; // Assuming uid is stored, or use authorName/password check logic if uid not available. 
+                                                const isMyPost = currentUser?.uid === selectedPost.uid; // Assuming uid is stored, or use authorName/password check logic if uid not available. 
                                                 // Note: In handleEditPost/handleDeletePost we check password or admin. Here we just show buttons.
                                                 // I'll show buttons always and let the handler check permissions/password.
 
@@ -14271,7 +14280,7 @@ useEffect(() => {
                                                                         </div>
                                                                     ) : comments.length > 0 ? (
                                                                         comments.filter(c => !c.parentId).map(comment => {
-                                                                            const isMyComment = firebase.auth().currentUser?.uid === comment.uid;
+                                                                        const isMyComment = currentUser?.uid === comment.uid;
                                                                             const replies = comments.filter(r => r.parentId === comment.id);
                                                                             return (
                                                                                 <div key={comment.id} className="space-y-2">
@@ -14293,7 +14302,7 @@ useEffect(() => {
 
                                                                                     {/* Replies */}
                                                                                     {replies.map(reply => {
-                                                                                        const isMyReply = firebase.auth().currentUser?.uid === reply.uid;
+                                                                                    const isMyReply = currentUser?.uid === reply.uid;
                                                                                         return (
                                                                                             <div key={reply.id} className="ml-6 bg-slate-100/50 p-3 rounded-xl border border-slate-200 relative">
                                                                                                 <div className="absolute top-[-10px] left-[-10px] w-4 h-6 border-l-2 border-b-2 border-slate-200 rounded-bl-xl"></div>
@@ -15703,10 +15712,11 @@ useEffect(() => {
                     try {
                         const config = JSON.parse(savedConfigStr);
                         if (config && config.projectId) {
-                            if (!firebase.apps.length) {
+                            const defaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
+                            if (!defaultApp) {
                                 sharedApp = firebase.initializeApp(config);
                             } else {
-                                sharedApp = firebase.app();
+                                sharedApp = defaultApp;
                             }
                             sharedDb = sharedApp.firestore();
                             isFirebaseInitialized = true;
