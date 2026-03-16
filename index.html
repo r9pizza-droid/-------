@@ -7697,6 +7697,17 @@ const firebaseConfig = {
         let isFirebaseInitialized = false;
         let sharedApp;
         let sharedDb;
+        let adminDb; // [New] 관리자 공지 전용 DB
+
+        // [New] 관리자 공지 전용 Firebase 설정
+        const ADMIN_CONFIG = {
+            apiKey: "AIzaSyCeHxv8oRMA7xhk4u6ZHmoeMzb7JhcRuVc",
+            authDomain: "homework-14674.firebaseapp.comN",
+            projectId: "homework-14674",
+            storageBucket: "homework-14674.firebasestorage.app",
+            messagingSenderId: "358784571550",
+            appId: "1:358784571550:web:0419abd2dcee35779b038f"
+        };
 
         // [New] 활동 로그 저장 헬퍼 함수 (전역)
         const logToSharedDb = async (type, message, uid, nickname) => {
@@ -8122,11 +8133,38 @@ const firebaseConfig = {
     // ==========================================
             // 🔔 [알림 기능] 상태 및 로직 시작
             const [notifications, setNotifications] = useState([]);
+            const [globalNotices, setGlobalNotices] = useState([]); // [New] 관리자 전체 공지 상태
             const [showNotifications, setShowNotifications] = useState(false);
             const unreadCount = notifications.filter(n => !n.isRead).length;
             const [forceRender, setForceRender] = useState(0); // 화면 새로고침용 스위치
             const CURRENT_VERSION = UPDATE_NOTES[0].version; // 무조건 json의 첫번째(최신)를 내 버전으로 인식!
             const updateDate = UPDATE_NOTES[0].date;
+
+            // [New] 관리자 전체 공지 실시간 동기화
+            useEffect(() => {
+                if (!adminDb) return;
+                
+                const unsubscribe = adminDb.collection('notifications')
+                    .where('type', '==', 'notice')
+                    .where('targetUid', '==', 'ALL_USERS')
+                    .orderBy('createdAt', 'desc')
+                    .limit(10)
+                    .onSnapshot(snapshot => {
+                        const uniqueNotices = snapshot.docs.map(doc => {
+                            const data = doc.data();
+                            return {
+                                id: doc.id,
+                                ...data,
+                                createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
+                            };
+                        });
+                        setGlobalNotices(uniqueNotices);
+                    }, err => {
+                        console.error('전체 공지 불러오기 실패:', err);
+                    });
+
+                return () => unsubscribe();
+            }, []);
 
             const [isLocalMode, setIsLocalMode] = useState(true); 
             const [db, setDb] = useState(null); 
@@ -8148,6 +8186,7 @@ const firebaseConfig = {
             const [isUserListExpanded, setIsUserListExpanded] = useState(false);
             const [adminBoardData, setAdminBoardData] = useState({ posts: [], comments: [] });
             const [expandedActivityUid, setExpandedActivityUid] = useState(null);
+            const [showAdminNoticeHistory, setShowAdminNoticeHistory] = useState(false);
 
             const handleOpenAdminDashboard = async () => {
                 // 철통 보안 검사
@@ -8293,14 +8332,31 @@ const firebaseConfig = {
                     let currentBatch = sharedDb.batch();
                     let operationCount = 0;
 
+                    // [New] 관리자 대시보드 발송 내역용 마스터 공지 추가
+                    const mainNotiRef = sharedDb.collection('notifications').doc();
+                    currentBatch.set(mainNotiRef, {
+                        targetUid: 'ALL_USERS',
+                        type: 'notice',
+                        title: '전체 공지',
+                        senderName: '👑 시스템 공지',
+                        message: message,
+                        content: message,
+                        isRead: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        targetCount: userList.length
+                    });
+                    operationCount++;
+
                     userList.forEach(user => {
                         if (user.uid) {
                             const notiRef = sharedDb.collection('notifications').doc();
                             currentBatch.set(notiRef, {
                                 targetUid: user.uid,
                                 type: 'notice',
+                                title: '전체 공지',
                                 senderName: '👑 시스템 공지',
                                 message: message,
+                                content: message,
                                 isRead: false,
                                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
                             });
@@ -12996,6 +13052,33 @@ useEffect(() => {
                         <div key={date} className="flex-1">
                             {mode === 'record' && (
                                 <>
+                                    {/* [New] 관리자 전체 공지 영역 */}
+                                    {globalNotices && globalNotices.length > 0 && (
+                                        <div className="mb-5 space-y-2 animate-fade-in">
+                                            {globalNotices.slice(0, 5).map(notice => {
+                                                const isNew = notice.createdAt && dayjs().diff(dayjs(notice.createdAt), 'day') <= 3;
+                                                return (
+                                                    <div key={`global-notice-${notice.id}`} className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 shadow-sm transition-all hover:shadow hover:border-blue-300">
+                                                        <div className="flex items-center justify-between mb-1.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-blue-700 text-[10px] sm:text-xs bg-blue-100/50 px-2 py-0.5 rounded border border-blue-200/50 flex items-center gap-1">
+                                                                    {notice.title || '전체 공지'}
+                                                                    {isNew && <span className="bg-rose-500 text-white text-[8px] px-1 py-0.5 rounded leading-none shadow-sm animate-pulse">NEW</span>}
+                                                                </span>
+                                                                <span className="text-xs font-bold text-blue-900">{notice.senderName || '시스템 공지'}</span>
+                                                            </div>
+                                                            <span className="text-[10px] text-blue-400 font-medium">
+                                                                {notice.createdAt ? dayjs(notice.createdAt).format('YYYY.MM.DD HH:mm') : ''}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">
+                                                            {notice.message || notice.content || ''}
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                     <div className="flex justify-between mb-4 items-center gap-2">
                                         <div className="flex bg-slate-100 p-1 rounded-lg">
                                             <button onClick={() => setIsSimpleMode(false)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${!isSimpleMode ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>상세</button>
@@ -15105,16 +15188,44 @@ useEffect(() => {
 
                                                 {/* [New] 전체 공지 발송 섹션 */}
                                                 <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl shrink-0">📢</div>
-                                                        <div>
-                                                            <h4 className="font-bold text-indigo-800 text-sm">전체 사용자 공지 발송</h4>
-                                                            <p className="text-[10px] text-indigo-600 mt-0.5">모든 사용자({userList.length}명)의 종 모양 알림함으로 즉시 메시지를 보냅니다.</p>
+                                                    <div className="w-full">
+                                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl shrink-0">📢</div>
+                                                                <div>
+                                                                    <h4 className="font-bold text-indigo-800 text-sm">전체 사용자 공지 발송</h4>
+                                                                    <p className="text-[10px] text-indigo-600 mt-0.5">모든 사용자({userList.length}명)의 종 모양 알림함으로 즉시 메시지를 보냅니다.</p>
+                                                                </div>
+                                                            </div>
+                                                            <button onClick={handleSendGlobalNotice} disabled={isLoadingStats} className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-md transition-colors active:scale-95 whitespace-nowrap">
+                                                                공지 발송하기
+                                                            </button>
+                                                        </div>
+                                                        <div className="mt-4 pt-4 border-t border-indigo-100/50 w-full">
+                                                            <div 
+                                                                className="flex justify-between items-center cursor-pointer hover:bg-indigo-100/50 p-2 -mx-2 rounded-lg transition-colors"
+                                                                onClick={() => setShowAdminNoticeHistory(!showAdminNoticeHistory)}
+                                                            >
+                                                                <h5 className="font-bold text-indigo-800 text-xs flex items-center gap-1.5">
+                                                                    <Icon d={PATHS.list} size={14} /> 이전 발송 내역
+                                                                </h5>
+                                                                <Icon d={PATHS.down} size={14} className={`text-indigo-500 transition-transform ${showAdminNoticeHistory ? 'rotate-180' : ''}`} />
+                                                            </div>
+                                                            {showAdminNoticeHistory && (
+                                                                <div className="mt-2 max-h-48 overflow-y-auto custom-scroll space-y-2 pr-1 animate-fade-in">
+                                                                    {globalNotices && globalNotices.length > 0 ? globalNotices.map(notice => (
+                                                                        <div key={`history-${notice.id}`} className="bg-white p-3 rounded-xl border border-indigo-100 shadow-sm flex flex-col gap-1.5">
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="text-[10px] text-slate-400 font-mono font-bold bg-slate-50 px-1.5 py-0.5 rounded">{dayjs(notice.createdAt).format('YYYY.MM.DD HH:mm')}</span>
+                                                                                {notice.targetCount && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold border border-indigo-100">{notice.targetCount}명 발송</span>}
+                                                                            </div>
+                                                                            <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{notice.message || notice.content}</p>
+                                                                        </div>
+                                                                    )) : <div className="text-center text-xs text-indigo-400 py-3 bg-white rounded-xl border border-indigo-100 border-dashed">발송 내역이 없습니다.</div>}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <button onClick={handleSendGlobalNotice} disabled={isLoadingStats} className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-md transition-colors active:scale-95 whitespace-nowrap">
-                                                        공지 발송하기
-                                                    </button>
                                                 </div>
 
                                                 {/* [New] 전체 사용자 관리 섹션 (테이블) */}
@@ -15577,6 +15688,16 @@ useEffect(() => {
             const [isInitialized, setIsInitialized] = useState(false);
 
             useEffect(() => {
+                // [New] 관리자 앱 초기화 (전체 공지 읽기 전용)
+                try {
+                    if (!firebase.apps.find(app => app.name === 'adminApp')) {
+                        firebase.initializeApp(ADMIN_CONFIG, 'adminApp');
+                    }
+                    adminDb = firebase.app('adminApp').firestore();
+                } catch (e) {
+                    console.error("Admin Firebase init err:", e);
+                }
+
                 const savedConfigStr = safeLocalStorage.getItem('checklist_config') || localStorage.getItem('checklist_config') || safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
                 if (savedConfigStr) {
                     try {
