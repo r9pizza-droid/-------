@@ -3709,7 +3709,7 @@
                     // 2. 브라우저에 저장된 API 키(설정값), UID, 아이디/비번을 흔적도 없이 지움!
                     const keysToRemove = [
                         'cls_fb_config', 'cls_admin_uid', 'cls_fb_id', 'cls_fb_pw',
-                        'firebaseConfig', 'appId', 'checklist_config',
+                        'firebaseConfig', 'appId', 'checklist_config', 'myFirebaseConfig',
                         'cls_ai_key', 'cls_notion_key', 'cls_notion_db_id', 'cls_google_sheet_url'
                     ];
                     keysToRemove.forEach(k => localStorage.removeItem(k));
@@ -6717,67 +6717,44 @@
             const handleConnect = async () => { 
                 if(!authId || !authPw) { showToast("아이디와 비밀번호를 입력해주세요."); return; } 
                 
-                // [수정] 설정 코드가 있으면 개인용, 없으면 공용(null)으로 처리
                 let config = null;
                 if (inputConfig.trim()) {
                     config = parseConfig(inputConfig);
                     if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
                 } else {
-                    // [Fix] 공용 모드 사용 시 기존 개인 설정 제거
-                    localStorage.removeItem('checklist_config');
+                    showToast("Firebase 설정 코드를 입력해주세요.");
+                    return;
                 }
 
                 try {
-                    let targetAuth = firebase.auth(); // 기본값: 공용 앱 인증
-
-                    if (config) {
-                        // [수정] 개인 설정이 있는 경우 myClassApp 초기화
-                        const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
-                        if (existingApp) {
-                            await existingApp.delete();
-                        }
-                        const userApp = firebase.initializeApp(config, 'myClassApp');
-                        
-                        // 1. 개인 앱 가입/로그인
-                        if (isSignUp) {
-                            await userApp.auth().createUserWithEmailAndPassword(authId, authPw);
-                        } else {
-                            await userApp.auth().signInWithEmailAndPassword(authId, authPw); 
-                        }
-                        
-                        // 2. 게시판(공용) 동시 접속을 위해 공용 앱에도 가입/로그인 처리
-                        try {
-                            if (isSignUp) await targetAuth.createUserWithEmailAndPassword(authId, authPw);
-                            else await targetAuth.signInWithEmailAndPassword(authId, authPw);
-                        } catch (syncErr) {
-                            if (syncErr.code === 'auth/email-already-in-use') {
-                                await targetAuth.signInWithEmailAndPassword(authId, authPw).catch(e => console.warn(e));
-                            } else if (syncErr.code === 'auth/user-not-found') {
-                                await targetAuth.createUserWithEmailAndPassword(authId, authPw).catch(e => console.warn(e));
-                            }
-                        }
-                        showToast(isSignUp ? "🎉 가입을 환영합니다! 자동으로 로그인되었습니다." : "로그인 성공");
-                    } else {
-                        if (isSignUp) {
-                            await targetAuth.createUserWithEmailAndPassword(authId, authPw);
-                            showToast("🎉 가입을 환영합니다! 자동으로 로그인되었습니다.");
-                        } else {
-                            await targetAuth.signInWithEmailAndPassword(authId, authPw); 
-                            showToast("로그인 성공");
-                        }
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(config);
                     }
+
+                    const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
+                    if (existingApp) {
+                        await existingApp.delete();
+                    }
+                    const userApp = firebase.initializeApp(config, 'myClassApp');
+                    
+                    if (isSignUp) {
+                        await userApp.auth().createUserWithEmailAndPassword(authId, authPw);
+                    } else {
+                        await userApp.auth().signInWithEmailAndPassword(authId, authPw); 
+                    }
+                    
+                    showToast(isSignUp ? "🎉 가입을 환영합니다! 자동으로 로그인되었습니다." : "로그인 성공");
 
                     if (rememberMe) { 
                         localStorage.setItem('cls_fb_id', authId); 
                         localStorage.setItem('cls_fb_pw', authPw); 
-                        if (config) localStorage.setItem('cls_fb_config', inputConfig);
-                        else localStorage.removeItem('cls_fb_config');
+                        localStorage.setItem('cls_fb_config', inputConfig);
                     } else { 
                         localStorage.removeItem('cls_fb_id'); 
                         localStorage.removeItem('cls_fb_pw'); 
                         localStorage.removeItem('cls_fb_config'); 
                     }
-                    onConnect(config); // 공용이면 null 전달
+                    onConnect(config);
                 } catch (e) { 
                     let errMsg = "연결 실패: " + e.message;
                     if(e.code && e.code.includes('auth')) errMsg = "로그인 실패: 아이디/비번을 확인하세요.";
@@ -6789,16 +6766,7 @@
                 if(!authId || !authPw) { showToast("아이디와 비밀번호를 입력해주세요."); return; }
                 
                 if (!inputConfig.trim()) {
-                    // [New] 설정 코드 없이 공용 계정 로그인 테스트
-                    setIsTesting(true);
-                    try {
-                        await firebase.auth().signInWithEmailAndPassword(authId, authPw);
-                        showToast("✅ 공용 계정 로그인 확인됨!");
-                    } catch (e) {
-                        showToast("❌ 로그인 실패: " + e.message);
-                    } finally {
-                        setIsTesting(false);
-                    }
+                    showToast("Firebase 설정 코드를 입력해주세요.");
                     return;
                 }
 
@@ -6807,6 +6775,10 @@
 
                 setIsTesting(true);
                 try {
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(config);
+                    }
+
                     // [수정] 명명된 앱(myClassApp)으로 테스트
                     const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
                     if (existingApp) {
@@ -6814,7 +6786,6 @@
                     }
                     const userApp = firebase.initializeApp(config, 'myClassApp');
                     await userApp.auth().signInWithEmailAndPassword(authId, authPw);
-                    try { await firebase.auth().signInWithEmailAndPassword(authId, authPw); } catch(e) {}
                     
                     // [NEW] Firestore 보안 규칙(Rules) 검증 테스트 (쓰기 시도)
                     try {
@@ -10592,6 +10563,12 @@ const firebaseConfig = {
     React.useEffect(() => {
         let unsubStats, unsubNoti, unsubArtifacts, unsubSettings;
     
+    // Firebase 초기화가 안되어있으면 로컬 모드로만 동작
+    if (firebase.apps.length === 0) {
+        setIsLoading(false);
+        return;
+    }
+
     // [Fix] myClassApp이 존재하면 해당 앱의 Auth를 사용, 아니면 Default(shared) 사용
     const userApp = firebase.apps.find(app => app.name === 'myClassApp');
     const authInstance = userApp ? userApp.auth() : firebase.auth();
@@ -10781,7 +10758,7 @@ useEffect(() => {
     if (!targetAppId && config) targetAppId = config.projectId;
     if (!targetAppId) {
         try {
-            const lsCfg = JSON.parse(localStorage.getItem('myFirebaseConfig'));
+                        const lsCfg = JSON.parse(localStorage.getItem('checklist_config') || localStorage.getItem('myFirebaseConfig') || "{}");
             if (lsCfg && lsCfg.projectId) targetAppId = lsCfg.projectId;
         } catch(e) {}
     }
@@ -10889,7 +10866,7 @@ useEffect(() => {
     if (!targetAppId && config) targetAppId = config.projectId;
     if (!targetAppId) {
         try {
-            const lsCfg = JSON.parse(localStorage.getItem('myFirebaseConfig'));
+                        const lsCfg = JSON.parse(localStorage.getItem('checklist_config') || localStorage.getItem('myFirebaseConfig') || "{}");
             if (lsCfg && lsCfg.projectId) targetAppId = lsCfg.projectId;
         } catch(e) {}
     }
@@ -10935,7 +10912,7 @@ useEffect(() => {
                 if (!targetAppId && config) targetAppId = config.projectId;
                 if (!targetAppId) {
                     try {
-                        const lsCfg = JSON.parse(localStorage.getItem('myFirebaseConfig'));
+                        const lsCfg = JSON.parse(localStorage.getItem('checklist_config') || localStorage.getItem('myFirebaseConfig') || "{}");
                         if (lsCfg && lsCfg.projectId) targetAppId = lsCfg.projectId;
                     } catch(e) {}
                 }
@@ -15585,11 +15562,9 @@ useEffect(() => {
         // [New] Firebase 초기화 및 앱 렌더링 보호 래퍼 (안전 가드)
         const RootApp = () => {
             const [isInitialized, setIsInitialized] = useState(false);
-            const [showSetup, setShowSetup] = useState(false);
-            const [tempConfig, setTempConfig] = useState("");
 
             useEffect(() => {
-                const savedConfigStr = safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
+                const savedConfigStr = safeLocalStorage.getItem('checklist_config') || localStorage.getItem('checklist_config') || safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
                 if (savedConfigStr) {
                     try {
                         const config = JSON.parse(savedConfigStr);
@@ -15601,70 +15576,13 @@ useEffect(() => {
                             }
                             sharedDb = sharedApp.firestore();
                             isFirebaseInitialized = true;
-                            setIsInitialized(true);
-                        } else {
-                            setShowSetup(true);
                         }
                     } catch (e) {
                         console.error("Firebase init err:", e);
-                        setShowSetup(true);
                     }
-                } else {
-                    setShowSetup(true);
                 }
+                setIsInitialized(true);
             }, []);
-
-            const handleSaveConfig = () => {
-                try {
-                    let clean = tempConfig.trim();
-                    clean = clean.replace(/\/\*[\s\S]*?\*\//g, '');
-                    clean = clean.replace(/([^\\:]|^)\/\/.*$/gm, '$1');
-                    clean = clean.replace(/(?:^|[\s\r\n]+)(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*/, '');
-                    clean = clean.replace(/;+\s*$/, '');
-                    
-                    let parsed;
-                    try {
-                        parsed = JSON.parse(clean);
-                    } catch (err) {
-                        parsed = new Function("return " + clean)();
-                    }
-                    
-                    if (!parsed || !parsed.apiKey || !parsed.projectId) {
-                        alert("유효한 Firebase 설정 코드가 아닙니다.");
-                        return;
-                    }
-                    safeLocalStorage.setItem('myFirebaseConfig', JSON.stringify(parsed));
-                    window.location.reload();
-                } catch (e) {
-                    alert("설정 코드를 파싱할 수 없습니다. 형식을 확인해주세요.");
-                }
-            };
-
-            if (showSetup) {
-                return (
-                    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-                        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-200">
-                            <div className="text-center mb-6">
-                                <span className="text-5xl inline-block mb-4">⚙️</span>
-                                <h2 className="text-2xl font-black text-slate-800 tracking-tight"><span>DB 초기 설정</span></h2>
-                                <p className="text-sm text-slate-500 mt-2 font-medium"><span>원활한 사용을 위해 Firebase 설정 코드를 입력해주세요.</span></p>
-                            </div>
-                            <textarea 
-                                className="w-full h-48 p-4 border border-slate-200 rounded-xl text-xs font-mono bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all mb-4 custom-scroll"
-                                placeholder={'// Firebase SDK snippet을 여기에 붙여넣으세요\\nconst firebaseConfig = {\\n  apiKey: "...",\\n  authDomain: "...",\\n  projectId: "..."\\n};'}
-                                value={tempConfig}
-                                onChange={(e) => setTempConfig(e.target.value)}
-                            />
-                            <button 
-                                onClick={handleSaveConfig} 
-                                className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 shadow-md active:scale-95 transition-all"
-                            >
-                                <span>설정 저장 및 시작하기</span>
-                            </button>
-                        </div>
-                    </div>
-                );
-            }
 
             if (!isInitialized) {
                 return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><span className="text-slate-500 font-bold animate-pulse">앱 준비 중...</span></div>;
