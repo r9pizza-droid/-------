@@ -1380,6 +1380,36 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         animation: wiggle-big 1.2s ease-in-out infinite;
                         display: inline-block;
                     }
+                    @keyframes select-bg-flash {
+                        0% { filter: brightness(1) saturate(1); box-shadow: inset 0 0 0 rgba(255,255,255,0); }
+                        30% { filter: brightness(1.1) saturate(1.2); box-shadow: inset 0 0 10px rgba(255,255,255,0.8); }
+                        100% { filter: brightness(1) saturate(1); box-shadow: inset 0 0 0 rgba(255,255,255,0); }
+                    }
+                    .select-flash:focus {
+                        animation: select-bg-flash 0.6s ease-out;
+                    }
+                    .border-wrap-anim {
+                        stroke-dasharray: 220;
+                        stroke-dashoffset: 220;
+                        filter: drop-shadow(0px 3px 5px rgba(0, 0, 0, 0.25));
+                        /* 포커스가 풀렸을 때: 0.9초 대기(투명해진 후) 선 길이를 초기화 */
+                        transition: stroke-dashoffset 0.1s linear 0.9s, stroke 0.5s ease-in-out;
+                    }
+                    .peer:focus ~ svg .border-wrap-anim {
+                        stroke-dashoffset: 0;
+                        /* 포커스 시: 시작은 빠르게, 끝은 부드럽게 스르륵 감싸는 탄력 있는 효과 */
+                        transition: stroke-dashoffset 0.7s cubic-bezier(0.1, 0.8, 0.2, 1), stroke 0.5s ease-in-out;
+                    }
+                    .border-wrap-svg {
+                        opacity: 0;
+                        /* 포커스가 풀렸을 때: 0.5초 동안 선을 그대로 보여준 뒤, 0.4초 동안 부드럽게 사라짐 */
+                        transition: opacity 0.4s ease-out 0.5s;
+                    }
+                    .peer:focus ~ .border-wrap-svg {
+                        opacity: 1;
+                        /* 포커스 시: 즉시 선이 나타남 */
+                        transition: opacity 0.2s ease-out 0s;
+                    }
                 `}</style>
                 <div className="bg-white px-6 py-5 border-b border-slate-100 flex-shrink-0 z-10 flex items-center justify-between">
                     <div className="flex justify-between items-center flex-wrap gap-4">
@@ -1629,32 +1659,36 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                             )}
                                                         </div>
                                                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                                                            <span className={`text-[10px] font-bold w-8 text-right ${td.status === 'on-time' ? 'text-indigo-500' : td.status === 'late' ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                            <span className={`text-[10px] font-bold w-8 text-right transition-colors duration-500 ease-in-out ${td.status === 'on-time' ? 'text-indigo-500' : td.status === 'late' ? 'text-amber-500' : 'text-rose-500'}`}>
                                                                 {td.status === 'missed' ? `-${td.penalty}점` : `+${td.gained}점`}
                                                             </span>
-                                                            <select
-                                                                value={td.status}
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                onChange={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleTaskStatusChange(td.date, td.idx, e.target.value);
-                                                                }}
-                                                                className={`w-[76px] py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-all duration-300 shadow-sm outline-none appearance-none cursor-pointer border focus:ring-4 ${
-                                                                    td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200 focus:border-indigo-400 focus:ring-indigo-500/20' :
-                                                                    td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200 focus:border-amber-400 focus:ring-amber-500/20' :
-                                                                    'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200 focus:border-rose-400 focus:ring-rose-500/20'
-                                                                }`}
-                                                                style={{
-                                                                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='${td.status === 'on-time' ? '%234338ca' : td.status === 'late' ? '%23b45309' : '%23be123c'}' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                                                                    backgroundRepeat: 'no-repeat',
-                                                                    backgroundPosition: 'right 2px center',
-                                                                    backgroundSize: '12px'
-                                                                }}
-                                                            >
-                                                                <option value="on-time" className="text-indigo-700 font-bold bg-white">정상 제출</option>
-                                                                <option value="late" className="text-amber-700 font-bold bg-white">지각 제출</option>
-                                                                <option value="missed" className="text-rose-700 font-bold bg-white">미제출</option>
-                                                            </select>
+                                                            <div className="relative inline-block w-[76px]">
+                                                                <select
+                                                                    value={td.status}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    onChange={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleTaskStatusChange(td.date, td.idx, e.target.value);
+                                                                    }}
+                                                                    className={`peer select-flash relative z-10 w-full py-1 pl-1.5 pr-4 text-center rounded text-[10px] font-bold transition-colors duration-500 ease-in-out shadow-sm outline-none appearance-none cursor-pointer border ${
+                                                                        td.status === 'on-time' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200' :
+                                                                        td.status === 'late' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200' :
+                                                                        'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200'
+                                                                    }`}
+                                                                >
+                                                                    <option value="on-time" className="text-indigo-700 font-bold bg-white">정상 제출</option>
+                                                                    <option value="late" className="text-amber-700 font-bold bg-white">지각 제출</option>
+                                                                    <option value="missed" className="text-rose-700 font-bold bg-white">미제출</option>
+                                                                </select>
+                                                                <div className="absolute inset-y-0 right-1.5 flex items-center pointer-events-none z-20">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className={`w-3 h-3 transition-colors duration-500 ease-in-out ${td.status === 'on-time' ? 'text-indigo-700' : td.status === 'late' ? 'text-amber-700' : 'text-rose-700'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                                                    </svg>
+                                                                </div>
+                                                                <svg className="border-wrap-svg absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible">
+                                                                    <rect x="0.5" y="0.5" width="calc(100% - 1px)" height="calc(100% - 1px)" rx="3.5" fill="none" strokeWidth="2.5" className={`border-wrap-anim ${td.status === 'on-time' ? 'stroke-indigo-500' : td.status === 'late' ? 'stroke-amber-500' : 'stroke-rose-500'}`} />
+                                                                </svg>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 )) : (
@@ -2171,16 +2205,16 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                     const comment = rec?.taskComments?.[i] || '';
                                                                     const isEditingComment = openCommentIndex === i;
                                                                     return (
-                                                                        <div key={i} className={`flex flex-col p-3 rounded-2xl border-2 transition-all duration-200 animate-fade-in ${isDone ? 'bg-indigo-50/30 border-indigo-100 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`} style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'both' }}>
+                                                                        <div key={i} className={`flex flex-col p-3 rounded-2xl border-2 transition-colors duration-500 ease-in-out animate-fade-in ${isDone ? 'bg-indigo-50/30 border-indigo-100 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`} style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'both' }}>
                                                                             <div className="flex items-center">
-                                                                                <div className={`flex items-center justify-center w-6 h-6 rounded-full border-2 mr-3 transition-colors ${isDone ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-slate-200 text-transparent'}`}>
+                                                                                <div className={`flex items-center justify-center w-6 h-6 rounded-full border-2 mr-3 transition-colors duration-500 ease-in-out ${isDone ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-slate-200 text-transparent'}`}>
                                                                                     <Icon d={PATHS.check} size={14} strokeWidth={4} />
                                                                                 </div>
                                                                                 <div className="flex-1 min-w-0">
                                                                                     <div className="flex items-center gap-2 mb-0.5">
-                                                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isDone ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>{tag}</span>
+                                                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold transition-colors duration-500 ease-in-out ${isDone ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>{tag}</span>
                                                                                     </div>
-                                                                                    <p className={`text-sm font-bold truncate ${isDone ? 'text-slate-700' : 'text-slate-500'}`}>{title}</p>
+                                                                                    <p className={`text-sm font-bold truncate transition-colors duration-500 ease-in-out ${isDone ? 'text-slate-700' : 'text-slate-500'}`}>{title}</p>
                                                                                 </div>
                                                                                 <button 
                                                                                     onClick={() => {
