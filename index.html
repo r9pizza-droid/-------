@@ -8156,10 +8156,10 @@ const firebaseConfig = {
                 localStorage.setItem('cls_dismissed_notices', JSON.stringify(newDismissed));
             };
 
-            // [New] 종 알림창 상단 고정용 공지 전용 변수 (showInBell === true 인 최신 3개)
+            // [New] 종 알림창 상단 고정용 공지 전용 변수 (showInBell !== false 인 최신 1개)
             const bellPinnedNotices = useMemo(() => {
                 if (!globalNotices || globalNotices.length === 0) return [];
-                return globalNotices.filter(notice => notice.showInBell === true).slice(0, 3);
+                return globalNotices.filter(notice => notice.showInBell !== false).slice(0, 1);
             }, [globalNotices]);
 
             // [New] 관리자 전체 공지 실시간 동기화
@@ -8220,6 +8220,9 @@ return () => unsubscribe();
             const [expandedActivityUid, setExpandedActivityUid] = useState(null);
             const [showAdminNoticeHistory, setShowAdminNoticeHistory] = useState(false);
             const [userListPage, setUserListPage] = useState(1);
+            const [globalNoticeMsg, setGlobalNoticeMsg] = useState("");
+            const [noticeShowMain, setNoticeShowMain] = useState(true);
+            const [noticeShowBell, setNoticeShowBell] = useState(true);
             const USERS_PER_PAGE = 5;
 
             const handleOpenAdminDashboard = async () => {
@@ -8356,9 +8359,17 @@ return () => unsubscribe();
                     alert("사용자 목록이 아직 로딩되지 않았습니다. 잠시 후 다시 시도해주세요.");
                     return;
                 }
-                const message = prompt(`총 ${userList.length}명의 사용자에게 보낼 공지 메시지를 입력하세요:\n(예: "이번 주 기능 업데이트가 완료되었습니다!")`);
-                if (!message || message.trim() === "") return;
-                if (!confirm(`다음 메시지를 전체 발송하시겠습니까?\n\n"${message}"`)) return;
+                
+                const message = globalNoticeMsg.trim();
+                if (!message) {
+                    alert("공지 메시지를 입력해주세요.");
+                    return;
+                }
+                if (!noticeShowMain && !noticeShowBell) {
+                    alert("노출 위치를 하나 이상 선택해주세요.");
+                    return;
+                }
+                if (!confirm(`다음 공지를 발송하시겠습니까?\n\n- 메인 기록 탭: ${noticeShowMain ? 'O' : 'X'}\n- 종 알림창: ${noticeShowBell ? 'O' : 'X'}\n\n"${message}"`)) return;
 
                 setIsLoadingStats(true);
                 try {
@@ -8367,10 +8378,7 @@ return () => unsubscribe();
                     let currentBatch = sharedDb.batch();
                     let operationCount = 0;
 
-                    // [New] 관리자 대시보드 발송 내역용 마스터 공지 추가
-                    const mainNotiRef = sharedDb.collection('notifications').doc();
-                    currentBatch.set(mainNotiRef, {
-                        targetUid: 'ALL_USERS',
+                    const noticeData = {
                         type: 'notice',
                         title: '전체 공지',
                         senderName: '👑 시스템 공지',
@@ -8378,6 +8386,15 @@ return () => unsubscribe();
                         content: message,
                         isRead: false,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        showInMain: noticeShowMain,
+                        showInBell: noticeShowBell
+                    };
+
+                    // [New] 관리자 대시보드 발송 내역용 마스터 공지 추가
+                    const mainNotiRef = sharedDb.collection('notifications').doc();
+                    currentBatch.set(mainNotiRef, {
+                        ...noticeData,
+                        targetUid: 'ALL_USERS',
                         targetCount: userList.length
                     });
                     operationCount++;
@@ -8386,14 +8403,8 @@ return () => unsubscribe();
                         if (user.uid) {
                             const notiRef = sharedDb.collection('notifications').doc();
                             currentBatch.set(notiRef, {
+                            ...noticeData,
                                 targetUid: user.uid,
-                                type: 'notice',
-                                title: '전체 공지',
-                                senderName: '👑 시스템 공지',
-                                message: message,
-                                content: message,
-                                isRead: false,
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
                             });
                             operationCount++;
                             if (operationCount >= batchSize) {
@@ -8405,6 +8416,8 @@ return () => unsubscribe();
                     });
                     if (operationCount > 0) batches.push(currentBatch);
                     await Promise.all(batches.map(b => b.commit()));
+                    
+                    setGlobalNoticeMsg(""); // 텍스트 초기화
                     setToastMessage("전체 공지가 성공적으로 발송되었습니다.");
                 } catch (e) { console.error(e); setToastMessage("공지 발송 실패: " + e.message); }
                 finally { setIsLoadingStats(false); }
@@ -13118,9 +13131,9 @@ useEffect(() => {
                             {mode === 'record' && (
                                 <>
                                     {/* [New] 관리자 전체 공지 영역 (닫은 공지는 필터링) */}
-                                    {globalNotices && globalNotices.filter(n => !dismissedNoticeIds.includes(n.id)).length > 0 && (
+                                    {globalNotices && globalNotices.filter(n => n.showInMain !== false && !dismissedNoticeIds.includes(n.id)).length > 0 && (
                                         <div className="mb-5 space-y-2 animate-fade-in">
-                                            {globalNotices.filter(n => !dismissedNoticeIds.includes(n.id)).slice(0, 1).map(notice => {
+                                            {globalNotices.filter(n => n.showInMain !== false && !dismissedNoticeIds.includes(n.id)).slice(0, 1).map(notice => {
                                                 const isNew = notice.createdAt && dayjs().diff(dayjs(notice.createdAt), 'day') <= 3;
                                                 return (
                                                     <div key={`global-notice-${notice.id}`} className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 shadow-sm transition-all hover:shadow hover:border-blue-300 relative group">
@@ -15255,19 +15268,38 @@ useEffect(() => {
                                                 </div>
 
                                                 {/* [New] 전체 공지 발송 섹션 */}
-                                                <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                                <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 mt-6 flex flex-col gap-4">
                                                     <div className="w-full">
-                                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl shrink-0">📢</div>
-                                                                <div>
-                                                                    <h4 className="font-bold text-indigo-800 text-sm">전체 사용자 공지 발송</h4>
-                                                                    <p className="text-[10px] text-indigo-600 mt-0.5">모든 사용자({userList.length}명)의 종 모양 알림함으로 즉시 메시지를 보냅니다.</p>
-                                                                </div>
+                                                        <div className="flex items-center gap-3 mb-4">
+                                                            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl shrink-0">📢</div>
+                                                            <div>
+                                                                <h4 className="font-bold text-indigo-800 text-sm">전체 사용자 공지 발송</h4>
+                                                                <p className="text-[10px] text-indigo-600 mt-0.5">모든 사용자({userList.length}명)에게 즉시 메시지를 보냅니다.</p>
                                                             </div>
-                                                            <button onClick={handleSendGlobalNotice} disabled={isLoadingStats} className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-md transition-colors active:scale-95 whitespace-nowrap">
-                                                                공지 발송하기
-                                                            </button>
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            <textarea 
+                                                                value={globalNoticeMsg} 
+                                                                onChange={(e) => setGlobalNoticeMsg(e.target.value)} 
+                                                                placeholder="공지 내용을 입력하세요..."
+                                                                className="w-full p-3 rounded-xl border border-indigo-200 outline-none focus:ring-2 focus:ring-indigo-400 text-sm resize-none custom-scroll h-20"
+                                                            />
+                                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                                                <div className="flex items-center gap-4 bg-white px-3 py-2 rounded-xl border border-indigo-100 shadow-sm w-full sm:w-auto">
+                                                                    <span className="text-xs font-bold text-indigo-800">노출 위치:</span>
+                                                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                                                        <input type="checkbox" checked={noticeShowMain} onChange={(e) => setNoticeShowMain(e.target.checked)} className="w-3.5 h-3.5 text-indigo-600 rounded" />
+                                                                        <span className="text-xs text-slate-700 font-medium">메인 기록 탭</span>
+                                                                    </label>
+                                                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                                                        <input type="checkbox" checked={noticeShowBell} onChange={(e) => setNoticeShowBell(e.target.checked)} className="w-3.5 h-3.5 text-indigo-600 rounded" />
+                                                                        <span className="text-xs text-slate-700 font-medium">종 알림창</span>
+                                                                    </label>
+                                                                </div>
+                                                                <button onClick={handleSendGlobalNotice} disabled={isLoadingStats} className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-md transition-colors active:scale-95 whitespace-nowrap">
+                                                                    공지 발송하기
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                         <div className="mt-4 pt-4 border-t border-indigo-100/50 w-full">
                                                             <div 
