@@ -8149,17 +8149,25 @@ const firebaseConfig = {
                 
                 const unsubscribe = adminDb.collection('notifications')
                     .where('type', '==', 'notice')
-                    .where('targetUid', '==', 'ALL_USERS')
                     .orderBy('createdAt', 'desc')
-                    .limit(10)
+                    .limit(50)
                     .onSnapshot(snapshot => {
-                        const uniqueNotices = snapshot.docs.map(doc => {
+                        const uniqueNotices = [];
+                        const seenMessages = new Set();
+                        
+                        snapshot.docs.forEach(doc => {
                             const data = doc.data();
-                            return {
-                                id: doc.id,
-                                ...data,
-                                createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
-                            };
+                            const msg = data.message || data.content;
+                            
+                            // 내용(메시지) 기준으로 중복을 제거하여 마스터 공지 효과 유지
+                            if (msg && !seenMessages.has(msg)) {
+                                seenMessages.add(msg);
+                                uniqueNotices.push({
+                                    id: doc.id,
+                                    ...data,
+                                    createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
+                                });
+                            }
                         });
                         setGlobalNotices(uniqueNotices);
                     }, err => {
