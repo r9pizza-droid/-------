@@ -6795,16 +6795,34 @@
                             await existingApp.delete();
                         }
                         const userApp = firebase.initializeApp(config, 'myClassApp');
-                        targetAuth = userApp.auth();
-                    }
-                    
-                    if (isSignUp) {
-                        // [New] 회원가입 처리
-                        await targetAuth.createUserWithEmailAndPassword(authId, authPw);
-                        showToast("🎉 가입을 환영합니다! 자동으로 로그인되었습니다.");
+                        
+                        // 1. 개인 앱 가입/로그인
+                        if (isSignUp) {
+                            await userApp.auth().createUserWithEmailAndPassword(authId, authPw);
+                        } else {
+                            await userApp.auth().signInWithEmailAndPassword(authId, authPw); 
+                        }
+                        
+                        // 2. 게시판(공용) 동시 접속을 위해 공용 앱에도 가입/로그인 처리
+                        try {
+                            if (isSignUp) await targetAuth.createUserWithEmailAndPassword(authId, authPw);
+                            else await targetAuth.signInWithEmailAndPassword(authId, authPw);
+                        } catch (syncErr) {
+                            if (syncErr.code === 'auth/email-already-in-use') {
+                                await targetAuth.signInWithEmailAndPassword(authId, authPw).catch(e => console.warn(e));
+                            } else if (syncErr.code === 'auth/user-not-found') {
+                                await targetAuth.createUserWithEmailAndPassword(authId, authPw).catch(e => console.warn(e));
+                            }
+                        }
+                        showToast(isSignUp ? "🎉 가입을 환영합니다! 자동으로 로그인되었습니다." : "로그인 성공");
                     } else {
-                        // 기존 로그인
-                        await targetAuth.signInWithEmailAndPassword(authId, authPw); 
+                        if (isSignUp) {
+                            await targetAuth.createUserWithEmailAndPassword(authId, authPw);
+                            showToast("🎉 가입을 환영합니다! 자동으로 로그인되었습니다.");
+                        } else {
+                            await targetAuth.signInWithEmailAndPassword(authId, authPw); 
+                            showToast("로그인 성공");
+                        }
                     }
 
                     if (rememberMe) { 
@@ -6854,6 +6872,7 @@
                     }
                     const userApp = firebase.initializeApp(config, 'myClassApp');
                     await userApp.auth().signInWithEmailAndPassword(authId, authPw);
+                    try { await firebase.auth().signInWithEmailAndPassword(authId, authPw); } catch(e) {}
                     
                     // [NEW] Firestore 보안 규칙(Rules) 검증 테스트 (쓰기 시도)
                     try {
@@ -10586,12 +10605,11 @@ const firebaseConfig = {
                         try {
                             const config = JSON.parse(savedConfig);
                             
-                            // [Fix] 기존 앱이 있다면 삭제 후 재생성 (권한 충돌 및 세션 꼬임 방지)
-                            const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
-                            if (existingApp) {
-                                await existingApp.delete();
+                            // [Fix] 기존 앱이 있다면 삭제하지 않고 재사용 (새로고침 시 로그인 세션 유지)
+                            let userApp = firebase.apps.find(app => app.name === 'myClassApp');
+                            if (!userApp) {
+                                userApp = firebase.initializeApp(config, 'myClassApp');
                             }
-                            const userApp = firebase.initializeApp(config, 'myClassApp');
                             
                             // [Fix] 전역 변수 db가 반드시 개인용 프로젝트를 가리키도록 강제 할당
                             const firestore = userApp.firestore();
