@@ -7766,22 +7766,17 @@ const firebaseConfig = {
         let sharedApp;
         let sharedDb;
         try {
-            const savedConfigStr = safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
-            if (savedConfigStr) {
-                const savedConfig = JSON.parse(savedConfigStr);
-                if (savedConfig && savedConfig.apiKey) {
-                    if (!firebase.apps.length) {
-                        sharedApp = firebase.initializeApp(savedConfig);
-                    } else {
-                        sharedApp = firebase.app();
-                    }
-                    sharedDb = sharedApp.firestore();
-                    isFirebaseInitialized = true;
-                    console.log("✅ Firebase 연결 성공!");
-                }
+            const sharedFirebaseConfig = { apiKey: "AIzaSyCeHxv8oRMA7xhk4u6ZHmoeMzb7JhcRuVc", authDomain: "homework-14674.firebaseapp.com", projectId: "homework-14674", storageBucket: "homework-14674.firebasestorage.app", messagingSenderId: "358784571550", appId: "1:358784571550:web:0419abd2dcee35779b038f" };
+            if (!firebase.apps.length) {
+                sharedApp = firebase.initializeApp(sharedFirebaseConfig);
+            } else {
+                sharedApp = firebase.app();
             }
+            sharedDb = sharedApp.firestore();
+            isFirebaseInitialized = true;
+            console.log("✅ 공용 Firebase 연결 성공!");
         } catch (e) {
-            console.error("❌ Firebase 초기화 실패:", e);
+            console.error("❌ 공용 Firebase 연결 실패:", e);
         }
 
         // [New] 활동 로그 저장 헬퍼 함수 (전역)
@@ -15586,58 +15581,8 @@ useEffect(() => {
             );
         };
         
-        const AppWrapper = () => {
-            const [isConfigured, setIsConfigured] = React.useState(isFirebaseInitialized);
-            const [configInput, setConfigInput] = React.useState("");
-
-            const handleSaveConfig = () => {
-                try {
-                    const parsedConfig = JSON.parse(configInput);
-                    if (parsedConfig && parsedConfig.apiKey) {
-                        localStorage.setItem('myFirebaseConfig', JSON.stringify(parsedConfig));
-                        window.location.reload();
-                    } else {
-                        alert("유효한 API 키가 포함되어 있지 않습니다.");
-                    }
-                } catch (error) {
-                    alert("잘못된 JSON 형식입니다. 코드를 다시 확인해주세요.");
-                }
-            };
-
-            if (!isConfigured) {
-                return (
-                    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-slate-800">
-                        <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg border border-slate-200">
-                            <div className="text-center mb-6">
-                                <span className="text-4xl block mb-3">🔥</span>
-                                <h2 className="text-2xl font-bold text-slate-800"><span>데이터베이스 설정</span></h2>
-                                <p className="text-sm text-slate-500 mt-2"><span>안전한 데이터 관리를 위해 선생님만의 Firebase 환경을 연결해주세요.</span></p>
-                            </div>
-                            <div className="mb-5">
-                                <label className="block text-sm font-bold text-slate-700 mb-2"><span>Firebase 설정 코드 (JSON)</span></label>
-                                <textarea 
-                                    className="w-full h-48 p-4 border border-slate-200 rounded-xl text-xs font-mono bg-slate-50 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all custom-scroll resize-none"
-                                    placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  ...&#10;}'
-                                    value={configInput}
-                                    onChange={(e) => setConfigInput(e.target.value)}
-                                />
-                            </div>
-                            <button 
-                                onClick={handleSaveConfig}
-                                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-indigo-700 transition-all active:scale-95 flex items-center justify-center gap-2"
-                            >
-                                <span>설정 저장 및 시작</span>
-                            </button>
-                        </div>
-                    </div>
-                );
-            }
-
-            return <App />;
-        };
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<AppWrapper />);
+        root.render(<App />);
     </script>
 
 <!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><!----comment node----><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch><iframe ng-non-bindable="" frameborder="0" hspace="0" marginheight="0" marginwidth="0" scrolling="no" style="position: absolute; top: -100px; width: 1px; height: 1px;" tabindex="-1" vspace="0" width="100%" aria-hidden="true" id="I0_1773120034600" name="I0_1773120034600" src="https://homework-14674.firebaseapp.com/__/auth/iframe?apiKey=AIzaSyCeHxv8oRMA7xhk4u6ZHmoeMzb7JhcRuVc&amp;appName=%5BDEFAULT%5D&amp;v=10.7.1&amp;eid=p&amp;usegapi=1&amp;jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.ko.RZQ_hK-51ao.O%2Fd%3D1%2Frs%3DAHpOoo9Br98xJ0Prs7-3lgcjTAx7D_6W8w%2Fm%3D__features__#id=I0_1773120034600&amp;_gfid=I0_1773120034600&amp;parent=file%3A%2F%2F&amp;pfname=&amp;rpctoken=64668616" bis_size="{&quot;x&quot;:0,&quot;y&quot;:-100,&quot;w&quot;:1,&quot;h&quot;:1,&quot;abs_x&quot;:0,&quot;abs_y&quot;:-100}"></iframe><!----comment node----></body><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch></html>
