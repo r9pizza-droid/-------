@@ -8852,7 +8852,9 @@ const firebaseConfig = {
                     setImgbbApiKey(docSnap.data().apiKey || "");
                 }
             } catch (error) {
-                console.error("API 키 불러오기 에러:", error);
+                if (!error.message.includes('terminated')) {
+                    console.error("API 키 불러오기 에러:", error);
+                }
             }
         };
         fetchApiKey();
