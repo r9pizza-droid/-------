@@ -6720,38 +6720,44 @@
             const handleConnect = async () => { 
                 if(!authId || !authPw) { showToast("아이디와 비밀번호를 입력해주세요."); return; } 
                 
-                let config = null;
-                if (inputConfig.trim()) {
-                    config = parseConfig(inputConfig);
-                    if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
-                } else {
-                    showToast("Firebase 설정 코드를 입력해주세요.");
-                    return;
-                }
-
                 try {
-                    if (!firebase.apps.length) {
-                        firebase.initializeApp(config);
-                    }
-
-                    const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
-                    if (existingApp) {
-                        await existingApp.delete();
-                    }
-                    const userApp = firebase.initializeApp(config, 'myClassApp');
+                    let config = null;
+                    const defaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
                     
-                    if (isSignUp) {
-                        await userApp.auth().createUserWithEmailAndPassword(authId, authPw);
+                    // 개인 설정이 있는 경우
+                    if (inputConfig.trim()) {
+                        config = parseConfig(inputConfig);
+                        if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
+                        
+                        const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
+                        if (existingApp) await existingApp.delete();
+                        const userApp = firebase.initializeApp(config, 'myClassApp');
+                        
+                        if (isSignUp) await userApp.auth().createUserWithEmailAndPassword(authId, authPw);
+                        else await userApp.auth().signInWithEmailAndPassword(authId, authPw);
+                        
+                        // 공용 게시판에도 동일 정보로 가입/로그인 시도 (게시판 활동용)
+                        if (defaultApp) {
+                            if (isSignUp) await defaultApp.auth().createUserWithEmailAndPassword(authId, authPw).catch(()=>{});
+                            else await defaultApp.auth().signInWithEmailAndPassword(authId, authPw).catch(()=>{});
+                        }
                     } else {
-                        await userApp.auth().signInWithEmailAndPassword(authId, authPw); 
+                        // 게시판만 이용하는 경우 (개인 설정 없음)
+                        if (defaultApp) {
+                            if (isSignUp) await defaultApp.auth().createUserWithEmailAndPassword(authId, authPw);
+                            else await defaultApp.auth().signInWithEmailAndPassword(authId, authPw);
+                        } else {
+                            throw new Error("공용 서버 연결을 찾을 수 없습니다.");
+                        }
                     }
-                    
+                     
                     showToast(isSignUp ? "🎉 가입을 환영합니다! 자동으로 로그인되었습니다." : "로그인 성공");
 
                     if (rememberMe) { 
                         localStorage.setItem('cls_fb_id', authId); 
                         localStorage.setItem('cls_fb_pw', authPw); 
-                        localStorage.setItem('cls_fb_config', inputConfig);
+                        if (inputConfig.trim()) localStorage.setItem('cls_fb_config', inputConfig);
+                        else localStorage.removeItem('cls_fb_config');
                     } else { 
                         localStorage.removeItem('cls_fb_id'); 
                         localStorage.removeItem('cls_fb_pw'); 
@@ -6768,44 +6774,32 @@
             const handleTest = async () => {
                 if(!authId || !authPw) { showToast("아이디와 비밀번호를 입력해주세요."); return; }
                 
-                if (!inputConfig.trim()) {
-                    showToast("Firebase 설정 코드를 입력해주세요.");
-                    return;
-                }
-
-                const config = parseConfig(inputConfig);
-                if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
-
                 setIsTesting(true);
                 try {
-                    if (!firebase.apps.length) {
-                        firebase.initializeApp(config);
-                    }
+                    if (inputConfig.trim()) {
+                        const config = parseConfig(inputConfig);
+                        if (!config || !config.projectId) { showToast("올바른 설정 코드가 아닙니다 (projectId 누락)."); return; }
 
-                    // [수정] 명명된 앱(myClassApp)으로 테스트
-                    const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
-                    if (existingApp) {
-                        await existingApp.delete();
-                    }
-                    const userApp = firebase.initializeApp(config, 'myClassApp');
-                    await userApp.auth().signInWithEmailAndPassword(authId, authPw);
-                    
-                    // [NEW] Firestore 보안 규칙(Rules) 검증 테스트 (쓰기 시도)
-                    try {
-                        await userApp.firestore().collection('connection_test').add({
-                            test: true,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            uid: userApp.auth().currentUser.uid
-                        });
-                        const testUid = userApp.auth().currentUser.uid;
-                        await userApp.firestore().collection('userProfiles').doc(testUid).set({
-                            lastConnectionTest: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
-                        showToast("✅ 연결 및 보안 규칙(Rules) 검증 성공! (쓰기 권한 확인됨)");
-                    } catch (dbError) {
-                        if (dbError.code === 'permission-denied') throw new Error("로그인은 성공했으나 DB 쓰기 권한이 없습니다. Firestore Rules에서 UID가 올바르게 설정되었는지 확인하세요.");
-                        if (dbError.code === 'permission-denied') throw new Error("로그인은 성공했으나 DB 쓰기 권한이 없습니다. 매뉴얼 3단계의 보안 규칙 코드가 전체 복사/붙여넣기 되었는지 다시 확인해주세요.");
-                        else throw dbError;
+                        const existingApp = firebase.apps.find(app => app.name === 'myClassApp');
+                        if (existingApp) await existingApp.delete();
+                        const userApp = firebase.initializeApp(config, 'myClassApp');
+                        await userApp.auth().signInWithEmailAndPassword(authId, authPw);
+                        
+                        try {
+                            await userApp.firestore().collection('connection_test').add({
+                                test: true, createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid: userApp.auth().currentUser.uid
+                            });
+                            showToast("✅ 연결 및 보안 규칙 검증 성공! (개인 DB 쓰기 권한 확인됨)");
+                        } catch (dbError) {
+                            if (dbError.code === 'permission-denied') throw new Error("개인 DB 로그인은 성공했으나 쓰기 권한이 없습니다. 매뉴얼 3단계 보안 규칙을 확인해주세요.");
+                            else throw dbError;
+                        }
+                    } else {
+                        const defaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
+                        if (!defaultApp) throw new Error("공용 서버를 찾을 수 없습니다.");
+                        
+                        await defaultApp.auth().signInWithEmailAndPassword(authId, authPw);
+                        showToast("✅ 공용 게시판 서버 연결 테스트 성공!");
                     }
                 } catch (e) {
                     let errMsg = "연결 실패: " + e.message;
@@ -7705,7 +7699,7 @@ const firebaseConfig = {
         // [New] 관리자 공지 전용 Firebase 설정
         const ADMIN_CONFIG = {
             apiKey: "AIzaSyCeHxv8oRMA7xhk4u6ZHmoeMzb7JhcRuVc",
-            authDomain: "homework-14674.firebaseapp.comN",
+            authDomain: "homework-14674.firebaseapp.com",
             projectId: "homework-14674",
             storageBucket: "homework-14674.firebasestorage.app",
             messagingSenderId: "358784571550",
@@ -15805,32 +15799,28 @@ useEffect(() => {
             const [isInitialized, setIsInitialized] = useState(false);
 
             useEffect(() => {
-                // [New] 관리자 앱 초기화 (전체 공지 읽기 전용)
-                try {
-                    if (!firebase.apps.find(app => app.name === 'adminApp')) {
-                        firebase.initializeApp(ADMIN_CONFIG, 'adminApp');
-                    }
-                    adminDb = firebase.app('adminApp').firestore();
-                } catch (e) {
-                    console.error("Admin Firebase init err:", e);
+                // 1. 공용 서버(게시판용)를 기본 [DEFAULT] 앱으로 항상 초기화합니다.
+                let defaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
+                if (!defaultApp) {
+                    defaultApp = firebase.initializeApp(ADMIN_CONFIG);
                 }
+                sharedApp = defaultApp;
+                sharedDb = defaultApp.firestore();
+                adminDb = defaultApp.firestore();
+                isFirebaseInitialized = true;
 
+                // 2. 개인 설정(기록 동기화용)이 있다면 myClassApp으로 분리하여 초기화합니다.
                 const savedConfigStr = safeLocalStorage.getItem('checklist_config') || localStorage.getItem('checklist_config') || safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
                 if (savedConfigStr) {
                     try {
                         const config = JSON.parse(savedConfigStr);
                         if (config && config.projectId) {
-                            const defaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
-                            if (!defaultApp) {
-                                sharedApp = firebase.initializeApp(config);
-                            } else {
-                                sharedApp = defaultApp;
+                            if (!firebase.apps.find(app => app.name === 'myClassApp')) {
+                                firebase.initializeApp(config, 'myClassApp');
                             }
-                            sharedDb = sharedApp.firestore();
-                            isFirebaseInitialized = true;
                         }
                     } catch (e) {
-                        console.error("Firebase init err:", e);
+                        console.error("Personal Firebase init err:", e);
                     }
                 }
                 setIsInitialized(true);
