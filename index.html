@@ -7835,7 +7835,62 @@ const firebaseConfig = {
             );
         };
 
-        const ExamView = ({ students, exams, setExams, examScores, setExamScores, handleSendCorrectionTask, showToast, isLocalMode, saveData, db, appId }) => {
+        const ExamSubjectSelector = ({ current, setSubject, subjects, onAdd, onEdit, onDelete, openConfirm }) => {
+            const [showManager, setShowManager] = useState(false);
+            const [newSubjectInput, setNewSubjectInput] = useState("");
+            const [editingSubject, setEditingSubject] = useState(null);
+            const [editSubjectValue, setEditSubjectValue] = useState("");
+            const handleAdd = () => { if (newSubjectInput.trim()) { onAdd(newSubjectInput.trim()); setNewSubjectInput(""); } };
+            const handleFinishEdit = () => { if (editingSubject && editSubjectValue.trim() && editSubjectValue.trim() !== editingSubject) onEdit(editingSubject, editSubjectValue.trim()); setEditingSubject(null); setEditSubjectValue(""); };
+            return (
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500">과목/분류</label>
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                        {subjects.map(s => (
+                            <button 
+                                key={s} 
+                                onClick={() => setSubject(s)} 
+                                className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${current === s ? 'bg-indigo-600 text-white font-bold shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'}`}
+                            >
+                                {s}
+                            </button>
+                        ))}
+                        <button onClick={() => setShowManager(!showManager)} className={`p-1.5 rounded-full hover:bg-slate-100 transition-colors ${showManager ? 'bg-slate-100' : ''}`}>
+                            <Icon d={PATHS.edit} size={14} className="text-slate-400" />
+                        </button>
+                    </div>
+                    {showManager && (
+                        <div className="mt-2 p-3 bg-white rounded-lg border border-slate-200 shadow-sm animate-fade-in relative z-10">
+                            <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">과목 관리</div>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {subjects.map(subject => editingSubject === subject ? (
+                                    <div key={subject} className="flex items-center bg-white border border-indigo-300 rounded-lg overflow-hidden shadow-sm ring-2 ring-indigo-50">
+                                        <input value={editSubjectValue} onChange={e => setEditSubjectValue(e.target.value)} className="w-20 px-2 py-1 text-xs outline-none" autoFocus onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleFinishEdit() }} />
+                                        <button onClick={handleFinishEdit} className="bg-indigo-50 text-indigo-600 px-2 py-1 hover:bg-indigo-100 border-l border-indigo-100"><Icon d={PATHS.check} size={12} /></button>
+                                        <button onClick={() => setEditingSubject(null)} className="bg-slate-50 text-slate-400 px-2 py-1 hover:bg-slate-100 border-l border-slate-100"><Icon d={PATHS.x} size={12} /></button>
+                                    </div>
+                                ) : (
+                                    <div key={subject} className="relative px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 group hover:border-slate-300 transition-colors">
+                                        <span>{subject}</span>
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 ease-out transform translate-y-2 group-hover:translate-y-0 bg-white shadow-xl border border-slate-100 rounded-lg p-1 z-20">
+                                            <button onClick={() => { setEditingSubject(subject); setEditSubjectValue(subject); }} className="hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 text-slate-400 transition-colors"><Icon d={PATHS.edit} size={12} /></button>
+                                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openConfirm(`'${subject}' 과목을 삭제하시겠습니까?`, () => onDelete(subject)); }} className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"><Icon d={PATHS.trash} size={12} /></button>
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-white border-b border-r border-slate-100 transform rotate-45 -mt-1"></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex gap-1">
+                                <input value={newSubjectInput} onChange={e => setNewSubjectInput(e.target.value)} className="flex-1 min-w-0 p-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition-all" placeholder="새 과목 이름" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd() }} />
+                                <button onClick={handleAdd} className="shrink-0 bg-slate-800 text-white px-3 rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors">추가</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const ExamView = ({ students, exams, setExams, examScores, setExamScores, handleOpenCorrectionCalendar, showToast, isLocalMode, saveData, db, appId, examSubjects, setExamSubjects, openConfirm }) => {
             const [selectedExamId, setSelectedExamId] = useState(null);
             const [isEditingExam, setIsEditingExam] = useState(false);
             const [editExamData, setEditExamData] = useState({});
@@ -7845,7 +7900,7 @@ const firebaseConfig = {
                 const newExam = {
                     id: newId,
                     date: dayjs().format('YYYY-MM-DD'),
-                    subject: '수학',
+                    subject: examSubjects[0] || '수학',
                     title: '새 단원평가',
                     maxScore: 100,
                     totalQuestions: 20
@@ -7856,6 +7911,30 @@ const firebaseConfig = {
                 setSelectedExamId(newId);
                 setIsEditingExam(true);
                 setEditExamData(newExam);
+            };
+
+            const handleSubjectAction = (action, ...args) => {
+                if (action === 'add') {
+                    const newSubject = args[0];
+                    if (newSubject && !examSubjects.includes(newSubject)) {
+                        const newSubjects = [...examSubjects, newSubject];
+                        setExamSubjects(newSubjects);
+                        saveData({ cls_exam_subjects: newSubjects });
+                    }
+                } else if (action === 'delete') {
+                    const subjectToDelete = args[0];
+                    const newSubjects = examSubjects.filter(s => s !== subjectToDelete);
+                    setExamSubjects(newSubjects);
+                    saveData({ cls_exam_subjects: newSubjects });
+                    if (editExamData.subject === subjectToDelete) {
+                        setEditExamData(prev => ({ ...prev, subject: examSubjects[0] || '국어' }));
+                    }
+                } else if (action === 'edit') {
+                    const [oldSubject, newSubject] = args;
+                    const newSubjects = examSubjects.map(s => s === oldSubject ? newSubject : s);
+                    setExamSubjects(newSubjects);
+                    saveData({ cls_exam_subjects: newSubjects });
+                }
             };
 
             const handleSaveExamInfo = () => {
@@ -7910,11 +7989,20 @@ const firebaseConfig = {
                 const currentScores = examScores[selectedExamId] || {};
                 const stuScore = currentScores[studentId] || { score: '', wrongCount: '' };
                 
-                const newStuScore = { ...stuScore, [field]: value };
-                
+                let newValue = value;
                 const exam = exams.find(e => e.id === selectedExamId);
-                if (field === 'wrongCount' && value !== '' && exam && exam.totalQuestions && exam.maxScore) {
-                    const wrong = parseInt(value);
+
+                if (field === 'score' && newValue !== '' && exam) {
+                    let numValue = parseInt(newValue);
+                    if (!isNaN(numValue) && numValue > exam.maxScore) {
+                        newValue = String(exam.maxScore);
+                    }
+                }
+                
+                const newStuScore = { ...stuScore, [field]: newValue };
+                
+                if (field === 'wrongCount' && newValue !== '' && exam && exam.totalQuestions && exam.maxScore) {
+                    const wrong = parseInt(newValue);
                     const scorePerQ = exam.maxScore / exam.totalQuestions;
                     newStuScore.score = Math.max(0, Math.round(exam.maxScore - (wrong * scorePerQ)));
                 }
@@ -7940,7 +8028,7 @@ const firebaseConfig = {
                         <div className="flex-1 overflow-y-auto custom-scroll space-y-2 pr-1">
                             {exams.length === 0 ? (
                                 <div className="text-center text-xs text-slate-400 py-8">등록된 평가가 없습니다.</div>
-                            ) : exams.map(e => (
+                            ) : [...exams].sort((a, b) => new Date(b.date) - new Date(a.date)).map(e => (
                                 <div key={e.id} onClick={() => { setSelectedExamId(e.id); setIsEditingExam(false); }} className={`group relative p-3 rounded-xl border cursor-pointer transition-all ${selectedExamId === e.id ? 'bg-white border-indigo-500 shadow-md ring-1 ring-indigo-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
                                     <div className="flex justify-between items-start mb-1">
                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${e.subject==='수학'?'bg-blue-100 text-blue-700':e.subject==='국어'?'bg-rose-100 text-rose-700':'bg-slate-100 text-slate-700'}`}>{e.subject}</span>
@@ -7963,27 +8051,63 @@ const firebaseConfig = {
                             <>
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 pb-4 border-b border-slate-100 gap-4">
                                     {isEditingExam ? (
-                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full animate-fade-in"><div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">날짜</label><input type="date" value={editExamData.date} onChange={e => setEditExamData({...editExamData, date: e.target.value})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"/></div><div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">과목/분류</label><input value={editExamData.subject} onChange={e => setEditExamData({...editExamData, subject: e.target.value})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500" placeholder="예: 수학"/></div><div className="space-y-1 sm:col-span-2"><label className="text-[10px] font-bold text-slate-500">평가 제목</label><input value={editExamData.title} onChange={e => setEditExamData({...editExamData, title: e.target.value})} className="w-full p-2 text-sm font-bold border rounded-lg outline-none focus:border-indigo-500"/></div><div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">만점 점수</label><input type="number" value={editExamData.maxScore} onChange={e => setEditExamData({...editExamData, maxScore: parseInt(e.target.value) || 0})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"/></div><div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">총 문제 수</label><input type="number" value={editExamData.totalQuestions} onChange={e => setEditExamData({...editExamData, totalQuestions: parseInt(e.target.value) || 0})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"/></div><div className="sm:col-span-2 flex justify-end gap-2 mt-2"><Btn onClick={() => handleDeleteExam(selectedExamId)} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100">삭제</Btn><Btn onClick={handleSaveExamInfo} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700">저장</Btn></div></div>
+                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full animate-fade-in">
+                                            <div className="sm:col-span-2">
+                                                <ExamSubjectSelector 
+                                                    current={editExamData.subject}
+                                                    setSubject={(subject) => setEditExamData(prev => ({ ...prev, subject }))}
+                                                    subjects={examSubjects}
+                                                    onAdd={(s) => handleSubjectAction('add', s)}
+                                                    onEdit={(o, n) => handleSubjectAction('edit', o, n)}
+                                                    onDelete={(s) => handleSubjectAction('delete', s)}
+                                                    openConfirm={openConfirm}
+                                                />
+                                            </div>
+                                            <div className="space-y-1 sm:col-span-2"><label className="text-[10px] font-bold text-slate-500">평가 제목</label><input value={editExamData.title} onChange={e => setEditExamData({...editExamData, title: e.target.value})} className="w-full p-2 text-sm font-bold border rounded-lg outline-none focus:border-indigo-500"/></div>
+                                            <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">날짜</label><input type="date" value={editExamData.date} onChange={e => setEditExamData({...editExamData, date: e.target.value})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"/></div>
+                                            <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">만점 점수</label><input type="number" value={editExamData.maxScore} onChange={e => setEditExamData({...editExamData, maxScore: parseInt(e.target.value) || 0})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"/></div>
+                                            <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">총 문제 수</label><input type="number" value={editExamData.totalQuestions} onChange={e => setEditExamData({...editExamData, totalQuestions: parseInt(e.target.value) || 0})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"/></div>
+                                            <div className="sm:col-span-2 flex justify-end gap-2 mt-2"><Btn onClick={() => handleDeleteExam(selectedExamId)} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100">삭제</Btn><Btn onClick={handleSaveExamInfo} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700">저장</Btn></div>
+                                        </div>
                                     ) : (
                                         <div className="flex-1 w-full animate-fade-in"><div className="flex items-center gap-2 mb-1"><span className="text-xs bg-slate-100 px-2 py-0.5 rounded font-bold text-slate-600">{selectedExam.subject}</span><span className="text-xs text-slate-400 font-mono">{selectedExam.date}</span><button onClick={() => { setEditExamData(selectedExam); setIsEditingExam(true); }} className="p-1 text-slate-300 hover:text-indigo-500 transition-colors ml-1"><Icon d={PATHS.edit} size={14}/></button></div><h3 className="text-2xl font-bold text-slate-800">{selectedExam.title}</h3><div className="text-xs text-slate-500 mt-2 font-medium">만점: {selectedExam.maxScore}점 | 총 {selectedExam.totalQuestions}문제</div></div>
                                     )}
                                     {!isEditingExam && (
-                                        <Btn onClick={() => handleSendCorrectionTask(selectedExamId)} className="w-full sm:w-auto px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 transition-all"><Icon d={PATHS.send} size={18}/> 오답 과제로 전송</Btn>
+                                        <Btn onClick={() => handleOpenCorrectionCalendar(selectedExamId)} className="w-full sm:w-auto px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 transition-all"><Icon d={PATHS.send} size={18}/> 오답 과제로 전송</Btn>
                                     )}
                                 </div>
                                 <div className="flex items-center justify-between mb-2 px-1"><span className="text-xs font-bold text-slate-500">학생 명단 및 결과 입력 (Enter 키로 이동)</span><span className="text-[10px] text-slate-400">* 틀린 개수를 입력하면 점수가 자동 계산됩니다.</span></div>
-                                <div className="flex-1 overflow-y-auto custom-scroll -mx-2 px-2 pb-10"><table className="w-full text-sm text-left whitespace-nowrap"><thead className="text-xs text-slate-500 bg-slate-50 sticky top-0 z-10 shadow-sm rounded-lg"><tr><th className="px-4 py-3 rounded-l-lg w-16 text-center">번호</th><th className="px-4 py-3 w-32">이름</th><th className="px-4 py-3 text-center">틀린 개수 (오답)</th><th className="px-4 py-3 rounded-r-lg text-center">점수</th></tr></thead><tbody>
-                                    {students.map((s, i) => {
-                                        const scoreData = (examScores[selectedExamId] || {})[s.id] || { score: '', wrongCount: '' };
-                                        const scoreVal = parseFloat(scoreData.score);
-                                        let scoreColor = "text-indigo-600";
-                                        if (!isNaN(scoreVal)) {
-                                            if (scoreVal === 100) scoreColor = "text-blue-600";
-                                            else if (scoreVal < 60) scoreColor = "text-rose-600";
-                                        }
-                                        return (<tr key={s.id} className="border-b border-slate-100 hover:bg-indigo-50/30 transition-colors group"><td className="px-4 py-3 text-slate-400 font-bold text-center">{s.order}</td><td className="px-4 py-3 font-bold text-slate-700">{s.name}</td><td className="px-4 py-2 text-center"><input id={`wrong_${i}`} type="number" value={scoreData.wrongCount} onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); document.getElementById(`wrong_${i+1}`)?.focus(); } }} className="w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all text-center text-rose-600 font-bold" placeholder="0"/></td><td className="px-4 py-2 text-center"><input id={`score_${i}`} type="number" value={scoreData.score} onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); document.getElementById(`score_${i+1}`)?.focus(); } }} className={`w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-center font-bold ${scoreColor}`} placeholder={selectedExam.maxScore}/></td></tr>);
-                                    })}
-                                </tbody></table></div>
+                                <div className="flex-1 overflow-y-auto custom-scroll -mx-2 px-2 pb-10">
+                                    <div className="flex items-center text-xs text-slate-500 bg-slate-50 sticky top-0 z-10 shadow-sm rounded-lg px-2 py-3">
+                                        <div className="w-8 sm:w-16 text-center">번호</div>
+                                        <div className="flex-1 min-w-[60px] pl-2">이름</div>
+                                        <div className="w-16 sm:w-28 text-center shrink-0">오답</div>
+                                        <div className="w-16 sm:w-28 text-center shrink-0">점수</div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        {students.map((s, i) => {
+                                            const scoreData = (examScores[selectedExamId] || {})[s.id] || { score: '', wrongCount: '' };
+                                            const scoreVal = parseFloat(scoreData.score);
+                                            let scoreColor = "text-indigo-600";
+                                            if (!isNaN(scoreVal)) {
+                                                if (scoreVal === 100) scoreColor = "text-blue-600";
+                                                else if (scoreVal < 60) scoreColor = "text-rose-600";
+                                            }
+                                            return (
+                                                <div key={s.id} className="flex items-center border-b border-slate-100 py-2 px-2 hover:bg-indigo-50/30 transition-colors group">
+                                                    <div className="w-8 sm:w-16 text-slate-400 font-bold text-center text-sm">{s.order}</div>
+                                                    <div className="flex-1 min-w-[60px] pl-2 font-bold text-slate-700 text-sm truncate">{s.name}</div>
+                                                    <div className="w-16 sm:w-28 flex justify-center shrink-0">
+                                                        <input id={`wrong_${i}`} type="number" value={scoreData.wrongCount} onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); document.getElementById(`wrong_${i+1}`)?.focus(); } }} className="w-12 sm:w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all text-center text-rose-600 font-bold text-sm" placeholder="0" />
+                                                    </div>
+                                                    <div className="w-16 sm:w-28 flex justify-center shrink-0">
+                                                        <input id={`score_${i}`} type="number" value={scoreData.score} onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); document.getElementById(`score_${i+1}`)?.focus(); } }} className={`w-12 sm:w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-center font-bold text-sm ${scoreColor}`} placeholder={selectedExam.maxScore} />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </>
                         )}
                     </div>
@@ -8358,68 +8482,17 @@ const firebaseConfig = {
     const [tempNickname, setTempNickname] = useState("");
 
     // 게시판(community) 입장 시 별칭 확인
+    // 게시판(community) 입장 시 별칭 확인 (DB 읽기 최적화)
     useEffect(() => {
         if (mode === 'community') {
-            // [New] 접속 기록 업데이트 함수
-            const updateStats = (name) => {
-                const user = currentUser;
-                if (user && sharedDb) {
-                    sharedDb.collection('userStats').doc(user.uid).set({
-                        uid: user.uid,
-                        lastActive: new Date(),
-                        nickname: name
-                    }, { merge: true }).catch(e => console.error("Stats update failed", e));
-
-                    // [New] 사용자 프로필에도 등록 (관리자 목록용)
-                    sharedDb.collection('userProfiles').doc(user.uid).set({
-                        uid: user.uid,
-                        name: name,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true }).catch(e => console.error("Profile update failed", e));
-                }
-            };
-
-            // 내 컴퓨터에 이미 저장된 이름이 있다면 묻지도 따지지도 않고 통과!
             const savedName = localStorage.getItem('myBoardName');
             if (savedName) {
                 setUserNickname(savedName);
-                setShowNicknameModal(false);
-                updateStats(savedName); // [New] 접속 기록 업데이트
-                return; 
             }
-
-            // 내 컴퓨터에 없다면 파이어베이스 서버에 물어봅니다. (지연 시간 대비)
-            const checkFirebase = () => {
-                const user = currentUser;
-                if (user && sharedDb) {
-                    sharedDb.collection('userProfiles').doc(user.uid).get().then(doc => {
-                                if (doc.exists) {
-                                    const data = doc.data();
-                                    const fetchedName = data.name || data.userNickname;
-                                    if (fetchedName) {
-                                        setUserNickname(fetchedName);
-                                        localStorage.setItem('myBoardName', fetchedName); // 내 컴퓨터에도 저장해둠
-                                        setShowNicknameModal(false);
-                                        updateStats(fetchedName); // [New] 접속 기록 업데이트
-                                    } else {
-                                        setShowNicknameModal(true);
-                                    }
-                        } else {
-                            setShowNicknameModal(true);
-                        }
-                    }).catch(e => console.error("별칭 확인 오류:", e));
-                } else {
-                    // 로그인이 아직 확인 안 된 찰나의 순간에는 잠시 모달을 띄웁니다.
-                    setShowNicknameModal(true); 
-                }
-            };
-
-            // 파이어베이스가 로그인 상태를 확인하는 시간을 조금 기다려줍니다.
-            setTimeout(checkFirebase, 500); 
         } else {
             setShowNicknameModal(false);
         }
-    }, [mode, sharedDb, currentUser]);
+    }, [mode]);
 
     // 별칭 저장 버튼 눌렀을 때 실행되는 함수
     const handleSaveNickname = async () => {
@@ -9412,15 +9485,20 @@ return () => unsubscribe();
                 setToastMessage("과제가 수정되었습니다.");
             };
 
-            const handleSendCorrectionTask = (examId) => {
-                const exam = exams.find(e => e.id === examId);
-                if(!exam) return;
-                const scores = examScores[examId] || {};
+            const handleOpenCorrectionCalendar = (examId) => {
+                setCorrectionExamId(examId);
+                setShowCorrectionCalendar(true);
+            };
 
-                const today = dayjs().format('YYYY-MM-DD');
+            const handleSelectCorrectionDate = (selectedDate) => {
+                if (!correctionExamId) return;
+                const exam = exams.find(e => e.id === correctionExamId);
+                if(!exam) return;
+                const scores = examScores[correctionExamId] || {};
+
                 const taskTitle = `[${exam.subject}] ${exam.title} 오답 고치기`;
                 
-                const currentTasks = dailyTasks[today] || [];
+                const currentTasks = dailyTasks[selectedDate] || [];
                 const taskExists = currentTasks.some(t => (typeof t === 'object' ? t.title : t) === taskTitle);
                 
                 let newTaskIndex = currentTasks.length;
@@ -9428,21 +9506,21 @@ return () => unsubscribe();
                 
                 if (!taskExists) {
                     if (currentTasks.length >= 5) {
-                        setToastMessage("오늘 과제가 5개를 초과하여 자동 생성할 수 없습니다.");
+                        setToastMessage(`${dayjs(selectedDate).format('MM/DD')} 과제가 5개를 초과하여 추가할 수 없습니다.`);
                         return;
                     }
-                    newDailyTasks[today] = [...currentTasks, { title: taskTitle, tag: exam.subject }];
+                    newDailyTasks[selectedDate] = [...currentTasks, { title: taskTitle, tag: exam.subject }];
                 } else {
                     newTaskIndex = currentTasks.findIndex(t => (typeof t === 'object' ? t.title : t) === taskTitle);
                 }
                 
                 const newRecords = { ...records };
-                if (!newRecords[today]) newRecords[today] = {};
+                if (!newRecords[selectedDate]) newRecords[selectedDate] = {};
                 
                 students.forEach(student => {
                     const scoreData = scores[student.id];
                     
-                    let stuRec = { ...(newRecords[today][student.id] || { done: false, tasks: {}, taskComments: {} }) };
+                    let stuRec = { ...(newRecords[selectedDate][student.id] || { done: false, tasks: {}, taskComments: {} }) };
                     if (!stuRec.tasks) stuRec.tasks = {};
                     if (!stuRec.taskComments) stuRec.taskComments = {};
                     
@@ -9460,15 +9538,22 @@ return () => unsubscribe();
                         stuRec.taskComments[newTaskIndex] = ["결과 미입력 (확인 필요)"];
                     }
                     
-                    const allTasks = newDailyTasks[today];
+                    const allTasks = newDailyTasks[selectedDate];
                     stuRec.done = allTasks.length > 0 && allTasks.every((_, idx) => stuRec.tasks[idx]);
-                    newRecords[today][student.id] = stuRec;
+                    newRecords[selectedDate][student.id] = stuRec;
                 });
                 
                 setDailyTasks(newDailyTasks);
                 setRecords(newRecords);
-                saveData({ cls_daily_tasks: newDailyTasks, cls_records: newRecords });
-                setToastMessage(`${taskTitle} 과제가 오늘의 기록 탭에 생성되었습니다!`);
+                if (!isLocalMode && db && appId) {
+                    saveTasksToFirestore({ dailyTasks: { [selectedDate]: newDailyTasks[selectedDate] } });
+                    saveRecordsToFirestore({ [selectedDate]: newRecords[selectedDate] });
+                } else {
+                    saveData({ cls_daily_tasks: newDailyTasks, cls_records: newRecords });
+                }
+                setToastMessage(`${dayjs(selectedDate).format('MM/DD')} 기록 탭에 ${taskTitle} 과제가 생성되었습니다!`);
+                setShowCorrectionCalendar(false);
+                setCorrectionExamId(null);
             };
 
             useEffect(() => {
@@ -9485,6 +9570,17 @@ return () => unsubscribe();
 
             const [isSettingOpen, setIsSettingOpen] = useState(false); const [isSetupOpen, setIsSetupOpen] = useState(false); const [isCalendarOpen, setIsCalendarOpen] = useState(false);
             const [isRangeCalendarOpen, setIsRangeCalendarOpen] = useState(false);
+            const [showCorrectionCalendar, setShowCorrectionCalendar] = useState(false);
+            const [correctionExamId, setCorrectionExamId] = useState(null);
+            const [examSubjects, setExamSubjects] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('cls_exam_subjects');
+                    const parsed = saved ? JSON.parse(saved) : null;
+                    return (parsed && parsed.length > 0) ? parsed : ['국어', '수학'];
+                } catch {
+                    return ['국어', '수학'];
+                }
+            });
             const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: "", onConfirm: null, onCancel: null }); const [toastMessage, setToastMessage] = useState(null); const [toastAction, setToastAction] = useState(null);
             const [isNotionSetupOpen, setIsNotionSetupOpen] = useState(false);
             const [isApiKeySetupOpen, setIsApiKeySetupOpen] = useState(false);
@@ -11747,6 +11843,7 @@ useEffect(() => {
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_config', seatConfig); }, [seatConfig]);
             useDeepEffect(() => { if (isLocalMode) saveData('cls_exams', exams); }, [exams]);
             useDeepEffect(() => { if (isLocalMode) saveData('cls_exam_scores', examScores); }, [examScores]);
+            useDeepEffect(() => { if (isLocalMode) saveData('cls_exam_subjects', examSubjects); }, [examSubjects]);
 
             const toggleCheck = async (id, taskIndex = null, targetDate = null) => { 
                 const d = targetDate || date;
@@ -14332,7 +14429,7 @@ useEffect(() => {
                                 </div>
                             )}
                             {mode === 'exam' && (
-                                <ExamView students={students} exams={exams} setExams={setExams} examScores={examScores} setExamScores={setExamScores} handleSendCorrectionTask={handleSendCorrectionTask} showToast={setToastMessage} isLocalMode={isLocalMode} saveData={saveData} db={db} appId={appId} />
+                                <ExamView students={students} exams={exams} setExams={setExams} examScores={examScores} setExamScores={setExamScores} handleOpenCorrectionCalendar={handleOpenCorrectionCalendar} showToast={setToastMessage} isLocalMode={isLocalMode} saveData={saveData} db={db} appId={appId} examSubjects={examSubjects} setExamSubjects={setExamSubjects} openConfirm={openConfirm} />
                             )}
                             {mode === 'community' && (
                                 <div className="max-w-3xl mx-auto pb-10 relative min-h-[80vh] overflow-x-hidden">
@@ -14392,15 +14489,6 @@ useEffect(() => {
                                                         )}
                             {currentUser && (
                                                             <div className="flex gap-2">
-                                                                <button 
-                                                                    onClick={() => {
-                                                                        setTempNickname(userNickname || "");
-                                                                        setShowNicknameModal(true);
-                                                                    }}
-                                                                    className="px-3 sm:px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 sm:gap-2 transition-transform active:scale-95 whitespace-nowrap"
-                                                                >
-                                                                    <Icon d={PATHS.users} size={16} /> <span className="hidden sm:inline">내 프로필</span>
-                                                                </button>
                                                                 <button 
                                                                     onClick={handleWriteClick}
                                                                     className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-1 sm:gap-2 transition-transform active:scale-95 whitespace-nowrap"
@@ -15106,10 +15194,10 @@ useEffect(() => {
                             <Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
                         <div className="text-center mb-6 mt-2">
-                            <div className="text-5xl mb-4 animate-bounce-in">{userNickname ? '👤' : '👋'}</div>
-                            <h3 className="text-2xl font-extrabold text-slate-800">{userNickname ? '내 프로필' : '환영합니다!'}</h3>
+                            <div className="text-5xl mb-4 animate-bounce-in">👋</div>
+                            <h3 className="text-2xl font-extrabold text-slate-800">환영합니다!</h3>
                             <p className="text-sm text-slate-600 mt-2 break-keep leading-relaxed">
-                                {userNickname ? '게시판에서 사용할 새로운 별칭을 입력해주세요.' : <>동료 교사 간의 원활한 소통을 위해<br/><span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">별칭</span>을 입력해 주세요.</>}
+                                동료 교사 간의 원활한 소통을 위해<br/><span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">별칭</span>을 입력해 주세요.
                             </p>
                         </div>
                         <input 
@@ -15124,14 +15212,10 @@ useEffect(() => {
                             onClick={handleSaveNickname}
                             className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:bg-indigo-700 hover:-translate-y-0.5 transition-all active:scale-95 text-base"
                         >
-                            {userNickname ? '변경하기' : '시작하기'}
+                            시작하기
                         </button>
                         <p className="text-xs text-slate-400 mt-5 text-center font-medium flex flex-col items-center justify-center gap-1">
-                            {userNickname ? (
-                                <><Icon d={PATHS.warning} size={14} /> 기존 작성한 글과 댓글의 이름도 모두 변경됩니다.</>
-                            ) : (
-                                <><Icon d={PATHS.warning} size={14} /> 등록한 별칭은 언제든 프로필에서 변경할 수 있습니다.</>
-                            )}
+                            <Icon d={PATHS.warning} size={14} /> 게시판에서 사용할 별칭을 설정해주세요.
                         </p>
                     </div>
                 </div>
@@ -15662,6 +15746,18 @@ useEffect(() => {
                     <CalendarModal isOpen={isRangeCalendarOpen} onClose={()=>setIsRangeCalendarOpen(false)} currentDate={date} selectionMode="range" onSelectRange={handleRangeSelect} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode={mode} dailyTasks={dailyTasks} />
                     <CalendarModal isOpen={isLoadGroupCalendarOpen} onClose={()=>setIsLoadGroupCalendarOpen(false)} currentDate={date} onSelectDate={loadGroupsFromDate} records={records} appConfig={appConfig} groupsByDate={groupsByDate} mode="group" dailyTasks={dailyTasks} />
                     <RoleHelpModal isOpen={showRoleHelp} onClose={()=>setShowRoleHelp(false)} roleDescriptions={roleDescriptions} />
+                    {showCorrectionCalendar && (
+                        <CalendarModal 
+                            isOpen={showCorrectionCalendar} 
+                            onClose={() => setShowCorrectionCalendar(false)} 
+                            currentDate={date} 
+                            onSelectDate={handleSelectCorrectionDate} 
+                            records={records} 
+                            appConfig={appConfig} 
+                            dailyTasks={dailyTasks}
+                            zIndex="z-[2500]"
+                        />
+                    )}
                     <RoleEditModal isOpen={isRoleEditOpen} onClose={() => setIsRoleEditOpen(false)} roles={rolesList} onSave={handleSaveRoles} roleDescriptions={roleDescriptions} onSaveDescriptions={handleSaveRoleDescriptions} />
                     <RoleSelectModal isOpen={!!editingRoleTarget} onClose={() => setEditingRoleTarget(null)} roles={rolesList} currentRole={editingRoleTarget?.currentRole} onSelect={(newRole) => handleRoleChange(editingRoleTarget.gIdx, editingRoleTarget.sIdx, newRole)} />
                     <PartnerAnalysisModal isOpen={showPartnerAnalysis} onClose={()=>setShowPartnerAnalysis(false)} groupsByDate={groupsByDate} />
