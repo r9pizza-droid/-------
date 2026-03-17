@@ -8029,7 +8029,7 @@ const firebaseConfig = {
                             {exams.length === 0 ? (
                                 <div className="text-center text-xs text-slate-400 py-8">등록된 평가가 없습니다.</div>
                             ) : [...exams].sort((a, b) => new Date(b.date) - new Date(a.date)).map(e => (
-                                <div key={e.id} onClick={() => { setSelectedExamId(e.id); setIsEditingExam(false); }} className={`group relative p-3 rounded-xl border cursor-pointer transition-all ${selectedExamId === e.id ? 'bg-white border-indigo-500 shadow-md ring-1 ring-indigo-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+                                <div key={e.id} onClick={() => { if (selectedExamId === e.id) { setSelectedExamId(null); } else { setSelectedExamId(e.id); } setIsEditingExam(false); }} className={`group relative p-3 rounded-xl border cursor-pointer transition-all ${selectedExamId === e.id ? 'bg-white border-indigo-500 shadow-md ring-1 ring-indigo-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
                                     <div className="flex justify-between items-start mb-1">
                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${e.subject==='수학'?'bg-blue-100 text-blue-700':e.subject==='국어'?'bg-rose-100 text-rose-700':'bg-slate-100 text-slate-700'}`}>{e.subject}</span>
                                         <span className="text-[10px] text-slate-400 font-mono">{dayjs(e.date).format('MM.DD')}</span>
