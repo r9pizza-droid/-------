@@ -237,6 +237,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [commentInput, setCommentInput] = useState(""); // [New] 과제별 메모 입력값
     const [expandedComments, setExpandedComments] = useState({}); // [New] 점수 분석 내 메모 토글 상태
     const [editingTask, setEditingTask] = useState(null);
+    const [levelUpMsg, setLevelUpMsg] = useState(null);
 
     const handleTaskDelete = async (date, idx) => {
         if (!confirm("이 과제를 완전히 삭제하시겠습니까?\n(모든 학생의 해당 과제 기록도 함께 삭제되며, 점수도 재계산됩니다)")) return;
@@ -449,9 +450,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 };
             }
 
-            if (newCount % 5 === 0) { 
+            const newLevel = Math.floor(newCount / 5) + 1;
+            const oldLevel = Math.floor(stickerCount / 5) + 1;
+            if (newLevel > oldLevel) { 
                 confetti({ particleCount: 100, spread: 70, origin, zIndex: 2000 });
-                if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor(newCount / 5) + 1} 달성!`);
+                if(showToast) showToast(`🎉 레벨 업! Lv.${newLevel} 달성!`);
+                setLevelUpMsg(newLevel);
+                setTimeout(() => setLevelUpMsg(null), 3000);
             }
             else { 
                 confetti({ particleCount: 30, spread: 60, startVelocity: 30, origin, colors: ['#fbbf24', '#f59e0b', '#fcd34d', '#ffffff'], shapes: ['circle', 'square'], zIndex: 2000 });
@@ -775,9 +780,14 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     const y = (rect.top + rect.height / 2) / window.innerHeight;
                     origin = { x: x + (Math.random() - 0.5) * 0.15, y: y + (Math.random() - 0.5) * 0.15 };
                 }
-                if ((stickerCount + 1) % 5 === 0) { 
+                
+                const newLevel = Math.floor((stickerCount + 1) / 5) + 1;
+                const oldLevel = Math.floor(stickerCount / 5) + 1;
+                if (newLevel > oldLevel) { 
                     confetti({ particleCount: 100, spread: 70, origin, zIndex: 2000 });
-                    if(showToast) showToast(`🎉 레벨 업! Lv.${Math.floor((stickerCount + 1) / 5) + 1} 달성!`);
+                    if(showToast) showToast(`🎉 레벨 업! Lv.${newLevel} 달성!`);
+                    setLevelUpMsg(newLevel);
+                    setTimeout(() => setLevelUpMsg(null), 3000);
                 } else { 
                     confetti({ particleCount: 30, spread: 60, startVelocity: 30, origin, colors: ['#fbbf24', '#f59e0b', '#fcd34d', '#ffffff'], shapes: ['circle', 'square'], zIndex: 2000 });
                 }
@@ -1356,6 +1366,15 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
              else if (showTaskCommentHistory) setShowTaskCommentHistory(false);
              else onClose();
         }}>
+            {levelUpMsg && (
+                <div className="fixed inset-0 z-[2500] flex items-center justify-center pointer-events-none animate-fade-in">
+                    <div className="bg-white/90 backdrop-blur-md px-10 py-8 rounded-3xl shadow-2xl border-4 border-indigo-200 flex flex-col items-center">
+                        <span className="text-6xl mb-3 animate-wiggle-big">🎉</span>
+                        <h2 className="text-4xl font-black text-indigo-600 mb-2">축하합니다!</h2>
+                        <p className="text-2xl font-bold text-slate-700">Lv.{levelUpMsg} 달성!</p>
+                    </div>
+                </div>
+            )}
             {hasPrev && (
                 <button onClick={(e) => { e.stopPropagation(); onSwitchStudent(students[currentIndex - 1].id); }} className="hidden sm:flex absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/80 hover:bg-white text-slate-700 rounded-full backdrop-blur-md shadow-lg transition-all z-[1610] group border border-white/20 hover:scale-110">
                     <Icon d={PATHS.left} size={28} className="group-hover:-translate-x-1 transition-transform" />

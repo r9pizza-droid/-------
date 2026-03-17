@@ -14097,6 +14097,9 @@ useEffect(() => {
                                                             <button onClick={() => setShowCommunityHelp(true)} className="text-slate-400 hover:text-indigo-500 p-1.5 rounded-full hover:bg-slate-50 transition-colors" title="이용 안내">
                                                                 <Icon d={PATHS.help} size={18} />
                                                             </button>
+                                                            <button onClick={() => setShowLevelGuide(true)} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1.5 rounded-lg font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1 border border-indigo-100 shadow-sm">
+                                                                <span className="text-xs">🏆</span> 활동 등급 안내
+                                                            </button>
                                                         </h3>
                                                     </div>
                                                     <div className="flex gap-2 w-full sm:w-auto">
@@ -15067,31 +15070,66 @@ useEffect(() => {
                     </div>
                 </div>
             )}
-            <BaseModal isOpen={showLevelGuide} onClose={() => setShowLevelGuide(false)} title="레벨 시스템 안내" icon={PATHS.trophy} maxWidth="max-w-sm">
+            <BaseModal isOpen={showLevelGuide} onClose={() => setShowLevelGuide(false)} title="활동 등급 안내" icon={PATHS.trophy} maxWidth="max-w-sm">
                 <div className="space-y-4">
-                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-800">
-                        <p className="font-bold mb-1">🌱 활동 점수 기준</p>
-                        <p className="text-xs opacity-80">게시글 작성 시 1점, 댓글 작성 시 0.01점이 부여됩니다.</p>
-                    </div>
-                    <div className="space-y-2">
-                        {[
-                            { badge: '🌱', name: '새싹', range: `0 ~ ${levelConfig.grass - 1}점` },
-                            { badge: '🌿', name: '풀잎', range: `${levelConfig.grass} ~ ${levelConfig.tree - 1}점` },
-                            { badge: '🌼', name: '꽃', range: `${levelConfig.tree} ~ ${levelConfig.forest - 1}점` },
-                            { badge: '🌳', name: '나무', range: `${levelConfig.forest} ~ ${levelConfig.king - 1}점` },
-                            { badge: '🧸', name: '숲의 왕', range: `${levelConfig.king}점 이상` },
-                        ].map((l, i) => (
-                            <div key={i} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-2xl">{l.badge}</span>
-                                    <span className="font-bold text-slate-700">{l.name}</span>
-                                </div>
-                                <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg">{l.range}</span>
+                    {currentUser && (
+                        <div className="bg-slate-800 p-4 rounded-2xl text-white flex items-center justify-between shadow-lg relative overflow-hidden">
+                            <div className="absolute -right-4 -bottom-4 text-6xl opacity-10 select-none pointer-events-none">
+                                {getLevelBadge(currentUserStats?.postCount || 0, currentUserStats?.commentCount || 0, levelConfig)}
                             </div>
-                        ))}
+                            <div className="relative z-10">
+                                <p className="text-[10px] text-slate-400 font-bold mb-1">나의 현재 등급</p>
+                                <p className="text-sm font-bold flex items-center gap-1.5">
+                                    <span className="text-2xl">{getLevelBadge(currentUserStats?.postCount || 0, currentUserStats?.commentCount || 0, levelConfig)}</span>
+                                    <span>{userNickname || currentUser.email}</span>
+                                </p>
+                            </div>
+                            <div className="text-right relative z-10">
+                                <p className="text-[10px] text-slate-400 font-bold mb-1">내 활동 점수</p>
+                                <p className="text-xl font-black text-indigo-400">
+                                    {((currentUserStats?.postCount || 0) * 1 + (currentUserStats?.commentCount || 0) * 0.01).toFixed(2)}<span className="text-[10px] font-normal ml-0.5 text-slate-300">점</span>
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-800">
+                        <p className="font-bold mb-1 flex items-center gap-1.5"><Icon d={PATHS.chart} size={16} /> 활동 점수 획득 방법</p>
+                        <p className="text-xs opacity-90 leading-relaxed break-keep">게시글 작성 시 <strong className="text-indigo-600 bg-white px-1 rounded mx-0.5 shadow-sm">1점</strong>, 댓글 작성 시 <strong className="text-indigo-600 bg-white px-1 rounded mx-0.5 shadow-sm">0.01점</strong>이 부여되어 점수가 누적됩니다.</p>
                     </div>
-                    <div className="text-center text-[10px] text-slate-400 mt-2">
-                        * 관리자 설정에 따라 기준 점수는 변경될 수 있습니다.
+                    
+                    {levelConfig.writeLevel > 1 && (
+                        <div className="bg-rose-50 p-3 rounded-xl border border-rose-100 text-xs text-rose-700 flex items-start gap-2 shadow-sm">
+                            <div className="mt-0.5 shrink-0"><Icon d={PATHS.warning} size={14} /></div>
+                            <p className="leading-relaxed break-keep">현재 게시판은 <strong className="font-bold text-rose-800 bg-white px-1.5 py-0.5 rounded shadow-sm mx-0.5">[{['새싹', '풀잎', '꽃', '나무', '왕'][levelConfig.writeLevel - 1]}]</strong> 등급 이상부터 새 글을 작성할 수 있습니다. (댓글은 자유롭게 가능)</p>
+                        </div>
+                    )}
+
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                        <p className="text-xs font-bold text-slate-500 mb-2">승급 기준표</p>
+                        {[
+                            { badge: '🌱', name: '새싹', range: `0점 ~ ${levelConfig.grass}점 미만` },
+                            { badge: '🌿', name: '풀잎', range: `${levelConfig.grass}점 ~ ${levelConfig.tree}점 미만` },
+                            { badge: '🌼', name: '꽃', range: `${levelConfig.tree}점 ~ ${levelConfig.forest}점 미만` },
+                            { badge: '🌳', name: '나무', range: `${levelConfig.forest}점 ~ ${levelConfig.king}점 미만` },
+                            { badge: '🧸', name: '숲의 왕', range: `${levelConfig.king}점 이상` },
+                        ].map((l, i) => {
+                            const myLevel = getLevel(currentUserStats?.postCount || 0, currentUserStats?.commentCount || 0, levelConfig);
+                            const isMyLevel = currentUser && myLevel === (i + 1);
+                            return (
+                                <div key={i} className={`flex items-center justify-between p-3 border rounded-xl transition-all ${isMyLevel ? 'bg-indigo-50 border-indigo-300 shadow-sm ring-1 ring-indigo-100 scale-[1.02]' : 'bg-white border-slate-100 hover:bg-slate-50'}`}>
+                                <div className="flex items-center gap-3">
+                                        <span className="text-2xl drop-shadow-sm">{l.badge}</span>
+                                        <span className={`font-bold ${isMyLevel ? 'text-indigo-700' : 'text-slate-700'}`}>{l.name}</span>
+                                        {isMyLevel && <span className="text-[9px] bg-indigo-500 text-white px-2 py-0.5 rounded-full font-bold shadow-sm animate-pulse">현재 내 등급</span>}
+                                </div>
+                                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${isMyLevel ? 'text-indigo-700 bg-white shadow-sm' : 'text-slate-500 bg-slate-50'}`}>{l.range}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="text-center text-[10px] text-slate-400 mt-4 bg-slate-50 p-2 rounded-lg">
+                        💡 관리자 설정에 따라 기준 점수는 유동적으로 변경될 수 있습니다.
                     </div>
                 </div>
             </BaseModal>
