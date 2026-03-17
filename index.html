@@ -4977,7 +4977,7 @@
                                                                 </div>
                                                                 <Icon d={PATHS.right} size={24} className={`text-slate-400 hover:text-indigo-500 transition-colors transition-transform duration-300 ${showStorageHelp ? 'rotate-90' : ''}`} />
                                                             </div>
-                                                            {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50">연결</Btn> : <Btn onClick={() => { openConfirm("로그아웃 하시겠습니까?", handleLogout) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50">로그아웃</Btn>}
+                                                            {isLocalMode ? <Btn onClick={() => { onClose(); onOpenSetup(); }} className="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-50 whitespace-nowrap shrink-0">연결</Btn> : <Btn onClick={() => { openConfirm("로그아웃 하시겠습니까?", handleLogout) }} className="text-xs bg-white border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50 whitespace-nowrap shrink-0">로그아웃</Btn>}
                                                         </div>
                                                         <div className="flex items-center gap-1.5 mt-2">
                                                             <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isLocalMode ? 'bg-slate-200' : 'bg-green-200/50'}`}>
@@ -5076,10 +5076,10 @@
 )}
                                                 {!isLocalMode && (
                                                     <div className="mt-4 pt-3 border-t border-slate-200 animate-fade-in space-y-2">
-                                                        <Btn onClick={onSyncPhotos} className="w-full py-2 bg-white border border-indigo-200 text-indigo-600 rounded-lg font-bold hover:bg-indigo-50 text-xs flex items-center justify-center gap-2 shadow-sm transition-colors">
+                                                        <Btn onClick={onSyncPhotos} className="w-full py-2 bg-white border border-indigo-200 text-indigo-600 rounded-lg font-bold hover:bg-indigo-50 text-xs flex items-center justify-center gap-2 shadow-sm transition-colors whitespace-nowrap">
                                                             <Icon d={PATHS.refresh} size={14} /> 클라우드 데이터 강제 동기화
                                                         </Btn>
-                                                        <Btn onClick={handleMigration} className="w-full py-2 bg-white border border-orange-200 text-orange-600 rounded-lg font-bold hover:bg-orange-50 text-xs flex items-center justify-center gap-2 shadow-sm transition-colors">
+                                                        <Btn onClick={handleMigration} className="w-full py-2 bg-white border border-orange-200 text-orange-600 rounded-lg font-bold hover:bg-orange-50 text-xs flex items-center justify-center gap-2 shadow-sm transition-colors whitespace-nowrap">
                                                             <Icon d={PATHS.upload} size={14} /> 과거 데이터 가져오기 (마이그레이션)
                                                         </Btn>
                                                         <p className="text-[10px] text-slate-400 mt-1.5 text-center leading-tight">
