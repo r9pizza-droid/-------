@@ -11385,7 +11385,20 @@ return () => unsubscribe();
                 unsubArtifacts = firestore.collection('artifacts').doc(classId).collection('public').doc('data').onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
-                        if (d.students) setStudents(d.students);
+                        if (d.students) {
+                            setStudents(prevStudents => {
+                                return d.students.map(s => {
+                                    const prevS = prevStudents.find(ps => String(ps.id) === String(s.id)) || {};
+                                    return {
+                                        ...prevS,
+                                        ...s,
+                                        photoUrl: s.photoUrl || prevS.photoUrl,
+                                        counseling: prevS.counseling || s.counseling,
+                                        recordDrafts: prevS.recordDrafts || s.recordDrafts
+                                    };
+                                });
+                            });
+                        }
                         // [Mod] 초기화 시 전체 기록 로드 제거 (탭 클릭 시 로드)
                         // if (d.records) setRecords(prev => ({ ...d.records, ...prev })); 
                         if (d.groupsByDate) {
@@ -13501,6 +13514,7 @@ useEffect(() => {
                             return extra ? { ...s, ...extra } : s;
                         });
                         setStudents(updatedStudents);
+                        localStorage.setItem('cls_students', JSON.stringify(updatedStudents));
                         loadedItems.push("학생 상세");
                     }
 
