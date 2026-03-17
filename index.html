@@ -9599,7 +9599,19 @@ return () => unsubscribe();
         { emoji: '🤖', title: '전문가 수준의 AI 상담소', desc: '학생 이름표를 더블클릭하면 인사이트 창이 열립니다. [AI 상담소]의 톱니바퀴 버튼을 누르면 ABA, PDC, 감정코칭 등 맞춤형 전문가 프롬프트를 바로 불러옵니다.' },
         { emoji: '📊', title: '클릭 한 번에 생기부 초안 완성', desc: '기록이 쌓이면 [AI 총평 초안] 탭을 활용해 보세요. 행발, 교과 등 자동 추천 템플릿에 맞춰 학생의 종합 의견 초안을 뚝딱 만들어줍니다.' }
     ];
-            const [appConfig, setAppConfig] = useState({ recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false });
+        const [appConfig, setAppConfig] = useState(() => {
+            let initialConfig = { 
+                recordTitle: "다했나요!?", recordMsg: "모두 제출 완료! 🎉", simpleTitle: "단순 확인표", simpleMsg: "확인 완료! 👌", 
+                runner: "🏃", version: CURRENT_VERSION, vacationStart: "", vacationEnd: "", cloudIcon: null, font: 'sans', 
+                favicon: null, animationEnabled: true, tabAnimationEnabled: true, updateNotificationType: 'toast', 
+                floatingButtonSize: 'medium', uiScale: 100, showClassStoryButton: false, autoSyncOnLoad: true 
+            };
+            try {
+                const saved = safeLocalStorage.getItem('cls_app_config');
+                if (saved) initialConfig = { ...initialConfig, ...JSON.parse(saved), version: CURRENT_VERSION };
+            } catch(e) {}
+            return initialConfig;
+        });
 
             // [New] Community Logic
             const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags, resourceLink, resourceTitle) => {
@@ -11209,7 +11221,6 @@ return () => unsubscribe();
                     if (ls('cls_groups_date')) setGroupsByDate(JSON.parse(ls('cls_groups_date')));
                     if (ls('cls_avoidance')) setAvoidancePairs(JSON.parse(ls('cls_avoidance')));
                     if (ls('cls_mustPairs')) setMustPairs(JSON.parse(ls('cls_mustPairs')) || []);
-                    if (ls('cls_app_config')) setAppConfig({ ...JSON.parse(ls('cls_app_config')), version: CURRENT_VERSION });
                     if (ls('cls_daily_tasks')) setDailyTasks(JSON.parse(ls('cls_daily_tasks')));
                     if (ls('cls_weekly_tasks')) setWeeklyTasks(JSON.parse(ls('cls_weekly_tasks')));
                     if (ls('cls_tags')) setTags(JSON.parse(ls('cls_tags')));
@@ -11586,24 +11597,17 @@ useEffect(() => {
 const cachedGroupsRef = useRef(null); // [New] 메모리 캐싱 (Groups)
 
 useEffect(() => {
-    let targetAppId = appId;
-    if (!targetAppId && config) targetAppId = config.projectId;
-    if (!targetAppId) {
-        try {
-                        const lsCfg = JSON.parse(localStorage.getItem('checklist_config') || localStorage.getItem('myFirebaseConfig') || "{}");
-            if (lsCfg && lsCfg.projectId) targetAppId = lsCfg.projectId;
-        } catch(e) {}
-    }
-    
+    if (isLocalMode || !firestore || !appId || !currentUser) return;
+
     // [Safe] 계정 변경 시 캐시 초기화
-    if (currentAppIdRef.current !== targetAppId) {
+    if (currentAppIdRef.current !== appId) {
         cachedGroupsRef.current = null;
     }
-
-    if (isLocalMode || !firestore || !targetAppId || !currentUser) return;
     
+    let unsubscribeGroups = () => {};
+
     if (mode === 'group') {
-        console.log("[Data Load] Fetching groups for:", targetAppId);
+        console.log(`[LazyLoad] Groups ON for AppId: ${appId}`);
         if (cachedGroupsRef.current) {
             setGroupsByDate(hydrateGroups(cachedGroupsRef.current, studentsRef.current));
             return;
@@ -11612,7 +11616,7 @@ useEffect(() => {
         const semesterStart = getSemesterStart();
         try {
             // [Fix] 모둠 데이터도 실시간 구독(onSnapshot)으로 변경하여 동기화 강화
-            unsubscribeGroups = firestore.collection('classes').doc(targetAppId).collection('groupResults')
+            unsubscribeGroups = firestore.collection('classes').doc(appId).collection('groupResults')
                 .where(firebase.firestore.FieldPath.documentId(), '>=', semesterStart)
                 .onSnapshot(snapshot => {
                 const newGroups = {};
@@ -11627,27 +11631,22 @@ useEffect(() => {
             });
         } catch (e) { console.error("Group subscription failed:", e); }
     }
-}, [mode, firestore, appId, config, isLocalMode, currentUser]);
+    
+    return () => unsubscribeGroups();
+}, [mode, firestore, appId, isLocalMode, currentUser]);
 
             // [New] 기록 탭 실시간 동기화 (onSnapshot 최적화)
             // 현재 선택된 날짜의 활동 기록(records) 문서 '하나만' 실시간으로 감시합니다.
             useEffect(() => {
-                let targetAppId = appId;
-                if (!targetAppId && config) targetAppId = config.projectId;
-                if (!targetAppId) {
-                    try {
-                        const lsCfg = JSON.parse(localStorage.getItem('checklist_config') || localStorage.getItem('myFirebaseConfig') || "{}");
-                        if (lsCfg && lsCfg.projectId) targetAppId = lsCfg.projectId;
-                    } catch(e) {}
-                }
-
                 // '기록' 탭이 아니거나, 로컬 모드이거나, 연결 준비가 안 됐으면 실행하지 않습니다.
-                if (mode !== 'record' || isLocalMode || !firestore || !targetAppId || !currentUser || !date) {
+                if (mode !== 'record' || isLocalMode || !firestore || !appId || !currentUser || !date) {
                     return;
                 }
 
+                console.log(`[LazyLoad] Single day Record ON for AppId: ${appId}, Date: ${date}`);
+
                 // 선택된 날짜(date)의 문서에 대한 실시간 리스너를 설정합니다.
-                const unsub = firestore.collection('classes').doc(targetAppId).collection('records').doc(date)
+                const unsub = firestore.collection('classes').doc(appId).collection('records').doc(date)
                     .onSnapshot(doc => {
                         // 실시간으로 변경된 데이터를 기존 records 상태에 병합합니다.
                         // 이렇게 하면 화면 전체가 깜빡이지 않고 자연스럽게 업데이트됩니다.
@@ -11661,22 +11660,18 @@ useEffect(() => {
 
                 // [중요] 컴포넌트가 unmount되거나, 날짜(date)가 바뀌면 이전 리스너를 반드시 해제합니다.
                 return () => unsub();
-            }, [mode, date, firestore, appId, config, isLocalMode, currentUser]);
+            }, [mode, date, firestore, appId, isLocalMode, currentUser]);
 
             // [New] 모둠 탭 과거 날짜 동적 로딩 (Lazy Loading)
             useEffect(() => {
-                let targetAppId = appId;
-                if (!targetAppId && config) targetAppId = config.projectId;
-                if (!targetAppId) {
-                    try { const lsCfg = JSON.parse(localStorage.getItem('checklist_config') || "{}"); if (lsCfg.projectId) targetAppId = lsCfg.projectId; } catch(e){}
-                }
-
-                if (mode !== 'group' || isLocalMode || !firestore || !targetAppId || !date) return;
+                if (mode !== 'group' || isLocalMode || !firestore || !appId || !date) return;
                 if (groupsByDateRef.current && groupsByDateRef.current[date]) return;
+
+                console.log(`[LazyLoad] Single day Group ON for AppId: ${appId}, Date: ${date}`);
 
                 const fetchPastGroup = async () => {
                     try {
-                        const doc = await firestore.collection('classes').doc(targetAppId).collection('groupResults').doc(date).get();
+                        const doc = await firestore.collection('classes').doc(appId).collection('groupResults').doc(date).get();
                         if (doc.exists) {
                             const newGroups = { [date]: doc.data().list };
                             const hydrated = hydrateGroups(newGroups, studentsRef.current);
@@ -11685,7 +11680,7 @@ useEffect(() => {
                     } catch (e) { console.error(`과거 모둠(${date}) 로딩 실패:`, e); }
                 };
                 fetchPastGroup();
-            }, [mode, date, firestore, appId, config, isLocalMode]);
+            }, [mode, date, firestore, appId, isLocalMode]);
 
 
             // [Fix] 탭 전환 시 데이터 유실 방지를 위한 캐시 동기화
@@ -13067,7 +13062,9 @@ useEffect(() => {
 
                 const calcStatsForStudent = (s, period, tag) => {
                     let score = 0; let totalCount = 0;
+                    let gained = 0; let lost = 0;
                     const onTimeItems = []; const lateItems = []; const taskDetails = [];
+                    const today = dayjs().startOf('day');
                     for(let i=34; i>=0; i--) {
                         const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
                         const dayIdx = dayjs(d).day();
@@ -13105,16 +13102,21 @@ useEffect(() => {
                                     const comment = sRec ? (sRec.taskComments ? sRec.taskComments[originalIdx] : null) : null;
                                     const title = typeof t === 'object' ? t.title : t;
                                     if (isDone) {
-                                        if (isLate) { score += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'late', point: 0.5, comment}); }
-                                        else { score += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'on-time', point: 1, comment}); }
+                                    if (isLate) { score += 0.5; gained += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'late', point: 0.5, comment}); }
+                                    else { score += 1; gained += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'on-time', point: 1, comment}); }
                                     } else {
-                                        taskDetails.push({date:d, title, idx:originalIdx, status:'missed', point: 0, comment});
+                                    const diff = today.diff(dObj, 'day');
+                                    let penalty = -(diff + 1);
+                                    if (penalty < -3) penalty = -3;
+                                    if (diff < 0) penalty = 0;
+                                    score += penalty; lost += Math.abs(penalty);
+                                    taskDetails.push({date:d, title, idx:originalIdx, status:'missed', point: penalty, comment});
                                     }
                                 });
                             }
                         }
                     }
-                    return { count: score, total: totalCount, rate: totalCount > 0 ? (score / totalCount) * 100 : 0, details: { onTimeItems, lateItems, taskDetails } };
+                    return { count: score, total: totalCount, rate: totalCount > 0 ? (gained / totalCount) * 100 : 0, details: { onTimeItems, lateItems, taskDetails, gained, lost } };
                 };
 
                 const calcHelpScore = (s, period, tag) => {
@@ -13144,9 +13146,15 @@ useEffect(() => {
                                 const title = typeof t === 'object' ? t.title : t;
                                 
                                 if (isDone) {
-                                    score += 0.5; gained += 0.5;
-                                    history.push({ date: dStr, title, point: 0.5, type: 'gain' });
-                                    taskDetails.push({ date: dStr, title, idx: originalIdx, status: isLate ? 'late' : 'on-time', point: 0.5, comment });
+                                    if (isLate) {
+                                        score += 0.5; gained += 0.5;
+                                        history.push({ date: dStr, title, point: 0.5, type: 'gain' });
+                                        taskDetails.push({ date: dStr, title, idx: originalIdx, status: 'late', point: 0.5, comment });
+                                    } else {
+                                        score += 1; gained += 1;
+                                        history.push({ date: dStr, title, point: 1, type: 'gain' });
+                                        taskDetails.push({ date: dStr, title, idx: originalIdx, status: 'on-time', point: 1, comment });
+                                    }
                                 } else {
                                     const diff = today.diff(dObj, 'day');
                                     let penalty = -(diff + 1);
@@ -14275,7 +14283,7 @@ useEffect(() => {
                                         </div>
                                         {viewHallOfFameList ? (
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
-                                                {stats.allRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank===1?'bg-yellow-500 text-white':s.rank===2?'bg-slate-400 text-white':s.rank===3?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.rank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'honor', studentId: s.id }); }} className="font-bold text-indigo-600 bg-white/80 px-2 py-1 rounded-lg border border-indigo-100 shadow-sm cursor-pointer hover:bg-indigo-50 transition-colors">{s.honorStats.count}점</span></div>))}
+                                                {stats.allRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-xl border border-yellow-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank===1?'bg-yellow-500 text-white':s.rank===2?'bg-slate-400 text-white':s.rank===3?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.rank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'honor', studentId: s.id }); }} className={`font-bold px-2 py-1 rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-colors ${s.honorStats.count < 0 ? 'text-rose-500 bg-white/80 border-rose-100' : 'text-indigo-600 bg-white/80 border-indigo-100'}`}>{s.honorStats.count > 0 ? '+' : ''}{s.honorStats.count.toFixed(1)}점</span></div>))}
                                                 {stats.allRanked.length === 0 && (
                                                     <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
                                                         <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">📊</span></div>
@@ -14306,8 +14314,8 @@ useEffect(() => {
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                        <div className="text-xs font-black text-indigo-500 bg-white/80 px-2 py-1 rounded-lg border border-indigo-100 shadow-sm whitespace-nowrap ml-2">
-                                                            {students[0].honorStats.count}점
+                                                        <div className={`text-xs font-black bg-white/80 px-2 py-1 rounded-lg border shadow-sm whitespace-nowrap ml-2 ${students[0].honorStats.count < 0 ? 'text-rose-500 border-rose-100' : 'text-indigo-500 border-indigo-100'}`}>
+                                                            {students[0].honorStats.count > 0 ? '+' : ''}{students[0].honorStats.count.toFixed(1)}점
                                                         </div>
                                                     </div>
                                                 ))}
@@ -14338,7 +14346,7 @@ useEffect(() => {
                                         </div>
                                         {viewNeedsHelpList ? (
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
-                                                {stats.allHelpRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.helpRank===1?'bg-rose-500 text-white':s.helpRank===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.helpRank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'help', studentId: s.id }); }} className={`font-bold px-2 py-1 rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-colors ${s.helpStats.score < 0 ? 'text-rose-500 bg-white/80 border-rose-100' : 'text-indigo-600 bg-white/80 border-indigo-100'}`}>{s.helpStats.score.toFixed(1)}점</span></div>))}
+                                                {stats.allHelpRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.helpRank===1?'bg-rose-500 text-white':s.helpRank===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.helpRank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'help', studentId: s.id }); }} className={`font-bold px-2 py-1 rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-colors ${s.helpStats.score < 0 ? 'text-rose-500 bg-white/80 border-rose-100' : 'text-indigo-600 bg-white/80 border-indigo-100'}`}>{s.helpStats.score > 0 ? '+' : ''}{s.helpStats.score.toFixed(1)}점</span></div>))}
                                                 {stats.allHelpRanked.length === 0 && (
                                                     <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
                                                         <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">🎉</span></div>
@@ -14370,7 +14378,7 @@ useEffect(() => {
                                                             ))}
                                                         </div>
                                                         <div className={`text-xs font-black bg-white/80 px-2 py-1 rounded-lg border shadow-sm whitespace-nowrap ml-2 ${students[0].helpStats.score < 0 ? 'text-rose-500 border-rose-100' : 'text-indigo-500 border-indigo-100'}`}>
-                                                            {students[0].helpStats.score.toFixed(1)}점
+                                                            {students[0].helpStats.score > 0 ? '+' : ''}{students[0].helpStats.score.toFixed(1)}점
                                                         </div>
                                                     </div>
                                                 ))}
@@ -15432,7 +15440,7 @@ useEffect(() => {
                     </div>
                 </div>
             )}
-            <BaseModal isOpen={showLevelGuide} onClose={() => setShowLevelGuide(false)} title="활동 등급 안내" icon={PATHS.trophy} maxWidth="max-w-sm">
+            <BaseModal isOpen={showLevelGuide} onClose={() => setShowLevelGuide(false)} title="활동 등급 안내" maxWidth="max-w-sm">
                 <div className="space-y-4">
                     {currentUser && (
                         <div className="bg-slate-800 p-4 rounded-2xl text-white flex items-center justify-between shadow-lg relative overflow-hidden">
@@ -15547,33 +15555,43 @@ useEffect(() => {
                                         <div className="flex-1 overflow-y-auto custom-scroll pr-1 space-y-4">
                                             {scoreDetailTarget.type === 'honor' && details && (
                                                 <>
-                                                    <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-xl text-indigo-700">
-                                                        <span className="text-xs font-bold">총 점수</span>
-                                                        <span className="font-black text-2xl">{currentData.count}점</span>
+                                                    <div className={`flex justify-between items-center p-3 rounded-xl ${currentData.count >= 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-rose-50 text-rose-700'}`}>
+                                                        <span className="text-xs font-bold">합산 점수</span>
+                                                        <span className="font-black text-2xl">{currentData.count > 0 ? '+' : ''}{currentData.count.toFixed(1)}점</span>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-2 text-xs">
                                                         <div className="bg-green-50 p-2 rounded-lg border border-green-100">
-                                                            <div className="text-green-600 font-bold mb-1">✅ 제시간 제출</div>
-                                                            <div className="text-green-700 font-black text-lg">{details.onTimeItems.length}건 <span className="text-[10px] font-normal opacity-70">(+{details.onTimeItems.length}점)</span></div>
+                                                            <div className="text-green-600 font-bold mb-1">✅ 획득 점수</div>
+                                                            <div className="text-green-700 font-black text-lg">+{details.gained}점</div>
                                                         </div>
-                                                        <div className="bg-amber-50 p-2 rounded-lg border border-amber-100">
-                                                            <div className="text-amber-600 font-bold mb-1">⏰ 지각 제출</div>
-                                                            <div className="text-amber-700 font-black text-lg">{details.lateItems.length}건 <span className="text-[10px] font-normal opacity-70">(+{details.lateItems.length * 0.5}점)</span></div>
+                                                        <div className="bg-rose-50 p-2 rounded-lg border border-rose-100">
+                                                            <div className="text-rose-600 font-bold mb-1">⚠️ 감점 (미제출)</div>
+                                                            <div className="text-rose-700 font-black text-lg">-{details.lost}점</div>
                                                         </div>
                                                     </div>
                                                 </>
                                             )}
                                             {scoreDetailTarget.type === 'help' && details && (
                                                 <>
-                                                    <div className="flex justify-between items-center bg-rose-50 p-3 rounded-xl text-rose-700">
-                                                        <span className="text-xs font-bold">총 점수</span>
-                                                        <span className="font-black text-2xl">{currentData.score.toFixed(1)}점</span>
+                                                    <div className={`flex justify-between items-center p-3 rounded-xl ${currentData.score >= 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-rose-50 text-rose-700'}`}>
+                                                        <span className="text-xs font-bold">합산 점수</span>
+                                                        <span className="font-black text-2xl">{currentData.score > 0 ? '+' : ''}{currentData.score.toFixed(1)}점</span>
                                                     </div>
-                                                    <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg leading-relaxed">
-                                                        <span className="font-bold">계산 방식:</span> 제출하면 <span className="text-green-600 font-bold">+0.5점</span>, 미제출 시 하루마다 <span className="text-rose-500 font-bold">-1점</span>씩 누적 감점됩니다. (최대 -3점)
+                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                        <div className="bg-green-50 p-2 rounded-lg border border-green-100">
+                                                            <div className="text-green-600 font-bold mb-1">✅ 획득 점수</div>
+                                                            <div className="text-green-700 font-black text-lg">+{details.gained}점</div>
+                                                        </div>
+                                                        <div className="bg-rose-50 p-2 rounded-lg border border-rose-100">
+                                                            <div className="text-rose-600 font-bold mb-1">⚠️ 감점 (미제출)</div>
+                                                            <div className="text-rose-700 font-black text-lg">-{details.lost}점</div>
+                                                        </div>
                                                     </div>
                                                 </>
                                             )}
+                                            <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg leading-relaxed mt-3">
+                                                <span className="font-bold">계산 방식:</span> 정상 제출 <span className="text-green-600 font-bold">+1점</span> (지각 +0.5점), 미제출 시 하루마다 <span className="text-rose-500 font-bold">-1점</span>씩 누적 감점 (최대 -3점)
+                                            </div>
                                             
                                             <div className="space-y-2 pt-2 border-t border-slate-100">
                                                 <div className="text-xs font-bold text-slate-500 sticky top-0 bg-white py-1 flex items-center justify-between">

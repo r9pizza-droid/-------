@@ -250,26 +250,25 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             newRecords[date] = { ...newRecords[date] };
             Object.keys(newRecords[date]).forEach(studentId => {
                 const stuRec = { ...newRecords[date][studentId] };
+                let changed = false;
                 const shiftIndices = (obj) => {
                     if (!obj) return obj;
                     const newObj = {};
                     let hasData = false;
                     Object.keys(obj).forEach(k => {
                         const kInt = parseInt(k);
-                        if (kInt < idx) { newObj[kInt] = obj[k]; hasData = true; }
+                        if (kInt < idx) { newObj[kInt] = obj[k]; hasData = true; } 
                         else if (kInt > idx) { newObj[kInt - 1] = obj[k]; hasData = true; }
                     });
                     return hasData ? newObj : undefined;
                 };
-                if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); }
-                if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); }
-                if (stuRec.taskComments) { stuRec.taskComments = shiftIndices(stuRec.taskComments); }
-
-                // Unconditionally recalculate the 'done' status
-                if (newTasks.length > 0) {
-                    stuRec.done = newTasks.every((_, i) => stuRec.tasks?.[i]);
-                } else {
-                    stuRec.done = false;
+                if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); changed = true; }
+                if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); changed = true; }
+                if (stuRec.taskComments) { stuRec.taskComments = shiftIndices(stuRec.taskComments); changed = true; }
+                
+                if (changed) {
+                    if (newTasks.length === 0) stuRec.done = false;
+                    else if (stuRec.tasks) stuRec.done = newTasks.every((_, i) => stuRec.tasks[i]);
                 }
                 newRecords[date][studentId] = stuRec;
             });
@@ -909,13 +908,16 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     if(isDone) {
                         pDone++;
                         tagStats[tag].sDone++;
-                        pScore += 0.5;
-                        gained += 0.5;
-                        currentGained = 0.5;
                         
                         if (isLate) {
+                            pScore += 0.5;
+                            gained += 0.5;
+                            currentGained = 0.5;
                             status = 'late';
                         } else {
+                            pScore += 1;
+                            gained += 1;
+                            currentGained = 1;
                             status = 'on-time';
                         }
                     } else {
@@ -949,7 +951,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         if (taskDone) { 
                             tagStats[tag].cDone++; 
                             classDone++; 
-                            classScoreSum += 0.5;
+                            if (isTaskLate) { classScoreSum += 0.5; } else { classScoreSum += 1; }
                         } else {
                             if (!isFuture) {
                                 const penalty = Math.min(3, diffDays + 1);
@@ -1621,15 +1623,19 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 {showScoreAnalysis && (
                                     <div className="mt-3 bg-white border border-slate-100 rounded-xl p-3 text-xs animate-fade-in shadow-sm">
                                         <div className="flex justify-between items-center mb-1 text-slate-600">
-                                            <span>✅ 정상 제출 (+0.5점/건)</span>
-                                            <span className="font-bold text-indigo-500">+{reportStats.scoreDetails?.gained || 0}점</span>
+                                            <span>✅ 정상/지각 제출 (+1점/+0.5점)</span>
+                                            <span className="font-bold text-green-600">+{reportStats.scoreDetails?.gained || 0}점</span>
                                         </div>
                                         <div className="flex justify-between items-center mb-2 text-slate-600">
-                                            <span>⚠️ 지각/미제출 (최대 -3점/건)</span>
+                                            <span>⚠️ 미제출 (-1~-3점/건 누적 감점)</span>
                                             <span className="font-bold text-rose-500">{reportStats.scoreDetails?.lost ? `-${reportStats.scoreDetails.lost}` : '0'}점</span>
                                         </div>
+                                        <div className="flex justify-between items-center mb-2 pt-2 border-t border-slate-100 text-slate-800">
+                                            <span className="font-bold text-xs">최종 합산 점수</span>
+                                            <span className={`font-black text-lg ${reportStats.studentScore >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>{reportStats.studentScore > 0 ? '+' : ''}{reportStats.studentScore.toFixed(1)}점</span>
+                                        </div>
                                         <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 leading-tight text-left mb-3">
-                                            * 마감일 내 제출 시 0.5점씩 오르고,<br/> 미제출 기간이 길어질수록 감점이 커집니다.
+                                            * 정상 제출 시 1점, 지각은 0.5점 오르고,<br/> 미제출 기간이 길어질수록 감점이 커집니다.
                                         </div>
                                         
                                         {/* Task Details List */}
