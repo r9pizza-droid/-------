@@ -1596,7 +1596,21 @@
                     }
                 } 
             };
-            const removeTask = (idx) => setTempTasks(tasks.filter((_, i) => i !== idx));
+            const removeTask = (idx) => {
+                let hasData = false;
+                if (records && records[date]) {
+                    Object.values(records[date]).forEach(rec => {
+                        if (rec.tasks && rec.tasks[idx]) hasData = true;
+                        if (rec.taskComments && rec.taskComments[idx]) hasData = true;
+                        if (rec.lateTasks && rec.lateTasks[idx]) hasData = true;
+                    });
+                }
+                if (hasData) {
+                    if (!confirm("⚠️ 주의: 이 과제는 이미 학생들의 제출 및 메모 기록이 존재합니다.\n여기서 삭제하면 기록의 순서가 어긋날 수 있습니다.\n\n안전하게 삭제하려면 [통계 탭] > 학생 [점수 분석] 화면의 상세 내역에서 삭제하세요.\n\n정말 여기서 삭제하시겠습니까?")) return;
+                }
+                setTempTasks(tasks.filter((_, i) => i !== idx));
+            };
+            
             const saveAll = () => { 
                 const newDaily = { ...dailyTasks, [date]: tasks }; 
                 setDailyTasks(newDaily); 
@@ -7821,6 +7835,162 @@ const firebaseConfig = {
             );
         };
 
+        const ExamView = ({ students, exams, setExams, examScores, setExamScores, handleSendCorrectionTask, showToast, isLocalMode, saveData, db, appId }) => {
+            const [selectedExamId, setSelectedExamId] = useState(null);
+            const [isEditingExam, setIsEditingExam] = useState(false);
+            const [editExamData, setEditExamData] = useState({});
+
+            const handleAddExam = () => {
+                const newId = `exam_${Date.now()}`;
+                const newExam = {
+                    id: newId,
+                    date: dayjs().format('YYYY-MM-DD'),
+                    subject: '수학',
+                    title: '새 단원평가',
+                    maxScore: 100,
+                    totalQuestions: 20
+                };
+                const newExams = [newExam, ...exams];
+                setExams(newExams);
+                saveData({ cls_exams: newExams });
+                setSelectedExamId(newId);
+                setIsEditingExam(true);
+                setEditExamData(newExam);
+            };
+
+            const handleSaveExamInfo = () => {
+                const newExams = exams.map(e => e.id === editExamData.id ? editExamData : e);
+                setExams(newExams);
+                saveData({ cls_exams: newExams });
+                setIsEditingExam(false);
+                showToast("평가 정보가 저장되었습니다.");
+            };
+            
+            const handleDeleteExam = async (id) => {
+                if(!confirm("이 평가 기록을 삭제하시겠습니까?")) return;
+                const newExams = exams.filter(e => e.id !== id);
+                const newScores = { ...examScores };
+                delete newScores[id];
+                
+                setExams(newExams);
+                setExamScores(newScores);
+                
+                if (!isLocalMode && db && appId) {
+                    try {
+                        const mainRef = db.collection('artifacts').doc(appId).collection('public').doc('data');
+                        
+                        // [수정] Firestore에 exams와 examScores 필드 전체를 새로운 객체로 덮어씌웁니다.
+                        // FieldValue.delete()를 사용한 부분 삭제는 다른 데이터와 병합(merge)되면서
+                        // 삭제된 항목이 다시 살아나는 문제를 일으킬 수 있습니다.
+                        // 전체를 덮어쓰는 것이 가장 확실하고 안전한 삭제 방법입니다.
+                        await mainRef.update({
+                            exams: newExams,
+                            examScores: newScores
+                        });
+                        
+                        localStorage.setItem('cls_exams', JSON.stringify(newExams));
+                        localStorage.setItem('cls_exam_scores', JSON.stringify(newScores));
+                    } catch(e) { 
+                        console.error("Cloud delete failed:", e); 
+                        // 클라우드 삭제 실패 시, 로컬 캐시만이라도 확실히 덮어씌워 UI와 데이터 일관성을 유지합니다.
+                        localStorage.setItem('cls_exams', JSON.stringify(newExams));
+                        localStorage.setItem('cls_exam_scores', JSON.stringify(newScores));
+                        showToast("클라우드 동기화 실패. 로컬 데이터만 삭제되었습니다.");
+                    }
+                } else {
+                    saveData({ cls_exams: newExams, cls_exam_scores: newScores });
+                }
+                
+                if(selectedExamId === id) { setSelectedExamId(null); setIsEditingExam(false); }
+                showToast("평가가 삭제되었습니다.");
+            };
+
+            const handleScoreChange = (studentId, field, value) => {
+                if(!selectedExamId) return;
+                const currentScores = examScores[selectedExamId] || {};
+                const stuScore = currentScores[studentId] || { score: '', wrongCount: '' };
+                
+                const newStuScore = { ...stuScore, [field]: value };
+                
+                const exam = exams.find(e => e.id === selectedExamId);
+                if (field === 'wrongCount' && value !== '' && exam && exam.totalQuestions && exam.maxScore) {
+                    const wrong = parseInt(value);
+                    const scorePerQ = exam.maxScore / exam.totalQuestions;
+                    newStuScore.score = Math.max(0, Math.round(exam.maxScore - (wrong * scorePerQ)));
+                }
+
+                const newScoresObj = { ...examScores, [selectedExamId]: { ...currentScores, [studentId]: newStuScore } };
+                setExamScores(newScoresObj);
+                
+                if (window.examScoreSaveTimer) clearTimeout(window.examScoreSaveTimer);
+                window.examScoreSaveTimer = setTimeout(() => {
+                    saveData({ cls_exam_scores: newScoresObj });
+                }, 1000);
+            };
+
+            const selectedExam = exams.find(e => e.id === selectedExamId);
+
+            return (
+                <div className="flex flex-col md:flex-row gap-6 h-auto min-h-[500px] animate-fade-in">
+                    <div className="w-full md:w-1/3 lg:w-1/4 flex flex-col gap-4 bg-slate-50 border border-slate-200 rounded-2xl p-4 overflow-hidden h-64 md:h-auto shrink-0">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-slate-700 flex items-center gap-2"><span className="text-xl">📊</span> 단원평가 관리</h3>
+                            <Btn onClick={handleAddExam} className="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700"><Icon d={PATHS.plus} size={16}/></Btn>
+                        </div>
+                        <div className="flex-1 overflow-y-auto custom-scroll space-y-2 pr-1">
+                            {exams.length === 0 ? (
+                                <div className="text-center text-xs text-slate-400 py-8">등록된 평가가 없습니다.</div>
+                            ) : exams.map(e => (
+                                <div key={e.id} onClick={() => { setSelectedExamId(e.id); setIsEditingExam(false); }} className={`group relative p-3 rounded-xl border cursor-pointer transition-all ${selectedExamId === e.id ? 'bg-white border-indigo-500 shadow-md ring-1 ring-indigo-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${e.subject==='수학'?'bg-blue-100 text-blue-700':e.subject==='국어'?'bg-rose-100 text-rose-700':'bg-slate-100 text-slate-700'}`}>{e.subject}</span>
+                                        <span className="text-[10px] text-slate-400 font-mono">{dayjs(e.date).format('MM.DD')}</span>
+                                    </div>
+                                    <h4 className="font-bold text-slate-700 text-sm truncate pr-14">{e.title}</h4>
+                                    <div className={`absolute right-1.5 bottom-1.5 flex gap-0.5 transition-opacity bg-white/90 backdrop-blur-sm p-0.5 rounded-lg border border-slate-100 shadow-sm ${selectedExamId === e.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                        <button onClick={(ev) => { ev.stopPropagation(); setSelectedExamId(e.id); setEditExamData(e); setIsEditingExam(true); }} className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors" title="수정"><Icon d={PATHS.edit} size={14}/></button>
+                                        <button onClick={(ev) => { ev.stopPropagation(); handleDeleteExam(e.id); }} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors" title="삭제"><Icon d={PATHS.trash} size={14}/></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex-1 bg-white border border-slate-200 rounded-2xl p-4 md:p-6 flex flex-col h-full overflow-hidden shadow-sm">
+                        {!selectedExam ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-slate-400"><span className="text-6xl mb-4 opacity-50">📝</span><p className="font-bold text-sm">왼쪽에서 평가를 선택하거나 새 평가를 추가하세요.</p></div>
+                        ) : (
+                            <>
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 pb-4 border-b border-slate-100 gap-4">
+                                    {isEditingExam ? (
+                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full animate-fade-in"><div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">날짜</label><input type="date" value={editExamData.date} onChange={e => setEditExamData({...editExamData, date: e.target.value})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"/></div><div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">과목/분류</label><input value={editExamData.subject} onChange={e => setEditExamData({...editExamData, subject: e.target.value})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500" placeholder="예: 수학"/></div><div className="space-y-1 sm:col-span-2"><label className="text-[10px] font-bold text-slate-500">평가 제목</label><input value={editExamData.title} onChange={e => setEditExamData({...editExamData, title: e.target.value})} className="w-full p-2 text-sm font-bold border rounded-lg outline-none focus:border-indigo-500"/></div><div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">만점 점수</label><input type="number" value={editExamData.maxScore} onChange={e => setEditExamData({...editExamData, maxScore: parseInt(e.target.value) || 0})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"/></div><div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">총 문제 수</label><input type="number" value={editExamData.totalQuestions} onChange={e => setEditExamData({...editExamData, totalQuestions: parseInt(e.target.value) || 0})} className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"/></div><div className="sm:col-span-2 flex justify-end gap-2 mt-2"><Btn onClick={() => handleDeleteExam(selectedExamId)} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100">삭제</Btn><Btn onClick={handleSaveExamInfo} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700">저장</Btn></div></div>
+                                    ) : (
+                                        <div className="flex-1 w-full animate-fade-in"><div className="flex items-center gap-2 mb-1"><span className="text-xs bg-slate-100 px-2 py-0.5 rounded font-bold text-slate-600">{selectedExam.subject}</span><span className="text-xs text-slate-400 font-mono">{selectedExam.date}</span><button onClick={() => { setEditExamData(selectedExam); setIsEditingExam(true); }} className="p-1 text-slate-300 hover:text-indigo-500 transition-colors ml-1"><Icon d={PATHS.edit} size={14}/></button></div><h3 className="text-2xl font-bold text-slate-800">{selectedExam.title}</h3><div className="text-xs text-slate-500 mt-2 font-medium">만점: {selectedExam.maxScore}점 | 총 {selectedExam.totalQuestions}문제</div></div>
+                                    )}
+                                    {!isEditingExam && (
+                                        <Btn onClick={() => handleSendCorrectionTask(selectedExamId)} className="w-full sm:w-auto px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 transition-all"><Icon d={PATHS.send} size={18}/> 오답 과제로 전송</Btn>
+                                    )}
+                                </div>
+                                <div className="flex items-center justify-between mb-2 px-1"><span className="text-xs font-bold text-slate-500">학생 명단 및 결과 입력 (Enter 키로 이동)</span><span className="text-[10px] text-slate-400">* 틀린 개수를 입력하면 점수가 자동 계산됩니다.</span></div>
+                                <div className="flex-1 overflow-y-auto custom-scroll -mx-2 px-2 pb-10"><table className="w-full text-sm text-left whitespace-nowrap"><thead className="text-xs text-slate-500 bg-slate-50 sticky top-0 z-10 shadow-sm rounded-lg"><tr><th className="px-4 py-3 rounded-l-lg w-16 text-center">번호</th><th className="px-4 py-3 w-32">이름</th><th className="px-4 py-3 text-center">틀린 개수 (오답)</th><th className="px-4 py-3 rounded-r-lg text-center">점수</th></tr></thead><tbody>
+                                    {students.map((s, i) => {
+                                        const scoreData = (examScores[selectedExamId] || {})[s.id] || { score: '', wrongCount: '' };
+                                        const scoreVal = parseFloat(scoreData.score);
+                                        let scoreColor = "text-indigo-600";
+                                        if (!isNaN(scoreVal)) {
+                                            if (scoreVal === 100) scoreColor = "text-blue-600";
+                                            else if (scoreVal < 60) scoreColor = "text-rose-600";
+                                        }
+                                        return (<tr key={s.id} className="border-b border-slate-100 hover:bg-indigo-50/30 transition-colors group"><td className="px-4 py-3 text-slate-400 font-bold text-center">{s.order}</td><td className="px-4 py-3 font-bold text-slate-700">{s.name}</td><td className="px-4 py-2 text-center"><input id={`wrong_${i}`} type="number" value={scoreData.wrongCount} onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); document.getElementById(`wrong_${i+1}`)?.focus(); } }} className="w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all text-center text-rose-600 font-bold" placeholder="0"/></td><td className="px-4 py-2 text-center"><input id={`score_${i}`} type="number" value={scoreData.score} onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); document.getElementById(`score_${i+1}`)?.focus(); } }} className={`w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-center font-bold ${scoreColor}`} placeholder={selectedExam.maxScore}/></td></tr>);
+                                    })}
+                                </tbody></table></div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
         let isFirebaseInitialized = false;
         let sharedApp;
         let sharedDb;
@@ -9091,6 +9261,9 @@ return () => unsubscribe();
             // 🌟 ImgBB 연동 상태 (사진 기능)
     const [imgbbApiKey, setImgbbApiKey] = useState(() => localStorage.getItem('cls_imgbb_key') || "");
     const [showImgbbModal, setShowImgbbModal] = useState(false);
+    
+    const [exams, setExams] = useState([]);
+    const [examScores, setExamScores] = useState({});
 
     // 🌟 앱 실행 시 내 Firebase에서 API 키 불러오기 (Compat 버전 맞춤 코드)
     useEffect(() => {
@@ -9195,7 +9368,6 @@ return () => unsubscribe();
                     newRecords[date] = { ...newRecords[date] };
                     Object.keys(newRecords[date]).forEach(studentId => {
                         const stuRec = { ...newRecords[date][studentId] };
-                        let changed = false;
                         const shiftIndices = (obj) => {
                             if (!obj) return obj;
                             const newObj = {};
@@ -9207,13 +9379,14 @@ return () => unsubscribe();
                             });
                             return hasData ? newObj : undefined;
                         };
-                        if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); changed = true; }
-                        if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); changed = true; }
-                        if (stuRec.taskComments) { stuRec.taskComments = shiftIndices(stuRec.taskComments); changed = true; }
+                        if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); }
+                        if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); }
+                        if (stuRec.taskComments) { stuRec.taskComments = shiftIndices(stuRec.taskComments); }
                         
-                        if (changed) {
-                            if (newTasks.length === 0) stuRec.done = false;
-                            else if (stuRec.tasks) stuRec.done = newTasks.every((_, i) => stuRec.tasks[i]);
+                        if (newTasks.length > 0) {
+                            stuRec.done = newTasks.every((_, i) => stuRec.tasks?.[i]);
+                        } else {
+                            stuRec.done = false;
                         }
                         newRecords[date][studentId] = stuRec;
                     });
@@ -9237,6 +9410,65 @@ return () => unsubscribe();
                 else saveData('cls_daily_tasks', newDailyTasks);
                 setEditingScoreTask(null);
                 setToastMessage("과제가 수정되었습니다.");
+            };
+
+            const handleSendCorrectionTask = (examId) => {
+                const exam = exams.find(e => e.id === examId);
+                if(!exam) return;
+                const scores = examScores[examId] || {};
+
+                const today = dayjs().format('YYYY-MM-DD');
+                const taskTitle = `[${exam.subject}] ${exam.title} 오답 고치기`;
+                
+                const currentTasks = dailyTasks[today] || [];
+                const taskExists = currentTasks.some(t => (typeof t === 'object' ? t.title : t) === taskTitle);
+                
+                let newTaskIndex = currentTasks.length;
+                let newDailyTasks = { ...dailyTasks };
+                
+                if (!taskExists) {
+                    if (currentTasks.length >= 5) {
+                        setToastMessage("오늘 과제가 5개를 초과하여 자동 생성할 수 없습니다.");
+                        return;
+                    }
+                    newDailyTasks[today] = [...currentTasks, { title: taskTitle, tag: exam.subject }];
+                } else {
+                    newTaskIndex = currentTasks.findIndex(t => (typeof t === 'object' ? t.title : t) === taskTitle);
+                }
+                
+                const newRecords = { ...records };
+                if (!newRecords[today]) newRecords[today] = {};
+                
+                students.forEach(student => {
+                    const scoreData = scores[student.id];
+                    
+                    let stuRec = { ...(newRecords[today][student.id] || { done: false, tasks: {}, taskComments: {} }) };
+                    if (!stuRec.tasks) stuRec.tasks = {};
+                    if (!stuRec.taskComments) stuRec.taskComments = {};
+                    
+                    if (scoreData) {
+                        const wrongCount = parseInt(scoreData.wrongCount) || 0;
+                        if (wrongCount === 0 || scoreData.score == exam.maxScore) {
+                            stuRec.tasks[newTaskIndex] = true;
+                            stuRec.taskComments[newTaskIndex] = ["백점 만점! 고칠 오답이 없습니다. 🎉"];
+                        } else {
+                            if(stuRec.tasks[newTaskIndex] === undefined) stuRec.tasks[newTaskIndex] = false;
+                            stuRec.taskComments[newTaskIndex] = [`총 ${exam.totalQuestions || '?'}문제 중 ${wrongCount}문제 오답`];
+                        }
+                    } else {
+                        if(stuRec.tasks[newTaskIndex] === undefined) stuRec.tasks[newTaskIndex] = false;
+                        stuRec.taskComments[newTaskIndex] = ["결과 미입력 (확인 필요)"];
+                    }
+                    
+                    const allTasks = newDailyTasks[today];
+                    stuRec.done = allTasks.length > 0 && allTasks.every((_, idx) => stuRec.tasks[idx]);
+                    newRecords[today][student.id] = stuRec;
+                });
+                
+                setDailyTasks(newDailyTasks);
+                setRecords(newRecords);
+                saveData({ cls_daily_tasks: newDailyTasks, cls_records: newRecords });
+                setToastMessage(`${taskTitle} 과제가 오늘의 기록 탭에 생성되었습니다!`);
             };
 
             useEffect(() => {
@@ -10892,6 +11124,8 @@ return () => unsubscribe();
                     if (ls('cls_seat_assignments')) setSeatAssignments(JSON.parse(ls('cls_seat_assignments')));
                     if (ls('cls_seat_config')) setSeatConfig(JSON.parse(ls('cls_seat_config')));
                     if (ls('cls_ai_key')) setApiKey(ls('cls_ai_key'));
+                    if (ls('cls_exams')) setExams(JSON.parse(ls('cls_exams')));
+                    if (ls('cls_exam_scores')) setExamScores(JSON.parse(ls('cls_exam_scores')));
                 } catch (e) { console.error("Cache load error", e); }
                 
                 if (savedConfig) {
@@ -11082,6 +11316,8 @@ return () => unsubscribe();
                         if (d.notion_portfolio_db_id) { localStorage.setItem('cls_notion_portfolio_db_id', d.notion_portfolio_db_id); setPortfolioDbId(d.notion_portfolio_db_id); }
                         if (d.studentMap) { setStudentMap(d.studentMap); localStorage.setItem('cls_student_map', JSON.stringify(d.studentMap)); }
                         if (d.portfolio_mode !== undefined) { setIsPortfolioMode(d.portfolio_mode); localStorage.setItem('cls_portfolio_mode', d.portfolio_mode); }
+                        if (d.exams) setExams(d.exams);
+                        if (d.examScores) setExamScores(d.examScores);
                         
                         // [Fix] 앱 설정(파비콘, 테마 등) 실시간 동기화 추가
                         if (d.config) {
@@ -11418,6 +11654,8 @@ useEffect(() => {
                             if (k === 'cls_daily_tasks') { saveTasksToFirestore({ dailyTasks: v }); continue; } // [New] 과제 데이터 분리
                             if (k === 'cls_weekly_tasks') { saveTasksToFirestore({ weeklyTasks: v }); continue; }
                             if (k === 'cls_tags') { saveTasksToFirestore({ tags: v }); continue; }
+                            if (k === 'cls_exams') { payload['exams'] = JSON.parse(JSON.stringify(v)); continue; }
+                            if (k === 'cls_exam_scores') { payload['examScores'] = JSON.parse(JSON.stringify(v)); continue; }
                             
                             // [New] 앱 설정 데이터 분리 저장 (실시간 동기화용)
                             if (k === 'cls_app_config') {
@@ -11507,6 +11745,8 @@ useEffect(() => {
             useDeepEffect(() => { if (isLocalMode) saveData('cls_role_descriptions', roleDescriptions); }, [roleDescriptions]);
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_assignments', seatAssignments); }, [seatAssignments]);
             useDeepEffect(() => { if (isLocalMode) saveData('cls_seat_config', seatConfig); }, [seatConfig]);
+            useDeepEffect(() => { if (isLocalMode) saveData('cls_exams', exams); }, [exams]);
+            useDeepEffect(() => { if (isLocalMode) saveData('cls_exam_scores', examScores); }, [examScores]);
 
             const toggleCheck = async (id, taskIndex = null, targetDate = null) => { 
                 const d = targetDate || date;
@@ -12923,6 +13163,11 @@ useEffect(() => {
                         updates['cls_roles_list'] = ['나눔이', '맺음이', '챙김이', '깔끔이'];
                         updates['cls_role_descriptions'] = DEFAULT_ROLE_DESCRIPTIONS;
                     }
+                    if (selectedItems.includes('tasks')) { // 과제 초기화 시 평가 데이터도 함께 초기화 하거나 별도 옵션. 편의상 과제와 묶음.
+                        setExams([]);
+                        setExamScores({});
+                        updates['cls_exams'] = []; updates['cls_exam_scores'] = {};
+                    }
 
                     if (!isLocalMode) {
                         saveData(updates);
@@ -13350,15 +13595,15 @@ useEffect(() => {
                 <div 
                     className="absolute top-1 bottom-1 left-1 bg-white rounded-lg shadow-sm transition-all duration-300 ease-in-out"
                     style={{ 
-                        width: 'calc((100% - 0.5rem) / 4)', 
+                        width: 'calc((100% - 0.5rem) / 5)', 
                         transform: `translateX(${mode === 'record' ? '0%' : mode === 'group' ? '100%' : mode === 'stats' ? '200%' : '300%'})` 
                     }}
                 ></div>
-                {[{id:'record',label:'기록',icon:PATHS.edit},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart},{id:'community',label:'게시판',icon:PATHS.list}].map(m => (
+                {[{id:'record',label:'기록',icon:PATHS.edit},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart},{id:'exam',label:'평가',icon:PATHS.document},{id:'community',label:'게시판',icon:PATHS.list}].map(m => (
                     <button 
                         key={m.id} 
                         onClick={()=>setMode(m.id)} 
-                        className={`relative z-10 flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold transition-colors w-24 ${mode===m.id ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`relative z-10 flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold transition-colors min-w-[5rem] whitespace-nowrap ${mode===m.id ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                         <Icon d={m.icon} size={16}/><span>{m.label}</span>
                     </button>
@@ -14085,6 +14330,9 @@ useEffect(() => {
                                     </div></div></div>))}</div>
                                 </div>
                                 </div>
+                            )}
+                            {mode === 'exam' && (
+                                <ExamView students={students} exams={exams} setExams={setExams} examScores={examScores} setExamScores={setExamScores} handleSendCorrectionTask={handleSendCorrectionTask} showToast={setToastMessage} isLocalMode={isLocalMode} saveData={saveData} db={db} appId={appId} />
                             )}
                             {mode === 'community' && (
                                 <div className="max-w-3xl mx-auto pb-10 relative min-h-[80vh] overflow-x-hidden">
@@ -14965,10 +15213,10 @@ useEffect(() => {
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe">
                         <div className="flex justify-around items-center h-14 relative">
                             <div 
-                                className="absolute top-0 left-0 h-0.5 bg-indigo-600 w-1/4 transition-transform duration-300 ease-in-out z-40"
-                                style={{ transform: `translateX(${mode === 'record' ? '0%' : mode === 'group' ? '100%' : mode === 'stats' ? '200%' : '300%'})` }}
+                                className="absolute top-0 left-0 h-0.5 bg-indigo-600 transition-transform duration-300 ease-in-out z-40"
+                                style={{ width: '20%', transform: `translateX(${mode === 'record' ? '0%' : mode === 'group' ? '100%' : mode === 'stats' ? '200%' : mode === 'exam' ? '300%' : '400%'})` }}
                             ></div>
-                            {[{id:'record',label:'기록',icon:PATHS.edit},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart},{id:'community',label:'게시판',icon:PATHS.list}].map(m => (
+                            {[{id:'record',label:'기록',icon:PATHS.edit},{id:'group',label:'모둠',icon:PATHS.users},{id:'stats',label:'통계',icon:PATHS.chart},{id:'exam',label:'평가',icon:PATHS.document},{id:'community',label:'게시판',icon:PATHS.list}].map(m => (
                                 <button key={m.id} onClick={()=>setMode(m.id)} className={`relative flex flex-col items-center justify-center w-full h-full transition-all active:scale-90 group ${mode===m.id ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
                                     <div className={`px-5 py-1 rounded-xl transition-all duration-300 ${mode===m.id ? '-translate-y-1' : 'group-hover:bg-slate-50'}`}>
                                         <Icon d={m.icon} size={20} strokeWidth={mode===m.id?2.5:2} className={`transition-transform ${mode===m.id ? 'scale-110' : ''}`} />

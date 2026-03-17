@@ -250,25 +250,26 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             newRecords[date] = { ...newRecords[date] };
             Object.keys(newRecords[date]).forEach(studentId => {
                 const stuRec = { ...newRecords[date][studentId] };
-                let changed = false;
                 const shiftIndices = (obj) => {
                     if (!obj) return obj;
                     const newObj = {};
                     let hasData = false;
                     Object.keys(obj).forEach(k => {
                         const kInt = parseInt(k);
-                        if (kInt < idx) { newObj[kInt] = obj[k]; hasData = true; } 
+                        if (kInt < idx) { newObj[kInt] = obj[k]; hasData = true; }
                         else if (kInt > idx) { newObj[kInt - 1] = obj[k]; hasData = true; }
                     });
                     return hasData ? newObj : undefined;
                 };
-                if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); changed = true; }
-                if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); changed = true; }
-                if (stuRec.taskComments) { stuRec.taskComments = shiftIndices(stuRec.taskComments); changed = true; }
-                
-                if (changed) {
-                    if (newTasks.length === 0) stuRec.done = false;
-                    else if (stuRec.tasks) stuRec.done = newTasks.every((_, i) => stuRec.tasks[i]);
+                if (stuRec.tasks) { stuRec.tasks = shiftIndices(stuRec.tasks); }
+                if (stuRec.lateTasks) { stuRec.lateTasks = shiftIndices(stuRec.lateTasks); }
+                if (stuRec.taskComments) { stuRec.taskComments = shiftIndices(stuRec.taskComments); }
+
+                // Unconditionally recalculate the 'done' status
+                if (newTasks.length > 0) {
+                    stuRec.done = newTasks.every((_, i) => stuRec.tasks?.[i]);
+                } else {
+                    stuRec.done = false;
                 }
                 newRecords[date][studentId] = stuRec;
             });
