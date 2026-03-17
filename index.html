@@ -457,6 +457,18 @@
         const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
         const getToday = () => dayjs().format('YYYY-MM-DD');
+        // [New] 학기 단위 로딩을 위한 날짜 계산 함수
+        const getSemesterStart = () => {
+            const today = dayjs();
+            const m = today.month() + 1;
+            const y = today.year();
+            return (m >= 3 && m <= 8) ? `${y}-03-01` : (m >= 9 ? `${y}-09-01` : `${y - 1}-09-01`);
+        };
+        const getCurrentYearStart = () => {
+            const today = dayjs();
+            const y = today.year();
+            return (today.month() + 1 < 3) ? `${y - 1}-03-01` : `${y}-03-01`;
+        };
         const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
         const HOLIDAYS = {
@@ -1528,6 +1540,7 @@
             const [dueDate, setDueDate] = useState(date); // 🌟 제출일 상태 추가
             
             const [showCalendar, setShowCalendar] = useState(false);
+            const [showBulkAssignCalendar, setShowBulkAssignCalendar] = useState(false);
             // [New] 과제 수정 상태
             const [editingIndex, setEditingIndex] = useState(null);
             const [editTitle, setEditTitle] = useState("");
@@ -1613,9 +1626,60 @@
                 // (TaskModal props에 saveTasksToFirestore 추가 필요)
             };
             const toggleDay = (d) => setWSelectedDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
-            const addWeeklyTask = () => { if (wNewTask && wSelectedDays.length > 0) { const newW = { ...wTasks }; wSelectedDays.forEach(d => { if ((newW[d] || []).length < 5) newW[d] = [...(newW[d] || []), { title: wNewTask, tag: wSelectedTag }]; }); setWTasks(newW); updateTags(wSelectedTag); setWNewTask(""); setWSelectedDays([]); showToast("요일별 과제 추가됨"); } };
+            const addWeeklyTask = () => { 
+                if (wSelectedDays.length === 0) {
+                    showToast("적용할 요일을 위에서 먼저 선택해주세요.");
+                    return;
+                }
+                if (!wNewTask || !wNewTask.trim()) {
+                    showToast("고정 과제 내용을 입력해주세요.");
+                    return;
+                }
+                const newW = { ...wTasks }; wSelectedDays.forEach(d => { if ((newW[d] || []).length < 5) newW[d] = [...(newW[d] || []), { title: wNewTask.trim(), tag: wSelectedTag }]; }); 
+                setWTasks(newW); updateTags(wSelectedTag); setWNewTask(""); setWSelectedDays([]); 
+                showToast("요일별 고정 과제가 추가되었습니다."); 
+            };
             const removeWeeklyTask = (d, i) => setWTasks({ ...wTasks, [d]: wTasks[d].filter((_, idx) => idx !== i) });
             const handleTagAction = (action, ...args) => { if(action === 'add') updateTags(args[0]); else if(action === 'delete') { openConfirm(`'${args[0]}' 태그 삭제?`, () => { const newTags = tags.filter(t => t !== args[0]); setTags(newTags); if(!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); if(selectedTag === args[0]) setSelectedTag("기타"); if(wSelectedTag === args[0]) setWSelectedTag("기타"); }); } else if(action === 'edit') { const [oldT, newT] = args; if(newT && newT !== oldT){ const newTags = tags.map(t=>t===oldT?newT:t); setTags(newTags); if(!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); showToast("태그 수정됨"); } } };
+
+            // [New] 기간 지정 일괄 적용 기능
+            const handleBulkAssignRange = (startStr, endStr) => {
+                if (!confirm(`${startStr}부터 ${endStr}까지 요일별 고정 과제를 일괄 등록하시겠습니까?\n(기존에 등록된 과제는 그대로 유지되며 빈자리에 추가됩니다)`)) return;
+                
+                const newDaily = { ...dailyTasks };
+                let addedCount = 0;
+                const start = dayjs(startStr);
+                const end = dayjs(endStr);
+                let updatesForCloud = {};
+                
+                let curr = start;
+                while (curr.isBefore(end) || curr.isSame(end, 'day')) {
+                    const dStr = curr.format('YYYY-MM-DD');
+                    const day = curr.day();
+                    
+                    if (wTasks[day] && wTasks[day].length > 0) {
+                        const existing = newDaily[dStr] || [];
+                        const tasksToAdd = wTasks[day].filter(wt => !existing.some(et => (typeof et === 'object' ? et.title : et) === wt.title));
+                        
+                        if (tasksToAdd.length > 0) {
+                            const merged = [...existing, ...tasksToAdd].slice(0, 5); // 하루 최대 5개 제한
+                            newDaily[dStr] = merged;
+                            updatesForCloud[dStr] = merged;
+                            addedCount += tasksToAdd.length;
+                        }
+                    }
+                    curr = curr.add(1, 'day');
+                }
+                
+                setDailyTasks(newDaily);
+                if (!isLocalMode && saveTasksToFirestore && Object.keys(updatesForCloud).length > 0) {
+                    saveTasksToFirestore({ dailyTasks: updatesForCloud });
+                } else if (isLocalMode) {
+                    localStorage.setItem('cls_daily_tasks', JSON.stringify(newDaily));
+                }
+                
+                showToast(`총 ${addedCount}개의 고정 과제가 일괄 등록되었습니다.`);
+            };
 
             // [New] 저장 로직 재정의 (props로 받은 함수 사용)
             const handleSaveAll = () => {
@@ -1746,6 +1810,7 @@
                                 <h4 className="font-bold text-base flex items-center gap-2 text-slate-800">
                                     요일별 고정 과제
                                 </h4>
+                                <Btn onClick={() => setShowBulkAssignCalendar(true)} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-lg text-[10px] font-bold hover:bg-indigo-100 transition-colors shadow-sm flex items-center gap-1"><Icon d={PATHS.calendar} size={12}/> 기간 선택 일괄 등록</Btn>
                             </div>
                             
                             <div className="space-y-4">
@@ -1813,6 +1878,17 @@
                                 records={records} 
                                 appConfig={appConfig} 
                                 dailyTasks={dailyTasks}
+                                zIndex="z-[2500]"
+                            />
+                        )}
+                        {showBulkAssignCalendar && (
+                            <CalendarModal 
+                                isOpen={showBulkAssignCalendar} 
+                                onClose={() => setShowBulkAssignCalendar(false)} 
+                                currentDate={date} 
+                                selectionMode="range"
+                                onSelectRange={(s, e) => { handleBulkAssignRange(s, e); setShowBulkAssignCalendar(false); }} 
+                                appConfig={appConfig} 
                                 zIndex="z-[2500]"
                             />
                         )}
@@ -7974,22 +8050,62 @@ const firebaseConfig = {
             const handleUpdateUserName = async (uid, currentName) => {
                 const newName = prompt("새로운 별칭을 입력하세요:", currentName);
                 if (newName && newName.trim() !== "" && newName !== currentName) {
+                    const finalName = newName.trim();
+                    // 화면에 즉시 반영 (Optimistic UI Update)
+                    setUserList(prev => prev.map(u => u.uid === uid ? { ...u, name: finalName, userNickname: finalName } : u));
                     try {
-                        await sharedDb.collection('userProfiles').doc(uid).update({ name: newName.trim() });
-                        setToastMessage("별칭이 수정되었습니다.");
+                        setToastMessage("기존 데이터를 변경 중입니다...");
+                        const batches = [];
+                        let currentBatch = sharedDb.batch();
+                        let opCount = 0;
+
+                        const commitBatch = () => {
+                            batches.push(currentBatch);
+                            currentBatch = sharedDb.batch();
+                            opCount = 0;
+                        };
+
+                        currentBatch.set(sharedDb.collection('userProfiles').doc(uid), { name: finalName, userNickname: finalName }, { merge: true });
+                        currentBatch.set(sharedDb.collection('userStats').doc(uid), { nickname: finalName }, { merge: true });
+                        opCount += 2;
+
+                        const postsSnap = await sharedDb.collection('community').where('uid', '==', uid).get();
+                        postsSnap.forEach(doc => {
+                            currentBatch.update(doc.ref, { authorName: finalName });
+                            opCount++;
+                            if (opCount >= 450) commitBatch();
+                        });
+
+                        const commentsSnap = await sharedDb.collectionGroup('comments').where('uid', '==', uid).get();
+                        commentsSnap.forEach(doc => {
+                            const updateData = {};
+                            if (doc.data().author !== undefined) updateData.author = finalName;
+                            if (doc.data().authorName !== undefined) updateData.authorName = finalName;
+                            if (doc.data().author === undefined && doc.data().authorName === undefined) updateData.author = finalName;
+                            currentBatch.update(doc.ref, updateData);
+                            opCount++;
+                            if (opCount >= 450) commitBatch();
+                        });
+
+                        if (opCount > 0) batches.push(currentBatch);
+                        await Promise.all(batches.map(b => b.commit()));
+
+                        setToastMessage("별칭 수정 및 기존 게시글/댓글 소급 적용 완료!");
                         fetchUserList();
-                    } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
+                    } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); fetchUserList(); /* 실패 시 원상복구 */ }
                 }
             };
 
             const handleUpdateAppId = async (uid, currentAppId) => {
                 const newAppId = prompt("새로운 학급 코드(App ID)를 입력하세요:", currentAppId);
                 if (newAppId !== null) {
+                    const finalAppId = newAppId.trim();
+                    // 화면에 즉시 반영
+                    setUserList(prev => prev.map(u => u.uid === uid ? { ...u, appId: finalAppId } : u));
                     try {
-                        await sharedDb.collection('userProfiles').doc(uid).set({ appId: newAppId.trim() }, { merge: true });
+                        await sharedDb.collection('userProfiles').doc(uid).set({ appId: finalAppId }, { merge: true });
                         setToastMessage("학급 코드가 수정되었습니다.");
-                        fetchUserList();
-                    } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); }
+                    } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); fetchUserList(); }
                 }
             };
 
@@ -8156,56 +8272,104 @@ const firebaseConfig = {
             alert("별칭은 2글자 이상 입력해주세요.");
             return;
         }
+
+        if (userNickname && tempNickname.trim() === userNickname) {
+            setShowNicknameModal(false);
+            return;
+        }
+
         try {
             const user = currentUser;
-            if (user && sharedDb) {
-                        // [New] 중복 가입 방지 (이미 프로필이 있는지 확인 - UID 기준)
-                        const doc = await sharedDb.collection('userProfiles').doc(user.uid).get();
-                        if (doc.exists) {
-                            const data = doc.data();
-                            const existingName = data.name || data.userNickname;
-                            if (existingName) {
-                                alert(`이미 '${existingName}'(으)로 등록된 사용자입니다. 기존 별칭으로 로그인합니다.`);
-                                setUserNickname(existingName);
-                                localStorage.setItem('myBoardName', existingName);
-                                setShowNicknameModal(false);
-                                return;
-                            }
-                        }
+            const nickname = tempNickname.trim();
+            const isUpdating = !!userNickname;
 
-                        // [New] 중복 닉네임 체크
-                        const nickname = tempNickname.trim();
-                        const check1 = await sharedDb.collection('userProfiles').where('userNickname', '==', nickname).get();
-                        const check2 = await sharedDb.collection('userProfiles').where('name', '==', nickname).get();
-                        
-                        // 이미 존재하는 닉네임이 있고, 그게 내 것이 아닐 경우
-                        if ((!check1.empty && check1.docs[0].id !== user.uid) || (!check2.empty && check2.docs[0].id !== user.uid)) {
-                            alert("이미 사용 중인 별칭입니다. 다른 별칭을 입력해주세요.");
+            if (user && sharedDb) {
+                if (!isUpdating) {
+                    // [New] 중복 가입 방지 (이미 프로필이 있는지 확인 - 초기 설정 시에만)
+                    const doc = await sharedDb.collection('userProfiles').doc(user.uid).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        const existingName = data.name || data.userNickname;
+                        if (existingName) {
+                            alert(`이미 '${existingName}'(으)로 등록된 사용자입니다. 기존 별칭으로 로그인합니다.`);
+                            setUserNickname(existingName);
+                            localStorage.setItem('myBoardName', existingName);
+                            setShowNicknameModal(false);
                             return;
                         }
+                    }
+                }
 
-                // 1. 파이어베이스 서버에 저장
-                await sharedDb.collection('userProfiles').doc(user.uid).set({
+                // [New] 중복 닉네임 체크
+                const check1 = await sharedDb.collection('userProfiles').where('userNickname', '==', nickname).get();
+                const check2 = await sharedDb.collection('userProfiles').where('name', '==', nickname).get();
+                
+                // 이미 존재하는 닉네임이 있고, 그게 내 것이 아닐 경우
+                if ((!check1.empty && check1.docs[0].id !== user.uid) || (!check2.empty && check2.docs[0].id !== user.uid)) {
+                    alert("이미 사용 중인 별칭입니다. 다른 별칭을 입력해주세요.");
+                    return;
+                }
+
+                setToastMessage(isUpdating ? "별칭 변경 및 기존 글 수정 중..." : "별칭 등록 중...");
+
+                const batches = [];
+                let currentBatch = sharedDb.batch();
+                let opCount = 0;
+
+                const commitBatch = () => {
+                    batches.push(currentBatch);
+                    currentBatch = sharedDb.batch();
+                    opCount = 0;
+                };
+
+                currentBatch.set(sharedDb.collection('userProfiles').doc(user.uid), {
                     uid: user.uid,
                     email: user.email || "",
-                            name: nickname,
-                            userNickname: nickname, // [New] 별칭 필드 통일
+                    name: nickname,
+                    userNickname: nickname,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true }); // [New] 기존 데이터 보존
+                }, { merge: true });
 
-                // [New] 접속 통계에도 저장
-                await sharedDb.collection('userStats').doc(user.uid).set({
+                currentBatch.set(sharedDb.collection('userStats').doc(user.uid), {
                     uid: user.uid,
                     lastActive: new Date(),
-                            nickname: nickname
+                    nickname: nickname
                 }, { merge: true });
+                opCount += 2;
+
+                if (isUpdating) {
+                    const postsSnap = await sharedDb.collection('community').where('uid', '==', user.uid).get();
+                    postsSnap.forEach(doc => {
+                        currentBatch.update(doc.ref, { authorName: nickname });
+                        opCount++;
+                        if (opCount >= 450) commitBatch();
+                    });
+
+                    const commentsSnap = await sharedDb.collectionGroup('comments').where('uid', '==', user.uid).get();
+                    commentsSnap.forEach(doc => {
+                        const updateData = {};
+                        if (doc.data().author !== undefined) updateData.author = nickname;
+                        if (doc.data().authorName !== undefined) updateData.authorName = nickname;
+                        if (doc.data().author === undefined && doc.data().authorName === undefined) updateData.author = nickname;
+                        currentBatch.update(doc.ref, updateData);
+                        opCount++;
+                        if (opCount >= 450) commitBatch();
+                    });
+                }
+
+                if (opCount > 0) batches.push(currentBatch);
+                await Promise.all(batches.map(b => b.commit()));
+                
+                setCommunityPosts(prev => prev.map(p => p.uid === user.uid ? { ...p, authorName: nickname } : p));
+                if (selectedPost && selectedPost.uid === user.uid) {
+                    setSelectedPost(prev => ({ ...prev, authorName: nickname }));
+                }
             }
             
-            // 2. 내 컴퓨터(브라우저)에도 강력하게 저장!! (이게 핵심입니다)
-            localStorage.setItem('myBoardName', tempNickname.trim());
-            
-            setUserNickname(tempNickname.trim());
+            localStorage.setItem('myBoardName', nickname);
+            setUserNickname(nickname);
             setShowNicknameModal(false);
+            setToastMessage(isUpdating ? "별칭이 성공적으로 변경되었습니다!" : "별칭 등록이 완료되었습니다.");
         } catch (e) {
             console.error("별칭 저장 실패:", e);
             alert("별칭 저장에 실패했습니다.");
@@ -9013,6 +9177,9 @@ return () => unsubscribe();
             const [isDevMode, setIsDevMode] = useState(() => localStorage.getItem('cls_dev_mode') === 'true');
             const [adminClickCount, setAdminClickCount] = useState(0);
             
+            const [isDataSyncing, setIsDataSyncing] = useState(false);
+            const [syncMessage, setSyncMessage] = useState("");
+            
             const handleDataManagementClick = () => { 
                 const user = currentUser;
                 if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') return;
@@ -9785,6 +9952,29 @@ return () => unsubscribe();
             setTutorialSeen(true);
         }
     }, [CURRENT_VERSION]);
+
+        // 🌟 학년도 마무리에 '데이터 이월 및 보관' 안내 (2.15 ~ 3.15)
+        const [showRolloverPrompt, setShowRolloverPrompt] = useState(false);
+        useEffect(() => {
+            const today = dayjs();
+            const m = today.month() + 1;
+            const d = today.date();
+            const y = today.year();
+            
+            // 2월 15일 ~ 3월 15일 사이인지 확인
+            const isRolloverSeason = (m === 2 && d >= 15) || (m === 3 && d <= 15);
+            const promptKey = `cls_rollover_prompt_shown_${y}`;
+            
+            if (isRolloverSeason && !localStorage.getItem(promptKey) && !isLoading) {
+                const timer = setTimeout(() => { setShowRolloverPrompt(true); }, 3000);
+                return () => clearTimeout(timer);
+            }
+        }, [isLoading]);
+        
+        const handleCloseRollover = (dontShowAgain) => {
+            if (dontShowAgain) localStorage.setItem(`cls_rollover_prompt_shown_${dayjs().year()}`, 'true');
+            setShowRolloverPrompt(false);
+        };
 
             const [isRoleEditOpen, setIsRoleEditOpen] = useState(false);
             const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(window.innerWidth >= 768);
@@ -10625,7 +10815,8 @@ return () => unsubscribe();
                 }
 
                 openConfirm(`⚠️ 중요: 데이터 이사(마이그레이션)\n\n과거 경로(${projectId})에 저장된 데이터를\n현재 경로(${appId})로 복사해옵니다.\n\n- 기존 데이터가 있다면 병합됩니다.\n- 데이터 양에 따라 시간이 걸릴 수 있습니다.\n\n진행하시겠습니까?`, async () => {
-                    setToastMessage("데이터 이사 중... 화면을 닫지 마세요.");
+                    setIsDataSyncing(true);
+                    setSyncMessage("과거 데이터를 안전하게 가져오고 있습니다...\n(화면을 닫거나 새로고침하지 마세요)");
                     
                     try {
                         const oldArtifactRef = db.collection('artifacts').doc(projectId).collection('public').doc('data');
@@ -10656,7 +10847,11 @@ return () => unsubscribe();
                         }
                         alert("데이터가 성공적으로 복구되었습니다.");
                         window.location.reload();
-                    } catch (e) { console.error(e); setToastMessage("마이그레이션 실패: " + e.message); }
+                    } catch (e) { 
+                        console.error(e); 
+                        setToastMessage("마이그레이션 실패: " + e.message); 
+                        setIsDataSyncing(false);
+                    }
                 });
             };
             
@@ -11024,10 +11219,10 @@ useEffect(() => {
             setRecords(cachedRecordsRef.current);
         }
 
-        const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
+            const semesterStart = getSemesterStart();
         try {
             unsubscribeRecords = firestore.collection('classes').doc(targetAppId).collection('records')
-                .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
+                    .where(firebase.firestore.FieldPath.documentId(), '>=', semesterStart)
                 .onSnapshot(snapshot => {
                     const newRecords = {};
                     snapshot.forEach(doc => {
@@ -11084,11 +11279,11 @@ useEffect(() => {
             return;
         }
 
-        const threeMonthsAgo = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
+        const semesterStart = getSemesterStart();
         try {
             // [Fix] 모둠 데이터도 실시간 구독(onSnapshot)으로 변경하여 동기화 강화
             unsubscribeGroups = firestore.collection('classes').doc(targetAppId).collection('groupResults')
-                .where(firebase.firestore.FieldPath.documentId(), '>=', threeMonthsAgo)
+                .where(firebase.firestore.FieldPath.documentId(), '>=', semesterStart)
                 .onSnapshot(snapshot => {
                 const newGroups = {};
                 snapshot.docs.forEach(doc => { newGroups[doc.id] = doc.data().list; });
@@ -11138,6 +11333,31 @@ useEffect(() => {
                 return () => unsub();
             }, [mode, date, firestore, appId, config, isLocalMode, currentUser]);
 
+            // [New] 모둠 탭 과거 날짜 동적 로딩 (Lazy Loading)
+            useEffect(() => {
+                let targetAppId = appId;
+                if (!targetAppId && config) targetAppId = config.projectId;
+                if (!targetAppId) {
+                    try { const lsCfg = JSON.parse(localStorage.getItem('checklist_config') || "{}"); if (lsCfg.projectId) targetAppId = lsCfg.projectId; } catch(e){}
+                }
+
+                if (mode !== 'group' || isLocalMode || !firestore || !targetAppId || !date) return;
+                if (groupsByDateRef.current && groupsByDateRef.current[date]) return;
+
+                const fetchPastGroup = async () => {
+                    try {
+                        const doc = await firestore.collection('classes').doc(targetAppId).collection('groupResults').doc(date).get();
+                        if (doc.exists) {
+                            const newGroups = { [date]: doc.data().list };
+                            const hydrated = hydrateGroups(newGroups, studentsRef.current);
+                            setGroupsByDate(prev => ({ ...prev, ...hydrated }));
+                        }
+                    } catch (e) { console.error(`과거 모둠(${date}) 로딩 실패:`, e); }
+                };
+                fetchPastGroup();
+            }, [mode, date, firestore, appId, config, isLocalMode]);
+
+
             // [Fix] 탭 전환 시 데이터 유실 방지를 위한 캐시 동기화
             useEffect(() => { if (records) cachedRecordsRef.current = records; }, [records]);
             useEffect(() => { if (groupsByDate) cachedGroupsRef.current = groupsByDate; }, [groupsByDate]);
@@ -11167,7 +11387,21 @@ useEffect(() => {
                 return () => clearTimeout(timer);
             }, [showOfflineModal, autoCloseTimer]);
             
-            useEffect(() => { if (mode === 'record') { const dayOfWeek = dayjs(date).day(); if ((!dailyTasks[date] || dailyTasks[date].length === 0) && weeklyTasks[dayOfWeek]?.length > 0) { const tasksToAdd = weeklyTasks[dayOfWeek].map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t); const newDailyTasks = { ...dailyTasks, [date]: tasksToAdd }; setDailyTasks(newDailyTasks); if (isLocalMode) saveData('cls_daily_tasks', newDailyTasks); } } }, [date, mode, weeklyTasks]);
+            useEffect(() => { 
+                if (mode === 'record') { 
+                    const dayOfWeek = dayjs(date).day(); 
+                    if ((!dailyTasks[date] || dailyTasks[date].length === 0) && weeklyTasks[dayOfWeek]?.length > 0) { 
+                        const tasksToAdd = weeklyTasks[dayOfWeek].map(t => typeof t === 'string' ? { title: t, tag: '기타' } : t); 
+                        const newDailyTasks = { ...dailyTasks, [date]: tasksToAdd }; 
+                        setDailyTasks(newDailyTasks); 
+                        if (isLocalMode) {
+                            saveData('cls_daily_tasks', newDailyTasks); 
+                        } else if (db && appId) {
+                            saveTasksToFirestore({ dailyTasks: { [date]: tasksToAdd } });
+                        }
+                    } 
+                } 
+            }, [date, mode, weeklyTasks, dailyTasks, isLocalMode, db, appId]);
             
             // [Fix] useEffect 내부에서 최신 appConfig를 참조하기 위한 Ref (무한 루프 방지)
             const appConfigRef = useRef(appConfig);
@@ -12923,7 +13157,10 @@ useEffect(() => {
                 if (!db || !appId) return;
 
                 try {
-                    if (!silent) setToastMessage("클라우드에서 선택한 데이터를 안전하게 불러오는 중입니다... ⏳");
+                    if (!silent) {
+                        setIsDataSyncing(true);
+                        setSyncMessage("클라우드에서 데이터를 불러오는 중입니다...");
+                    }
                     let loadedItems = [];
 
                     // 1. 학생 데이터
@@ -12975,9 +13212,9 @@ useEffect(() => {
 
                     // 3. 활동 기록 (최근 6개월)
                     if (options.records) {
-                        const sixMonthsAgo = dayjs().subtract(6, 'month').format('YYYY-MM-DD');
+                        const yearStart = getCurrentYearStart();
                         const recordSnapshot = await db.collection('classes').doc(appId).collection('records')
-                            .where(firebase.firestore.FieldPath.documentId(), '>=', sixMonthsAgo)
+                            .where(firebase.firestore.FieldPath.documentId(), '>=', yearStart)
                             .get();
                         
                         const newRecords = {};
@@ -12998,11 +13235,11 @@ useEffect(() => {
                         }
                     }
 
-                    // 4. 모둠 기록 (최근 6개월)
+                    // 4. 모둠 기록 (올해 전체로 확대)
                     if (options.groups) {
-                        const sixMonthsAgo = dayjs().subtract(6, 'month').format('YYYY-MM-DD');
+                        const yearStart = getCurrentYearStart();
                         const groupSnapshot = await db.collection('classes').doc(appId).collection('groupResults')
-                            .where(firebase.firestore.FieldPath.documentId(), '>=', sixMonthsAgo)
+                            .where(firebase.firestore.FieldPath.documentId(), '>=', yearStart)
                             .get();
                         const newGroups = {};
                         groupSnapshot.forEach(doc => {
@@ -13017,6 +13254,8 @@ useEffect(() => {
                 } catch (e) {
                     console.error(e);
                     if (!silent) setToastMessage("❌ 데이터를 불러오는 데 실패했습니다: " + e.message);
+                } finally {
+                    if (!silent) setIsDataSyncing(false);
                 }
             };
 
@@ -13916,12 +14155,23 @@ useEffect(() => {
                                                             </button>
                                                         )}
                             {currentUser && (
-                                                            <button 
-                                                                onClick={handleWriteClick}
-                                                                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 whitespace-nowrap"
-                                                            >
-                                                                <Icon d={PATHS.edit} size={16} /> <span className="hidden sm:inline">글쓰기</span>
-                                                            </button>
+                                                            <div className="flex gap-2">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setTempNickname(userNickname || "");
+                                                                        setShowNicknameModal(true);
+                                                                    }}
+                                                                    className="px-3 sm:px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-50 shadow-sm flex items-center justify-center gap-1 sm:gap-2 transition-transform active:scale-95 whitespace-nowrap"
+                                                                >
+                                                                    <Icon d={PATHS.users} size={16} /> <span className="hidden sm:inline">내 프로필</span>
+                                                                </button>
+                                                                <button 
+                                                                    onClick={handleWriteClick}
+                                                                    className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-indigo-700 shadow-md flex items-center justify-center gap-1 sm:gap-2 transition-transform active:scale-95 whitespace-nowrap"
+                                                                >
+                                                                    <Icon d={PATHS.edit} size={16} /> <span className="hidden sm:inline">글쓰기</span>
+                                                                </button>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -14620,11 +14870,10 @@ useEffect(() => {
                             <Icon d={PATHS.x} size={20} className="transition-transform duration-300 group-hover:rotate-90" />
                         </button>
                         <div className="text-center mb-6 mt-2">
-                            <div className="text-5xl mb-4 animate-bounce-in">👋</div>
-                            <h3 className="text-2xl font-extrabold text-slate-800">환영합니다!</h3>
+                            <div className="text-5xl mb-4 animate-bounce-in">{userNickname ? '👤' : '👋'}</div>
+                            <h3 className="text-2xl font-extrabold text-slate-800">{userNickname ? '내 프로필' : '환영합니다!'}</h3>
                             <p className="text-sm text-slate-600 mt-2 break-keep leading-relaxed">
-                                동료 교사 간의 원활한 소통을 위해<br/>
-                                <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">별칭</span>을 입력해 주세요.
+                                {userNickname ? '게시판에서 사용할 새로운 별칭을 입력해주세요.' : <>동료 교사 간의 원활한 소통을 위해<br/><span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">별칭</span>을 입력해 주세요.</>}
                             </p>
                         </div>
                         <input 
@@ -14639,10 +14888,14 @@ useEffect(() => {
                             onClick={handleSaveNickname}
                             className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:bg-indigo-700 hover:-translate-y-0.5 transition-all active:scale-95 text-base"
                         >
-                            시작하기
+                            {userNickname ? '변경하기' : '시작하기'}
                         </button>
-                        <p className="text-xs text-slate-400 mt-5 text-center font-medium flex items-center justify-center gap-1">
-                            <Icon d={PATHS.warning} size={14} /> 한 번 등록한 별칭은 변경할 수 없습니다.
+                        <p className="text-xs text-slate-400 mt-5 text-center font-medium flex flex-col items-center justify-center gap-1">
+                            {userNickname ? (
+                                <><Icon d={PATHS.warning} size={14} /> 기존 작성한 글과 댓글의 이름도 모두 변경됩니다.</>
+                            ) : (
+                                <><Icon d={PATHS.warning} size={14} /> 등록한 별칭은 언제든 프로필에서 변경할 수 있습니다.</>
+                            )}
                         </p>
                     </div>
                 </div>
@@ -14824,6 +15077,23 @@ useEffect(() => {
                                     </button>
                                 )}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* 🌟 학년도 마무리 데이터 이월 안내 모달 */}
+            {showRolloverPrompt && (
+                <div className="fixed inset-0 bg-slate-900/60 z-[6000] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-md overflow-hidden animate-modal-enter flex flex-col relative p-8 text-center">
+                        <button onClick={() => handleCloseRollover(true)} className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors"><Icon d={PATHS.x} size={20} /></button>
+                        <div className="text-6xl mb-5 animate-bounce mt-2">🌱</div>
+                        <h3 className="text-2xl font-extrabold text-slate-800 mb-3 break-keep leading-tight">새로운 학년도가<br/>시작되었습니다!</h3>
+                        <div className="bg-slate-50 rounded-xl p-4 mb-6 text-slate-600 text-sm leading-relaxed break-keep border border-slate-100">
+                            지난 학년도의 소중한 데이터는 안전하게 <strong>[데이터 백업]</strong>으로 PC에 보관하고,<br/>새로운 마음으로 저장소를 초기화하여 새 학기를 준비하시겠습니까?
+                        </div>
+                        <div className="flex flex-col gap-2.5">
+                            <Btn onClick={() => { handleCloseRollover(true); setIsSettingOpen(true); }} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md text-sm transition-all active:scale-95 flex items-center justify-center gap-2"><Icon d={PATHS.settings} size={18} /> 데이터 관리 및 초기화 하러 가기</Btn>
+                            <Btn onClick={() => handleCloseRollover(true)} className="w-full py-4 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold hover:bg-slate-50 text-sm transition-colors shadow-sm">올해는 이대로 계속 쓸게요 (닫기)</Btn>
                         </div>
                     </div>
                 </div>
@@ -15717,6 +15987,22 @@ useEffect(() => {
                     {showPostModal && <PostModal isOpen={showPostModal} onClose={() => { setShowPostModal(false); setEditingPost(null); }} onSave={handleSavePost} initialPost={editingPost} imgbbApiKey={imgbbApiKey} userNickname={currentUserProfile?.userNickname} showToast={setToastMessage} />}
                     <CommunityHelpModal isOpen={showCommunityHelp} onClose={() => setShowCommunityHelp(false)} />
                     <AiSecurityCheckModal isOpen={aiCheckState.isOpen} onClose={handleAiCheckCancel} prompt={aiCheckState.prompt} onConfirm={handleAiCheckConfirm} />
+                                        
+                    {isDataSyncing && (
+                        <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center animate-fade-in">
+                            <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5 border border-slate-100 max-w-sm text-center transform transition-all animate-pop-up">
+                                <div className="relative">
+                                    <div className="absolute inset-0 bg-indigo-100 rounded-full blur-xl opacity-70 animate-pulse"></div>
+                                    <Icon d={PATHS.spinner} size={48} className="animate-spin text-indigo-600 relative z-10" />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <h3 className="font-extrabold text-slate-800 text-lg">데이터 동기화 중</h3>
+                                    <p className="text-sm text-slate-500 whitespace-pre-wrap leading-relaxed">{syncMessage}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {appConfig.showFloatingButton !== false && (
                     <button 
                         onMouseEnter={() => { setIsHidden(false); if(hideTimer.current) clearTimeout(hideTimer.current); }}

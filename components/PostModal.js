@@ -319,12 +319,12 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     };
 
     const modalFooter = (
-        <div className="flex items-center justify-end gap-3 w-full">
-            <button onClick={onClose} className="px-6 py-3.5 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">취소</button>
+        <div className="flex items-center justify-end gap-2 sm:gap-3 w-full">
+            <button onClick={onClose} className="flex-1 sm:flex-none px-3 sm:px-6 py-3 sm:py-3.5 text-xs sm:text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors whitespace-nowrap">취소</button>
             {!initialPost && (
-                <Btn onClick={handleManualSaveDraft} className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm">임시 저장</Btn>
+                <Btn onClick={handleManualSaveDraft} className="flex-1 sm:flex-none px-3 sm:px-6 py-3 sm:py-3.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-50 transition-all shadow-sm whitespace-nowrap">임시 저장</Btn>
             )}
-                <Btn id="post-submit-btn" onClick={handleSubmit} className="px-8 py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-[0.98]">{initialPost ? "수정 완료" : "게시글 등록"}</Btn>
+                <Btn id="post-submit-btn" onClick={handleSubmit} className="flex-1 sm:flex-none px-3 sm:px-8 py-3 sm:py-3.5 bg-indigo-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-[0.98] whitespace-nowrap">{initialPost ? "수정 완료" : "게시글 등록"}</Btn>
         </div>
     );
 
