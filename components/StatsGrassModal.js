@@ -206,7 +206,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [showReportFontList, setShowReportFontList] = useState(false);
     const [reportFocus, setReportFocus] = useState('comprehensive');
     const [showCounselingAI, setShowCounselingAI] = useState(false);
-    const [reportStats, setReportStats] = useState({ studentRate: 0, classRate: 0, tagStats: {}, studentScore: 0, classScore: 0, scoreDetails: { gained: 0, lost: 0 } });
+    const [reportStats, setReportStats] = useState({ studentRate: 0, classRate: 0, tagStats: {}, studentScore: 0, classScore: 0, scoreDetails: { gained: 0, lost: 0 }, taskDetails: [] });
     const [animatedWidths, setAnimatedWidths] = useState({ student: 0, class: 0 });
     const [showDetailStats, setShowDetailStats] = useState(false);
     const [showScoreAnalysis, setShowScoreAnalysis] = useState(false); // [New] 점수 분석 보기 토글
@@ -924,15 +924,18 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         status = 'missed';
                         pMissed[tag] = (pMissed[tag] || 0) + 1;
                         if (!isFuture) {
-                            const penalty = Math.min(3, diffDays + 1);
-                            pScore -= penalty;
-                            lost += penalty;
+                            let penalty = -(diffDays + 1);
+                            if (penalty < -3) penalty = -3;
+                            if (diffDays < 0) penalty = 0;
+                            
+                            pScore += penalty;
+                            lost += Math.abs(penalty);
                             currentPenalty = penalty;
                         }
                     }
                     
                     if (!isFuture) {
-                        taskDetails.push({ date: dStr, idx, title, tag, status, penalty: currentPenalty, gained: currentGained, comment });
+                        taskDetails.push({ date: dStr, idx, title, tag, status, penalty: currentPenalty, gained: currentGained, point: status === 'missed' ? currentPenalty : currentGained, comment });
                     }
                 });
                 const recs = records[dStr] || {};
@@ -954,8 +957,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                             if (isTaskLate) { classScoreSum += 0.5; } else { classScoreSum += 1; }
                         } else {
                             if (!isFuture) {
-                                const penalty = Math.min(3, diffDays + 1);
-                                classScoreSum -= penalty;
+                                let penalty = -(diffDays + 1);
+                                if (penalty < -3) penalty = -3;
+                                if (diffDays < 0) penalty = 0;
+                                classScoreSum += penalty;
                             }
                         }
                     });
@@ -1014,7 +1019,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     useEffect(() => {
         if (isOpen && student && students) {
             const stats = calculateStatsForPeriod(reportStart, reportEnd);
-            setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore, scoreDetails: stats.scoreDetails });
+            setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore, scoreDetails: stats.scoreDetails, taskDetails: stats.taskDetails });
             
             // Animation logic
             const timer = setTimeout(() => {
@@ -1033,8 +1038,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         setIsGenerating(true);
         try {
             const stats = calculateStatsForPeriod(reportStart, reportEnd);
-            const { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore, scoreDetails } = stats;
-            setReportStats({ studentRate: pRate, classRate: classAvgRate, tagStats, studentScore: pScore, classScore: classAvgScore, scoreDetails });
+            const { pRate, classAvgRate, pTotal, pDone, pMissed, tagStats, pScore, classAvgScore, scoreDetails, taskDetails } = stats;
+            setReportStats({ studentRate: pRate, classRate: classAvgRate, tagStats, studentScore: pScore, classScore: classAvgScore, scoreDetails, taskDetails });
             const pNotes = notes.filter(n => n.date >= reportStart && n.date <= reportEnd);
             
             // [New] 지각 제출 계산
@@ -1163,7 +1168,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     
     const handlePrepareReport = () => {
         const stats = calculateStatsForPeriod(reportStart, reportEnd);
-        setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore, scoreDetails: stats.scoreDetails });
+        setReportStats({ studentRate: stats.pRate, classRate: stats.classAvgRate, tagStats: stats.tagStats, studentScore: stats.pScore, classScore: stats.classAvgScore, scoreDetails: stats.scoreDetails, taskDetails: stats.taskDetails });
         const savedDraft = student.recordDrafts?.['growth_report'];
         if (savedDraft) {
             setTempComment(savedDraft);
@@ -1622,20 +1627,22 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                 
                                 {showScoreAnalysis && (
                                     <div className="mt-3 bg-white border border-slate-100 rounded-xl p-3 text-xs animate-fade-in shadow-sm">
-                                        <div className="flex justify-between items-center mb-1 text-slate-600">
-                                            <span>✅ 정상/지각 제출 (+1점/+0.5점)</span>
-                                            <span className="font-bold text-green-600">+{reportStats.scoreDetails?.gained || 0}점</span>
+                                        <div className={`flex justify-between items-center p-3 rounded-xl mb-3 ${reportStats.studentScore >= 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-rose-50 text-rose-700'}`}>
+                                            <span className="text-xs font-bold">합산 점수</span>
+                                            <span className="font-black text-2xl">{reportStats.studentScore > 0 ? '+' : ''}{reportStats.studentScore.toFixed(1)}점</span>
                                         </div>
-                                        <div className="flex justify-between items-center mb-2 text-slate-600">
-                                            <span>⚠️ 미제출 (-1~-3점/건 누적 감점)</span>
-                                            <span className="font-bold text-rose-500">{reportStats.scoreDetails?.lost ? `-${reportStats.scoreDetails.lost}` : '0'}점</span>
+                                        <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                                            <div className="bg-green-50 p-2 rounded-lg border border-green-100">
+                                                <div className="text-green-600 font-bold mb-1">✅ 획득 점수</div>
+                                                <div className="text-green-700 font-black text-lg">+{reportStats.scoreDetails?.gained || 0}점</div>
+                                            </div>
+                                            <div className="bg-rose-50 p-2 rounded-lg border border-rose-100">
+                                                <div className="text-rose-600 font-bold mb-1">⚠️ 감점 (미제출)</div>
+                                                <div className="text-rose-700 font-black text-lg">-{reportStats.scoreDetails?.lost || 0}점</div>
+                                            </div>
                                         </div>
-                                        <div className="flex justify-between items-center mb-2 pt-2 border-t border-slate-100 text-slate-800">
-                                            <span className="font-bold text-xs">최종 합산 점수</span>
-                                            <span className={`font-black text-lg ${reportStats.studentScore >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>{reportStats.studentScore > 0 ? '+' : ''}{reportStats.studentScore.toFixed(1)}점</span>
-                                        </div>
-                                        <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 leading-tight text-left mb-3">
-                                            * 정상 제출 시 1점, 지각은 0.5점 오르고,<br/> 미제출 기간이 길어질수록 감점이 커집니다.
+                                        <div className="text-[10px] text-slate-500 bg-slate-50 p-2 rounded-lg leading-relaxed text-left mb-3">
+                                            <span className="font-bold">계산 방식:</span> 정상 제출 <span className="text-green-600 font-bold">+1점</span> (지각 +0.5점), 미제출 시 하루마다 <span className="text-rose-500 font-bold">-1점</span>씩 누적 감점 (최대 -3점)
                                         </div>
                                         
                                         {/* Task Details List */}
@@ -1686,7 +1693,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                         </div>
                                                         <div className="flex items-center gap-1.5 flex-shrink-0">
                                                             <span className={`text-[10px] font-bold w-8 text-right transition-colors duration-500 ease-in-out ${td.status === 'on-time' ? 'text-indigo-500' : td.status === 'late' ? 'text-amber-500' : 'text-rose-500'}`}>
-                                                                {td.status === 'missed' ? `-${td.penalty}점` : `+${td.gained}점`}
+                                                                {td.point > 0 ? `+${td.point}점` : `${td.point}점`}
                                                             </span>
                                                             <div className="relative inline-block w-[76px]">
                                                                 <select

@@ -13066,78 +13066,22 @@ useEffect(() => {
                     const onTimeItems = []; const lateItems = []; const taskDetails = [];
                     const today = dayjs().startOf('day');
                     for(let i=34; i>=0; i--) {
-                        const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
-                        const dayIdx = dayjs(d).day();
-                        if(dayIdx===0 || dayIdx===6) continue;
-                        if (!isWithinPeriod(d, period)) continue;
-                        
-                        const dayRecord = records[d];
-                        const dayTasks = dailyTasks[d] || [];
-                        const sRec = dayRecord ? dayRecord[s.id] : null;
-
-                        if (tag === '전체') {
-                            if (dayTasks.length > 0) {
-                                totalCount += dayTasks.length;
-                                dayTasks.forEach((t, idx) => {
-                                    const isDone = sRec ? (sRec.tasks ? sRec.tasks[idx] : sRec.done) : false;
-                                    const isLate = sRec ? (sRec.lateTasks ? !!sRec.lateTasks[idx] : false) : false;
-                                    const comment = sRec ? (sRec.taskComments ? sRec.taskComments[idx] : null) : null;
-                                    const title = typeof t === 'object' ? t.title : t;
-                                    if (isDone) {
-                                        if (isLate) { score += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx, status:'late', point: 0.5, comment}); }
-                                        else { score += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx, status:'on-time', point: 1, comment}); }
-                                    } else {
-                                        taskDetails.push({date:d, title, idx, status:'missed', point: 0, comment});
-                                    }
-                                });
-                            }
-                        } else {
-                            const tagTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
-                            if (tagTasks.length > 0) {
-                                totalCount += tagTasks.length;
-                                tagTasks.forEach((t) => {
-                                    const originalIdx = dayTasks.indexOf(t);
-                                    const isDone = sRec ? (sRec.tasks ? sRec.tasks[originalIdx] : sRec.done) : false;
-                                    const isLate = sRec ? (sRec.lateTasks ? !!sRec.lateTasks[originalIdx] : false) : false;
-                                    const comment = sRec ? (sRec.taskComments ? sRec.taskComments[originalIdx] : null) : null;
-                                    const title = typeof t === 'object' ? t.title : t;
-                                    if (isDone) {
-                                    if (isLate) { score += 0.5; gained += 0.5; lateItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'late', point: 0.5, comment}); }
-                                    else { score += 1; gained += 1; onTimeItems.push({date:d, title}); taskDetails.push({date:d, title, idx:originalIdx, status:'on-time', point: 1, comment}); }
-                                    } else {
-                                    const diff = today.diff(dObj, 'day');
-                                    let penalty = -(diff + 1);
-                                    if (penalty < -3) penalty = -3;
-                                    if (diff < 0) penalty = 0;
-                                    score += penalty; lost += Math.abs(penalty);
-                                    taskDetails.push({date:d, title, idx:originalIdx, status:'missed', point: penalty, comment});
-                                    }
-                                });
-                            }
-                        }
-                    }
-                    return { count: score, total: totalCount, rate: totalCount > 0 ? (gained / totalCount) * 100 : 0, details: { onTimeItems, lateItems, taskDetails, gained, lost } };
-                };
-
-                const calcHelpScore = (s, period, tag) => {
-                    let score = 0; let gained = 0; let lost = 0;
-                    const history = []; const taskDetails = [];
-                    const today = dayjs().startOf('day');
-                    for(let i=34; i>=0; i--) {
                         const dStr = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
                         const dObj = dayjs(dStr);
                         const dayIdx = dObj.day();
                         if(dayIdx===0 || dayIdx===6) continue;
                         if (!isWithinPeriod(dStr, period)) continue;
                         
-                        const dayTasks = dailyTasks[dStr] || [];
                         const dayRecord = records[dStr];
+                        const dayTasks = dailyTasks[dStr] || [];
                         const sRec = dayRecord ? dayRecord[s.id] : null;
+
                         
                         let targetTasks = dayTasks;
                         if (tag !== '전체') targetTasks = dayTasks.filter(t => (typeof t === 'object' ? t.tag : '기타') === tag);
                         
                         if (targetTasks.length > 0) {
+                            totalCount += targetTasks.length;
                             targetTasks.forEach((t) => {
                                 const originalIdx = dayTasks.indexOf(t);
                                 const isDone = sRec ? (sRec.tasks ? sRec.tasks[originalIdx] : sRec.done) : false;
@@ -13147,27 +13091,27 @@ useEffect(() => {
                                 
                                 if (isDone) {
                                     if (isLate) {
-                                        score += 0.5; gained += 0.5;
-                                        history.push({ date: dStr, title, point: 0.5, type: 'gain' });
+                                        score += 0.5; gained += 0.5; 
+                                        lateItems.push({date:dStr, title}); 
                                         taskDetails.push({ date: dStr, title, idx: originalIdx, status: 'late', point: 0.5, comment });
                                     } else {
-                                        score += 1; gained += 1;
-                                        history.push({ date: dStr, title, point: 1, type: 'gain' });
+                                        score += 1; gained += 1; 
+                                        onTimeItems.push({date:dStr, title}); 
                                         taskDetails.push({ date: dStr, title, idx: originalIdx, status: 'on-time', point: 1, comment });
                                     }
                                 } else {
                                     const diff = today.diff(dObj, 'day');
                                     let penalty = -(diff + 1);
                                     if (penalty < -3) penalty = -3;
+                                    if (diff < 0) penalty = 0;
                                     score += penalty; lost += Math.abs(penalty);
-                                    history.push({ date: dStr, title, point: penalty, type: 'loss' });
                                     taskDetails.push({ date: dStr, title, idx: originalIdx, status: 'missed', point: penalty, comment });
                                 }
                             });
                         }
                     }
-                    history.sort((a,b) => b.date.localeCompare(a.date));
-                    return { score, details: { gained, lost, history, taskDetails } };
+                    taskDetails.sort((a,b) => b.date.localeCompare(a.date));
+                    return { count: score, total: totalCount, rate: totalCount > 0 ? (gained / totalCount) * 100 : 0, details: { onTimeItems, lateItems, taskDetails, gained, lost } };
                 };
 
                 const computedStudents = students.map(s => {
@@ -13202,11 +13146,12 @@ useEffect(() => {
                         else if(i===0 && !isDoneDay) continue; else break;
                     }
                     const honorStats = calcStatsForStudent(s, honorPeriod, honorTag);
-                    const helpData = calcHelpScore(s, helpPeriod, helpTag);
-                    return { ...s, count, streak: currentStreak, history, honorStats, helpStats: helpData };
+                    const helpStats = calcStatsForStudent(s, helpPeriod, helpTag);
+                    return { ...s, count, streak: currentStreak, history, honorStats, helpStats };
                 });
             
-            const sortedByHonor = [...computedStudents].sort((a,b) => b.honorStats.count - a.honorStats.count);
+            const filteredByHonor = computedStudents.filter(s => s.honorStats.count >= 0);
+            const sortedByHonor = [...filteredByHonor].sort((a,b) => b.honorStats.count - a.honorStats.count);
             let currentRank = 1;
             for (let i = 0; i < sortedByHonor.length; i++) {
                 if (i > 0 && sortedByHonor[i].honorStats.count < sortedByHonor[i-1].honorStats.count) currentRank = i + 1;
@@ -13214,13 +13159,12 @@ useEffect(() => {
             }
             const top5 = sortedByHonor.slice(0, 5);
             
-            // [Fix] 도움이 필요해요: 0점 이상은 제외하고 마이너스 점수만 표시
-            const filteredByHelp = computedStudents.filter(s => s.helpStats.score < 0);
-            const sortedByHelp = [...filteredByHelp].sort((a,b) => a.helpStats.score - b.helpStats.score);
+            const filteredByHelp = computedStudents.filter(s => s.helpStats.count < 0);
+            const sortedByHelp = [...filteredByHelp].sort((a,b) => a.helpStats.count - b.helpStats.count);
             
             let currentHelpRank = 1;
             for (let i = 0; i < sortedByHelp.length; i++) {
-                if (i > 0 && sortedByHelp[i].helpStats.score > sortedByHelp[i-1].helpStats.score) currentHelpRank = i + 1;
+                if (i > 0 && sortedByHelp[i].helpStats.count > sortedByHelp[i-1].helpStats.count) currentHelpRank = i + 1;
                 sortedByHelp[i].helpRank = currentHelpRank;
             }
             const bottom5 = sortedByHelp.slice(0, 5); return { students: computedStudents, top5, bottom5, allRanked: sortedByHonor, allHelpRanked: sortedByHelp };
@@ -14346,7 +14290,7 @@ useEffect(() => {
                                         </div>
                                         {viewNeedsHelpList ? (
                                             <div className="space-y-3 animate-fade-in max-h-[400px] overflow-y-auto custom-scroll pr-1">
-                                                {stats.allHelpRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.helpRank===1?'bg-rose-500 text-white':s.helpRank===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.helpRank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'help', studentId: s.id }); }} className={`font-bold px-2 py-1 rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-colors ${s.helpStats.score < 0 ? 'text-rose-500 bg-white/80 border-rose-100' : 'text-indigo-600 bg-white/80 border-indigo-100'}`}>{s.helpStats.score > 0 ? '+' : ''}{s.helpStats.score.toFixed(1)}점</span></div>))}
+                                                {stats.allHelpRanked.map((s) => (<div key={s.id} className="flex justify-between items-center p-3 bg-rose-50/50 rounded-xl border border-rose-100"><div className="flex items-center gap-3"><span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.helpRank===1?'bg-rose-500 text-white':s.helpRank===2?'bg-orange-400 text-white':'bg-slate-200 text-slate-500'}`}>{s.helpRank}</span><div className="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">{appConfig.showPhotoInRecord && s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span className="text-xs">{s.gender === 'M' ? '👦' : '👧'}</span>}</div><span className="font-bold text-slate-700">{s.name}</span></div><span onClick={(e) => { e.stopPropagation(); setScoreDetailTarget({ type: 'help', studentId: s.id }); }} className={`font-bold px-2 py-1 rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-colors ${s.helpStats.count < 0 ? 'text-rose-500 bg-white/80 border-rose-100' : 'text-indigo-600 bg-white/80 border-indigo-100'}`}>{s.helpStats.count > 0 ? '+' : ''}{s.helpStats.count.toFixed(1)}점</span></div>))}
                                                 {stats.allHelpRanked.length === 0 && (
                                                     <div className="flex flex-col items-center justify-center py-14 px-4 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 mt-2">
                                                         <div className="mb-4"><span className="text-5xl inline-block animate-bounce drop-shadow-md">🎉</span></div>
@@ -14377,8 +14321,8 @@ useEffect(() => {
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                        <div className={`text-xs font-black bg-white/80 px-2 py-1 rounded-lg border shadow-sm whitespace-nowrap ml-2 ${students[0].helpStats.score < 0 ? 'text-rose-500 border-rose-100' : 'text-indigo-500 border-indigo-100'}`}>
-                                                            {students[0].helpStats.score > 0 ? '+' : ''}{students[0].helpStats.score.toFixed(1)}점
+                                                        <div className={`text-xs font-black bg-white/80 px-2 py-1 rounded-lg border shadow-sm whitespace-nowrap ml-2 ${students[0].helpStats.count < 0 ? 'text-rose-500 border-rose-100' : 'text-indigo-500 border-indigo-100'}`}>
+                                                            {students[0].helpStats.count > 0 ? '+' : ''}{students[0].helpStats.count.toFixed(1)}점
                                                         </div>
                                                     </div>
                                                 ))}
@@ -15553,7 +15497,7 @@ useEffect(() => {
                                             <button onClick={() => setScoreDetailTarget(null)} className="text-slate-400 hover:text-slate-600"><Icon d={PATHS.x} size={16} /></button>
                                         </div>
                                         <div className="flex-1 overflow-y-auto custom-scroll pr-1 space-y-4">
-                                            {scoreDetailTarget.type === 'honor' && details && (
+                                            {details && (
                                                 <>
                                                     <div className={`flex justify-between items-center p-3 rounded-xl ${currentData.count >= 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-rose-50 text-rose-700'}`}>
                                                         <span className="text-xs font-bold">합산 점수</span>
@@ -15571,25 +15515,7 @@ useEffect(() => {
                                                     </div>
                                                 </>
                                             )}
-                                            {scoreDetailTarget.type === 'help' && details && (
-                                                <>
-                                                    <div className={`flex justify-between items-center p-3 rounded-xl ${currentData.score >= 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-rose-50 text-rose-700'}`}>
-                                                        <span className="text-xs font-bold">합산 점수</span>
-                                                        <span className="font-black text-2xl">{currentData.score > 0 ? '+' : ''}{currentData.score.toFixed(1)}점</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                                        <div className="bg-green-50 p-2 rounded-lg border border-green-100">
-                                                            <div className="text-green-600 font-bold mb-1">✅ 획득 점수</div>
-                                                            <div className="text-green-700 font-black text-lg">+{details.gained}점</div>
-                                                        </div>
-                                                        <div className="bg-rose-50 p-2 rounded-lg border border-rose-100">
-                                                            <div className="text-rose-600 font-bold mb-1">⚠️ 감점 (미제출)</div>
-                                                            <div className="text-rose-700 font-black text-lg">-{details.lost}점</div>
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
-                                            <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg leading-relaxed mt-3">
+                                            <div className="text-[10px] text-slate-500 bg-slate-50 p-2 rounded-lg leading-relaxed text-left">
                                                 <span className="font-bold">계산 방식:</span> 정상 제출 <span className="text-green-600 font-bold">+1점</span> (지각 +0.5점), 미제출 시 하루마다 <span className="text-rose-500 font-bold">-1점</span>씩 누적 감점 (최대 -3점)
                                             </div>
                                             
