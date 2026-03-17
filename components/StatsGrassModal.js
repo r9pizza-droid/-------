@@ -1416,10 +1416,10 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         <div className="flex items-center gap-4">
                             <div className="w-16 h-16 rounded-full bg-indigo-50/50 border-2 border-white ring-1 ring-slate-100 overflow-hidden flex items-center justify-center shadow-md flex-shrink-0 relative group cursor-pointer transition-all hover:shadow-lg" onClick={(e) => e.stopPropagation()}>
                                 {student.photoUrl ? (
-                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 select-none pointer-events-none" draggable="false" />
                                 ) : (
                                     <div className="flex flex-col items-center justify-center text-indigo-300">
-                                        <span className="text-3xl group-hover:scale-110 transition-transform">{student.gender === 'M' ? '👦' : '👧'}</span>
+                                        <span className="text-3xl group-hover:scale-110 transition-transform select-none pointer-events-none">{student.gender === 'M' ? '👦' : '👧'}</span>
                                     </div>
                                 )}
                                 <label className={`absolute inset-0 flex flex-col items-center justify-center bg-slate-900/50 transition-all duration-300 cursor-pointer backdrop-blur-[1px] ${isUploadingPhoto ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
@@ -2411,7 +2411,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                         <div className="bg-slate-50 rounded-3xl p-8 mb-10 border border-slate-100 flex items-center justify-between shadow-sm">
                             <div className="flex items-center gap-6">
                                 <div className="w-24 h-24 rounded-full bg-indigo-50/50 border-4 border-white ring-2 ring-indigo-100 flex items-center justify-center text-5xl shadow-md overflow-hidden relative">
-                                    {student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : <span className="drop-shadow-sm group-hover:scale-105 transition-transform">{student.gender === 'M' ? '👦' : '👧'}</span>}
+                                    {student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover select-none pointer-events-none" draggable="false" /> : <span className="drop-shadow-sm group-hover:scale-105 transition-transform select-none pointer-events-none">{student.gender === 'M' ? '👦' : '👧'}</span>}
                                 </div>
                                 <div>
                                     <div className="flex items-baseline gap-2 mb-2">
