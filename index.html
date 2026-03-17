@@ -8059,8 +8059,22 @@ const firebaseConfig = {
                         if (opCount > 0) batches.push(currentBatch);
                         await Promise.all(batches.map(b => b.commit()));
 
+                        // [Fix] 게시판 화면 및 상세 데이터 즉시 반영 (Optimistic Update)
+                        if (currentUser && currentUser.uid === uid) {
+                            localStorage.setItem('myBoardName', finalName);
+                            if (typeof setUserNickname === 'function') setUserNickname(finalName);
+                        }
+                        setAdminBoardData(prev => ({
+                            posts: prev.posts.map(p => p.uid === uid ? { ...p, authorName: finalName } : p),
+                            comments: prev.comments.map(c => c.uid === uid ? { ...c, author: finalName, authorName: finalName } : c)
+                        }));
+                        setCommunityPosts(prev => prev.map(p => p.uid === uid ? { ...p, authorName: finalName } : p));
+                        if (selectedPost && selectedPost.uid === uid) {
+                            setSelectedPost(prev => ({ ...prev, authorName: finalName }));
+                        }
+                        setAdminLogs(prev => prev.map(log => log.uid === uid ? { ...log, userName: finalName } : log));
+
                         setToastMessage("별칭 수정 및 기존 게시글/댓글 소급 적용 완료!");
-                        fetchUserList();
                     } catch (e) { console.error(e); setToastMessage("수정 실패: " + e.message); fetchUserList(); /* 실패 시 원상복구 */ }
                 }
             };
