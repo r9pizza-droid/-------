@@ -3156,6 +3156,55 @@
             );
         };
 
+        const SyncSelectModal = ({ isOpen, onClose, onSync }) => {
+            const [selected, setSelected] = useState({
+                students: true, tasks: true, records: true, groups: true
+            });
+
+            const toggleAll = () => {
+                const allSelected = Object.values(selected).every(v => v);
+                const newVal = !allSelected;
+                setSelected({ students: newVal, tasks: newVal, records: newVal, groups: newVal });
+            };
+
+            const handleSync = () => {
+                const items = Object.keys(selected).filter(k => selected[k]);
+                if (items.length === 0) return;
+                onSync(selected);
+                onClose();
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="☁️ 클라우드 데이터 동기화" icon={PATHS.refresh} maxWidth="max-w-md" zIndex="z-[6000]">
+                    <div className="space-y-4">
+                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-800">
+                            <p className="font-bold mb-1">💡 서버의 데이터를 불러옵니다.</p>
+                            <p className="text-xs opacity-80">불러올 항목을 선택해주세요. (현재 기기의 데이터와 병합됩니다)</p>
+                        </div>
+                        <div className="flex justify-end">
+                            <button onClick={toggleAll} className="text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors">{Object.values(selected).every(v => v) ? '전체 해제' : '전체 선택'}</button>
+                        </div>
+                        <div className="space-y-2">
+                            {[
+                                { id: 'students', label: '학생 상세 정보', desc: '사진, 상담 기록, 생기부 초안' },
+                                { id: 'tasks', label: '과제 설정', desc: '날짜별 할 일, 주간 과제, 태그' },
+                                { id: 'records', label: '활동 기록', desc: '체크리스트, 스티커 내역 (최근 6개월)' },
+                                { id: 'groups', label: '모둠 기록', desc: '모둠 편성 결과 (최근 6개월)' },
+                            ].map(opt => (
+                                <label key={opt.id} className={`flex items-center p-3 rounded-xl border cursor-pointer transition-all ${selected[opt.id] ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}><input type="checkbox" checked={selected[opt.id]} onChange={() => setSelected(prev => ({ ...prev, [opt.id]: !prev[opt.id] }))} className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" /><div className="ml-3 flex-1"><div className={`text-sm font-bold ${selected[opt.id] ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.label}</div><div className="text-xs text-slate-400">{opt.desc}</div></div></label>
+                            ))}
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                            <Btn onClick={onClose} className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 text-sm transition-colors">취소</Btn>
+                            <Btn onClick={handleSync} className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md text-sm transition-all active:scale-95">선택 항목 불러오기</Btn>
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        };
+
         const AiSafetyHelpModal = ({ isOpen, onClose }) => {
             if (!isOpen) return null;
             return (
@@ -5076,8 +5125,17 @@
 )}
                                                 {!isLocalMode && (
                                                     <div className="mt-4 pt-3 border-t border-slate-200 animate-fade-in space-y-2">
+                                                        <div className="flex items-center justify-between mb-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-bold text-indigo-800">앱 시작 시 자동 동기화</span>
+                                                                <span className="text-[9px] text-indigo-600 mt-0.5">앱을 켤 때 클라우드 데이터를 자동으로 불러옵니다.</span>
+                                                            </div>
+                                                            <div onClick={() => updateAppConfig({ autoSyncOnLoad: !appConfig.autoSyncOnLoad })} className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${appConfig.autoSyncOnLoad ? 'bg-indigo-500' : 'bg-slate-300'} shrink-0`}>
+                                                                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${appConfig.autoSyncOnLoad ? 'translate-x-4' : ''}`}></div>
+                                                            </div>
+                                                        </div>
                                                         <Btn onClick={onSyncPhotos} className="w-full py-2 bg-white border border-indigo-200 text-indigo-600 rounded-lg font-bold hover:bg-indigo-50 text-xs flex items-center justify-center gap-2 shadow-sm transition-colors whitespace-nowrap">
-                                                            <Icon d={PATHS.refresh} size={14} /> 클라우드 데이터 강제 동기화
+                                                            <Icon d={PATHS.refresh} size={14} /> 클라우드 데이터 수동 동기화
                                                         </Btn>
                                                         <Btn onClick={handleMigration} className="w-full py-2 bg-white border border-orange-200 text-orange-600 rounded-lg font-bold hover:bg-orange-50 text-xs flex items-center justify-center gap-2 shadow-sm transition-colors whitespace-nowrap">
                                                             <Icon d={PATHS.upload} size={14} /> 과거 데이터 가져오기 (마이그레이션)
@@ -9749,6 +9807,7 @@ return () => unsubscribe();
             const [showGlobalRecord, setShowGlobalRecord] = React.useState(false);
             const [showGroupResetModal, setShowGroupResetModal] = useState(false);
             const [aiCheckState, setAiCheckState] = useState({ isOpen: false, prompt: "", resolve: null, reject: null });
+            const [showSyncSelectModal, setShowSyncSelectModal] = useState(false);
             const [hideRotationBanner, setHideRotationBanner] = useState(false);
             const [showAllRecords, setShowAllRecords] = useState(false);
             const [isRotating, setIsRotating] = useState(false);
@@ -9902,6 +9961,19 @@ return () => unsubscribe();
                 window.addEventListener('touchmove', handleMove, { passive: false });
                 window.addEventListener('touchend', handleUp);
             };
+
+            // [New] 앱 시작 시 자동 동기화
+            const hasAutoSyncedRef = useRef(false);
+            useEffect(() => {
+                if (!isLoading && appId && !isLocalMode && appConfig.autoSyncOnLoad && !hasAutoSyncedRef.current) {
+                    hasAutoSyncedRef.current = true;
+                    // 백그라운드에서 조용히 동기화 실행
+                    handleLoadAllData({ students: true, tasks: true, records: true, groups: true }, true);
+                    // 백그라운드에서 조용히 필수 데이터(학생 상세 정보)만 동기화 실행
+                    // 활동, 과제, 모둠 기록은 탭을 클릭할 때 실시간(Lazy Load)으로 알아서 불러와집니다.
+                    handleLoadAllData({ students: true, tasks: false, records: false, groups: false }, true);
+                }
+            }, [isLoading, appId, isLocalMode, appConfig.autoSyncOnLoad]);
 
             // [Fix] onSnapshot 내부에서 최신 students 상태를 참조하기 위한 Ref
             const studentsRef = useRef(students);
@@ -12837,74 +12909,88 @@ useEffect(() => {
                 }
             };
 
-            const handleLoadAllData = async () => {
+            const handleLoadAllData = async (options = { students: true, tasks: true, records: true, groups: true }, silent = false) => {
                 if (isLocalMode) {
-                    setToastMessage("현재 기기에 저장된 모든 기록을 불러왔습니다.");
+                    if (!silent) setToastMessage("현재 기기에 저장된 모든 기록을 불러왔습니다.");
                     return;
                 }
                 if (!db || !appId) return;
 
                 try {
-                    setToastMessage("클라우드에서 과거 데이터를 안전하게 불러오는 중입니다... ⏳");
-                    
-                    // 1. 학생 데이터
-                    const studentSnapshot = await db.collection('classes').doc(appId).collection('studentData').get();
-                    const studentDataMap = {};
-                    studentSnapshot.forEach(doc => { studentDataMap[doc.id] = doc.data(); });
+                    if (!silent) setToastMessage("클라우드에서 선택한 데이터를 안전하게 불러오는 중입니다... ⏳");
+                    let loadedItems = [];
 
-                    const updatedStudents = students.map(s => {
-                        const extra = studentDataMap[String(s.id)];
-                        return extra ? { ...s, ...extra } : s;
-                    });
-                    setStudents(updatedStudents);
+                    // 1. 학생 데이터
+                    if (options.students) {
+                        const studentSnapshot = await db.collection('classes').doc(appId).collection('studentData').get();
+                        const studentDataMap = {};
+                        studentSnapshot.forEach(doc => { studentDataMap[doc.id] = doc.data(); });
+
+                        const updatedStudents = studentsRef.current.map(s => {
+                            const extra = studentDataMap[String(s.id)];
+                            return extra ? { ...s, ...extra } : s;
+                        });
+                        setStudents(updatedStudents);
+                        loadedItems.push("학생 상세");
+                    }
 
                     // 2. 과제 데이터
-                    const taskSnapshot = await db.collection('classes').doc(appId).collection('tasks').get();
-                    const newDailyTasks = {};
-                    let newWeeklyTasks = null;
-                    let newTags = null;
+                    if (options.tasks) {
+                        const taskSnapshot = await db.collection('classes').doc(appId).collection('tasks').get();
+                        const newDailyTasks = {};
+                        let newWeeklyTasks = null;
+                        let newTags = null;
 
-                    taskSnapshot.forEach(doc => {
-                        if (doc.id === 'settings') {
-                            const data = doc.data();
-                            if (data.weekly) newWeeklyTasks = data.weekly;
-                            if (data.tags) newTags = data.tags;
-                        } else {
-                            newDailyTasks[doc.id] = doc.data().list;
-                        }
-                    });
-                    
-                    setDailyTasks(prev => ({ ...prev, ...newDailyTasks }));
-                    if (newWeeklyTasks) setWeeklyTasks(newWeeklyTasks);
-                    if (newTags) setTags(newTags);
+                        taskSnapshot.forEach(doc => {
+                            if (doc.id === 'settings') {
+                                const data = doc.data();
+                                if (data.weekly) newWeeklyTasks = data.weekly;
+                                if (data.tags) newTags = data.tags;
+                            } else {
+                                newDailyTasks[doc.id] = doc.data().list;
+                            }
+                        });
+                        
+                        setDailyTasks(prev => ({ ...prev, ...newDailyTasks }));
+                        if (newWeeklyTasks) setWeeklyTasks(newWeeklyTasks);
+                        if (newTags) setTags(newTags);
+                        loadedItems.push("과제");
+                    }
 
                     // 3. 활동 기록 (최근 6개월)
-                    const sixMonthsAgo = dayjs().subtract(6, 'month').format('YYYY-MM-DD');
-                    const recordSnapshot = await db.collection('classes').doc(appId).collection('records')
-                        .where(firebase.firestore.FieldPath.documentId(), '>=', sixMonthsAgo)
-                        .get();
-                    
-                    const newRecords = {};
-                    recordSnapshot.forEach(doc => {
-                        newRecords[doc.id] = doc.data();
-                    });
-                    setRecords(prev => ({ ...prev, ...newRecords }));
+                    if (options.records) {
+                        const sixMonthsAgo = dayjs().subtract(6, 'month').format('YYYY-MM-DD');
+                        const recordSnapshot = await db.collection('classes').doc(appId).collection('records')
+                            .where(firebase.firestore.FieldPath.documentId(), '>=', sixMonthsAgo)
+                            .get();
+                        
+                        const newRecords = {};
+                        recordSnapshot.forEach(doc => {
+                            newRecords[doc.id] = doc.data();
+                        });
+                        setRecords(prev => ({ ...prev, ...newRecords }));
+                        loadedItems.push(`활동 기록(${Object.keys(newRecords).length}건)`);
+                    }
 
                     // 4. 모둠 기록 (최근 6개월)
-                    const groupSnapshot = await db.collection('classes').doc(appId).collection('groupResults')
-                        .where(firebase.firestore.FieldPath.documentId(), '>=', sixMonthsAgo)
-                        .get();
-                    const newGroups = {};
-                    groupSnapshot.forEach(doc => {
-                        newGroups[doc.id] = doc.data().list;
-                    });
-                    const hydratedGroups = hydrateGroups({ ...groupsByDate, ...newGroups }, updatedStudents);
-                    setGroupsByDate(hydratedGroups);
+                    if (options.groups) {
+                        const sixMonthsAgo = dayjs().subtract(6, 'month').format('YYYY-MM-DD');
+                        const groupSnapshot = await db.collection('classes').doc(appId).collection('groupResults')
+                            .where(firebase.firestore.FieldPath.documentId(), '>=', sixMonthsAgo)
+                            .get();
+                        const newGroups = {};
+                        groupSnapshot.forEach(doc => {
+                            newGroups[doc.id] = doc.data().list;
+                        });
+                        const hydratedGroups = hydrateGroups({ ...groupsByDateRef.current, ...newGroups }, options.students ? studentsRef.current : students);
+                        setGroupsByDate(hydratedGroups);
+                        loadedItems.push(`모둠 기록(${Object.keys(newGroups).length}건)`);
+                    }
                     
-                    setToastMessage(`✅ 과거 데이터를 성공적으로 불러왔습니다! (기록 ${Object.keys(newRecords).length}건, 모둠 ${Object.keys(newGroups).length}건)`);
+                    if (!silent) setToastMessage(`✅ 선택하신 항목(${loadedItems.join(', ')})을 성공적으로 불러왔습니다!`);
                 } catch (e) {
                     console.error(e);
-                    setToastMessage("❌ 데이터를 불러오는 데 실패했습니다: " + e.message);
+                    if (!silent) setToastMessage("❌ 데이터를 불러오는 데 실패했습니다: " + e.message);
                 }
             };
 
@@ -14973,7 +15059,7 @@ useEffect(() => {
                         onPhotoUpload={handlePhotoUpload}
                         onPhotoDelete={handlePhotoDelete}
                         imgbbApiKey={imgbbApiKey}
-                        onSyncPhotos={handleLoadAllData}
+                        onSyncPhotos={() => setShowSyncSelectModal(true)}
                         userList={userList}
                         isLoadingUsers={isLoadingUsers}
                         fetchUserList={fetchUserList}
@@ -14999,7 +15085,8 @@ useEffect(() => {
                         />
                     )}
                     <NotionSetupModal isOpen={isNotionSetupOpen} onClose={() => setIsNotionSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} isPortfolioMode={isPortfolioMode} setIsPortfolioMode={setIsPortfolioMode} studentMap={studentMap} setStudentMap={setStudentMap} portfolioDbId={portfolioDbId} setPortfolioDbId={setPortfolioDbId} />
-                    <AllRecordsModal isOpen={showAllRecords} onClose={() => setShowAllRecords(false)} students={students} appConfig={appConfig} onLoadAllData={handleLoadAllData} />
+                    <AllRecordsModal isOpen={showAllRecords} onClose={() => setShowAllRecords(false)} students={students} appConfig={appConfig} onLoadAllData={() => handleLoadAllData({ students: true, records: true, tasks: false, groups: false }, false)} />
+                    <SyncSelectModal isOpen={showSyncSelectModal} onClose={() => setShowSyncSelectModal(false)} onSync={(opts) => handleLoadAllData(opts, false)} />
                     <GoogleSheetSetupModal isOpen={isGoogleSheetSetupOpen} onClose={() => setIsGoogleSheetSetupOpen(false)} showToast={setToastMessage} saveData={saveData} isLocalMode={isLocalMode} />
                     <ApiKeySetupModal isOpen={isApiKeySetupOpen} onClose={() => setIsApiKeySetupOpen(false)} apiKey={apiKey} setApiKey={setApiKey} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} validateApiKey={validateApiKey} />
                     <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} onInstall={confirmInstall} isIOS={isIOS} />
