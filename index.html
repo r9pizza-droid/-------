@@ -8096,10 +8096,10 @@ const firebaseConfig = {
                                                     <div className="w-8 sm:w-16 text-slate-400 font-bold text-center text-sm">{s.order}</div>
                                                     <div className="flex-1 min-w-[60px] pl-2 font-bold text-slate-700 text-sm truncate">{s.name}</div>
                                                     <div className="w-16 sm:w-28 flex justify-center shrink-0">
-                                                        <input id={`wrong_${i}`} type="number" value={scoreData.wrongCount} onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); document.getElementById(`wrong_${i+1}`)?.focus(); } }} className="w-12 sm:w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all text-center text-rose-600 font-bold text-sm" placeholder="0" />
+                                                    <input id={`wrong_${i}`} type="number" value={scoreData.wrongCount} onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); document.getElementById(`wrong_${i+1}`)?.focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); document.getElementById(`wrong_${i-1}`)?.focus(); } }} className="w-12 sm:w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all text-center text-rose-600 font-bold text-sm" placeholder="0" />
                                                     </div>
                                                     <div className="w-16 sm:w-28 flex justify-center shrink-0">
-                                                        <input id={`score_${i}`} type="number" value={scoreData.score} onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); document.getElementById(`score_${i+1}`)?.focus(); } }} className={`w-12 sm:w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-center font-bold text-sm ${scoreColor}`} placeholder={selectedExam.maxScore} />
+                                                    <input id={`score_${i}`} type="number" value={scoreData.score} onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); document.getElementById(`score_${i+1}`)?.focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); document.getElementById(`score_${i-1}`)?.focus(); } }} className={`w-12 sm:w-20 p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-center font-bold text-sm ${scoreColor}`} placeholder={selectedExam.maxScore} />
                                                     </div>
                                                 </div>
                                             );
@@ -9495,6 +9495,18 @@ return () => unsubscribe();
                 if(!exam) return;
                 const scores = examScores[correctionExamId] || {};
 
+                // 미입력 학생 확인 알림 기능
+                const unenteredCount = students.filter(s => {
+                    const sd = scores[s.id];
+                    return !sd || (sd.score === '' && sd.wrongCount === '');
+                }).length;
+
+                if (unenteredCount > 0) {
+                    if (!confirm(`점수가 입력되지 않은 학생이 ${unenteredCount}명 있습니다.\n미입력 학생은 '결과 미입력' 상태로 과제가 전송됩니다.\n계속 진행하시겠습니까?`)) {
+                        return;
+                    }
+                }
+
                 const taskTitle = `[${exam.subject}] ${exam.title} 오답 고치기`;
                 
                 const currentTasks = dailyTasks[selectedDate] || [];
@@ -9523,9 +9535,13 @@ return () => unsubscribe();
                     if (!stuRec.tasks) stuRec.tasks = {};
                     if (!stuRec.taskComments) stuRec.taskComments = {};
                     
-                    if (scoreData) {
-                        const wrongCount = parseInt(scoreData.wrongCount) || 0;
-                        if (wrongCount === 0 || scoreData.score == exam.maxScore) {
+                    const hasValidScore = scoreData && (scoreData.score !== '' || scoreData.wrongCount !== '');
+                    
+                    if (hasValidScore) {
+                        const wrongCount = scoreData.wrongCount !== '' ? parseInt(scoreData.wrongCount) : 0;
+                        const scoreVal = scoreData.score !== '' ? parseFloat(scoreData.score) : 0;
+                        
+                        if ((scoreData.wrongCount !== '' && wrongCount === 0) || scoreVal == exam.maxScore) {
                             stuRec.tasks[newTaskIndex] = true;
                             stuRec.taskComments[newTaskIndex] = ["백점 만점! 고칠 오답이 없습니다. 🎉"];
                         } else {
