@@ -3584,9 +3584,7 @@
             const [isVacStartCalOpen, setIsVacStartCalOpen] = useState(false);
             const [isVacEndCalOpen, setIsVacEndCalOpen] = useState(false);
             const [isVacationSectionOpen, setIsVacationSectionOpen] = useState(false);
-            const [showLogs, setShowLogs] = useState(false);
             const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('cls_dark_mode') === 'true');
-            const [expandedLogUsers, setExpandedLogUsers] = useState({});
 
             const toggleDarkMode = (e) => {
                 const newVal = e.target.checked;
@@ -8686,6 +8684,7 @@ return () => unsubscribe();
             const [isLoadingStats, setIsLoadingStats] = useState(false);
             const [adminLevelConfig, setAdminLevelConfig] = useState({ grass: 5, tree: 15, forest: 30, king: 60 });
             const [showLogs, setShowLogs] = useState(false);
+            const [expandedLogUsers, setExpandedLogUsers] = useState({});
             const [adminBoardData, setAdminBoardData] = useState({ posts: [], comments: [] });
             const [expandedActivityUid, setExpandedActivityUid] = useState(null);
             const [showAdminNoticeHistory, setShowAdminNoticeHistory] = useState(false);
@@ -16100,7 +16099,10 @@ useEffect(() => {
                                                                                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                                                                         }`}
                                                                     >
-                                                                        <span className="truncate max-w-[100px]">{user.userNickname || user.name || "(없음)"}</span>
+                                                                        <div className="flex flex-col items-start max-w-[120px]">
+                                                                            <span className="truncate w-full text-left">{user.userNickname || user.name || "(없음)"}</span>
+                                                                            {user.email && <span className={`text-[9px] font-normal truncate w-full text-left font-mono ${expandedUserId === user.uid ? 'text-indigo-200' : 'text-slate-400'}`}>{user.email}</span>}
+                                                                        </div>
                                                                         <Icon d={PATHS.down} size={12} className={`transition-transform ${expandedUserId === user.uid ? 'rotate-180 text-indigo-200' : 'text-slate-400'}`} />
                                                                     </button>
                                                                 ))}
