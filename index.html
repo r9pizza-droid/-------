@@ -14375,17 +14375,21 @@ useEffect(() => {
                                                 const tasks = dailyTasks[dStr] || [];
                                                 let ratio = 0;
                                                 let hasTask = false;
+                                                const taskStatuses = [];
                                                 
                                                 if (tasks.length > 0) {
                                                     hasTask = true;
                                                     const rec = records[dStr]?.[s.id];
                                                     let done = 0;
-                                                    if (rec) {
-                                                        tasks.forEach((_, idx) => {
-                                                            if (rec.tasks && rec.tasks[idx]) done++;
-                                                            else if (!rec.tasks && rec.done) done++;
-                                                        });
-                                                    }
+                                                    tasks.forEach((t, idx) => {
+                                                        let isDone = false;
+                                                        if (rec) {
+                                                            if (rec.tasks && rec.tasks[idx]) isDone = true;
+                                                            else if (!rec.tasks && rec.done) isDone = true;
+                                                        }
+                                                        if (isDone) done++;
+                                                        taskStatuses.push({ tag: typeof t === 'object' ? t.tag : '기타', isDone });
+                                                    });
                                                     ratio = done / tasks.length;
                                                 }
 
