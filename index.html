@@ -15442,6 +15442,22 @@ useEffect(() => {
                                         return;
                                     }
                                     try {
+                                        // [Fix] 최초 가입 시에도 공용 서버 세션 복구 로직 적용
+                                        if (typeof sharedApp !== 'undefined' && sharedApp && !sharedApp.auth().currentUser) {
+                                            const savedId = localStorage.getItem('cls_fb_id');
+                                            const savedPw = localStorage.getItem('cls_fb_pw');
+                                            if (savedId && savedPw) {
+                                                try { await sharedApp.auth().signInWithEmailAndPassword(savedId, savedPw); }
+                                                catch(e) {}
+                                            }
+                                        }
+                                        
+                                        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
+                                        if (!activeUser) {
+                                            alert("로그인 세션이 만료되었습니다. 다시 로그인해주세요.");
+                                            return;
+                                        }
+
                                         // 🚨 핵심: 닉네임과 함께 UID, 이메일을 자동 수집하여 저장
                                         const dbRef = typeof sharedDb !== 'undefined' ? sharedDb : db;
 
@@ -15451,14 +15467,14 @@ useEffect(() => {
                                         const check2 = await dbRef.collection('userProfiles').where('name', '==', nickname).get();
 
                                         // 이미 존재하는 닉네임이 있고, 그게 내 것이 아닐 경우
-                                        if ((!check1.empty && check1.docs[0].id !== currentUser.uid) || (!check2.empty && check2.docs[0].id !== currentUser.uid)) {
+                                        if ((!check1.empty && check1.docs[0].id !== activeUser.uid) || (!check2.empty && check2.docs[0].id !== activeUser.uid)) {
                                             alert("이미 사용 중인 닉네임입니다. 다른 닉네임을 사용해주세요.");
                                             return;
                                         }
 
-                                        await dbRef.collection('userProfiles').doc(currentUser.uid).set({
-                                            uid: currentUser.uid,
-                                            email: currentUser.email,
+                                        await dbRef.collection('userProfiles').doc(activeUser.uid).set({
+                                            uid: activeUser.uid,
+                                            email: activeUser.email || "",
                                             userNickname: tempNickname.trim(),
                                             lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
                                             isApproved: true
