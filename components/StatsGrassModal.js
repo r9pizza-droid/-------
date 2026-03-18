@@ -726,7 +726,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             ? selectedStudents.map(s => ({ id: s.id, name: s.name })) 
             : null;
 
-        const newNote = { id: Date.now(), date: date, content: content, destTags: tags, relatedStudents: relatedStudents };
+        const newNote = { id: Date.now(), date: date, content: content, destTags: tags, relatedStudents: relatedStudents, category: category };
         const targetIds = selectedStudents.map(s => s.id);
         
         let updatedStudentsList = [...students];
@@ -1231,17 +1231,21 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             const tasks = dailyTasks[dStr] || [];
             const rec = records[dStr]?.[student.id];
             let done = 0; let total = 0;
+            const taskStatuses = [];
             if (tasks.length > 0) {
                 total = tasks.length;
-                if (rec) {
-                    tasks.forEach((_, idx) => {
-                        if (rec.tasks && rec.tasks[idx]) done++;
-                        else if (!rec.tasks && rec.done) done++;
-                    });
-                }
+                tasks.forEach((t, idx) => {
+                    let isDone = false;
+                    if (rec) {
+                        if (rec.tasks && rec.tasks[idx]) isDone = true;
+                        else if (!rec.tasks && rec.done) isDone = true;
+                    }
+                    if (isDone) done++;
+                    taskStatuses.push({ tag: typeof t === 'object' ? t.tag : '기타', isDone });
+                });
             }
             const ratio = total > 0 ? done / total : 0;
-            history.push({ date: dStr, ratio, count: done, total });
+            history.push({ date: dStr, ratio, count: done, total, taskStatuses });
         }
         return history;
     }, [grassStart, grassEnd, dailyTasks, records, student.id]);
@@ -1303,11 +1307,30 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         setShowStudentRecordAI(true);
     };
     
-    const getPieStyle = (ratio) => {
-        if (ratio <= 0) return { backgroundColor: '#f1f5f9' };
-        if (ratio >= 1) return { backgroundColor: '#22c55e' };
-        const percentage = ratio * 100;
-        return { background: `conic-gradient(#4ade80 0% ${percentage}%, #f1f5f9 ${percentage}% 100%)` };
+    const getPieStyle = (taskStatuses, ratio) => {
+        if (!taskStatuses || taskStatuses.length === 0) {
+            if (ratio <= 0) return { backgroundColor: '#f1f5f9' };
+            if (ratio >= 1) return { backgroundColor: '#22c55e' };
+            const percentage = ratio * 100;
+            return { background: `conic-gradient(#4ade80 0% ${percentage}%, #f1f5f9 ${percentage}% 100%)` };
+        }
+        const TAG_COLORS = {
+            '국어': '#fb7185', '수학': '#60a5fa', '사회': '#34d399', 
+            '과학': '#a78bfa', '영어': '#fbbf24', '예체능': '#f472b6', '기타': '#94a3b8'
+        };
+        const getColor = (tag) => TAG_COLORS[tag] || '#818cf8';
+
+        let gradientParts = [];
+        let currentPercent = 0;
+        const step = 100 / taskStatuses.length;
+
+        taskStatuses.forEach(ts => {
+            const color = ts.isDone ? getColor(ts.tag) : '#f1f5f9';
+            gradientParts.push(`${color} ${currentPercent}% ${currentPercent + step}%`);
+            currentPercent += step;
+        });
+
+        return { background: `conic-gradient(${gradientParts.join(', ')})` };
     };
     
     const getLevelColor = (lv) => {
@@ -2105,6 +2128,11 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                                             <Icon d={PATHS.message} size={10} /> 과제: {note.taskTitle}
                                                                                         </span>
                                                                                     )}
+                                                                                    {!note.isTaskComment && (
+                                                                                        <span className={`px-1.5 py-0.5 border text-[8px] rounded-full font-bold shadow-sm flex items-center gap-1 ${(note.category === '칭찬' || (!note.category && note.content && (note.content.includes('칭찬') || note.content.includes('스티커') || note.content.includes('상점')))) ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                                                            {(note.category === '칭찬' || (!note.category && note.content && (note.content.includes('칭찬') || note.content.includes('스티커') || note.content.includes('상점')))) ? '🌟 칭찬' : '📝 관찰'}
+                                                                                        </span>
+                                                                                    )}
                                                                                     {note.destTags && note.destTags.map((tag, idx) => {
                                                                                          let dotColor = "bg-slate-300";
                                                                                         if (tag === '노션(기록)') dotColor = "bg-blue-400";
@@ -2395,7 +2423,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                         <div className={`w-1.5 h-1.5 rounded-full bg-slate-300 ${isToday ? `ring-4 ${theme.ring} ring-offset-4` : ''}`}></div>
                                                     </div>
                                                 ) : (
-                                                    <div className={`w-12 h-12 rounded-full shadow-inner flex items-center justify-center relative overflow-hidden bg-slate-100 ${isToday ? `ring-4 ${theme.ring} ring-offset-2` : ''}`} style={getPieStyle(h.ratio)}></div>
+                                                    <div className={`w-12 h-12 rounded-full shadow-inner flex items-center justify-center relative overflow-hidden bg-slate-100 ${isToday ? `ring-4 ${theme.ring} ring-offset-2` : ''}`} style={getPieStyle(h.taskStatuses, h.ratio)}></div>
                                                 )}
                                                 <span className={`text-xs ${isToday ? `${theme.text} font-black` : selectedGrassDate === h.date ? 'text-slate-800 font-bold' : 'text-slate-500 font-medium'}`}>{dayjs(h.date).format('MM/DD')}</span>
                                                 <div className={`absolute bottom-full mb-2 z-50 w-max bg-slate-900 text-white rounded-xl px-3 py-2 shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-1 group-hover:translate-y-0 pointer-events-none flex items-center gap-3 ${tooltipPos}`}>

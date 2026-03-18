@@ -5782,17 +5782,21 @@
                                                                 const tasks = dailyTasks[dStr] || [];
                                                                 let ratio = 0;
                                                                 let hasTask = false;
-                                                                
+                                                                const taskStatuses = [];
+
                                                                 if (tasks.length > 0) {
                                                                     hasTask = true;
                                                                     const rec = records[dStr]?.[s.id];
                                                                     let done = 0;
+                                                                tasks.forEach((t, idx) => {
+                                                                    let isDone = false;
                                                                     if (rec) {
-                                                                        tasks.forEach((_, idx) => {
-                                                                            if (rec.tasks && rec.tasks[idx]) done++;
-                                                                            else if (!rec.tasks && rec.done) done++;
-                                                                        });
+                                                                        if (rec.tasks && rec.tasks[idx]) isDone = true;
+                                                                        else if (!rec.tasks && rec.done) isDone = true;
                                                                     }
+                                                                    if (isDone) done++;
+                                                                    taskStatuses.push({ tag: typeof t === 'object' ? t.tag : '기타', isDone });
+                                                                });
                                                                     ratio = done / tasks.length;
                                                                 }
 
@@ -7061,13 +7065,19 @@ service cloud.firestore {
     match /community/{postId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');
+    }
+
+    match /community/{postId}/comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');
     }
 
     match /comments/{commentId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');
     }
 
     match /notifications/{notiId} {
@@ -7084,7 +7094,7 @@ service cloud.firestore {
   }
 }`}
                                     </div>
-                                    <button onClick={() => { const code = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    function isSignedIn() {\n      return request.auth != null;\n    }\n\n    match /settings/{document=**} {\n      allow read: if true;\n      allow write: if false;\n    }\n\n    match /userProfiles/{userId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /userStats/{userId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /classes/{appId}/{document=**} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /artifacts/{appId}/{document=**} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /community/{postId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;\n    }\n\n    match /comments/{commentId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;\n    }\n\n    match /notifications/{notiId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /admin/{document=**} {\n      allow read, write: if false;\n    }\n\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}`; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                                    <button onClick={() => { const code = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    function isSignedIn() {\n      return request.auth != null;\n    }\n\n    match /settings/{document=**} {\n      allow read: if true;\n      allow write: if false;\n    }\n\n    match /userProfiles/{userId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /userStats/{userId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /classes/{appId}/{document=**} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /artifacts/{appId}/{document=**} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /community/{postId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');\n    }\n\n    match /community/{postId}/comments/{commentId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');\n    }\n\n    match /comments/{commentId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');\n    }\n\n    match /notifications/{notiId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /admin/{document=**} {\n      allow read, write: if false;\n    }\n\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}`; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
                                         <Icon d={PATHS.copy} size={12} /> 코드 복사
                                     </button>
                                 </div>
@@ -7246,7 +7256,7 @@ const firebaseConfig = {
                     ? selectedStudents.map(s => ({ id: s.id, name: s.name })) 
                     : null;
 
-                const newNote = { id: Date.now(), date: date, content: content, destTags: tags, relatedStudents: relatedStudents };
+                const newNote = { id: Date.now(), date: date, content: content, destTags: tags, relatedStudents: relatedStudents, category: category };
                 const targetIds = selectedStudents.map(s => s.id);
                 
                 let updatedStudentsList = [...students];
@@ -7748,6 +7758,9 @@ const firebaseConfig = {
                                                                 )}
                                                             </div>
                                                             <div className="flex gap-1 flex-wrap justify-end ml-2 shrink-0">
+                                                                <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold whitespace-nowrap ${(record.category === '칭찬' || (!record.category && record.content && (record.content.includes('칭찬') || record.content.includes('스티커') || record.content.includes('상점')))) ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                                    {(record.category === '칭찬' || (!record.category && record.content && (record.content.includes('칭찬') || record.content.includes('스티커') || record.content.includes('상점')))) ? '🌟 칭찬' : '📝 관찰'}
+                                                                </span>
                                                                 {record.destTags && record.destTags.map((tag, idx) => {
                                                                     let dotColor = "bg-slate-300";
                                                                     let badgeClass = "bg-slate-50 text-slate-500 border-slate-100";
@@ -9730,33 +9743,22 @@ return () => unsubscribe();
             };
 
     const handleEditPost = (post) => {
-        if (isAdmin) {
+        const isMyPost = currentUser && post.uid === currentUser.uid;
+        if (isAdmin || isMyPost) {
             setEditingPost(post);
             setShowPostModal(true);
         } else {
-            const inputPw = prompt("게시글 비밀번호 4자리를 입력하세요.");
-            if (!inputPw) return;
-            if (inputPw !== post.postPassword) {
-                alert("비밀번호가 일치하지 않습니다.");
-                return;
-            }
-            setEditingPost(post);
-            setShowPostModal(true);
+                alert("권한이 없습니다.");
         }
     };      
       
     const handleDeletePost = async (post) => {
-        if (isAdmin) {
-            if (!confirm("관리자 권한으로 이 글을 삭제하시겠습니까?")) return;
-        } else {
-            const inputPw = prompt("게시글 비밀번호 4자리를 입력하세요.");
-            if (!inputPw) return;
-            if (inputPw !== post.postPassword) {
-                alert("비밀번호가 일치하지 않습니다.");
+        const isMyPost = currentUser && post.uid === currentUser.uid;
+            if (!isAdmin && !isMyPost) {
+                alert("권한이 없습니다.");
                 return;
             }
-            if (!confirm("정말 삭제하시겠습니까?")) return;
-        }
+            if (!confirm("이 글을 삭제하시겠습니까?")) return;
 
         try {
             // [Update] 게시글 삭제 시 하위 댓글도 함께 삭제 (고아 문서 방지)
@@ -14393,15 +14395,22 @@ useEffect(() => {
                                                     );
                                                 }
 
-                                                const getPieStyle = (ratio) => {
-                                                    if (ratio <= 0) return { backgroundColor: '#e2e8f0' };
-                                                    if (ratio >= 1) return { backgroundColor: '#4ade80' };
-                                                    const percentage = ratio * 100;
-                                                    return { background: `conic-gradient(#4ade80 0% ${percentage}%, #e2e8f0 ${percentage}% 100%)` };
-                                                };
+                                                const getMultiPieStyle = (tsList, r) => {
+                                                    if (!tsList || tsList.length === 0) {
+                                                        if (r <= 0) return { backgroundColor: '#e2e8f0' };
+                                                        if (r >= 1) return { backgroundColor: '#4ade80' };
+                                                        const percentage = r * 100;
+                                                        return { background: `conic-gradient(#4ade80 0% ${percentage}%, #e2e8f0 ${percentage}% 100%)` };
+                                                      }
+                                                      const TAG_COLORS = { '국어': '#fb7185', '수학': '#60a5fa', '사회': '#34d399', '과학': '#a78bfa', '영어': '#fbbf24', '예체능': '#f472b6', '기타': '#94a3b8' };
+                                                      const getColor = (tag) => TAG_COLORS[tag] || '#818cf8';
+                                                      let gradientParts = []; let currentPercent = 0; const step = 100 / tsList.length;
+                                                      tsList.forEach(ts => { const color = ts.isDone ? getColor(ts.tag) : '#e2e8f0'; gradientParts.push(`${color} ${currentPercent}% ${currentPercent + step}%`); currentPercent += step; });
+                                                      return { background: `conic-gradient(${gradientParts.join(', ')})` };
+                                                    };
 
                                                 return (
-                                                    <div key={i} className="w-2 h-2 rounded-full" style={getPieStyle(ratio)} title={`${dStr}: ${Math.round(ratio * 100)}%`}></div>
+                                                <div key={i} className="w-2 h-2 rounded-full" style={getMultiPieStyle(taskStatuses, ratio)} title={`${dStr}: ${Math.round(ratio * 100)}%`}></div>
                                                 );
                                             });
                                         })()}
@@ -14685,7 +14694,7 @@ useEffect(() => {
                                                                                 {isPopular && <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded font-bold border border-rose-200 shrink-0">🔥 인기</span>}
                                                                                 <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
                                                                                 {post.resourceLink && <span className="text-[10px]">💾</span>}
-                                                                                {post.postPassword && <span className="text-[10px] text-slate-300">🔒</span>}
+                                                                                {post.postPassword && !currentUser && <span className="text-[10px] text-slate-300">🔒</span>}
                                                                             </div>
                                                                             
                                                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
@@ -14742,8 +14751,8 @@ useEffect(() => {
                                                                                 <div className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
                                                                                 {isPopular && <div className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-md font-bold shadow-sm border border-rose-600">🔥 인기</div>}
                                                                             </div>
-                                                                            {post.postPassword && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
-                                                                            {post.resourceLink && <div className={`absolute top-2 ${post.postPassword ? 'right-8' : 'right-2'} text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full`}>💾</div>}
+                                                                            {post.postPassword && !currentUser && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
+                                                                            {post.resourceLink && <div className={`absolute top-2 ${post.postPassword && !currentUser ? 'right-8' : 'right-2'} text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full`}>💾</div>}
                                                                         </div>
                                                                     )}
                                                                     <div className="p-4 flex flex-col flex-1">
@@ -14751,7 +14760,7 @@ useEffect(() => {
                                                                             <div className="flex justify-between items-start mb-3">
                                                                                 <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
                                                                                 <div className="flex gap-1">
-                                                                                    {post.postPassword && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-full">🔒</span>}
+                                                                                    {post.postPassword && !currentUser && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-full">🔒</span>}
                                                                                     {post.resourceLink && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full">💾</span>}
                                                                                 </div>
                                                                             </div>
@@ -16363,7 +16372,7 @@ useEffect(() => {
                     {showGlobalRecord && (
                         <GlobalRecordModal isOpen={showGlobalRecord} onClose={()=>setShowGlobalRecord(false)} students={students} setStudents={setStudents} saveData={saveData} isLocalMode={isLocalMode} showToast={setToastMessage} buttonPos={buttonPos} appConfig={appConfig} db={db} appId={appId} />
                     )}
-                    {showPostModal && <PostModal isOpen={showPostModal} onClose={() => { setShowPostModal(false); setEditingPost(null); }} onSave={handleSavePost} initialPost={editingPost} imgbbApiKey={imgbbApiKey} userNickname={currentUserProfile?.userNickname} showToast={setToastMessage} />}
+                    {showPostModal && <PostModal isOpen={showPostModal} onClose={() => { setShowPostModal(false); setEditingPost(null); }} onSave={handleSavePost} initialPost={editingPost} imgbbApiKey={imgbbApiKey} userNickname={userNickname} showToast={setToastMessage} />}
                     <CommunityHelpModal isOpen={showCommunityHelp} onClose={() => setShowCommunityHelp(false)} />
                     <AiSecurityCheckModal isOpen={aiCheckState.isOpen} onClose={handleAiCheckCancel} prompt={aiCheckState.prompt} onConfirm={handleAiCheckConfirm} />
                                         
