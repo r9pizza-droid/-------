@@ -16121,22 +16121,22 @@ useEffect(() => {
                                                     const expandedUser = userList.find(u => u.uid === expandedUserId);
                                                     return (
                                                         <>
-                                                            <div className="flex flex-wrap gap-2 mb-4">
+                                                            <div className="grid grid-cols-2 gap-2 mb-4">
                                                                 {paginatedUsers.map((user) => (
                                                                     <button
                                                                         key={user.uid}
                                                                         onClick={() => setExpandedUserId(expandedUserId === user.uid ? null : user.uid)}
-                                                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-all shadow-sm ${
+                                                                        className={`w-full flex items-center justify-between gap-1 px-3 py-1.5 rounded-full border text-xs font-bold transition-all shadow-sm ${
                                                                             expandedUserId === user.uid 
                                                                                 ? 'bg-indigo-600 text-white border-indigo-600' 
                                                                                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                                                                         }`}
                                                                     >
-                                                                        <div className="flex flex-col items-start max-w-[120px]">
+                                                                        <div className="flex flex-col items-start min-w-0 flex-1 pr-1">
                                                                     <span className="truncate w-full text-left font-bold">{user.userNickname || user.name || "(없음)"}</span>
-                                                                    <span className={`text-[9px] font-normal truncate w-full text-left font-mono mt-0.5 ${expandedUserId === user.uid ? 'text-indigo-200' : 'text-slate-400'}`}>📧 {user.email || "이메일 없음"}</span>
+                                                                    <span className={`text-[8px] font-normal truncate w-full text-left font-mono mt-0.5 ${expandedUserId === user.uid ? 'text-indigo-200' : 'text-slate-400'}`}>📧 {user.email || "이메일 없음"}</span>
                                                                         </div>
-                                                                        <Icon d={PATHS.down} size={12} className={`transition-transform ${expandedUserId === user.uid ? 'rotate-180 text-indigo-200' : 'text-slate-400'}`} />
+                                                                        <Icon d={PATHS.down} size={12} className={`shrink-0 transition-transform ${expandedUserId === user.uid ? 'rotate-180 text-indigo-200' : 'text-slate-400'}`} />
                                                                     </button>
                                                                 ))}
                                                             </div>
