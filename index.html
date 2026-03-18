@@ -9758,7 +9758,9 @@ return () => unsubscribe();
                 alert("권한이 없습니다.");
                 return;
             }
-            if (!confirm("이 글을 삭제하시겠습니까?")) return;
+            
+            const confirmMsg = (isAdmin && !isMyPost) ? "관리자의 권한으로 게시글을 삭제하시겠습니까?" : "이 글을 삭제하시겠습니까?";
+            if (!confirm(confirmMsg)) return;
 
         try {
             // [Update] 게시글 삭제 시 하위 댓글도 함께 삭제 (고아 문서 방지)
@@ -10063,7 +10065,9 @@ return () => unsubscribe();
             alert("본인이 작성한 댓글만 삭제할 수 있습니다.");
             return;
         }
-        if (!confirm("댓글을 삭제하시겠습니까?")) return;
+        
+        const confirmMsg = (isAdmin && currentUid !== commentUid) ? "관리자의 권한으로 댓글을 삭제하시겠습니까?" : "댓글을 삭제하시겠습니까?";
+        if (!confirm(confirmMsg)) return;
 
         try {
             await sharedDb.collection('community').doc(postId).collection('comments').doc(commentId).delete();
