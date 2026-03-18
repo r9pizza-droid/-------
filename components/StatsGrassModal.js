@@ -1309,23 +1309,23 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     
     const getPieStyle = (taskStatuses, ratio) => {
         if (!taskStatuses || taskStatuses.length === 0) {
-            if (ratio <= 0) return { backgroundColor: '#f1f5f9' };
-            if (ratio >= 1) return { backgroundColor: '#22c55e' };
+            if (ratio <= 0) return { backgroundColor: '#e2e8f0' };
+            if (ratio >= 1) return { backgroundColor: '#4ade80' };
             const percentage = ratio * 100;
-            return { background: `conic-gradient(#4ade80 0% ${percentage}%, #f1f5f9 ${percentage}% 100%)` };
+            return { background: `conic-gradient(#4ade80 0% ${percentage}%, #e2e8f0 ${percentage}% 100%)` };
         }
-        const TAG_COLORS = {
+        const defaultColors = {
             '국어': '#fb7185', '수학': '#60a5fa', '사회': '#34d399', 
             '과학': '#a78bfa', '영어': '#fbbf24', '예체능': '#f472b6', '기타': '#94a3b8'
         };
-        const getColor = (tag) => TAG_COLORS[tag] || '#818cf8';
+        const getColor = (tag) => (appConfig?.tagColors?.[tag]) || defaultColors[tag] || '#818cf8';
 
         let gradientParts = [];
         let currentPercent = 0;
         const step = 100 / taskStatuses.length;
 
         taskStatuses.forEach(ts => {
-            const color = ts.isDone ? getColor(ts.tag) : '#f1f5f9';
+            const color = ts.isDone ? getColor(ts.tag) : '#e2e8f0';
             gradientParts.push(`${color} ${currentPercent}% ${currentPercent + step}%`);
             currentPercent += step;
         });
