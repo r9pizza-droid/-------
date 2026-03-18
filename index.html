@@ -10245,11 +10245,11 @@ return () => unsubscribe();
 
             useEffect(() => {
                 const updateIcons = async () => {
-                    const defaultSvg = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>";
-                    const iconSrc = appConfig.favicon || defaultSvg;
+                    const defaultIcon = "https://i.ibb.co/YT3SJpfq/logo1.png?v=1.1";
+                    const iconSrc = appConfig.favicon || defaultIcon;
                     
                     // 1. Favicon Versioning (Cache Busting)
-                    const versionSuffix = iconSrc.startsWith('data:') ? `#v=${Date.now()}` : `?v=${Date.now()}`;
+                    const versionSuffix = iconSrc.startsWith('data:') ? `#v=${Date.now()}` : (iconSrc.includes('?') ? `&v=${Date.now()}` : `?v=${Date.now()}`);
                     const finalIconHref = iconSrc + versionSuffix;
 
                     // 2. Helper to update or create link
@@ -10282,9 +10282,13 @@ return () => unsubscribe();
                                 ctx.fillStyle = "#ffffff"; 
                                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                                 ctx.drawImage(img, 0, 0, 192, 192);
-                                resolve(canvas.toDataURL('image/png'));
+                                try {
+                                    resolve(canvas.toDataURL('image/png'));
+                                } catch(e) {
+                                    resolve(src); // 외부 URL CORS 정책 에러 발생 시 원본 이미지 사용
+                                }
                             };
-                            img.onerror = () => resolve(defaultSvg);
+                            img.onerror = () => resolve(src); // 로딩 에러 시에도 원본 이미지 우선 적용
                             img.src = src;
                         });
                     };
