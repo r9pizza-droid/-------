@@ -1679,7 +1679,83 @@
                 showToast("요일별 고정 과제가 추가되었습니다."); 
             };
             const removeWeeklyTask = (d, i) => setWTasks({ ...wTasks, [d]: wTasks[d].filter((_, idx) => idx !== i) });
-            const handleTagAction = (action, ...args) => { if(action === 'add') updateTags(args[0]); else if(action === 'delete') { openConfirm(`'${args[0]}' 태그 삭제?`, () => { const newTags = tags.filter(t => t !== args[0]); setTags(newTags); if(!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); if(selectedTag === args[0]) setSelectedTag("기타"); if(wSelectedTag === args[0]) setWSelectedTag("기타"); }); } else if(action === 'edit') { const [oldT, newT] = args; if(newT && newT !== oldT){ const newTags = tags.map(t=>t===oldT?newT:t); setTags(newTags); if(!isLocalMode) saveData('cls_tags', newTags); else localStorage.setItem('cls_tags', JSON.stringify(newTags)); showToast("태그 수정됨"); } } };
+            const handleTagAction = (action, ...args) => { 
+                if(action === 'add') {
+                    updateTags(args[0]);
+                } 
+                else if(action === 'delete') { 
+                    const tagToDelete = args[0];
+                    openConfirm(`'${tagToDelete}' 태그를 삭제하시겠습니까?\n(기존 과제의 태그는 '기타'로 일괄 변경됩니다)`, () => { 
+                        const newTags = tags.filter(t => t !== tagToDelete); 
+                        setTags(newTags); 
+                        
+                        const newDaily = { ...dailyTasks };
+                        let isDailyChanged = false;
+                        Object.keys(newDaily).forEach(d => {
+                            const updated = newDaily[d].map(t => {
+                                if (typeof t === 'object' && t.tag === tagToDelete) { isDailyChanged = true; return { ...t, tag: '기타' }; }
+                                return t;
+                            });
+                            newDaily[d] = updated;
+                        });
+
+                        const newWeekly = { ...wTasks };
+                        let isWeeklyChanged = false;
+                        Object.keys(newWeekly).forEach(d => {
+                            const updated = newWeekly[d].map(t => {
+                                if (typeof t === 'object' && t.tag === tagToDelete) { isWeeklyChanged = true; return { ...t, tag: '기타' }; }
+                                return t;
+                            });
+                            newWeekly[d] = updated;
+                        });
+
+                        if (isDailyChanged) setDailyTasks(newDaily);
+                        if (isWeeklyChanged) setWTasks(newWeekly);
+
+                        if (!isLocalMode && saveTasksToFirestore) {
+                            saveTasksToFirestore({ tags: newTags, ...(isDailyChanged ? { dailyTasks: newDaily } : {}), ...(isWeeklyChanged ? { weeklyTasks: newWeekly } : {}) });
+                        } else {
+                            localStorage.setItem('cls_tags', JSON.stringify(newTags)); 
+                            if (isDailyChanged) localStorage.setItem('cls_daily_tasks', JSON.stringify(newDaily));
+                            if (isWeeklyChanged) localStorage.setItem('cls_weekly_tasks', JSON.stringify(newWeekly));
+                        }
+                        
+                        if(selectedTag === tagToDelete) setSelectedTag("기타"); 
+                        if(wSelectedTag === tagToDelete) setWSelectedTag("기타"); 
+                        showToast("태그가 삭제되었습니다.");
+                    }); 
+                } 
+                else if(action === 'edit') { 
+                    const [oldT, newT] = args; 
+                    if(newT && newT !== oldT){ 
+                        const newTags = tags.map(t=>t===oldT?newT:t); 
+                        setTags(newTags); 
+                        
+                        const newDaily = { ...dailyTasks };
+                        let isDailyChanged = false;
+                        Object.keys(newDaily).forEach(d => { const updated = newDaily[d].map(t => { if (typeof t === 'object' && t.tag === oldT) { isDailyChanged = true; return { ...t, tag: newT }; } return t; }); newDaily[d] = updated; });
+                        
+                        const newWeekly = { ...wTasks };
+                        let isWeeklyChanged = false;
+                        Object.keys(newWeekly).forEach(d => { const updated = newWeekly[d].map(t => { if (typeof t === 'object' && t.tag === oldT) { isWeeklyChanged = true; return { ...t, tag: newT }; } return t; }); newWeekly[d] = updated; });
+
+                        if (isDailyChanged) setDailyTasks(newDaily);
+                        if (isWeeklyChanged) setWTasks(newWeekly);
+
+                        if(!isLocalMode && saveTasksToFirestore) { 
+                            saveTasksToFirestore({ tags: newTags, ...(isDailyChanged ? { dailyTasks: newDaily } : {}), ...(isWeeklyChanged ? { weeklyTasks: newWeekly } : {}) }); 
+                        } else { 
+                            localStorage.setItem('cls_tags', JSON.stringify(newTags)); 
+                            if (isDailyChanged) localStorage.setItem('cls_daily_tasks', JSON.stringify(newDaily)); 
+                            if (isWeeklyChanged) localStorage.setItem('cls_weekly_tasks', JSON.stringify(newWeekly)); 
+                        }
+                        
+                        if(selectedTag === oldT) setSelectedTag(newT); 
+                        if(wSelectedTag === oldT) setWSelectedTag(newT); 
+                        showToast("태그가 수정되었습니다."); 
+                    } 
+                } 
+            };
 
             // [New] 기간 지정 일괄 적용 기능
             const handleBulkAssignRange = (startStr, endStr) => {
