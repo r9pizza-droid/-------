@@ -6959,8 +6959,17 @@
                         
                         // 공용 게시판에도 동일 정보로 가입/로그인 시도 (게시판 활동용)
                         if (defaultApp) {
-                            if (isSignUp) await defaultApp.auth().createUserWithEmailAndPassword(authId, authPw).catch(()=>{});
-                            else await defaultApp.auth().signInWithEmailAndPassword(authId, authPw).catch(()=>{});
+                            try {
+                                if (isSignUp) await defaultApp.auth().createUserWithEmailAndPassword(authId, authPw);
+                                else await defaultApp.auth().signInWithEmailAndPassword(authId, authPw);
+                            } catch (err) {
+                                // 기존에 공용 서버에 계정이 없어서 로그인 실패 시, 자동으로 계정 생성하여 "반쪽 로그인" 방지
+                                try {
+                                    await defaultApp.auth().createUserWithEmailAndPassword(authId, authPw);
+                                } catch (innerErr) {
+                                    console.warn("공용 서버 동기화 로그인 실패:", innerErr);
+                                }
+                            }
                         }
                     } else {
                         // 게시판만 이용하는 경우 (개인 설정 없음)
@@ -7109,19 +7118,19 @@ service cloud.firestore {
     match /community/{postId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');
+      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
 
     match /community/{postId}/comments/{commentId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');
+      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
 
     match /comments/{commentId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');
+      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
 
     match /notifications/{notiId} {
@@ -7138,7 +7147,7 @@ service cloud.firestore {
   }
 }`}
                                     </div>
-                                    <button onClick={() => { const code = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    function isSignedIn() {\n      return request.auth != null;\n    }\n\n    match /settings/{document=**} {\n      allow read: if true;\n      allow write: if false;\n    }\n\n    match /userProfiles/{userId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /userStats/{userId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /classes/{appId}/{document=**} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /artifacts/{appId}/{document=**} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /community/{postId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');\n    }\n\n    match /community/{postId}/comments/{commentId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');\n    }\n\n    match /comments/{commentId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && (resource.data.uid == request.auth.uid || request.auth.uid == 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2');\n    }\n\n    match /notifications/{notiId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /admin/{document=**} {\n      allow read, write: if false;\n    }\n\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}`; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                                    <button onClick={() => { const code = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    function isSignedIn() {\n      return request.auth != null;\n    }\n\n    match /settings/{document=**} {\n      allow read: if true;\n      allow write: if false;\n    }\n\n    match /userProfiles/{userId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /userStats/{userId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /classes/{appId}/{document=**} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /artifacts/{appId}/{document=**} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /community/{postId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;\n    }\n\n    match /community/{postId}/comments/{commentId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;\n    }\n\n    match /comments/{commentId} {\n      allow read: if true;\n      allow create: if isSignedIn();\n      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;\n    }\n\n    match /notifications/{notiId} {\n      allow read, write: if isSignedIn();\n    }\n\n    match /admin/{document=**} {\n      allow read, write: if false;\n    }\n\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}`; navigator.clipboard.writeText(code); showToast("✅ 규칙 코드가 복사되었습니다."); }} className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-md text-[10px] font-bold border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow-sm">
                                         <Icon d={PATHS.copy} size={12} /> 코드 복사
                                     </button>
                                 </div>
@@ -8759,7 +8768,11 @@ return () => unsubscribe();
                     return;
                 }
 
-                if (!sharedDb) return setToastMessage("서버 연결을 확인해주세요.");
+                const sharedUser = sharedApp ? sharedApp.auth().currentUser : null;
+                if (!sharedDb || !sharedUser) {
+                    alert("공용 서버 세션이 끊어져 있습니다. 설정 > 데이터 관리에서 로그아웃 후 다시 접속해주세요.");
+                    return;
+                }
                 
                 setShowAdminDashboard(true);
                 setUserListPage(1); // [New] 페이지네이션 1페이지로 초기화
@@ -11372,17 +11385,23 @@ return () => unsubscribe();
                     else setCurrentUserStats({ postCount: 0, commentCount: 0 });
                 });
                 try {
-                    const userDocRef = sharedDb.collection('userProfiles').doc(user.uid);
-                    const userDoc = await userDocRef.get();
-                    
-                    if (userDoc.exists && userDoc.data().userNickname) {
-                        setCurrentUserProfile(userDoc.data());
-                        await userDocRef.set({
-                                email: user.email || userDoc.data().email || "", // [Fix] 접속 시마다 이메일 강제 수집 및 누락 방지
-                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
-                        logToSharedDb('LOGIN', '사용자 접속', user.uid, userDoc.data().userNickname);
-                    } // 프로필이 없으면, 게시판 탭에 진입할 때 설정 모달을 띄웁니다.
+                    // [Fix] 공용 서버(sharedDb)에 로그인 세션이 활성화되어 있는지 먼저 확인하여 쓰기 권한 에러 방지
+                    const sharedUser = defaultApp ? defaultApp.auth().currentUser : null;
+                    if (sharedUser) {
+                        const userDocRef = sharedDb.collection('userProfiles').doc(user.uid);
+                        const userDoc = await userDocRef.get();
+                        
+                        if (userDoc.exists && userDoc.data().userNickname) {
+                            setCurrentUserProfile(userDoc.data());
+                            await userDocRef.set({
+                                    email: user.email || userDoc.data().email || "",
+                                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+                            logToSharedDb('LOGIN', '사용자 접속', user.uid, userDoc.data().userNickname);
+                        }
+                    } else {
+                        console.warn("공용 게시판 서버 세션이 연결되지 않았습니다.");
+                    }
                 } catch (e) {
                     console.error("프로필 확인 실패:", e);
                 }
