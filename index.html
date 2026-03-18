@@ -11312,7 +11312,7 @@ return () => unsubscribe();
                     if (userDoc.exists && userDoc.data().userNickname) {
                         setCurrentUserProfile(userDoc.data());
                         await userDocRef.set({
-                            email: user.email || "",
+                                email: user.email || userDoc.data().email || "", // [Fix] 접속 시마다 이메일 강제 수집 및 누락 방지
                             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                         }, { merge: true });
                         logToSharedDb('LOGIN', '사용자 접속', user.uid, userDoc.data().userNickname);
@@ -16100,8 +16100,8 @@ useEffect(() => {
                                                                         }`}
                                                                     >
                                                                         <div className="flex flex-col items-start max-w-[120px]">
-                                                                            <span className="truncate w-full text-left">{user.userNickname || user.name || "(없음)"}</span>
-                                                                            {user.email && <span className={`text-[9px] font-normal truncate w-full text-left font-mono ${expandedUserId === user.uid ? 'text-indigo-200' : 'text-slate-400'}`}>{user.email}</span>}
+                                                                    <span className="truncate w-full text-left font-bold">{user.userNickname || user.name || "(없음)"}</span>
+                                                                    <span className={`text-[9px] font-normal truncate w-full text-left font-mono mt-0.5 ${expandedUserId === user.uid ? 'text-indigo-200' : 'text-slate-400'}`}>📧 {user.email || "이메일 없음"}</span>
                                                                         </div>
                                                                         <Icon d={PATHS.down} size={12} className={`transition-transform ${expandedUserId === user.uid ? 'rotate-180 text-indigo-200' : 'text-slate-400'}`} />
                                                                     </button>
