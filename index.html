@@ -538,9 +538,17 @@
         };
         const BaseModal = ({ isOpen, onClose, title, icon, children, footer, maxWidth = "max-w-2xl", zIndex = "z-50", onTitleClick }) => {
             useEffect(() => {
-                if (isOpen) document.body.style.overflow = 'hidden';
-                else document.body.style.overflow = '';
-                return () => { document.body.style.overflow = ''; };
+                if (isOpen) {
+                    document.body.style.overflow = 'hidden';
+                    document.documentElement.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                    document.documentElement.style.overflow = '';
+                }
+                return () => { 
+                    document.body.style.overflow = ''; 
+                    document.documentElement.style.overflow = '';
+                };
             }, [isOpen]);
 
             useEffect(() => {
@@ -4238,7 +4246,18 @@
 
 
             return (
-                <BaseModal isOpen={isOpen} onClose={onClose} title={<><span onClick={onDevModeClick} className="cursor-default">⚙️</span> <span onClick={handleDataManagementClick} className="cursor-default select-none">설정</span></>} icon={null} maxWidth="max-w-6xl">
+                <BaseModal isOpen={isOpen} onClose={onClose} title={
+                    <div className="flex items-center gap-2">
+                        <span onClick={onDevModeClick} className="cursor-default touch-manipulation">⚙️</span> 
+                        <span onClick={handleDataManagementClick} className="cursor-default select-none touch-manipulation">설정</span>
+                        {(isAdminMode || isDevMode) && (
+                            <div className="flex gap-1 ml-2 items-center">
+                                {isAdminMode && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">관리자 모드</span>}
+                                {isDevMode && !isAdminMode && <span className="text-[10px] bg-slate-800 text-white px-2 py-0.5 rounded-full font-bold">개발자 모드</span>}
+                            </div>
+                        )}
+                    </div>
+                } icon={null} maxWidth="max-w-6xl">
                     <HelpModal isOpen={showBackupHelp} onClose={()=>setShowBackupHelp(false)} />
                     <ManualModal isOpen={showManualModal} onClose={() => setShowManualModal(false)} content={getManualContent()} onDownload={handleDownloadManualFile} />
                     
@@ -9476,23 +9495,29 @@ return () => unsubscribe();
             const [isAdminMode, setIsAdminMode] = useState(false);
             const [isDevMode, setIsDevMode] = useState(() => localStorage.getItem('cls_dev_mode') === 'true');
             const [adminClickCount, setAdminClickCount] = useState(0);
+            const adminClickTimer = useRef(null);
             
             const [isDataSyncing, setIsDataSyncing] = useState(false);
             const [syncMessage, setSyncMessage] = useState("");
             
-            const handleDataManagementClick = () => { 
-                const user = currentUser;
-                if (!user || user.uid !== 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') return;
+            const handleDataManagementClick = (e) => { 
+                if (e) e.stopPropagation();
+                if (adminClickTimer.current) clearTimeout(adminClickTimer.current);
                 const newCount = adminClickCount + 1; 
+                setAdminClickCount(newCount);
                 if(newCount >= 3) { 
-                    const newMode = !isAdminMode;
-                    setIsAdminMode(newMode);
+                    const newMode = !isDevMode;
                     setIsDevMode(newMode);
                     localStorage.setItem('cls_dev_mode', newMode);
-                    setToastMessage(newMode ? "관리자 및 개발자 모드가 활성화되었습니다." : "관리자 및 개발자 모드가 해제되었습니다."); 
+                    if (currentUser && currentUser.uid === 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
+                        setIsAdminMode(newMode);
+                        setToastMessage(newMode ? "관리자 및 개발자 모드가 활성화되었습니다." : "관리자 및 개발자 모드가 해제되었습니다."); 
+                    } else {
+                        setToastMessage(newMode ? "개발자 모드 ON: AI 전송 내용을 미리 확인할 수 있습니다." : "개발자 모드가 해제되었습니다."); 
+                    }
                     setAdminClickCount(0);
                 } else {
-                    setAdminClickCount(newCount);
+                    adminClickTimer.current = setTimeout(() => setAdminClickCount(0), 1000);
                 }
             };
 
@@ -10640,10 +10665,15 @@ return () => unsubscribe();
                     const newMode = !isDevMode;
                     setIsDevMode(newMode);
                     localStorage.setItem('cls_dev_mode', newMode);
-                    setToastMessage(newMode ? "개발자 모드 ON: AI 전송 내용을 미리 확인할 수 있습니다." : "개발자 모드가 해제되었습니다.");
+                    if (currentUser && currentUser.uid === 'Pwhm2EmjMyWKSJvOCj4scCXOZpf2') {
+                        setIsAdminMode(newMode);
+                        setToastMessage(newMode ? "관리자 및 개발자 모드가 활성화되었습니다." : "관리자 및 개발자 모드가 해제되었습니다.");
+                    } else {
+                        setToastMessage(newMode ? "개발자 모드 ON: AI 전송 내용을 미리 확인할 수 있습니다." : "개발자 모드가 해제되었습니다.");
+                    }
                     setGearClickCount(0);
                 } else {
-                    gearClickTimer.current = setTimeout(() => setGearClickCount(0), 500);
+                    gearClickTimer.current = setTimeout(() => setGearClickCount(0), 1000);
                 }
             };
 
