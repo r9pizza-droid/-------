@@ -9812,7 +9812,7 @@ return () => unsubscribe();
         });
 
             // [New] Community Logic
-            const handleSavePost = async (title, content, authorName, category, password, imageUrls, tags, resourceLink, resourceTitle) => {
+            const handleSavePost = async (title, content, authorName, category, imageUrls, tags, resourceLink, resourceTitle) => {
                 try {
                      const user = currentUser;
                      // [New] 별칭 강제 적용 (수정 불가)
@@ -9823,7 +9823,7 @@ return () => unsubscribe();
 
                      if (editingPost) {
                         const updatedData = {
-                            title, content, authorName: finalAuthorName, category, postPassword: password, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
+                            title, content, authorName: finalAuthorName, category, imageUrls: imageUrls || [], tags: tags || [], resourceLink: resourceLink || "", resourceTitle: resourceTitle || ""
                         };
                         await sharedDb.collection('community').doc(editingPost.id).update(updatedData);
 
@@ -9870,7 +9870,6 @@ return () => unsubscribe();
                             authorBadge: currentBadge,
                             category,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            postPassword: password,
                             likes: [],
                             comments: [],
                             imageUrls: imageUrls || [],
@@ -14895,7 +14894,6 @@ useEffect(() => {
                                                                                 {isPopular && <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded font-bold border border-rose-200 shrink-0">🔥 인기</span>}
                                                                                 <span className="text-sm font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{post.title}</span>
                                                                                 {post.resourceLink && <span className="text-[10px]">💾</span>}
-                                                                                {post.postPassword && !currentUser && <span className="text-[10px] text-slate-300">🔒</span>}
                                                                             </div>
                                                                             
                                                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
@@ -14952,8 +14950,7 @@ useEffect(() => {
                                                                                 <div className={`text-[10px] px-2 py-0.5 rounded-md font-bold border shadow-sm ${badgeColor}`}>{post.category}</div>
                                                                                 {isPopular && <div className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-md font-bold shadow-sm border border-rose-600">🔥 인기</div>}
                                                                             </div>
-                                                                            {post.postPassword && !currentUser && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">🔒</div>}
-                                                                            {post.resourceLink && <div className={`absolute top-2 ${post.postPassword && !currentUser ? 'right-8' : 'right-2'} text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full`}>💾</div>}
+                                                                            {post.resourceLink && <div className="absolute top-2 right-2 text-[10px] bg-white/80 px-1.5 py-0.5 rounded-full">💾</div>}
                                                                         </div>
                                                                     )}
                                                                     <div className="p-4 flex flex-col flex-1">
@@ -14961,7 +14958,6 @@ useEffect(() => {
                                                                             <div className="flex justify-between items-start mb-3">
                                                                                 <span className={`text-[10px] px-2 py-1 rounded-lg font-bold border ${badgeColor}`}>{post.category}</span>
                                                                                 <div className="flex gap-1">
-                                                                                    {post.postPassword && !currentUser && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-full">🔒</span>}
                                                                                     {post.resourceLink && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full">💾</span>}
                                                                                 </div>
                                                                             </div>

@@ -311,7 +311,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
             return;
         }
         localStorage.setItem('community_authorName', finalAuthorName);
-        onSave(title, content, finalAuthorName, category, "", imageUrls, tags, resourceLink, resourceTitle);
+        onSave(title, content, finalAuthorName, category, imageUrls, tags, resourceLink, resourceTitle);
     };
 
     const modalFooter = (
