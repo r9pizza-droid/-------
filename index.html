@@ -8863,9 +8863,21 @@ return () => unsubscribe();
                     return;
                 }
 
-                const sharedUser = sharedApp ? sharedApp.auth().currentUser : null;
+                let sharedUser = sharedApp ? sharedApp.auth().currentUser : null;
+                // [Fix] 공용 서버 세션이 없을 경우, 저장된 아이디/비번으로 자동 재로그인 시도
+                if (!sharedUser && sharedApp) {
+                    const savedId = localStorage.getItem('cls_fb_id');
+                    const savedPw = localStorage.getItem('cls_fb_pw');
+                    if (savedId && savedPw) {
+                        try {
+                            await sharedApp.auth().signInWithEmailAndPassword(savedId, savedPw);
+                            sharedUser = sharedApp.auth().currentUser;
+                        } catch(e) { console.warn("공용 서버 자동 재로그인 실패:", e); }
+                    }
+                }
+
                 if (!sharedDb || !sharedUser) {
-                    alert("공용 서버 세션이 끊어져 있습니다. 설정 > 데이터 관리에서 로그아웃 후 다시 접속해주세요.");
+                    alert("공용 서버 세션이 끊어져 있습니다. 설정 > 데이터 관리에서 로그아웃 후 다시 접속해주세요.\n(로그인 시 '로그인 정보 저장'을 체크하시면 이 문제가 방지됩니다.)");
                     return;
                 }
                 
@@ -11892,7 +11904,15 @@ useEffect(() => {
             // [New] 게시판 탭 진입 시 닉네임 설정 확인
             useEffect(() => {
                 if (mode === 'community' && currentUser && !currentUserProfile) {
-                    setNeedProfileSetup(true);
+                    // [Fix] 서버 통신 지연으로 프로필을 못 가져왔더라도, 
+                    // 로컬 스토리지에 이미 저장된 닉네임이 있다면 가입창을 띄우지 않음
+                    const savedName = localStorage.getItem('myBoardName');
+                    if (savedName) {
+                        setCurrentUserProfile({ userNickname: savedName });
+                        setNeedProfileSetup(false);
+                    } else {
+                        setNeedProfileSetup(true);
+                    }
                 }
             }, [mode, currentUser, currentUserProfile]);
 

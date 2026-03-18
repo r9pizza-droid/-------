@@ -5,7 +5,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     const [title, setTitle] = useState("");
     const [authorName, setAuthorName] = useState(initialPost ? initialPost.authorName : (userNickname || ""));
     const [content, setContent] = useState("");
-    const [postPassword, setPostPassword] = useState("");
     const [imageUrls, setImageUrls] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -39,7 +38,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 setTitle(initialPost.title);
                 setAuthorName(initialPost.authorName);
                 setContent(initialPost.content);
-                setPostPassword(initialPost.postPassword);
                 setImageUrls(initialPost.imageUrls || (initialPost.imageUrl ? [initialPost.imageUrl] : []));
                 setTags(initialPost.tags || []);
                 setResourceLink(initialPost.resourceLink || "");
@@ -56,7 +54,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             setTitle(p.title || "");
                             setAuthorName(p.authorName || userNickname || "");
                             setContent(p.content || "");
-                            setPostPassword(p.postPassword || "");
                             setImageUrls(p.imageUrls || []);
                             setTags(p.tags || []);
                             setResourceLink(p.resourceLink || "");
@@ -74,7 +71,6 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     setTitle("");
                     setAuthorName(userNickname || "");
                     setContent("");
-                    setPostPassword("");
                     setImageUrls([]);
                     setTags([]);
                     setResourceLink("");
@@ -90,11 +86,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         if (isOpen && !initialPost) {
             if (title.trim() || content.trim() || tags.length > 0 || imageUrls.length > 0 || resourceLink.trim()) {
                 const finalAuthorName = userNickname || authorName;
-                const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+                const draft = { category, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
                 localStorage.setItem('cls_post_draft', JSON.stringify(draft));
             }
         }
-    }, [category, title, authorName, userNickname, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
+    }, [category, title, authorName, userNickname, content, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
 
     useEffect(() => {
         if (isOpen && canUseQuill) {
@@ -302,7 +298,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
 
     const handleManualSaveDraft = () => {
         const finalAuthorName = userNickname || authorName;
-        const draft = { category, title, authorName: finalAuthorName, content, postPassword, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+        const draft = { category, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
         localStorage.setItem('cls_post_draft', JSON.stringify(draft));
         if (showToast) showToast("임시 저장되었습니다.");
         else alert("임시 저장되었습니다.");
@@ -310,12 +306,12 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
 
     const handleSubmit = () => {
         const finalAuthorName = userNickname || authorName;
-        if (!title.trim() || !finalAuthorName.trim() || !content.trim() || !postPassword.trim()) {
+        if (!title.trim() || !finalAuthorName.trim() || !content.trim()) {
             alert("모든 항목을 입력해주세요.");
             return;
         }
         localStorage.setItem('community_authorName', finalAuthorName);
-        onSave(title, content, finalAuthorName, category, postPassword, imageUrls, tags, resourceLink, resourceTitle);
+        onSave(title, content, finalAuthorName, category, "", imageUrls, tags, resourceLink, resourceTitle);
     };
 
     const modalFooter = (
@@ -362,26 +358,9 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     />
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700">작성자</label>
-                        <input value={userNickname || authorName} readOnly className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none bg-slate-100 text-slate-500 font-bold cursor-not-allowed" placeholder="작성자 이름" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700">비밀번호</label>
-                        <input 
-                            type="password" 
-                            maxLength={4} 
-                            value={postPassword} 
-                            onChange={(e) => setPostPassword(e.target.value.replace(/[^0-9]/g, ''))} 
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') { e.preventDefault(); document.getElementById('post-submit-btn')?.click(); }
-                            }}
-                            className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-300 bg-slate-50 hover:bg-white focus:bg-white" 
-                            placeholder="비밀번호 4자리" 
-                            required 
-                        />
-                    </div>
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700">작성자</label>
+                    <input value={userNickname || authorName} readOnly className="w-full p-3.5 border border-slate-200 rounded-xl text-sm outline-none bg-slate-100 text-slate-500 font-bold cursor-not-allowed" placeholder="작성자 이름" />
                 </div>
                 
                 <div className="space-y-1.5">
