@@ -2,6 +2,7 @@ const { useState, useEffect, useRef } = React;
 
 const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNickname, showToast }) => {
     const [category, setCategory] = useState('생활지도팁');
+    const [grade, setGrade] = useState("");
     const [title, setTitle] = useState("");
     const [authorName, setAuthorName] = useState(initialPost ? initialPost.authorName : (userNickname || ""));
     const [content, setContent] = useState("");
@@ -35,6 +36,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
 
             if (initialPost) {
                 setCategory(initialPost.category);
+                setGrade(initialPost.grade || "");
                 setTitle(initialPost.title);
                 setAuthorName(initialPost.authorName);
                 setContent(initialPost.content);
@@ -51,6 +53,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                         try {
                             const p = JSON.parse(savedDraft);
                             setCategory(p.category || '생활지도팁');
+                            setGrade(p.grade || "");
                             setTitle(p.title || "");
                             setAuthorName(p.authorName || userNickname || "");
                             setContent(p.content || "");
@@ -68,6 +71,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 
                 if (!loaded) {
                     setCategory('생활지도팁');
+                    setGrade("");
                     setTitle("");
                     setAuthorName(userNickname || "");
                     setContent("");
@@ -86,11 +90,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         if (isOpen && !initialPost) {
             if (title.trim() || content.trim() || tags.length > 0 || imageUrls.length > 0 || resourceLink.trim()) {
                 const finalAuthorName = userNickname || authorName;
-                const draft = { category, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+                const draft = { category, grade, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
                 localStorage.setItem('cls_post_draft', JSON.stringify(draft));
             }
         }
-    }, [category, title, authorName, userNickname, content, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
+    }, [category, grade, title, authorName, userNickname, content, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
 
     useEffect(() => {
         if (isOpen && canUseQuill) {
@@ -298,7 +302,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
 
     const handleManualSaveDraft = () => {
         const finalAuthorName = userNickname || authorName;
-        const draft = { category, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+        const draft = { category, grade, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
         localStorage.setItem('cls_post_draft', JSON.stringify(draft));
         if (showToast) showToast("임시 저장되었습니다.");
         else alert("임시 저장되었습니다.");
@@ -310,8 +314,12 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
             alert("모든 항목을 입력해주세요.");
             return;
         }
+        if (category === '수업팁' && !grade) {
+            alert("학년을 선택해주세요.");
+            return;
+        }
         localStorage.setItem('community_authorName', finalAuthorName);
-        onSave(title, content, finalAuthorName, category, imageUrls, tags, resourceLink, resourceTitle);
+        onSave(title, content, finalAuthorName, category, imageUrls, tags, resourceLink, resourceTitle, grade);
     };
 
     const modalFooter = (
@@ -335,7 +343,7 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                         {['생활지도팁', '수업팁', '업무팁', '기타(잡담)'].map((cat, idx) => (
                             <button
                                 key={cat}
-                                onClick={() => setCategory(cat)}
+                                onClick={() => { setCategory(cat); if (cat !== '수업팁') setGrade(''); }}
                                 className={`py-3 rounded-xl text-sm font-bold transition-all animate-fade-in ${category === cat ? 'bg-indigo-600 text-white shadow-md transform scale-[1.02] ring-2 ring-indigo-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
                                 style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}
                             >
@@ -343,6 +351,19 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             </button>
                         ))}
                     </div>
+                    {category === '수업팁' && (
+                        <div className="flex bg-slate-100 p-1 rounded-xl mt-2 animate-fade-in w-full overflow-hidden">
+                            {['1학년', '2학년', '3학년', '4학년', '5학년', '6학년', '공통'].map(g => (
+                                <button
+                                    key={g}
+                                    onClick={() => setGrade(g)}
+                                    className={`flex-1 py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all whitespace-nowrap ${grade === g ? 'bg-white shadow-sm text-blue-600 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
+                                >
+                                    {g}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 
                 <div className="space-y-1.5">
