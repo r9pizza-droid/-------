@@ -11523,7 +11523,20 @@ return () => unsubscribe();
                 });
                 try {
                     // [Fix] 공용 서버(sharedDb)에 로그인 세션이 활성화되어 있는지 먼저 확인하여 쓰기 권한 에러 방지
-                    const sharedUser = defaultApp ? defaultApp.auth().currentUser : null;
+                    let sharedUser = defaultApp ? defaultApp.auth().currentUser : null;
+                    
+                    // [Fix] 공용 서버 세션이 유실된 경우 로컬 스토리지 정보로 자동 복구
+                    if (!sharedUser && defaultApp) {
+                        const savedId = localStorage.getItem('cls_fb_id');
+                        const savedPw = localStorage.getItem('cls_fb_pw');
+                        if (savedId && savedPw) {
+                            try {
+                                await defaultApp.auth().signInWithEmailAndPassword(savedId, savedPw);
+                                sharedUser = defaultApp.auth().currentUser;
+                            } catch(e) { console.warn("공용 서버 자동 로그인 복구 실패:", e); }
+                        }
+                    }
+
                     if (sharedUser) {
                         const userDocRef = sharedDb.collection('userProfiles').doc(user.uid);
                         const userDoc = await userDocRef.get();
