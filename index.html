@@ -4002,20 +4002,21 @@
                     }
                     
                     // 2. 브라우저에 저장된 API 키(설정값), UID, 아이디/비번을 흔적도 없이 지움!
-                    const keysToRemove = [
-                        'cls_fb_config', 'cls_admin_uid', 'cls_fb_id', 'cls_fb_pw',
-                        'firebaseConfig', 'appId', 'checklist_config', 'myFirebaseConfig',
-                        'cls_ai_key', 'cls_notion_key', 'cls_notion_db_id', 'cls_google_sheet_url'
-                    ];
-                    keysToRemove.forEach(k => localStorage.removeItem(k));
-
-                    // 저장소 전체를 핵폭탄급으로 한 번 더 날려줌 (캐시 꼬임 완벽 차단)
                     localStorage.clear(); 
                     sessionStorage.clear();
+
+                    // [Fix] IndexedDB 파이어베이스 캐시까지 완전 삭제 (계정 꼬임 완벽 방지)
+                    if (window.indexedDB && window.indexedDB.databases) {
+                        try {
+                            const dbs = await window.indexedDB.databases();
+                            dbs.forEach(db => { window.indexedDB.deleteDatabase(db.name); });
+                        } catch(e) { console.warn("IndexedDB 초기화 실패:", e); }
+                    }
+
                     alert("로그아웃 되었습니다. 저장된 로그인 정보가 안전하게 초기화되었습니다.");
                     
-                    // 3. 화면을 완전히 새로고침해서 초기 화면으로 돌려보냄
-                    window.location.reload(); 
+                    // 3. 캐시를 무시하고 아주 깨끗한 주소로 강제 새로고침
+                    window.location.href = window.location.pathname + '?clear=' + new Date().getTime();
                 } catch (error) {
                     console.error("로그아웃 에러:", error);
                     alert("로그아웃 중 에러가 발생했습니다.");
@@ -9258,7 +9259,25 @@ return () => unsubscribe();
                     .slice(0, 5); // 상위 5개
             }, [communityPosts]);
 
-            const handleWriteClick = () => {
+            const handleWriteClick = async () => {
+                // [Fix] 모달 열기 전, 공용 서버 세션이 끊어졌는지 확인하고 즉시 복구
+                let sharedUser = sharedApp ? sharedApp.auth().currentUser : null;
+                if (!sharedUser && sharedApp) {
+                    const savedId = localStorage.getItem('cls_fb_id');
+                    const savedPw = localStorage.getItem('cls_fb_pw');
+                    if (savedId && savedPw) {
+                        try {
+                            await sharedApp.auth().signInWithEmailAndPassword(savedId, savedPw);
+                            sharedUser = sharedApp.auth().currentUser;
+                        } catch(e) { console.warn("글쓰기 전 공용 서버 복구 실패:", e); }
+                    }
+                }
+
+                if (!sharedUser) {
+                    alert("게시판 서버와 연결이 끊어졌습니다. 설정 > 데이터 관리에서 로그아웃 후 다시 로그인해 주세요.");
+                    return;
+                }
+
                 if (!userNickname) {
                     setShowNicknameModal(true);
                     return;
