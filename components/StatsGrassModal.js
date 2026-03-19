@@ -115,7 +115,7 @@ const renderTextWithLinks = (text) => {
     });
 };
 
-const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, records: propRecords, dates, dailyTasks: propDailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, setRecords, setDailyTasks, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment, initialShowScoreAnalysis = false, tags }) => {
+const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, records: propRecords, dates, dailyTasks: propDailyTasks, onSaveCounseling, onSaveStickers, onSaveStickerWithNote, showToast, openConfirm, appConfig, apiKey, onSaveRecordDraft, isLocalMode, db, appId, setStudents, setRecords, setDailyTasks, saveData, isPortfolioMode, onSwitchStudent, onPhotoUpload, onSaveTaskComment, initialShowScoreAnalysis = false, tags, exams, examScores }) => {
     // [실시간 연동] 부모로부터 받은 props(propRecords, propDailyTasks, propStudent)를 직접 사용합니다.
     // 아래 useEffect 훅이 부모의 state를 직접 업데이트하므로, 이 컴포넌트 내의 별도 state는 더 이상 필요 없습니다.
     const records = propRecords || {};
@@ -1096,6 +1096,20 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                     const diff = pRate - prevStats.pRate;
                     growthText = `(지난 기간 ${prevStats.pRate}% 대비 ${diff >= 0 ? '+' : ''}${diff}%p ${diff >= 0 ? '상승📈' : '하락📉'})`;
                 }
+                
+                let examSummary = [];
+                if (exams && examScores) {
+                    const pExams = exams.filter(e => e.date >= reportStart && e.date <= reportEnd);
+                    pExams.forEach(ex => {
+                        const sData = examScores[ex.id]?.[student.id];
+                        if (sData && (sData.score !== '' || sData.wrongCount !== '')) {
+                            let line = `[${ex.date}] ${ex.subject} - ${ex.title}: ${sData.score}점`;
+                            if (sData.memo) line += ` / 메모: ${sData.memo}`;
+                            examSummary.push(line);
+                        }
+                    });
+                }
+                const safeExamSummary = anonymizeText(examSummary.length > 0 ? examSummary.join('\n') : '평가 기록 없음', student.name);
 
                 // [New] 중점 분석 분야 프롬프트
                 let focusGuide = "";
@@ -1131,6 +1145,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
 [학생 데이터]
 - 이름: ${safeName}
 - 과제 수행률: ${pRate}% ${growthText}
+- 단원평가 기록: ${safeExamSummary}
 - 선생님의 관찰 및 칭찬 기록: ${pNotes.length > 0 ? safeNotesStr : '특이 기록 없음'}
 
 [출력 양식]
@@ -2593,7 +2608,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 )}
 
                 {showStudentRecordAI && (
-                    <StudentRecordAIModal isOpen={showStudentRecordAI} onClose={() => setShowStudentRecordAI(false)} student={student} students={students} apiKey={apiKey} showToast={showToast} notes={notes} dailyTasks={dailyTasks} records={records} appConfig={appConfig} onSaveDraft={onSaveRecordDraft} />
+                    <StudentRecordAIModal isOpen={showStudentRecordAI} onClose={() => setShowStudentRecordAI(false)} student={student} students={students} apiKey={apiKey} showToast={showToast} notes={notes} dailyTasks={dailyTasks} records={records} appConfig={appConfig} onSaveDraft={onSaveRecordDraft} exams={exams} examScores={examScores} />
                 )}
 
                 {showReportEdit && (
