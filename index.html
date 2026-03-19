@@ -8683,7 +8683,7 @@ const firebaseConfig = {
         }
 
         try {
-            const user = currentUser;
+            const user = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
             const nickname = tempNickname.trim();
             const isUpdating = !!userNickname;
 
@@ -9849,7 +9849,7 @@ return () => unsubscribe();
             // [New] Community Logic
             const handleSavePost = async (title, content, authorName, category, imageUrls, tags, resourceLink, resourceTitle) => {
                 try {
-                     const user = currentUser;
+                     const user = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
                      // [New] 별칭 강제 적용 (수정 불가)
                      const finalAuthorName = userNickname || authorName;
 
@@ -9947,7 +9947,8 @@ return () => unsubscribe();
             };
 
     const handleEditPost = (post) => {
-        const isMyPost = currentUser && post.uid === currentUser.uid;
+        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
+        const isMyPost = activeUser && post.uid === activeUser.uid;
         if (isAdmin || isMyPost) {
             setEditingPost(post);
             setShowPostModal(true);
@@ -9957,7 +9958,8 @@ return () => unsubscribe();
     };      
       
     const handleDeletePost = async (post) => {
-        const isMyPost = currentUser && post.uid === currentUser.uid;
+        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
+        const isMyPost = activeUser && post.uid === activeUser.uid;
             if (!isAdmin && !isMyPost) {
                 alert("권한이 없습니다.");
                 return;
@@ -9981,7 +9983,7 @@ return () => unsubscribe();
             await batch.commit();
 
             setToastMessage("게시글과 소속 댓글이 모두 삭제되었습니다.");
-            logToSharedDb('POST_DELETE', `게시글 삭제: ${post.title}`, currentUser?.uid, userNickname || 'Unknown');
+            logToSharedDb('POST_DELETE', `게시글 삭제: ${post.title}`, activeUser?.uid, userNickname || 'Unknown');
             setCommunityPosts(prev => prev.filter(p => p.id !== post.id)); // 화면 즉시 반영
             
             // [Fix] 상세 보기 중인 글이 삭제되면 목록으로 돌아가기
@@ -9999,7 +10001,8 @@ return () => unsubscribe();
         const post = communityPosts.find(p => p.id === postId);
         if (!post) return;
 
-        const uid = currentUser?.uid || "anonymous";
+        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
+        const uid = activeUser?.uid || "anonymous";
         const currentLikes = post.likes || [];
         
         // 좋아요 상태 판단 (서버 데이터 우선, 없으면 로컬 스토리지 확인)
@@ -10152,11 +10155,12 @@ return () => unsubscribe();
                     return;
                 }
 
-        const uid = currentUser?.uid || "anonymous";
+        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
+        const uid = activeUser?.uid || "anonymous";
         
         // [New] 뱃지 시스템: 댓글 작성 시 통계 업데이트 및 뱃지 획득
         let currentBadge = '🌱';
-        const user = currentUser;
+        const user = activeUser;
         if (user) {
             const statsRef = sharedDb.collection('userStats').doc(user.uid);
             const doc = await statsRef.get();
@@ -10264,7 +10268,8 @@ return () => unsubscribe();
 
     // ❌ 댓글 삭제 함수
     const handleDeleteComment = async (postId, commentId, commentUid) => {
-        const currentUid = currentUser?.uid;
+        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
+        const currentUid = activeUser?.uid;
         if (!isAdmin && currentUid !== commentUid) {
             alert("본인이 작성한 댓글만 삭제할 수 있습니다.");
             return;
@@ -11536,10 +11541,6 @@ return () => unsubscribe();
         if (unsubSettings) unsubSettings();
         if (user) {
             if (sharedDb) {
-                unsubStats = sharedDb.collection('userStats').doc(user.uid).onSnapshot(doc => {
-                    if (doc.exists) setCurrentUserStats(doc.data());
-                    else setCurrentUserStats({ postCount: 0, commentCount: 0 });
-                });
                 try {
                     // [Fix] 공용 서버(sharedDb)에 로그인 세션이 활성화되어 있는지 먼저 확인하여 쓰기 권한 에러 방지
                     let sharedUser = defaultApp ? defaultApp.auth().currentUser : null;
@@ -11587,7 +11588,13 @@ return () => unsubscribe();
                     }
 
                     if (sharedUser) {
-                        const userDocRef = sharedDb.collection('userProfiles').doc(user.uid);
+                        // [Fix] 사용자 프로필/통계 구독 시 개인앱(user.uid) 대신 공용앱(sharedUser.uid) 사용
+                        unsubStats = sharedDb.collection('userStats').doc(sharedUser.uid).onSnapshot(doc => {
+                            if (doc.exists) setCurrentUserStats(doc.data());
+                            else setCurrentUserStats({ postCount: 0, commentCount: 0 });
+                        });
+
+                        const userDocRef = sharedDb.collection('userProfiles').doc(sharedUser.uid);
                         const userDoc = await userDocRef.get();
                         
                         if (userDoc.exists && userDoc.data().userNickname) {
@@ -11601,10 +11608,11 @@ return () => unsubscribe();
                             }
 
                             await userDocRef.set({
-                                    email: user.email || userDoc.data().email || "",
+                                uid: sharedUser.uid,
+                                email: sharedUser.email || userDoc.data().email || "",
                                 lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                             }, { merge: true });
-                            logToSharedDb('LOGIN', '사용자 접속', user.uid, userDoc.data().userNickname);
+                            logToSharedDb('LOGIN', '사용자 접속', sharedUser.uid, userDoc.data().userNickname);
                         }
                     } else {
                         console.warn("공용 게시판 서버 세션이 연결되지 않았습니다.");
