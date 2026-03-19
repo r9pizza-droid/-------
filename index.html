@@ -8093,6 +8093,7 @@ const firebaseConfig = {
             const [isEditingExam, setIsEditingExam] = useState(false);
             const [editExamData, setEditExamData] = useState({});
             const [mobileMemoTarget, setMobileMemoTarget] = useState(null);
+            const [editingCell, setEditingCell] = useState(null);
 
             const handleAddExam = () => {
                 const newId = `exam_${Date.now()}`;
@@ -8278,12 +8279,12 @@ const firebaseConfig = {
                                 <div className="flex items-center justify-between mb-2 px-1"><span className="text-xs font-bold text-slate-500">학생 명단 및 결과 입력 (Enter 키로 이동)</span><span className="text-[10px] text-slate-400">* 틀린 개수를 입력하면 점수가 자동 계산됩니다.</span></div>
                                 <div className="flex-1 overflow-y-auto custom-scroll -mx-2 px-2 pb-10">
                                     <div className="flex items-center text-xs text-slate-500 bg-slate-50 sticky top-0 z-10 shadow-sm rounded-lg px-2 py-3">
-                                        <div className="w-8 sm:w-16 text-center">번호</div>
-                                        <div className="flex-1 min-w-[60px] pl-2">이름</div>
-                                        <div className="w-12 sm:w-20 text-center shrink-0">오답</div>
-                                        <div className="w-12 sm:w-20 text-center shrink-0 mx-1">점수</div>
+                                        <div className="w-6 sm:w-12 text-center shrink-0">번호</div>
+                                        <div className="w-16 sm:flex-1 pl-1 shrink-0">이름</div>
+                                        <div className="w-16 sm:w-20 text-center shrink-0">오답</div>
+                                        <div className="w-16 sm:w-20 text-center shrink-0 mx-1">점수</div>
                                         <div className="hidden sm:block flex-1 min-w-[100px] pl-2">메모</div>
-                                        <div className="w-8 sm:hidden text-center shrink-0">메모</div>
+                                        <div className="w-10 sm:hidden text-center shrink-0">메모</div>
                                     </div>
                                     <div className="flex flex-col">
                                         {students.map((s, i) => {
@@ -8295,15 +8296,55 @@ const firebaseConfig = {
                                                 else if (scoreVal < 60) scoreColor = "text-rose-600";
                                             }
                                             return (
-                                                <div key={s.id} className="flex items-center border-b border-slate-100 py-2 px-2 hover:bg-indigo-50/30 transition-colors group">
-                                                    <div className="w-8 sm:w-16 text-slate-400 font-bold text-center text-sm">{s.order}</div>
-                                                    <div className="flex-1 min-w-[60px] pl-2 font-bold text-slate-700 text-sm truncate">{s.name}</div>
+                                                <div key={s.id} className="flex items-center border-b border-slate-100 py-2 px-1 sm:px-2 hover:bg-indigo-50/30 transition-colors group">
+                                                    <div className="w-6 sm:w-12 text-slate-400 font-bold text-center text-sm shrink-0">{s.order}</div>
+                                                    <div className="w-16 sm:flex-1 pl-1 font-bold text-slate-700 text-sm truncate shrink-0">{s.name}</div>
                                                     
-                                                    <div className="w-12 sm:w-20 flex justify-center shrink-0">
-                                                    <input id={`wrong_${i}`} type="number" step="0.5" value={scoreData.wrongCount} onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); document.getElementById(`wrong_${i+1}`)?.focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); document.getElementById(`wrong_${i-1}`)?.focus(); } }} className="w-10 sm:w-16 p-1.5 border border-slate-200 rounded outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all text-center text-rose-600 font-bold text-sm px-1" placeholder="0" />
+                                                    <div className="w-16 sm:w-20 flex justify-center shrink-0">
+                                                    <input 
+                                                        id={`wrong_${i}`} 
+                                                        type="number" 
+                                                        step="0.5" 
+                                                        value={scoreData.wrongCount} 
+                                                        onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} 
+                                                        onFocus={() => { if (editingCell !== `wrong_${i}`) setEditingCell(null); }}
+                                                        onBlur={() => setEditingCell(null)}
+                                                        onKeyDown={(e) => { 
+                                                            if (e.key === 'Enter') { 
+                                                                e.preventDefault(); 
+                                                                if (editingCell === `wrong_${i}`) { setEditingCell(null); document.getElementById(`wrong_${i+1}`)?.focus(); } 
+                                                                else { setEditingCell(`wrong_${i}`); } 
+                                                            } else if (e.key === 'ArrowDown') { 
+                                                                if (editingCell !== `wrong_${i}`) { e.preventDefault(); document.getElementById(`wrong_${i+1}`)?.focus(); } 
+                                                            } else if (e.key === 'ArrowUp') { 
+                                                                if (editingCell !== `wrong_${i}`) { e.preventDefault(); document.getElementById(`wrong_${i-1}`)?.focus(); } 
+                                                            } 
+                                                        }} 
+                                                        className={`w-14 sm:w-16 p-1.5 border border-slate-200 rounded outline-none transition-all text-center text-rose-600 font-bold text-sm px-1 ${editingCell === `wrong_${i}` ? 'ring-2 ring-rose-400 bg-rose-50' : 'focus:border-rose-400 focus:ring-2 focus:ring-rose-100'}`} placeholder="0" 
+                                                    />
                                                     </div>
-                                                    <div className="w-12 sm:w-20 flex justify-center shrink-0 mx-1">
-                                                    <input id={`score_${i}`} type="number" step="0.5" value={scoreData.score} onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); document.getElementById(`score_${i+1}`)?.focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); document.getElementById(`score_${i-1}`)?.focus(); } }} className={`w-10 sm:w-16 p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-center font-bold text-sm px-1 ${scoreColor}`} placeholder={selectedExam.maxScore} />
+                                                    <div className="w-16 sm:w-20 flex justify-center shrink-0 mx-1">
+                                                    <input 
+                                                        id={`score_${i}`} 
+                                                        type="number" 
+                                                        step="0.5" 
+                                                        value={scoreData.score} 
+                                                        onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} 
+                                                        onFocus={() => { if (editingCell !== `score_${i}`) setEditingCell(null); }}
+                                                        onBlur={() => setEditingCell(null)}
+                                                        onKeyDown={(e) => { 
+                                                            if (e.key === 'Enter') { 
+                                                                e.preventDefault(); 
+                                                                if (editingCell === `score_${i}`) { setEditingCell(null); document.getElementById(`score_${i+1}`)?.focus(); } 
+                                                                else { setEditingCell(`score_${i}`); } 
+                                                            } else if (e.key === 'ArrowDown') { 
+                                                                if (editingCell !== `score_${i}`) { e.preventDefault(); document.getElementById(`score_${i+1}`)?.focus(); } 
+                                                            } else if (e.key === 'ArrowUp') { 
+                                                                if (editingCell !== `score_${i}`) { e.preventDefault(); document.getElementById(`score_${i-1}`)?.focus(); } 
+                                                            } 
+                                                        }} 
+                                                        className={`w-14 sm:w-16 p-1.5 border border-slate-200 rounded outline-none transition-all text-center font-bold text-sm px-1 ${scoreColor} ${editingCell === `score_${i}` ? 'ring-2 ring-indigo-400 bg-indigo-50' : 'focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'}`} placeholder={selectedExam.maxScore} 
+                                                    />
                                                     </div>
                                                     
                                                     {/* 웹 버전 메모 입력 칸 */}
@@ -8318,7 +8359,7 @@ const firebaseConfig = {
                                                     </div>
                                                     
                                                     {/* 모바일 버전 메모 버튼 */}
-                                                    <div className="w-8 sm:hidden flex justify-center shrink-0 relative">
+                                                    <div className="w-10 sm:hidden flex justify-center shrink-0 relative">
                                                         <button onClick={() => setMobileMemoTarget({ id: s.id, name: s.name, memo: scoreData.memo || '' })} className={`p-1.5 rounded-lg transition-colors ${scoreData.memo ? 'text-indigo-600 bg-indigo-50 border border-indigo-200 shadow-sm' : 'text-slate-400 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm'}`} title={scoreData.memo || "메모 추가"}>
                                                             <Icon d={PATHS.edit} size={12} />
                                                         </button>
