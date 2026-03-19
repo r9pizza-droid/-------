@@ -11525,6 +11525,21 @@ return () => unsubscribe();
                     // [Fix] 공용 서버(sharedDb)에 로그인 세션이 활성화되어 있는지 먼저 확인하여 쓰기 권한 에러 방지
                     let sharedUser = defaultApp ? defaultApp.auth().currentUser : null;
                     
+                    // [Fix] 공용 서버 세션이 비동기적으로 복구 중일 수 있으므로 최대 2.5초 대기
+                    if (!sharedUser && defaultApp) {
+                        await new Promise((resolve) => {
+                            const timeout = setTimeout(() => { unsubscribe(); resolve(); }, 2500);
+                            const unsubscribe = defaultApp.auth().onAuthStateChanged((u) => {
+                                if (u) {
+                                    sharedUser = u;
+                                    clearTimeout(timeout);
+                                    unsubscribe();
+                                    resolve();
+                                }
+                            });
+                        });
+                    }
+
                     // [Fix] 공용 서버 세션이 유실된 경우 로컬 스토리지 정보로 자동 복구
                     if (!sharedUser && defaultApp) {
                         const savedId = localStorage.getItem('cls_fb_id');
