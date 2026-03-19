@@ -8304,6 +8304,7 @@ const firebaseConfig = {
                                                     <input 
                                                         id={`wrong_${i}`} 
                                                         type="number" 
+                                                        inputMode="decimal"
                                                         step="0.5" 
                                                         value={scoreData.wrongCount} 
                                                         onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} 
@@ -8327,6 +8328,7 @@ const firebaseConfig = {
                                                     <input 
                                                         id={`score_${i}`} 
                                                         type="number" 
+                                                        inputMode="decimal"
                                                         step="0.5" 
                                                         value={scoreData.score} 
                                                         onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} 
@@ -9320,6 +9322,15 @@ return () => unsubscribe();
                 }));
             };
 
+            // [New] 페이지네이션 상태 추가
+            const [currentPage, setCurrentPage] = useState(1);
+            const POSTS_PER_PAGE = 10;
+
+            // 필터/정렬 변경 시 1페이지로 초기화
+            useEffect(() => {
+                setCurrentPage(1);
+            }, [filterAuthor, filterCategory, postSearchTerm, showMyPosts, filterUid, postSortOrder]);
+
             const filteredPosts = useMemo(() => {
                 return communityPosts
                     .filter(post => !filterAuthor || post.authorName === filterAuthor)
@@ -9357,6 +9368,24 @@ return () => unsubscribe();
                 });
             }, [filteredPosts, postSortOrder]);
             
+            const totalPages = Math.ceil(sortedPosts.length / POSTS_PER_PAGE);
+            const currentPaginatedPosts = sortedPosts.slice((currentPage - 1) * POSTS_PER_PAGE, currentPage * POSTS_PER_PAGE);
+
+            const handlePageChange = async (newPage) => {
+                if (newPage > totalPages) {
+                    if (hasMorePosts) {
+                        const count = await loadMorePosts();
+                        if (count > 0) {
+                            setCurrentPage(newPage);
+                            document.getElementById('community-scroll-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }
+                } else if (newPage >= 1 && newPage <= totalPages) {
+                    setCurrentPage(newPage);
+                    document.getElementById('community-scroll-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            };
+
             // [New] 주간 인기글 (명예의 전당) 필터링
             const bestPosts = useMemo(() => {
                 if (!communityPosts || communityPosts.length === 0) return [];
@@ -9387,9 +9416,23 @@ return () => unsubscribe();
                     return;
                 }
 
-                if (!userNickname) {
-                    setShowNicknameModal(true);
-                    return;
+                let currentNickname = userNickname;
+                if (!currentNickname) {
+                    // 사용자 UID를 통해 DB에 닉네임이 있는지 한 번 더 확인 (기억 복구)
+                    try {
+                        const doc = await sharedDb.collection('userProfiles').doc(sharedUser.uid).get();
+                        if (doc.exists && (doc.data().userNickname || doc.data().name)) {
+                            currentNickname = doc.data().userNickname || doc.data().name;
+                            setUserNickname(currentNickname);
+                            localStorage.setItem('myBoardName', currentNickname);
+                        } else {
+                            setShowNicknameModal(true);
+                            return;
+                        }
+                    } catch (e) {
+                        setShowNicknameModal(true);
+                        return;
+                    }
                 }
                 
                 if (currentUserStats.isBlocked) {
@@ -9447,7 +9490,7 @@ return () => unsubscribe();
         // onSnapshot: 데이터가 바뀔 때마다 자동으로 화면을 새로고침해줍니다.
         const unsubscribe = sharedDb.collection('community')
             .orderBy('createdAt', 'desc')
-            .limit(20)
+            .limit(50)
             .onSnapshot(snapshot => {
                 const posts = snapshot.docs.map(doc => {
                     const data = doc.data();
@@ -9463,7 +9506,7 @@ return () => unsubscribe();
                 if (snapshot.docs.length > 0) {
                     setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
                 }
-                setHasMorePosts(snapshot.docs.length === 20);
+                setHasMorePosts(snapshot.docs.length === 50);
                 setIsLoadingPosts(false);
             }, error => {
                 console.error(error);
@@ -9477,13 +9520,13 @@ return () => unsubscribe();
 
     // ➕ 2. 옛날 글 더보기 함수 (기존과 비슷하지만 중복 방지 로직 추가)
     const loadMorePosts = async () => {
-        if (!sharedDb || !lastPostDoc || !hasMorePosts || isLoadingMore) return;
+        if (!sharedDb || !lastPostDoc || !hasMorePosts || isLoadingMore) return 0;
         setIsLoadingMore(true);
         try {
             const snapshot = await sharedDb.collection('community')
                 .orderBy('createdAt', 'desc')
                 .startAfter(lastPostDoc)
-                .limit(20)
+                .limit(50)
                 .get();
 
             const newPosts = snapshot.docs.map(doc => {
@@ -9505,10 +9548,12 @@ return () => unsubscribe();
             if (snapshot.docs.length > 0) {
                 setLastPostDoc(snapshot.docs[snapshot.docs.length - 1]);
             }
-            setHasMorePosts(snapshot.docs.length === 20);
+            setHasMorePosts(snapshot.docs.length === 50);
+            return snapshot.docs.length;
         } catch (e) {
             console.error(e);
             setToastMessage("더 불러오기 실패: " + e.message);
+            return 0;
         } finally {
             setIsLoadingMore(false);
         }
@@ -10254,10 +10299,31 @@ return () => unsubscribe();
             const handleAddComment = async (postId, parentId = null) => {
                 const contentToUse = parentId ? replyContent : commentContent;
                 
-                if (!userNickname) {
-                    setToastMessage("별칭을 먼저 등록해주세요.");
-                    setShowNicknameModal(true);
-                    return;
+                let currentNickname = userNickname;
+                if (!currentNickname) {
+                    const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
+                    if (activeUser && sharedDb) {
+                        try {
+                            const doc = await sharedDb.collection('userProfiles').doc(activeUser.uid).get();
+                            if (doc.exists && (doc.data().userNickname || doc.data().name)) {
+                                currentNickname = doc.data().userNickname || doc.data().name;
+                                setUserNickname(currentNickname);
+                                localStorage.setItem('myBoardName', currentNickname);
+                            } else {
+                                setToastMessage("별칭을 먼저 등록해주세요.");
+                                setShowNicknameModal(true);
+                                return;
+                            }
+                        } catch (e) {
+                            setToastMessage("별칭을 먼저 등록해주세요.");
+                            setShowNicknameModal(true);
+                            return;
+                        }
+                    } else {
+                        setToastMessage("별칭을 먼저 등록해주세요.");
+                        setShowNicknameModal(true);
+                        return;
+                    }
                 }
 
                 if (currentUserStats.isBlocked) {
@@ -10293,7 +10359,7 @@ return () => unsubscribe();
 
         const newCommentData = {
             uid: uid,
-            author: userNickname,
+            author: currentNickname,
             authorBadge: currentBadge,
             content: contentToUse,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -12119,7 +12185,26 @@ useEffect(() => {
                         setCurrentUserProfile({ userNickname: savedName });
                         setNeedProfileSetup(false);
                     } else {
-                        setNeedProfileSetup(true);
+                        // DB에서 사용자 UID를 기준으로 명단에 존재하는지 확실하게 확인 (닉네임 중복 입력 방지)
+                        const verifyProfile = async () => {
+                            if (!sharedDb) return setNeedProfileSetup(true);
+                            try {
+                                const doc = await sharedDb.collection('userProfiles').doc(currentUser.uid).get();
+                                if (doc.exists && (doc.data().userNickname || doc.data().name)) {
+                                    const fetchedName = doc.data().userNickname || doc.data().name;
+                                    setCurrentUserProfile(doc.data());
+                                    setUserNickname(fetchedName);
+                                    localStorage.setItem('myBoardName', fetchedName);
+                                    setNeedProfileSetup(false);
+                                } else {
+                                    setNeedProfileSetup(true);
+                                }
+                            } catch (e) {
+                                console.error("프로필 DB 확인 실패:", e);
+                                setNeedProfileSetup(true);
+                            }
+                        };
+                        verifyProfile();
                     }
                 }
             }, [mode, currentUser, currentUserProfile]);
@@ -14852,7 +14937,7 @@ useEffect(() => {
                                                 {/* Header: Search & Write */}
                                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                                                     <div className="flex items-center gap-2">
-                                                        <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 whitespace-nowrap">
+                                                        <h3 id="community-scroll-top" className="font-bold text-slate-800 text-lg flex items-center gap-2 whitespace-nowrap scroll-mt-20">
                                                             <span className="text-2xl">🍯</span> 꿀팁 게시판
                                                             <button onClick={() => setShowCommunityHelp(true)} className="text-slate-400 hover:text-indigo-500 p-1.5 rounded-full hover:bg-slate-50 transition-colors" title="이용 안내">
                                                                 <Icon d={PATHS.help} size={18} />
@@ -15082,7 +15167,7 @@ useEffect(() => {
 
                                                 {/* Post List */}
                                                 <div className={postViewMode === 'gallery' ? "grid grid-cols-2 sm:grid-cols-3 gap-4" : "space-y-4"}>
-                                                    {sortedPosts.map(post => {
+                                                    {currentPaginatedPosts.map(post => {
                                                         const isPopular = (post.likes ? post.likes.length : 0) >= 3;
                                                         let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
                                                         if (post.category === '생활지도팁') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
@@ -15289,7 +15374,7 @@ useEffect(() => {
                                                         </div>
                                                     ))}
 
-                                                    {!isLoadingPosts && sortedPosts.length === 0 && (
+                                                    {!isLoadingPosts && currentPaginatedPosts.length === 0 && (
                                                         <div className="flex flex-col items-center justify-center py-24 px-4 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
                                                             <div className="mb-6"><span className="text-6xl inline-block animate-bounce drop-shadow-lg">📭</span></div>
                                                             <h4 className="text-lg font-bold text-slate-700 mb-2">아직 게시글이 없습니다</h4>
@@ -15298,22 +15383,43 @@ useEffect(() => {
                                                     )}
                                                 </div>
 
-                                                {/* Load More */}
-                                                {hasMorePosts && sortedPosts.length > 0 && (
-                                                    <div className="flex justify-center pt-4">
+                                                {/* Pagination */}
+                                                {sortedPosts.length > 0 && (
+                                                    <div className="flex justify-center items-center gap-1.5 pt-6 pb-2">
                                                         <button 
-                                                            onClick={loadMorePosts} 
-                                                            disabled={isLoadingMore}
-                                                            className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 shadow-sm flex items-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                                                            onClick={() => handlePageChange(currentPage - 1)} 
+                                                            disabled={currentPage === 1}
+                                                            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
                                                         >
-                                                            {isLoadingMore ? (
-                                                                <>
-                                                                    <Icon d={PATHS.spinner} className="animate-spin" size={16} />
-                                                                    데이터를 불러오는 중...
-                                                                </>
-                                                            ) : (
-                                                                <>이전 꿀팁 더 보기 ⬇️</>
-                                                            )}
+                                                            <Icon d={PATHS.left} size={16} />
+                                                        </button>
+                                                        
+                                                        <div className="flex items-center gap-1">
+                                                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                                                .filter(p => p === 1 || p === totalPages || Math.abs(currentPage - p) <= 1)
+                                                                .map((p, i, arr) => {
+                                                                    if (i > 0 && p - arr[i - 1] > 1) {
+                                                                        return <span key={`ellipsis-${p}`} className="px-2 text-slate-400 text-xs">...</span>;
+                                                                    }
+                                                                    return (
+                                                                        <button
+                                                                            key={p}
+                                                                            onClick={() => handlePageChange(p)}
+                                                                            className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${currentPage === p ? 'bg-indigo-600 text-white shadow-md scale-105' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'}`}
+                                                                        >
+                                                                            {p}
+                                                                        </button>
+                                                                    );
+                                                                })
+                                                            }
+                                                        </div>
+
+                                                        <button 
+                                                            onClick={() => handlePageChange(currentPage + 1)} 
+                                                            disabled={currentPage === totalPages && !hasMorePosts}
+                                                            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
+                                                        >
+                                                            {isLoadingMore && currentPage === totalPages ? <Icon d={PATHS.spinner} size={16} className="animate-spin" /> : <Icon d={PATHS.right} size={16} />}
                                                         </button>
                                                     </div>
                                                 )}
