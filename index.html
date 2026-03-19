@@ -667,16 +667,16 @@
             return (
                 <div className="fixed inset-0 bg-slate-900/50 z-[2500] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in">
                     <div 
-                        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 sm:p-8 w-full max-w-sm animate-modal-enter relative flex flex-col text-center"
+                        className="bg-white/95 backdrop-blur-md rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-100/50 p-6 sm:p-8 w-full max-w-sm animate-pop-up relative flex flex-col text-center transition-all duration-300"
                     >
-                        <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-5 shadow-sm ring-4 ring-rose-50/50">
+                        <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-5 shadow-inner ring-4 ring-rose-50/50">
                             <Icon d={PATHS.warning} size={32} />
                         </div>
                         <h3 className="text-xl font-extrabold text-slate-800 mb-3">확인</h3>
-                        <p className="text-slate-600 mb-8 text-sm whitespace-pre-wrap leading-relaxed px-2">{message}</p>
+                        <p className="text-slate-500 mb-8 text-sm whitespace-pre-wrap leading-relaxed px-2">{message}</p>
                         <div className="flex justify-center gap-3 w-full">
-                            <Btn onClick={onCancel} className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm">취소</Btn>
-                                    <Btn onClick={onConfirm} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md transition-all active:scale-[0.98] text-sm">확인</Btn>
+                            <Btn onClick={onCancel} className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-[20px] font-bold hover:bg-slate-200 transition-colors text-sm">취소</Btn>
+                            <Btn onClick={onConfirm} className="flex-1 py-3.5 bg-gradient-to-br from-rose-500 to-rose-600 text-white rounded-[20px] font-bold hover:from-rose-600 hover:to-rose-700 shadow-md transition-all active:scale-95 text-sm">확인</Btn>
                         </div>
                     </div>
                 </div>
@@ -8982,6 +8982,37 @@ return () => unsubscribe();
             const [noticeShowMain, setNoticeShowMain] = useState(true);
             const [noticeShowBell, setNoticeShowBell] = useState(true);
             const USERS_PER_PAGE = 20;
+            
+            // [Fix] 게시판 익명 글쓰기 불가 규칙에 따라 익명 로그인 제거 및 정식 계정(이메일/비밀번호) 자동 복구 강화
+            const ensureActiveSession = async () => {
+                let app = typeof sharedApp !== 'undefined' ? sharedApp : null;
+                if (!app) return null;
+                
+                let user = app.auth().currentUser;
+                if (user && !user.isAnonymous) return user;
+
+                // 1. 기존 세션이 로드 중일 수 있으므로 최대 1.5초 대기
+                await new Promise(resolve => {
+                    const unsub = app.auth().onAuthStateChanged(u => {
+                        if (u && !u.isAnonymous) {
+                            user = u;
+                            resolve();
+                            unsub();
+                        }
+                    });
+                    setTimeout(() => { resolve(); unsub(); }, 1500);
+                });
+                if (user && !user.isAnonymous) return user;
+
+                // 2. 로컬 스토리지에 저장된 자격 증명으로 백그라운드 로그인 시도
+                const savedId = localStorage.getItem('cls_fb_id');
+                const savedPw = localStorage.getItem('cls_fb_pw');
+                if (savedId && savedPw) {
+                    try { await app.auth().signInWithEmailAndPassword(savedId, savedPw); return app.auth().currentUser; } catch(e) { console.warn("자동 로그인 복구 실패:", e); }
+                }
+
+                return null;
+            };
 
             const handleOpenAdminDashboard = async () => {
                 // 철통 보안 검사
@@ -9398,21 +9429,12 @@ return () => unsubscribe();
             }, [communityPosts]);
 
             const handleWriteClick = async () => {
-                // [Fix] 모달 열기 전, 공용 서버 세션이 끊어졌는지 확인하고 즉시 복구
-                let sharedUser = sharedApp ? sharedApp.auth().currentUser : null;
-                if (!sharedUser && sharedApp) {
-                    const savedId = localStorage.getItem('cls_fb_id');
-                    const savedPw = localStorage.getItem('cls_fb_pw');
-                    if (savedId && savedPw) {
-                        try {
-                            await sharedApp.auth().signInWithEmailAndPassword(savedId, savedPw);
-                            sharedUser = sharedApp.auth().currentUser;
-                        } catch(e) { console.warn("글쓰기 전 공용 서버 복구 실패:", e); }
-                    }
-                }
-
+                // [Fix] 팝업 띄우지 않고 백그라운드에서 세션 완벽 복구
+                const sharedUser = await ensureActiveSession();
+                
                 if (!sharedUser) {
-                    alert("게시판 서버와 연결이 끊어졌습니다. 설정 > 데이터 관리에서 로그아웃 후 다시 로그인해 주세요.");
+                    alert("로그인 세션이 만료되었습니다. 다시 로그인(또는 가입)해 주세요.");
+                    setIsSetupOpen(true);
                     return;
                 }
 
@@ -10106,8 +10128,13 @@ return () => unsubscribe();
                 }
             };
 
-    const handleEditPost = (post) => {
-        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
+    const handleEditPost = async (post) => {
+        const activeUser = await ensureActiveSession();
+        if (!activeUser) {
+            alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+            setIsSetupOpen(true);
+            return;
+        }
         const isMyPost = activeUser && post.uid === activeUser.uid;
         if (isAdmin || isMyPost) {
             setEditingPost(post);
@@ -10118,7 +10145,12 @@ return () => unsubscribe();
     };      
       
     const handleDeletePost = async (post) => {
-        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
+        const activeUser = await ensureActiveSession();
+        if (!activeUser) {
+            alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+            setIsSetupOpen(true);
+            return;
+        }
         const isMyPost = activeUser && post.uid === activeUser.uid;
             if (!isAdmin && !isMyPost) {
                 alert("권한이 없습니다.");
@@ -10299,9 +10331,15 @@ return () => unsubscribe();
             const handleAddComment = async (postId, parentId = null) => {
                 const contentToUse = parentId ? replyContent : commentContent;
                 
+                const activeUser = await ensureActiveSession();
+                if (!activeUser) {
+                    alert("로그인 세션이 만료되었습니다. 원활한 소통을 위해 다시 로그인해 주세요.");
+                    setIsSetupOpen(true);
+                    return;
+                }
+
                 let currentNickname = userNickname;
                 if (!currentNickname) {
-                    const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
                     if (activeUser && sharedDb) {
                         try {
                             const doc = await sharedDb.collection('userProfiles').doc(activeUser.uid).get();
@@ -10336,8 +10374,7 @@ return () => unsubscribe();
                     return;
                 }
 
-        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
-        const uid = activeUser?.uid || "anonymous";
+        const uid = activeUser.uid;
         
         // [New] 뱃지 시스템: 댓글 작성 시 통계 업데이트 및 뱃지 획득
         let currentBadge = '🌱';
@@ -10449,8 +10486,13 @@ return () => unsubscribe();
 
     // ❌ 댓글 삭제 함수
     const handleDeleteComment = async (postId, commentId, commentUid) => {
-        const activeUser = (typeof sharedApp !== 'undefined' && sharedApp.auth().currentUser) || currentUser;
-        const currentUid = activeUser?.uid;
+        const activeUser = await ensureActiveSession();
+        if (!activeUser) {
+            alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+            setIsSetupOpen(true);
+            return;
+        }
+        const currentUid = activeUser.uid;
         if (!isAdmin && currentUid !== commentUid) {
             alert("본인이 작성한 댓글만 삭제할 수 있습니다.");
             return;
@@ -12383,10 +12425,14 @@ useEffect(() => {
                 let localUpdates = {};
                 let firestoreUpdates = {};
                 let justChecked = false; // [New] 소리 재생 트리거
+                let stickerDelta = 0; // [New] 정상 제출 스티커 부여 로직
 
                 if (taskIndex !== null) { 
+                    const wasDone = !!currentRec.tasks?.[taskIndex];
                     const newTasksStatus = { ...currentRec.tasks, [taskIndex]: !currentRec.tasks?.[taskIndex] };
-                    if (newTasksStatus[taskIndex]) justChecked = true;
+                    const isNowDone = newTasksStatus[taskIndex];
+                    
+                    if (isNowDone) justChecked = true;
                     const newLateStatus = { ...(currentRec.lateTasks || {}) };
                     if (newTasksStatus[taskIndex] && isLate) {
                         newLateStatus[taskIndex] = true;
@@ -12397,7 +12443,12 @@ useEffect(() => {
                     newRec = { ...currentRec, tasks: newTasksStatus, done: allDone, lateTasks: newLateStatus };
                     localUpdates[d] = { ...records[d], [id]: newRec };
                     firestoreUpdates[d] = { [id]: newRec };
+                    
+                    // [New] 정시 제출 스티커 자동 부여 판단
+                    if (!wasDone && isNowDone && !isLate) stickerDelta = 1;
+                    if (wasDone && !isNowDone && !isLate) stickerDelta = -1;
                 } else { 
+                    const wasDone = currentRec.done;
                     const newDone = !currentRec.done; 
                     if (newDone) justChecked = true;
                     const newTasksStatus = {};
@@ -12411,6 +12462,10 @@ useEffect(() => {
                     newRec = { ...currentRec, done: newDone, tasks: newTasksStatus, lateTasks: newLateStatus };
                     localUpdates[d] = { ...records[d], [id]: newRec };
                     firestoreUpdates[d] = { [id]: newRec };
+                    
+                    // [New] 정시 제출 스티커 자동 부여 판단 (하루 전체 체크 시 1개 부여)
+                    if (!wasDone && newDone && !isLate) stickerDelta = 1;
+                    if (wasDone && !newDone && !isLate) stickerDelta = -1;
 
                     // [New] 미제출(지각) 숙제 일괄 처리
                     if (!targetDate || targetDate === date) {
@@ -12466,7 +12521,23 @@ useEffect(() => {
                 if (justChecked) {
                     if (window.playAppSound) window.playAppSound(appConfigRef.current?.soundType || 'coin');
                 }
-                if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } }); 
+                if (newRec.done) confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+                
+                // [New] 스티커 델타가 발생하면 학생 정보도 동기화
+                if (stickerDelta !== 0) {
+                    const updatedStudents = studentsRef.current.map(s => {
+                        if (s.id === id) return { ...s, stickers: Math.max(0, (s.stickers || 0) + stickerDelta) };
+                        return s;
+                    });
+                    setStudents(updatedStudents);
+                    if (!isLocalMode) {
+                        saveData('cls_students', updatedStudents);
+                        saveStudentDataToFirestore(id, { stickers: Math.max(0, (studentsRef.current.find(s=>s.id===id)?.stickers || 0) + stickerDelta) });
+                    } else {
+                        localStorage.setItem('cls_students', JSON.stringify(updatedStudents));
+                    }
+                    if (stickerDelta > 0 && setToastMessage) setToastMessage("정상 제출! 칭찬 스티커 1개가 자동 지급되었습니다. 🌟");
+                }
             };
             
             const handleTaskStatusChange = async (studentId, targetDate, taskIndex, newStatus) => {
@@ -12475,6 +12546,15 @@ useEffect(() => {
                 if (!newRecords[targetDate][studentId]) newRecords[targetDate][studentId] = {};
                 
                 let studentRec = { ...newRecords[targetDate][studentId] };
+                
+                const wasDone = studentRec.tasks?.[taskIndex];
+                const wasLate = studentRec.lateTasks?.[taskIndex];
+                const oldStatus = wasDone ? (wasLate ? 'late' : 'on-time') : 'missed';
+                
+                let stickerDelta = 0;
+                if (oldStatus !== 'on-time' && newStatus === 'on-time') stickerDelta = 1;
+                if (oldStatus === 'on-time' && newStatus !== 'on-time') stickerDelta = -1;
+
                 if (!studentRec.tasks) studentRec.tasks = {};
                 if (!studentRec.lateTasks) studentRec.lateTasks = {};
 
@@ -12499,7 +12579,22 @@ useEffect(() => {
                 if (!isLocalMode && db && appId) {
                     try { await db.collection('classes').doc(appId).collection('records').doc(targetDate).set({ [studentId]: studentRec }, { merge: true }); } catch (e) { console.error(e); }
                 } else { saveData('cls_records', newRecords); }
-                if (setToastMessage) setToastMessage("제출 상태가 변경되었습니다.");
+                
+                // [New] 상태 변경 창에서 정시 제출로 바꿨을 때 스티커 반영
+                if (stickerDelta !== 0) {
+                    const updatedStudents = studentsRef.current.map(s => {
+                        if (s.id === studentId) return { ...s, stickers: Math.max(0, (s.stickers || 0) + stickerDelta) };
+                        return s;
+                    });
+                    setStudents(updatedStudents);
+                    if (!isLocalMode) {
+                        saveData('cls_students', updatedStudents);
+                        saveStudentDataToFirestore(studentId, { stickers: Math.max(0, (studentsRef.current.find(s=>s.id===studentId)?.stickers || 0) + stickerDelta) });
+                    } else { localStorage.setItem('cls_students', JSON.stringify(updatedStudents)); }
+                    if (stickerDelta > 0 && setToastMessage) setToastMessage("정상 제출 보상! 칭찬 스티커 1개가 자동 지급되었습니다. 🌟");
+                } else {
+                    if (setToastMessage) setToastMessage("제출 상태가 변경되었습니다.");
+                }
             };
 
             const handleSaveTaskComment = (studentId, taskIndex, comment, targetDate) => {
@@ -17156,41 +17251,77 @@ useEffect(() => {
             const [isInitialized, setIsInitialized] = useState(false);
 
             useEffect(() => {
-                // 1. 공용 서버(게시판용)를 기본 [DEFAULT] 앱으로 항상 초기화합니다.
-                let defaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
-                if (!defaultApp) {
-                    defaultApp = firebase.initializeApp(ADMIN_CONFIG);
-                }
-                sharedApp = defaultApp;
-                sharedDb = defaultApp.firestore();
-                adminDb = defaultApp.firestore();
-                isFirebaseInitialized = true;
-
-                // 2. 개인 설정(기록 동기화용)이 있다면 myClassApp으로 분리하여 초기화합니다.
-                const savedConfigStr = safeLocalStorage.getItem('checklist_config') || localStorage.getItem('checklist_config') || safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
-                if (savedConfigStr) {
-                    try {
-                        const config = JSON.parse(savedConfigStr);
-                        if (config && config.projectId) {
-                            if (!firebase.apps.find(app => app.name === 'myClassApp')) {
-                                firebase.initializeApp(config, 'myClassApp');
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Personal Firebase init err:", e);
+                const initFirebaseApps = async () => {
+                    // 1. 공용 서버(게시판용)를 기본 [DEFAULT] 앱으로 항상 초기화합니다.
+                    let defaultApp = firebase.apps.find(app => app.name === '[DEFAULT]');
+                    if (!defaultApp) {
+                        defaultApp = firebase.initializeApp(ADMIN_CONFIG);
                     }
-                }
-                setIsInitialized(true);
+                    
+                    try {
+                        await defaultApp.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                    } catch(e) {
+                        console.warn("기본 앱 인증 지속성 설정 실패:", e);
+                    }
+
+                    sharedApp = defaultApp;
+                    sharedDb = defaultApp.firestore();
+                    adminDb = defaultApp.firestore();
+                    isFirebaseInitialized = true;
+
+                    // 2. 개인 설정(기록 동기화용)이 있다면 myClassApp으로 분리하여 초기화합니다.
+                    const savedConfigStr = safeLocalStorage.getItem('checklist_config') || localStorage.getItem('checklist_config') || safeLocalStorage.getItem('myFirebaseConfig') || localStorage.getItem('myFirebaseConfig');
+                    if (savedConfigStr) {
+                        try {
+                            const config = JSON.parse(savedConfigStr);
+                            if (config && config.projectId) {
+                                let userApp = firebase.apps.find(app => app.name === 'myClassApp');
+                                if (!userApp) {
+                                    userApp = firebase.initializeApp(config, 'myClassApp');
+                                }
+                                try { await userApp.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch(e) {}
+                            }
+                        } catch (e) { console.error("Personal Firebase init err:", e); }
+                    }
+                    setIsInitialized(true);
+                };
+                initFirebaseApps();
             }, []);
 
             if (!isInitialized) {
                 return (
-                    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
-                        <div className="flex flex-col items-center gap-4 animate-fade-in">
-                            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-slate-100 mb-2">
-                                <span className="text-3xl animate-bounce">📝</span>
+                    <div className="min-h-screen bg-slate-50 flex flex-col overflow-hidden animate-fade-in pointer-events-none select-none">
+                        {/* 헤더 스켈레톤 */}
+                        <div className="bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center h-[60px] z-20">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-slate-100 rounded-lg animate-pulse"></div>
+                                <div className="w-24 h-5 bg-slate-100 rounded-md animate-pulse"></div>
                             </div>
-                            <span className="text-slate-400 font-bold text-sm tracking-widest animate-pulse">앱을 준비하고 있습니다...</span>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-slate-100 rounded-full animate-pulse"></div>
+                                <div className="w-8 h-8 bg-slate-100 rounded-full animate-pulse"></div>
+                            </div>
+                        </div>
+                        {/* 본문 학생 카드 스켈레톤 */}
+                        <div className="flex-1 p-4 md:p-6">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+                                {Array.from({ length: 15 }).map((_, i) => (
+                                    <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-[120px] animate-pulse">
+                                        <div className="flex gap-3 mb-2">
+                                            <div className="w-10 h-10 bg-slate-100 rounded-full shrink-0"></div>
+                                            <div className="flex flex-col gap-2 w-full pt-1">
+                                                <div className="w-full h-3 bg-slate-100 rounded"></div>
+                                                <div className="w-2/3 h-2.5 bg-slate-100 rounded"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        {/* 로딩 인디케이터 플로팅 */}
+                        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-800/80 backdrop-blur-md text-white px-6 py-3 rounded-[24px] text-sm font-bold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.3)] animate-pop-up flex items-center gap-3 z-50">
+                            <svg className="animate-spin h-5 w-5 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>앱을 준비하고 있습니다...</span>
                         </div>
                     </div>
                 );
