@@ -8192,7 +8192,7 @@ const firebaseConfig = {
                 const exam = exams.find(e => e.id === selectedExamId);
 
                 if (field === 'score' && newValue !== '' && exam) {
-                    let numValue = parseInt(newValue);
+                    let numValue = parseFloat(newValue);
                     if (!isNaN(numValue) && numValue > exam.maxScore) {
                         newValue = String(exam.maxScore);
                     }
@@ -8201,9 +8201,9 @@ const firebaseConfig = {
                 const newStuScore = { ...stuScore, [field]: newValue };
                 
                 if (field === 'wrongCount' && newValue !== '' && exam && exam.totalQuestions && exam.maxScore) {
-                    const wrong = parseInt(newValue);
+                    const wrong = parseFloat(newValue);
                     const scorePerQ = exam.maxScore / exam.totalQuestions;
-                    newStuScore.score = Math.max(0, Math.round(exam.maxScore - (wrong * scorePerQ)));
+                    newStuScore.score = Math.max(0, Math.round((exam.maxScore - (wrong * scorePerQ)) * 10) / 10);
                 }
 
                 const newScoresObj = { ...examScores, [selectedExamId]: { ...currentScores, [studentId]: newStuScore } };
@@ -8300,10 +8300,10 @@ const firebaseConfig = {
                                                     <div className="flex-1 min-w-[60px] pl-2 font-bold text-slate-700 text-sm truncate">{s.name}</div>
                                                     
                                                     <div className="w-12 sm:w-20 flex justify-center shrink-0">
-                                                    <input id={`wrong_${i}`} type="number" value={scoreData.wrongCount} onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); document.getElementById(`wrong_${i+1}`)?.focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); document.getElementById(`wrong_${i-1}`)?.focus(); } }} className="w-10 sm:w-16 p-1.5 border border-slate-200 rounded outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all text-center text-rose-600 font-bold text-sm px-1" placeholder="0" />
+                                                    <input id={`wrong_${i}`} type="number" step="0.5" value={scoreData.wrongCount} onChange={(e) => handleScoreChange(s.id, 'wrongCount', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); document.getElementById(`wrong_${i+1}`)?.focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); document.getElementById(`wrong_${i-1}`)?.focus(); } }} className="w-10 sm:w-16 p-1.5 border border-slate-200 rounded outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all text-center text-rose-600 font-bold text-sm px-1" placeholder="0" />
                                                     </div>
                                                     <div className="w-12 sm:w-20 flex justify-center shrink-0 mx-1">
-                                                    <input id={`score_${i}`} type="number" value={scoreData.score} onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); document.getElementById(`score_${i+1}`)?.focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); document.getElementById(`score_${i-1}`)?.focus(); } }} className={`w-10 sm:w-16 p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-center font-bold text-sm px-1 ${scoreColor}`} placeholder={selectedExam.maxScore} />
+                                                    <input id={`score_${i}`} type="number" step="0.5" value={scoreData.score} onChange={(e) => handleScoreChange(s.id, 'score', e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); document.getElementById(`score_${i+1}`)?.focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); document.getElementById(`score_${i-1}`)?.focus(); } }} className={`w-10 sm:w-16 p-1.5 border border-slate-200 rounded outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-center font-bold text-sm px-1 ${scoreColor}`} placeholder={selectedExam.maxScore} />
                                                     </div>
                                                     
                                                     {/* 웹 버전 메모 입력 칸 */}
@@ -9825,7 +9825,7 @@ return () => unsubscribe();
                     let commentText = "";
                     
                     if (hasValidScore) {
-                        const wrongCount = scoreData.wrongCount !== '' ? parseInt(scoreData.wrongCount) : 0;
+                        const wrongCount = scoreData.wrongCount !== '' ? parseFloat(scoreData.wrongCount) : 0;
                         const scoreVal = scoreData.score !== '' ? parseFloat(scoreData.score) : 0;
                         
                         if ((scoreData.wrongCount !== '' && wrongCount === 0) || scoreVal == exam.maxScore) {
