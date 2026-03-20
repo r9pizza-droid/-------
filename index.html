@@ -16267,6 +16267,12 @@ useEffect(() => {
                             const currentData = scoreDetailTarget.type === 'honor' ? studentStats.honorStats : studentStats.helpStats;
                             const details = currentData.details;
                             
+                            const modalGroupedTasks = details?.taskDetails ? details.taskDetails.reduce((acc, td) => {
+                                if (!acc[td.date]) acc[td.date] = [];
+                                acc[td.date].push(td);
+                                return acc;
+                            }, {}) : {};
+                            
                             return (
                                 <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-fade-in" onClick={() => setScoreDetailTarget(null)}>
                                     <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-5 w-full max-w-sm animate-pop-up flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
