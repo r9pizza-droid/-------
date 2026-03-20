@@ -2260,34 +2260,38 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                             <div className="flex justify-between items-start mb-2">
                                                                                 <div className="flex flex-wrap gap-1.5 flex-1 items-center min-w-0">
                                                                                     {note.isTaskComment && (
-                                                                                        <span className="px-1.5 py-0.5 border border-indigo-200 bg-indigo-100 text-indigo-700 text-[8px] rounded-full font-bold shadow-sm flex items-center gap-1">
+                                                                                        <span className="px-1.5 py-0.5 border border-indigo-200 bg-indigo-100 text-indigo-700 text-[8px] rounded-full font-bold shadow-sm flex items-center gap-1 shrink-0">
                                                                                             <Icon d={PATHS.message} size={10} /> 과제: {note.taskTitle}
                                                                                         </span>
                                                                                     )}
                                                                                     {!note.isTaskComment && (
-                                                                                        <span className={`px-1.5 py-0.5 border text-[8px] rounded-full font-bold shadow-sm flex items-center gap-1 ${(note.category === '칭찬' || (!note.category && note.content && (note.content.includes('칭찬') || note.content.includes('스티커') || note.content.includes('상점')))) ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                                                        <span className={`px-1.5 py-0.5 border text-[8px] rounded-full font-bold shadow-sm flex items-center gap-1 shrink-0 ${(note.category === '칭찬' || (!note.category && note.content && (note.content.includes('칭찬') || note.content.includes('스티커') || note.content.includes('상점')))) ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
                                                                                             {(note.category === '칭찬' || (!note.category && note.content && (note.content.includes('칭찬') || note.content.includes('스티커') || note.content.includes('상점')))) ? '🌟 칭찬' : '📝 관찰'}
                                                                                         </span>
                                                                                     )}
-                                                                                    {note.destTags && note.destTags.map((tag, idx) => {
-                                                                                         let dotColor = "bg-slate-300";
-                                                                                        if (tag === '노션(기록)') dotColor = "bg-blue-400";
-                                                                                        else if (tag === '노션(포폴)') dotColor = "bg-yellow-400";
-                                                                                        else if (tag === '구글 시트') dotColor = "bg-green-400";
-                                                                                        return <div key={idx} className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} title={tag}></div>;
-                                                                                    })}
+                                                                                    {note.destTags && note.destTags.length > 0 && (
+                                                                                        <div className="flex items-center gap-1 shrink-0">
+                                                                                            {note.destTags.map((tag, idx) => {
+                                                                                                 let dotColor = "bg-slate-300";
+                                                                                                if (tag === '노션(기록)') dotColor = "bg-blue-400";
+                                                                                                else if (tag === '노션(포폴)') dotColor = "bg-yellow-400";
+                                                                                                else if (tag === '구글 시트') dotColor = "bg-green-400";
+                                                                                                return <div key={idx} className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} title={tag}></div>;
+                                                                                            })}
+                                                                                        </div>
+                                                                                    )}
                                                                                     {(() => {
                                                                                         const related = note.relatedStudents ? note.relatedStudents.filter(s => s.id !== student.id) : [];
                                                                                         if (related.length === 0) return null;
                                                                                       return (
-                                                                                        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full">
+                                                                                        <div className="flex flex-wrap items-center gap-1">
                                                                                             <span className="text-[8px] text-slate-400 shrink-0">with</span>
                                                                                             {related.map((s, idx) => (
                                                                                                 <div key={idx} className="flex items-center shrink-0">
                                                                                                     <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[8px] rounded-full font-bold cursor-pointer hover:bg-slate-200 border border-slate-200 whitespace-nowrap" onClick={(e) => { e.stopPropagation(); onSwitchStudent(s.id); }}>
                                                                                                         {s.name}
                                                                                                     </span>
-                                                                                                    {idx < related.length - 1 && <span className="text-[8px] text-slate-400 ml-0.5">,</span>}
+                                                                                                    {idx < related.length - 1 && <span className="text-[8px] text-slate-400 ml-0.5 shrink-0">,</span>}
                                                                                                 </div>
                                                                                             ))}
                                                                                         </div>
