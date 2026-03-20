@@ -247,8 +247,9 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [expandedComments, setExpandedComments] = useState({}); // [New] 점수 분석 내 메모 토글 상태
     const [editingTask, setEditingTask] = useState(null);
     const [levelUpMsg, setLevelUpMsg] = useState(null);
-    const [expandedScoreDates, setExpandedScoreDates] = useState({});
-    const [isAllScoreExpanded, setIsAllScoreExpanded] = useState(false);
+    const [selectedScoreDate, setSelectedScoreDate] = useState(null);
+    const [showScoreCal, setShowScoreCal] = useState(false);
+    const [scoreCalMonth, setScoreCalMonth] = useState(dayjs());
 
     const groupedTaskDetails = useMemo(() => {
         if (!reportStats.taskDetails) return {};
@@ -258,6 +259,23 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             return acc;
         }, {});
     }, [reportStats.taskDetails]);
+
+    useEffect(() => {
+        const dates = Object.keys(groupedTaskDetails).sort((a, b) => b.localeCompare(a));
+        if (dates.length > 0) {
+            if (!selectedScoreDate || !groupedTaskDetails[selectedScoreDate]) {
+                setSelectedScoreDate(dates[0]);
+            }
+        } else {
+            setSelectedScoreDate(null);
+        }
+    }, [groupedTaskDetails]);
+
+    useEffect(() => {
+        if (selectedScoreDate) {
+            setScoreCalMonth(dayjs(selectedScoreDate));
+        }
+    }, [selectedScoreDate]);
 
     const handleTaskDelete = async (date, idx) => {
         if (!confirm("이 과제를 완전히 삭제하시겠습니까?\n(모든 학생의 해당 과제 기록도 함께 삭제되며, 점수도 재계산됩니다)")) return;
@@ -1444,6 +1462,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
         <div className="fixed inset-0 bg-slate-900/40 z-[1600] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={(e) => {
              if (showStickerHistory) setShowStickerHistory(false);
              else if (showTaskCommentHistory) setShowTaskCommentHistory(false);
+             else if (showScoreCal) setShowScoreCal(false);
              else onClose();
         }}>
             {levelUpMsg && (
@@ -1469,6 +1488,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                 e.stopPropagation();
                 if (showStickerHistory) setShowStickerHistory(false);
                 if (showTaskCommentHistory) setShowTaskCommentHistory(false);
+                if (showScoreCal) setShowScoreCal(false);
             }}>
                 <style>{`
                     @keyframes wiggle-big {
@@ -1741,46 +1761,64 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         </div>
                                         
                                         {/* Task Details List */}
-                                        <div className="border-t border-slate-100 pt-3 max-h-60 overflow-y-auto custom-scroll" onClick={(e) => e.stopPropagation()}>
+                                        <div className="border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-between mb-3">
                                                 <h5 className="font-bold text-slate-700 text-left flex items-center gap-1">
                                                     <Icon d={PATHS.list} size={12} /> 상세 내역 및 점수 수정
                                                 </h5>
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[9px] text-slate-400 font-medium hidden sm:inline">* 클릭하여 상태 변경</span>
-                                                    <button 
-                                                        onClick={(e) => { 
-                                                            e.stopPropagation(); 
-                                                            const dates = Object.keys(groupedTaskDetails);
-                                                            const willExpand = !isAllScoreExpanded;
-                                                            const newExpanded = {};
-                                                            dates.forEach(d => newExpanded[d] = willExpand);
-                                                            setExpandedScoreDates(newExpanded);
-                                                            setIsAllScoreExpanded(willExpand);
-                                                        }}
-                                                        className="text-[10px] bg-slate-100 text-slate-600 hover:bg-slate-200 px-2 py-1 rounded-md font-bold transition-colors"
-                                                    >
-                                                        {isAllScoreExpanded ? '전체 접기' : '전체 상세내역'}
-                                                    </button>
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setShowScoreCal(!showScoreCal); }}
+                                                            className="text-[10px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md px-2 py-1 outline-none cursor-pointer transition-colors flex items-center gap-1"
+                                                        >
+                                                            <Icon d={PATHS.calendar} size={10} />
+                                                            {selectedScoreDate ? dayjs(selectedScoreDate).format('MM.DD (ddd)') : '날짜 선택'}
+                                                        </button>
+                                                        {showScoreCal && (
+                                                            <div className="absolute right-0 top-full mt-1 bg-white border border-slate-100 shadow-2xl shadow-indigo-100/50 rounded-2xl p-3 z-[100] w-60 animate-fade-in cursor-default" onClick={e => e.stopPropagation()}>
+                                                                <div className="flex justify-between items-center mb-3 px-1">
+                                                                    <button onClick={() => setScoreCalMonth(scoreCalMonth.subtract(1, 'month'))} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><Icon d={PATHS.left} size={14} /></button>
+                                                                    <span className="font-extrabold text-xs text-slate-800">{scoreCalMonth.format('YYYY년 M월')}</span>
+                                                                    <button onClick={() => setScoreCalMonth(scoreCalMonth.add(1, 'month'))} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><Icon d={PATHS.right} size={14} /></button>
+                                                                </div>
+                                                                <div className="grid grid-cols-7 mb-1 text-center">
+                                                                    {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+                                                                        <div key={d} className={`text-[9px] font-bold pb-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>{d}</div>
+                                                                    ))}
+                                                                </div>
+                                                                <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                                                                    {Array.from({ length: scoreCalMonth.startOf('month').day() }).map((_, i) => <div key={`empty-${i}`} />)}
+                                                                    {Array.from({ length: scoreCalMonth.daysInMonth() }).map((_, i) => {
+                                                                        const dateStr = scoreCalMonth.date(i + 1).format('YYYY-MM-DD');
+                                                                        const hasTask = !!groupedTaskDetails[dateStr];
+                                                                        const isSelected = selectedScoreDate === dateStr;
+                                                                        const isToday = dateStr === dayjs().format('YYYY-MM-DD');
+                                                                        
+                                                                        let cellClass = "aspect-square flex flex-col items-center justify-center rounded-full text-[10px] font-medium transition-all duration-200 relative group cursor-pointer ";
+                                                                        if (isSelected) cellClass += " bg-indigo-600 text-white shadow-sm font-bold scale-105 z-10";
+                                                                        else if (isToday) cellClass += " text-indigo-600 font-bold bg-indigo-50 hover:bg-indigo-100";
+                                                                        else cellClass += " text-slate-600 hover:bg-slate-100";
+
+                                                                        return (
+                                                                            <button key={i} onClick={() => { setSelectedScoreDate(dateStr); setShowScoreCal(false); }} className={cellClass}>
+                                                                                <span>{i + 1}</span>
+                                                                                {hasTask && !isSelected && <div className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${isToday ? 'bg-indigo-400' : 'bg-blue-400'}`}></div>}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                {Object.keys(groupedTaskDetails).length > 0 ? Object.keys(groupedTaskDetails).sort((a, b) => b.localeCompare(a)).map((dStr, dIdx) => {
-                                                    const tasksForDate = groupedTaskDetails[dStr];
-                                                    const isExpanded = expandedScoreDates[dStr];
-                                                    return (
-                                                        <div key={dStr} className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-sm animate-fade-in" style={{ animationDelay: `${dIdx * 0.05}s`, animationFillMode: 'both' }}>
-                                                            <div 
-                                                                className="bg-slate-50 px-3 py-2 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors"
-                                                                onClick={(e) => { e.stopPropagation(); setExpandedScoreDates(prev => ({...prev, [dStr]: !prev[dStr]})); setIsAllScoreExpanded(false); }}
-                                                            >
-                                                                <span className="text-xs font-bold text-slate-700">{dayjs(dStr).format('MM.DD (ddd)')} <span className="text-slate-400 font-normal ml-1">({tasksForDate.length}건)</span></span>
-                                                                <Icon d={PATHS.down} size={14} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                                            </div>
-                                                            {isExpanded && (
-                                                                <div className="p-2 space-y-1.5 bg-white border-t border-slate-100">
-                                                                    {tasksForDate.map((td, idx) => (
-                                                                        <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors group/td">
+                                            <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll">
+                                                {selectedScoreDate && groupedTaskDetails[selectedScoreDate] ? (
+                                                    <div className="p-2 space-y-1.5 bg-white border border-slate-100 rounded-xl shadow-sm animate-fade-in">
+                                                        {groupedTaskDetails[selectedScoreDate].map((td, idx) => (
+                                                            <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors group/td">
                                                                             <div className="flex flex-col text-left max-w-[55%]">
                                                                                 {editingTask && editingTask.date === td.date && editingTask.idx === td.idx ? (
                                                                 <div className="flex items-center gap-1 mt-0.5 animate-fade-in">
@@ -1847,16 +1885,13 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                             </div>
                                                         </div>
                                                     </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                }) : (
+                                                        ))}
+                                                    </div>
+                                                ) : (
                                                     <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 mt-2">
                                                         <div className="mb-4"><span className="text-4xl inline-block animate-bounce drop-shadow-md">📋</span></div>
                                                         <h4 className="text-xs font-bold text-slate-700 mb-1">과제 제출 기록이 아직 없습니다</h4>
-                                                        <p className="text-[10px] text-slate-500 mt-1">오늘의 과제를 등록하고 제출 상태를 체크해 보세요.</p>
+                                                        <p className="text-[10px] text-slate-500 mt-1">{selectedScoreDate ? `${dayjs(selectedScoreDate).format('MM월 DD일')}에는 등록된 과제가 없습니다.` : '오늘의 과제를 등록하고 제출 상태를 체크해 보세요.'}</p>
                                                     </div>
                                                 )}
                                             </div>
