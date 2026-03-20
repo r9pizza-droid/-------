@@ -893,6 +893,182 @@
             );
         };
 
+        const CounselingAIModal = ({ isOpen, onClose, student, students, apiKey, showToast, onSave, notes }) => {
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [advice, setAdvice] = useState("");
+            const [concern, setConcern] = useState("");
+            const [expertMode, setExpertMode] = useState("behavior"); 
+            const [tone, setTone] = useState("warm"); 
+            const contentRef = useRef(null);
+
+            const expertModes = {
+                behavior: "행동 교정 (ABA 응용행동분석 기반)",
+                relationship: "교우 관계 (PDC 긍정훈육 기반)",
+                learning: "학습 무기력 (동기부여 및 자기효능감 기반)",
+                emotion: "감정 조절 (감정코칭 기반)"
+            };
+
+            const tones = {
+                warm: "따뜻하고 공감하는 어조",
+                firm: "단호하고 명확한 어조",
+                analytical: "객관적이고 분석적인 어조"
+            };
+
+            const handleGenerate = async () => {
+                if (!concern.trim()) return showToast("고민이나 문제 행동을 입력해주세요.");
+                setIsGenerating(true);
+                try {
+                    const safeName = "[STUDENT_TOKEN]";
+                    const safeConcern = anonymizeText(concern, student.name);
+                    
+                    let safeNotesStr = notes && notes.length > 0 
+                        ? notes.slice(0, 10).map(n => `- [${n.date}] ${n.content}`).join('\n') 
+                        : '기록 없음';
+                    safeNotesStr = anonymizeText(safeNotesStr, student.name);
+                    if (students) {
+                        students.forEach(s => {
+                            if (s.id !== student.id) {
+                                safeNotesStr = safeNotesStr.replaceAll(s.name, "급우");
+                                if (s.name.length >= 3) safeNotesStr = safeNotesStr.replaceAll(s.name.substring(1), "급우");
+                            }
+                        });
+                    }
+
+                    const prompt = `
+[보안 규칙: 당신은 철저한 익명성을 유지해야 합니다. 응답 내용에 사람의 이름이나 실명을 유추할 수 있는 단어를 절대 포함하지 마세요. 대명사가 필요할 때는 반드시 '해당 학생'이라고만 지칭하세요.]
+
+당신은 10년 이상의 경력을 가진 초등학교 전문 상담 교사이자, '${expertModes[expertMode]}' 분야의 최고 전문가입니다. 
+동료 교사가 학생 지도로 인한 고민을 털어놓았습니다.
+
+[학생 정보 및 관찰 기록]
+- 학생: ${safeName}
+- 고민 내용: ${safeConcern}
+- 최근 관찰 기록:
+${safeNotesStr}
+
+[요청 사항]
+다음 구조에 맞춰 동료 교사를 위한 심층 상담 솔루션을 제공해주세요.
+어조는 '${tones[tone]}'로 작성해주세요.
+
+1. 선생님을 위한 공감과 위로 (선생님의 노고를 알아주는 따뜻한 한마디)
+2. 문제 행동의 원인 분석 (${expertModes[expertMode]} 관점에서 심층 분석)
+3. 교실에서 당장 적용할 수 있는 구체적인 지도 방법 (Step-by-step)
+4. 부모님 상담 가이드 (학부모와 상담할 때 사용할 수 있는 구체적인 대화 스크립트 포함)
+`;
+                    const text = await window.callGemini(apiKey, prompt, 0.7);
+                    const finalContent = deanonymizeText(text, student.name);
+                    setAdvice(finalContent);
+                } catch (e) {
+                    console.error(e);
+                    showToast("상담 생성 실패: " + e.message);
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            const handleSavePdf = async () => {
+                if (!contentRef.current) return;
+                if (!window.jspdf) return showToast("PDF 라이브러리 로딩 중입니다.");
+                
+                try {
+                    const canvas = await window.html2canvas(contentRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                    const imgData = canvas.toDataURL('image/png');
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    const imgProps = pdf.getImageProperties(imgData);
+                    const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                    
+                    let heightLeft = imgHeight;
+                    let position = 0;
+
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                    heightLeft -= pageHeight;
+
+                    while (heightLeft >= 0) {
+                        position -= pageHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                        heightLeft -= pageHeight;
+                    }
+                    
+                    pdf.save(`${student.name}_AI상담소_${dayjs().format('YYYYMMDD')}.pdf`);
+                    showToast("PDF로 저장되었습니다.");
+                } catch (e) { 
+                    console.error(e);
+                    showToast("PDF 저장 실패: " + e.message); 
+                }
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <BaseModal isOpen={isOpen} onClose={onClose} title="💡 AI 은샘상담소" icon={PATHS.heart}>
+                    <div className="space-y-4">
+                        <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 text-sm text-rose-800">
+                            <p className="font-bold mb-1">선생님의 고민을 해결해 드립니다.</p>
+                            <p className="text-xs opacity-80">학생의 문제 행동이나 지도 상의 고민을 적어주시면, 전문가 수준의 맞춤형 솔루션을 제공합니다.</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500">전문가 모드 (영역)</label>
+                                <select value={expertMode} onChange={(e) => setExpertMode(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-rose-500">
+                                    <option value="behavior">행동 교정 (응용행동분석)</option>
+                                    <option value="relationship">교우 관계 (긍정훈육)</option>
+                                    <option value="learning">학습 무기력 (동기부여)</option>
+                                    <option value="emotion">감정 조절 (감정코칭)</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500">상담 어조</label>
+                                <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-rose-500">
+                                    <option value="warm">따뜻하고 공감하는 어조</option>
+                                    <option value="firm">단호하고 명확한 어조</option>
+                                    <option value="analytical">객관적이고 분석적인 어조</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">어떤 점이 가장 고민이신가요?</label>
+                            <textarea 
+                                value={concern} 
+                                onChange={(e) => setConcern(e.target.value)} 
+                                placeholder="예: 수업 시간에 돌아다니거나 친구들에게 장난을 심하게 칩니다."
+                                className="w-full h-24 p-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-rose-500 resize-none custom-scroll"
+                            />
+                        </div>
+
+                        <Btn onClick={handleGenerate} disabled={isGenerating} className="w-full py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 shadow-md flex items-center justify-center gap-2 active:scale-[0.98]">
+                            {isGenerating ? <><Icon d={PATHS.spinner} className="animate-spin" size={16} /> 분석 중...</> : <><Icon d={PATHS.magic} size={16} /> 맞춤형 솔루션 받기</>}
+                        </Btn>
+
+                        {advice && !isGenerating && (
+                            <div ref={contentRef} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm animate-fade-in mt-4">
+                                <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                    {advice}
+                                </div>
+                                <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-4" data-html2canvas-ignore="true">
+                                    <Btn onClick={() => { onSave(advice); showToast("상담 내용이 활동 기록에 저장되었습니다."); onClose(); }} className="px-3 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-xs font-bold hover:bg-indigo-100 flex items-center gap-1">
+                                        <Icon d={PATHS.check} size={14} /> 기록에 저장
+                                    </Btn>
+                                    <Btn onClick={handleSavePdf} className="px-3 py-2 bg-white border border-slate-300 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 flex items-center gap-1">
+                                        <Icon d={PATHS.download} size={14} /> PDF
+                                    </Btn>
+                                    <Btn onClick={() => { navigator.clipboard.writeText(advice); showToast("내용이 복사되었습니다."); }} className="px-3 py-2 bg-white border border-slate-300 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 flex items-center gap-1">
+                                        <Icon d={PATHS.copy} size={14} /> 복사
+                                    </Btn>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </BaseModal>
+            );
+        };
+        window.CounselingAIModal = CounselingAIModal;
+
         const StudentRecordAIModal = ({ isOpen, onClose, student, students, apiKey, showToast, notes, dailyTasks, records, appConfig, onSaveDraft, exams, examScores }) => {
             const [draft, setDraft] = useState("");
             const [isGenerating, setIsGenerating] = useState(false);
