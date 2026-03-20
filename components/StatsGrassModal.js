@@ -247,7 +247,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [expandedComments, setExpandedComments] = useState({}); // [New] 점수 분석 내 메모 토글 상태
     const [editingTask, setEditingTask] = useState(null);
     const [levelUpMsg, setLevelUpMsg] = useState(null);
-    const [selectedScoreDate, setSelectedScoreDate] = useState(null);
+    const [selectedScoreDate, setSelectedScoreDate] = useState(() => dayjs().format('YYYY-MM-DD'));
     const [showScoreCal, setShowScoreCal] = useState(false);
     const [scoreCalMonth, setScoreCalMonth] = useState(dayjs());
 
@@ -259,17 +259,6 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
             return acc;
         }, {});
     }, [reportStats.taskDetails]);
-
-    useEffect(() => {
-        const dates = Object.keys(groupedTaskDetails).sort((a, b) => b.localeCompare(a));
-        if (dates.length > 0) {
-            if (!selectedScoreDate || !groupedTaskDetails[selectedScoreDate]) {
-                setSelectedScoreDate(dates[0]);
-            }
-        } else {
-            setSelectedScoreDate(null);
-        }
-    }, [groupedTaskDetails]);
 
     useEffect(() => {
         if (selectedScoreDate) {
