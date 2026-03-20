@@ -1756,23 +1756,38 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                     <Icon d={PATHS.list} size={12} /> 상세 내역 및 점수 수정
                                                 </h5>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-[9px] text-slate-400 font-medium hidden sm:inline">* 클릭하여 상태 변경</span>
-                                                    <div className="relative">
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setShowScoreCal(!showScoreCal); }}
-                                                            className="text-[10px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md px-2 py-1 outline-none cursor-pointer transition-colors flex items-center gap-1"
+                                                    <span className="text-[9px] text-slate-400 font-medium hidden sm:inline mr-2">* 상태 클릭 시 변경</span>
+                                                    <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5 relative">
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedScoreDate(dayjs(selectedScoreDate).subtract(1, 'day').format('YYYY-MM-DD')); }} 
+                                                            className="p-1.5 hover:bg-slate-200 rounded text-slate-500 transition-colors"
                                                         >
-                                                            <Icon d={PATHS.calendar} size={10} />
-                                                            {selectedScoreDate ? dayjs(selectedScoreDate).format('MM.DD (ddd)') : '날짜 선택'}
+                                                            <Icon d={PATHS.left} size={12} />
                                                         </button>
+                                                        
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setShowScoreCal(!showScoreCal); }}
+                                                            className="text-xs font-bold text-slate-700 px-2 py-1 hover:text-indigo-600 transition-colors flex items-center gap-1.5 min-w-[90px] justify-center"
+                                                        >
+                                                            {dayjs(selectedScoreDate).format('MM.DD (ddd)')}
+                                                            <Icon d={PATHS.calendar} size={12} className="text-slate-400" />
+                                                        </button>
+
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedScoreDate(dayjs(selectedScoreDate).add(1, 'day').format('YYYY-MM-DD')); }} 
+                                                            className="p-1.5 hover:bg-slate-200 rounded text-slate-500 transition-colors"
+                                                        >
+                                                            <Icon d={PATHS.right} size={12} />
+                                                        </button>
+
                                                         {showScoreCal && (
-                                                            <div className="absolute right-0 top-full mt-1 bg-white border border-slate-100 shadow-2xl shadow-indigo-100/50 rounded-2xl p-3 z-[100] w-60 animate-fade-in cursor-default" onClick={e => e.stopPropagation()}>
-                                                                <div className="flex justify-between items-center mb-3 px-1">
-                                                                    <button onClick={() => setScoreCalMonth(scoreCalMonth.subtract(1, 'month'))} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><Icon d={PATHS.left} size={14} /></button>
-                                                                    <span className="font-extrabold text-xs text-slate-800">{scoreCalMonth.format('YYYY년 M월')}</span>
-                                                                    <button onClick={() => setScoreCalMonth(scoreCalMonth.add(1, 'month'))} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><Icon d={PATHS.right} size={14} /></button>
+                                                            <div className="absolute right-0 top-full mt-2 bg-white border border-slate-100 shadow-2xl shadow-indigo-100/50 rounded-3xl p-4 z-[100] w-72 animate-fade-in cursor-default" onClick={e => e.stopPropagation()}>
+                                                                <div className="flex justify-between items-center mb-4 px-1">
+                                                                    <button onClick={() => setScoreCalMonth(scoreCalMonth.subtract(1, 'month'))} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><Icon d={PATHS.left} size={16} /></button>
+                                                                    <span className="font-extrabold text-sm text-slate-800">{scoreCalMonth.format('YYYY년 M월')}</span>
+                                                                    <button onClick={() => setScoreCalMonth(scoreCalMonth.add(1, 'month'))} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><Icon d={PATHS.right} size={16} /></button>
                                                                 </div>
-                                                                <div className="grid grid-cols-7 mb-1 text-center">
+                                                                <div className="grid grid-cols-7 mb-2 text-center">
                                                                     {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
                                                                         <div key={d} className={`text-[9px] font-bold pb-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>{d}</div>
                                                                     ))}
@@ -1785,15 +1800,18 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                                         const isSelected = selectedScoreDate === dateStr;
                                                                         const isToday = dateStr === dayjs().format('YYYY-MM-DD');
                                                                         
-                                                                        let cellClass = "aspect-square flex flex-col items-center justify-center rounded-full text-[10px] font-medium transition-all duration-200 relative group cursor-pointer ";
-                                                                        if (isSelected) cellClass += " bg-indigo-600 text-white shadow-sm font-bold scale-105 z-10";
+                                                                        let cellClass = "aspect-square flex flex-col items-center justify-center rounded-full text-xs font-medium cursor-pointer transition-all duration-200 relative group";
+                                                                        if (isSelected) cellClass += " bg-indigo-600 text-white shadow-md shadow-indigo-200 font-bold transform scale-105 z-10";
                                                                         else if (isToday) cellClass += " text-indigo-600 font-bold bg-indigo-50 hover:bg-indigo-100";
                                                                         else cellClass += " text-slate-600 hover:bg-slate-100";
 
                                                                         return (
                                                                             <button key={i} onClick={() => { setSelectedScoreDate(dateStr); setShowScoreCal(false); }} className={cellClass}>
                                                                                 <span>{i + 1}</span>
-                                                                                {hasTask && !isSelected && <div className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${isToday ? 'bg-indigo-400' : 'bg-blue-400'}`}></div>}
+                                                                                {hasTask && !isSelected && <div className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${isToday ? 'bg-indigo-400' : 'bg-blue-400'}`}></div>}
+                                                                                {isSelected && (
+                                                                                    <div className="absolute -top-0.5 -right-0.5 bg-white text-indigo-600 rounded-full p-[1px] shadow-sm animate-bounce-in z-20"><Icon d={PATHS.check} size={8} strokeWidth={4} /></div>
+                                                                                )}
                                                                             </button>
                                                                         );
                                                                     })}
