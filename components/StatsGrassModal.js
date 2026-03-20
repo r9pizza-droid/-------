@@ -247,6 +247,17 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
     const [expandedComments, setExpandedComments] = useState({}); // [New] 점수 분석 내 메모 토글 상태
     const [editingTask, setEditingTask] = useState(null);
     const [levelUpMsg, setLevelUpMsg] = useState(null);
+    const [expandedScoreDates, setExpandedScoreDates] = useState({});
+    const [isAllScoreExpanded, setIsAllScoreExpanded] = useState(false);
+
+    const groupedTaskDetails = useMemo(() => {
+        if (!reportStats.taskDetails) return {};
+        return reportStats.taskDetails.reduce((acc, td) => {
+            if (!acc[td.date]) acc[td.date] = [];
+            acc[td.date].push(td);
+            return acc;
+        }, {});
+    }, [reportStats.taskDetails]);
 
     const handleTaskDelete = async (date, idx) => {
         if (!confirm("이 과제를 완전히 삭제하시겠습니까?\n(모든 학생의 해당 과제 기록도 함께 삭제되며, 점수도 재계산됩니다)")) return;
@@ -1731,19 +1742,47 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                         
                                         {/* Task Details List */}
                                         <div className="border-t border-slate-100 pt-3 max-h-60 overflow-y-auto custom-scroll" onClick={(e) => e.stopPropagation()}>
-                                            <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center justify-between mb-3">
                                                 <h5 className="font-bold text-slate-700 text-left flex items-center gap-1">
                                                     <Icon d={PATHS.list} size={12} /> 상세 내역 및 점수 수정
                                                 </h5>
-                                                <span className="text-[9px] text-slate-400 font-medium">* 클릭하여 상태 변경</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] text-slate-400 font-medium hidden sm:inline">* 클릭하여 상태 변경</span>
+                                                    <button 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            const dates = Object.keys(groupedTaskDetails);
+                                                            const willExpand = !isAllScoreExpanded;
+                                                            const newExpanded = {};
+                                                            dates.forEach(d => newExpanded[d] = willExpand);
+                                                            setExpandedScoreDates(newExpanded);
+                                                            setIsAllScoreExpanded(willExpand);
+                                                        }}
+                                                        className="text-[10px] bg-slate-100 text-slate-600 hover:bg-slate-200 px-2 py-1 rounded-md font-bold transition-colors"
+                                                    >
+                                                        {isAllScoreExpanded ? '전체 접기' : '전체 상세내역'}
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div className="space-y-2">
-                                                {reportStats.taskDetails?.length > 0 ? reportStats.taskDetails.map((td, idx) => (
-                                                    <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors animate-fade-in group/td" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'both' }}>
-                                                        <div className="flex flex-col text-left max-w-[55%]">
-                                                            <span className="text-[10px] font-bold text-slate-400">{dayjs(td.date).format('MM/DD')}</span>
-
-                                                            {editingTask && editingTask.date === td.date && editingTask.idx === td.idx ? (
+                                                {Object.keys(groupedTaskDetails).length > 0 ? Object.keys(groupedTaskDetails).sort((a, b) => b.localeCompare(a)).map((dStr, dIdx) => {
+                                                    const tasksForDate = groupedTaskDetails[dStr];
+                                                    const isExpanded = expandedScoreDates[dStr];
+                                                    return (
+                                                        <div key={dStr} className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-sm animate-fade-in" style={{ animationDelay: `${dIdx * 0.05}s`, animationFillMode: 'both' }}>
+                                                            <div 
+                                                                className="bg-slate-50 px-3 py-2 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors"
+                                                                onClick={(e) => { e.stopPropagation(); setExpandedScoreDates(prev => ({...prev, [dStr]: !prev[dStr]})); setIsAllScoreExpanded(false); }}
+                                                            >
+                                                                <span className="text-xs font-bold text-slate-700">{dayjs(dStr).format('MM.DD (ddd)')} <span className="text-slate-400 font-normal ml-1">({tasksForDate.length}건)</span></span>
+                                                                <Icon d={PATHS.down} size={14} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                                            </div>
+                                                            {isExpanded && (
+                                                                <div className="p-2 space-y-1.5 bg-white border-t border-slate-100">
+                                                                    {tasksForDate.map((td, idx) => (
+                                                                        <div key={`${td.date}-${td.idx}`} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-colors group/td">
+                                                                            <div className="flex flex-col text-left max-w-[55%]">
+                                                                                {editingTask && editingTask.date === td.date && editingTask.idx === td.idx ? (
                                                                 <div className="flex items-center gap-1 mt-0.5 animate-fade-in">
                                                                     <select value={editingTask.tag} onChange={(e) => setEditingTask({...editingTask, tag: e.target.value})} className="p-1 bg-white border border-slate-200 rounded text-[10px] outline-none text-slate-600 w-16">
                                                                         {(tags || []).map(t => <option key={t} value={t}>{t}</option>)}
@@ -1808,7 +1847,12 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                             </div>
                                                         </div>
                                                     </div>
-                                                )) : (
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                }) : (
                                                     <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 mt-2">
                                                         <div className="mb-4"><span className="text-4xl inline-block animate-bounce drop-shadow-md">📋</span></div>
                                                         <h4 className="text-xs font-bold text-slate-700 mb-1">과제 제출 기록이 아직 없습니다</h4>
