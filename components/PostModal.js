@@ -14,6 +14,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     const [resourceLink, setResourceLink] = useState("");
     const [resourceTitle, setResourceTitle] = useState("");
     const [canUseQuill, setCanUseQuill] = useState(false);
+    
+    const [hasPoll, setHasPoll] = useState(false);
+    const [pollTitle, setPollTitle] = useState("");
+    const [pollOptions, setPollOptions] = useState(["", ""]);
+
     const quillRef = useRef(null);
     const draftContentRef = useRef("");
 
@@ -44,6 +49,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                 setTags(initialPost.tags || []);
                 setResourceLink(initialPost.resourceLink || "");
                 setResourceTitle(initialPost.resourceTitle || "");
+
+                setHasPoll(!!initialPost.poll);
+                const loadedOptions = initialPost.poll?.options?.map(o => typeof o === 'string' ? o : o.text) || ["", ""];
+                setPollTitle(initialPost.poll?.title || "");
+                setPollOptions(loadedOptions.length >= 2 ? loadedOptions : ["", ""]);
             } else {
                 // [New] 임시 저장 불러오기 로직
                 const savedDraft = localStorage.getItem('cls_post_draft');
@@ -61,6 +71,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             setTags(p.tags || []);
                             setResourceLink(p.resourceLink || "");
                             setResourceTitle(p.resourceTitle || "");
+                            
+                            setHasPoll(p.hasPoll || false);
+                            setPollTitle(p.pollTitle || "");
+                            setPollOptions(p.pollOptions || ["", ""]);
+                            
                             draftContentRef.current = p.content || "";
                             loaded = true;
                         } catch(e) { console.error(e); }
@@ -79,6 +94,11 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                     setTags([]);
                     setResourceLink("");
                     setResourceTitle("");
+                    
+                    setHasPoll(false);
+                    setPollTitle("");
+                    setPollOptions(["", ""]);
+                    
                     draftContentRef.current = "";
                 }
             }
@@ -88,13 +108,13 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
     // [New] 임시 저장 자동 저장 로직
     useEffect(() => {
         if (isOpen && !initialPost) {
-            if (title.trim() || content.trim() || tags.length > 0 || imageUrls.length > 0 || resourceLink.trim()) {
+            if (title.trim() || content.trim() || tags.length > 0 || imageUrls.length > 0 || resourceLink.trim() || hasPoll) {
                 const finalAuthorName = userNickname || authorName;
-                const draft = { category, grade, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+                const draft = { category, grade, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, hasPoll, pollTitle, pollOptions, timestamp: Date.now() };
                 localStorage.setItem('cls_post_draft', JSON.stringify(draft));
             }
         }
-    }, [category, grade, title, authorName, userNickname, content, imageUrls, tags, resourceLink, resourceTitle, isOpen, initialPost]);
+    }, [category, grade, title, authorName, userNickname, content, imageUrls, tags, resourceLink, resourceTitle, hasPoll, pollTitle, pollOptions, isOpen, initialPost]);
 
     useEffect(() => {
         if (isOpen && canUseQuill) {
@@ -300,9 +320,23 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
         }
     };
 
+    const handlePollOptionChange = (idx, val) => {
+        const newOpts = [...pollOptions];
+        newOpts[idx] = val;
+        setPollOptions(newOpts);
+    };
+
+    const addPollOption = () => {
+        if (pollOptions.length < 5) setPollOptions([...pollOptions, ""]);
+    };
+
+    const removePollOption = (idx) => {
+        if (pollOptions.length > 2) setPollOptions(pollOptions.filter((_, i) => i !== idx));
+    };
+
     const handleManualSaveDraft = () => {
         const finalAuthorName = userNickname || authorName;
-        const draft = { category, grade, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, timestamp: Date.now() };
+        const draft = { category, grade, title, authorName: finalAuthorName, content, imageUrls, tags, resourceLink, resourceTitle, hasPoll, pollTitle, pollOptions, timestamp: Date.now() };
         localStorage.setItem('cls_post_draft', JSON.stringify(draft));
         if (showToast) showToast("임시 저장되었습니다.");
         else alert("임시 저장되었습니다.");
@@ -318,8 +352,26 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
             alert("학년을 선택해주세요.");
             return;
         }
+        
+        let finalPoll = null;
+        if (hasPoll) {
+            if (!pollTitle.trim()) {
+                alert("투표 제목을 입력해주세요.");
+                return;
+            }
+            const validOptions = pollOptions.filter(opt => opt.trim() !== "");
+            if (validOptions.length < 2) {
+                alert("투표 항목은 최소 2개 이상 입력해야 합니다.");
+                return;
+            }
+            finalPoll = {
+                title: pollTitle.trim(),
+                options: validOptions.map(opt => ({ text: opt.trim(), voters: [] }))
+            };
+        }
+
         localStorage.setItem('community_authorName', finalAuthorName);
-        onSave(title, content, finalAuthorName, category, imageUrls, tags, resourceLink, resourceTitle, grade);
+        onSave(title, content, finalAuthorName, category, imageUrls, tags, resourceLink, resourceTitle, grade, finalPoll);
     };
 
     const modalFooter = (
@@ -438,6 +490,49 @@ const PostModal = ({ isOpen, onClose, onSave, initialPost, imgbbApiKey, userNick
                             placeholder="https://..." 
                         />
                     </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 hover:border-indigo-200 transition-colors">
+                        <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer" onClick={() => setHasPoll(!hasPoll)}><Icon d={PATHS.list} size={16} className="text-indigo-400"/> 투표(Poll) 첨부</label>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" className="sr-only peer" checked={hasPoll} onChange={() => setHasPoll(!hasPoll)} />
+                            <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                        </label>
+                    </div>
+                    {hasPoll && (
+                        <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-3 animate-fade-in mt-2">
+                            <input 
+                                value={pollTitle} 
+                                onChange={(e) => setPollTitle(e.target.value)} 
+                                className="w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all bg-white" 
+                                placeholder="투표 제목을 입력하세요 (예: 다음 주 현장학습 장소는?)" 
+                            />
+                            <div className="space-y-2">
+                                {pollOptions.map((opt, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-indigo-500 bg-indigo-100 w-6 h-6 flex items-center justify-center rounded-full shrink-0">{idx + 1}</span>
+                                        <input 
+                                            value={opt} 
+                                            onChange={(e) => handlePollOptionChange(idx, e.target.value)} 
+                                            className="flex-1 p-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all bg-white" 
+                                            placeholder={`항목 ${idx + 1} 입력`} 
+                                        />
+                                        {pollOptions.length > 2 && (
+                                            <button onClick={() => removePollOption(idx)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors shrink-0" title="항목 삭제">
+                                                <Icon d={PATHS.x} size={14}/>
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                            {pollOptions.length < 5 && (
+                                <button onClick={addPollOption} className="mt-2 px-3 py-1.5 bg-white border border-indigo-200 text-xs font-bold text-indigo-600 rounded-lg flex items-center gap-1 hover:bg-indigo-50 transition-colors shadow-sm">
+                                    <span className="text-lg leading-none mb-0.5">+</span> 항목 추가 (최대 5개)
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
                 
                 <div className="space-y-1.5">

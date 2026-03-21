@@ -1628,7 +1628,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                     <span className="text-xs font-bold text-slate-500">{count}회</span>
                                                 </div>
                                                 <div className="h-2.5 bg-white rounded-full overflow-hidden shadow-inner border border-slate-100">
-                                                    <div className={`h-full rounded-full transition-all duration-1000 ${barColor}`} style={{ width: `${width}%` }}></div>
+                                                    <div className={`h-full rounded-full transition-all duration-1000 origin-left animate-fill-bar ${barColor}`} style={{ width: `${width}%` }}></div>
                                                 </div>
                                             </div>
                                         );
@@ -1692,7 +1692,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                             <span>나 ({student.name})</span>
                                         </div>
                                         <div className="h-3 bg-white rounded-full overflow-hidden shadow-sm border border-slate-100">
-                                            <div className={`h-full ${getLevelColor(level)} transition-all duration-1000 relative`} style={{ width: `${animatedWidths.student}%` }}>
+                                            <div className={`h-full ${getLevelColor(level)} transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] relative`} style={{ width: `${animatedWidths.student}%` }}>
                                                 <div className="absolute top-0 right-0 bottom-0 w-1 bg-white/30"></div>
                                             </div>
                                         </div>
@@ -1703,7 +1703,7 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                             <span>학급 평균</span>
                                         </div>
                                         <div className="h-3 bg-white rounded-full overflow-hidden shadow-sm border border-slate-100">
-                                            <div className="h-full bg-slate-300 transition-all duration-1000 relative" style={{ width: `${animatedWidths.class}%` }}>
+                                            <div className="h-full bg-slate-300 transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] relative" style={{ width: `${animatedWidths.class}%` }}>
                                                 <div className="absolute top-0 right-0 bottom-0 w-1 bg-white/30"></div>
                                             </div>
                                         </div>
@@ -1888,8 +1888,8 @@ const StatsGrassModal = ({ isOpen, onClose, student: propStudent, students, reco
                                                         <div className="flex gap-3"><span className={isLow ? "text-rose-500" : getLevelTextColor(level)}>나 {sRate}%</span><span className="text-slate-400">반 {cRate}%</span></div>
                                                     </div>
                                                     <div className="flex flex-col gap-1.5">
-                                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden w-full"><div className={`h-full ${isLow ? "bg-rose-400" : getLevelColor(level)}`} style={{ width: `${sRate}%` }}></div></div>
-                                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden w-full"><div className="h-full bg-slate-300" style={{ width: `${cRate}%` }}></div></div>
+                                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden w-full"><div className={`h-full origin-left animate-fill-bar ${isLow ? "bg-rose-400" : getLevelColor(level)}`} style={{ width: `${sRate}%` }}></div></div>
+                                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden w-full"><div className="h-full bg-slate-300 origin-left animate-fill-bar" style={{ width: `${cRate}%` }}></div></div>
                                                     </div>
                                                 </div>
                                             );
